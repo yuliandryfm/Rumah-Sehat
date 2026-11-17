@@ -13,7 +13,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-005 | Akun dokter, psikolog, fisioterapis, dan tenaga medis diverifikasi dan dikelola admin Rumah Sehat. Setiap… | `[DOK] P8.2a` `[USER] T2-Q2` | US-202, US-203 |  |  | BRD v1.0 |
 | BR-006 | Akun rekanan (klinik, lab, toko kecantikan, toko alat kesehatan, apotek) dan admin mitranya diverifikasi… | `[DOK] P8.2a` `[USER] T2-Q3, T2-Q3b` | US-205, US-206 |  |  | BRD v1.0 |
 | BR-007 | Aplikasi pasien tersedia di Android dan iOS; tenaga kesehatan memakai aplikasi mobile; para admin memakai… | `[DOK] P6.1, P6.2` | NFR-COMP-01 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-008 | Pasien dapat memesan konsultasi, pendaftaran klinik/lab, dan home visit untuk anggota keluarga; verifikasi KTP (dewasa) atau KK (anak)… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201 | | | BRD v1.2 (CR-006/Tahap 3) |
+| BR-008 | Pasien dapat memesan konsultasi, pendaftaran klinik/lab, dan home visit untuk anggota keluarga; verifikasi KTP (dewasa) atau KK (anak)… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201, US-310, US-902 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-010 | Pasien dapat berkonsultasi dengan dokter lewat chat teks dan panggilan video | `[DOK] P3.1, P3.2` | US-303, US-304, US-305, US-306 |  |  | BRD v1.0 |
 | BR-011 | Pasien dapat berkonsultasi kesehatan mental dengan psikolog lewat chat teks dan panggilan video | `[DOK] P2.1, P3.1, P3.2` | US-303, US-304 |  |  | BRD v1.0 |
 | BR-012 | Pasien dapat berkonsultasi dengan fisioterapis dan tenaga medis lewat chat teks dan panggilan video | `[USER] T2-Q5` | US-303, US-304 |  |  | BRD v1.0 |
@@ -30,7 +30,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-024 | Pendaftaran klinik, pendaftaran lab, dan home visit yang dipesan di aplikasi dibayar di aplikasi. Saat datang… | `[USER] T2-Q13, T2-Q14` | US-402, US-403, US-404, US-501, US-801, US-1304 |  |  | BRD v1.1 (CR-005) |
 | BR-025 | Hasil lab dari lab rekanan diterima lewat integrasi, disimpan, dan diberitahukan ke pasien | `[DOK] P4.1, P4.5, PS6a` | US-901, US-902, US-1307 |  |  | BRD v1.0 |
 | BR-026 | Riwayat pendaftaran klinik, lab, dan home visit pasien disimpan | `[DOK] P4.1` | US-406 |  |  | BRD v1.0 |
-| BR-027 | Pasien yang sudah check-in di klinik rekanan dapat melihat antrean secara real-time… | `[USER] T3-Q1a, T3-Q1b, T3-Q14` | US-405, US-1305 | | | BRD v1.2 (CR-006/Tahap 3) |
+| BR-027 | Pasien yang sudah check-in di klinik rekanan dapat melihat antrean secara real-time… | `[USER] T3-Q1a, T3-Q1b, T3-Q14` | US-405, US-1305 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-030 | Pasien dapat membeli obat bebas, produk kecantikan, dan produk kesehatan lain (vitamin, suplemen, alat… | `[DOK] PS1` | US-701, US-702 |  |  | BRD v1.0 |
 | BR-031 | Outlet rekanan terdiri atas toko kecantikan, toko alat kesehatan, klinik rekanan, dan apotek rekanan. Obat… | `[DOK] PS2` `[USER] T2-Q3, T2-Q3b` | US-205, US-702 |  |  | BRD v1.0 |
 | BR-032 | Obat resep tidak dijual di Rumah Sehat | `[DOK] PS1` | US-702 |  |  | BRD v1.0 |
@@ -56,7 +56,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 |  |  | BRD v1.0 |
 | BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 |  |  | BRD v1.0 |
 | BR-090 | Rumah Sehat menyediakan data untuk mengukur KPI-01 sampai KPI-04 sesuai definisi di bagian 1.2: MAU… | `[USER] T2-Q10, T2-Q11` `[DOK: 01-business-case.md]` | US-1405, US-1701 |  |  | BRD v1.0 |
-| BR-100 | Rumah Sehat terdaftar sebagai Penyelenggara Sistem Elektronik Lingkup Privat sebelum aplikasi digunakan… | `[SRC-12]` `[SRC-13]` | PRD §10 |  |  | BRD v1.0 |
+| BR-100 | Rumah Sehat terdaftar sebagai Penyelenggara Sistem Elektronik Lingkup Privat sebelum aplikasi digunakan… | `[SRC-12]` `[SRC-13]` | PRD §10 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-101 | Konsultasi online berjalan dalam skema telemedisin yang sesuai ketentuan Kemenkes: klinik rekanan… | `[SRC-02]` `[SRC-03]` `[USER] T2-Q2` | PRD §10 |  |  | BRD v1.0 |
 | BR-102 | Hanya tenaga kesehatan dengan STR dan SIP yang masih berlaku yang dapat diaktifkan melayani. Masa berlaku… | `[SRC-02]` `[SRC-03]` `[SRC-21]` | US-202, US-203, US-204, US-1003 |  |  | BRD v1.0 |
 | BR-103 | Pasien memberikan persetujuan eksplisit, tertulis atau terekam, sebelum datanya diproses, dengan informasi… | `[SRC-15]` | US-101, US-104, US-1601 |  |  | BRD v1.0 |
@@ -75,10 +75,10 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-116 | Obat bebas, produk kecantikan, dan produk kesehatan yang dijual lewat Rumah Sehat memenuhi ketentuan… | `[SRC-08]` `[SRC-10]` `[SRC-11]` `[USER] T2-Q3` | US-702, PRD §10 |  |  | BRD v1.0 |
 | BR-117 | PT. Arunika memiliki perizinan berusaha yang sesuai untuk kegiatan Rumah Sehat sebelum go-live. Jenis… | `[SRC-09]` `[SRC-23]` | PRD §10 |  |  | BRD v1.0 |
 | BR-118 | Perkembangan regulasi kesehatan digital dipantau sampai go-live, karena Kemenkes menyatakan akan mengatur… | `[SRC-06]` | PRD §10 |  |  | BRD v1.0 |
-| BR-120 | PT. Arunika menyediakan aplikasi RME minimalis terpisah untuk klinik dan lab rekanan tanpa sistem… | `[USER] T3-Q1a, T3-Q14, T3-Q15` | US-1301, US-1302 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-121 | RME minimalis terhubung ke Rumah Sehat lewat integrasi yang sama dengan sistem rekanan lain… | `[USER] T3-Q14` | US-1301, US-1401 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-122 | RME minimalis menyediakan pengelolaan jadwal, daftar layanan, dan harga klinik/lab… | `[USER] T3-Q1b` | US-1303 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-123 | RME minimalis menyediakan pencatatan rekam medis kunjungan sesuai ketentuan SATUSEHAT… | `[USER] T3-Q1b` `[SRC-18]` `[SRC-26]` `[SRC-27]` | US-1306, US-1309, US-1310, PRD §10 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-125 | RME minimalis menyediakan penerimaan appointment, check-in, antrean real-time, dan penugasan home visit | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 | | | BRD v1.2 (CR-006/Tahap 3) |
-| BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Rumah Sehat | `[USER] T3-Q1c` | US-1306, US-1310 | | | BRD v1.2 (CR-006/Tahap 3) |
+| BR-120 | PT. Arunika menyediakan aplikasi RME minimalis terpisah untuk klinik dan lab rekanan tanpa sistem… | `[USER] T3-Q1a, T3-Q14, T3-Q15` | US-1301, US-1302 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-121 | RME minimalis terhubung ke Rumah Sehat lewat integrasi yang sama dengan sistem rekanan lain… | `[USER] T3-Q14` | US-1301, US-1401 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-122 | RME minimalis menyediakan pengelolaan jadwal, daftar layanan, dan harga klinik/lab… | `[USER] T3-Q1b` | US-1303 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-123 | RME minimalis menyediakan pencatatan rekam medis kunjungan sesuai ketentuan SATUSEHAT… | `[USER] T3-Q1b` `[SRC-18]` `[SRC-26]` `[SRC-27]` | US-1306, US-1309, US-1310, PRD §10 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-125 | RME minimalis menyediakan penerimaan appointment, check-in, antrean real-time, dan penugasan home visit | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Rumah Sehat | `[USER] T3-Q1c` | US-1306, US-1310 |  |  | BRD v1.2 (CR-006/Tahap 3) |

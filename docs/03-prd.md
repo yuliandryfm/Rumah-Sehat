@@ -64,7 +64,7 @@ Sembilan peran Rumah Sehat mengikuti BRD §2.2. Tambahan dari PRD ini:
 
 | Peran | Komponen | Sumber |
 | --- | --- | --- |
-| Sub-peran admin Rumah Sehat: Super Admin, Verifikator, Layanan Pelanggan, Keuangan, Konten, Auditor | Backoffice | `[UP-18]` |
+| Sub-peran admin Rumah Sehat: Super Admin, Verifikator, Layanan Pelanggan, Keuangan, Konten, Auditor, Petugas PDP | Backoffice | `[UP-18]` |
 | Admin Fasyankes, Tenaga Kesehatan Fasyankes, Petugas Lab | Aplikasi RME minimalis, untuk klinik/lab rekanan pengguna RME | BR-120 `[UP-26]` |
 | Operator RME (staf PT. Arunika untuk onboarding fasyankes ke RME minimalis; tidak dapat melihat isi rekam medis) | Aplikasi RME minimalis | BR-120 `[UP-26]` |
 
@@ -119,17 +119,19 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 
 ### 3.1 Akses data per peran (T1)
 
-| Data | Pasien | Tenaga kesehatan | Admin klinik/lab/outlet (portal) | Admin RS | Pengguna RME minimalis | Sumber |
-| --- | --- | --- | --- | --- | --- | --- |
-| Profil dan identitas dasar | Miliknya dan anggota keluarganya | Nama, jenis kelamin, tanggal lahir, dan keluhan awal pasien di sesi/kunjungan yang ditanganinya | Nama pasien di laporan transaksi rekanannya | Layanan Pelanggan, Verifikator, Super Admin | Pasien Rumah Sehat di fasyankesnya | BR-002, BR-105 `[UP-17]` |
-| NIK, foto KTP, foto KK | Miliknya dan anggota keluarganya | Tidak | Tidak | Hanya Verifikator. Peran lain melihat NIK termasking | NIK pasien di fasyankesnya bila dibutuhkan pencatatan rekam medis `[TIDAK DIKETAHUI]` (L-05) | BR-003, BR-004, BR-105 `[UP-17]` |
-| Isi chat, catatan konsultasi, resep | Miliknya dan anggota keluarganya | Hanya sesi yang ditanganinya | Tidak | Tidak ada peran admin RS yang dapat melihat | Tidak | BR-016, BR-105 `[UP-15]` `[UP-17]` |
-| Hasil lab | Miliknya dan anggota keluarganya | Tidak, di rilis 1 | Tidak | Tidak | Petugas Lab dan Tenaga Kesehatan Fasyankes di lab/klinik yang memeriksa | BR-025, BR-105 `[UP-17]` |
-| Rekam medis RME minimalis | Lewat hak akses data (EP-16) | Tidak | Tidak | Tidak (Operator RME juga tidak) | Tenaga Kesehatan Fasyankes dan Admin Fasyankes di fasyankes itu | BR-123 `[UP-17]` `[UP-26]` |
-| Transaksi, pembagian dana, refund | Transaksinya | Tidak | Transaksi rekanannya | Keuangan, Super Admin (baca) | Tidak | BR-046 |
-| Audit log | Tidak di rilis 1 | Tidak | Tidak | Auditor (baca dan export), Super Admin (baca) | Tidak | BR-080 `[UP-18]` |
+| Data | Pasien | Tenaga kesehatan | Admin klinik/lab/outlet (portal) | Admin RS | Pengguna RME minimalis | Sensitif | Sumber |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Profil dan identitas dasar | Miliknya dan anggota keluarganya | Nama, jenis kelamin, tanggal lahir, dan keluhan awal pasien di sesi/kunjungan yang ditanganinya. Untuk home visit juga alamat kunjungan dan nomor HP pasien, hanya di hari kunjungan sampai kunjungan selesai | Nama pasien di laporan transaksi rekanannya | Layanan Pelanggan, Verifikator, Super Admin; Petugas PDP untuk pemohon hak subjek data | Pasien Rumah Sehat di fasyankesnya | Ya untuk keluhan awal dan data anak; tidak untuk profil dewasa lainnya | BR-002, BR-105 `[UP-13]` `[UP-17]` |
+| NIK, foto KTP, foto KK | Miliknya dan anggota keluarganya | Tidak | Tidak | NIK lengkap dan foto hanya Verifikator. Peran lain, termasuk Petugas PDP, melihat NIK termasking | NIK pasien di fasyankesnya bila dibutuhkan pencatatan rekam medis `[TIDAK DIKETAHUI]` (L-05) | Ya | BR-003, BR-004, BR-105 `[UP-17]` |
+| Isi chat, catatan konsultasi, resep | Miliknya dan anggota keluarganya (UP-15) | Hanya sesi yang ditanganinya | Tidak | Tidak ada peran admin RS yang dapat melihat. Salinan untuk hak subjek data dibuat otomatis oleh sistem, tanpa dibuka Petugas PDP | Tidak | Ya | BR-016, BR-105 `[UP-15]` `[UP-17]` |
+| Hasil lab | Miliknya dan anggota keluarganya (UP-15) | Tidak, di rilis 1 | Tidak | Tidak (seperti baris di atas) | Petugas Lab dan Tenaga Kesehatan Fasyankes di lab/klinik yang memeriksa | Ya | BR-025, BR-105 `[UP-17]` |
+| Rekam medis RME minimalis | `[TIDAK DIKETAHUI]`, menunggu L-05 (sama dengan US-1604 AC3) | Tidak | Tidak | Tidak (Operator RME juga tidak) | Tenaga Kesehatan Fasyankes: baca dan tulis. Admin Fasyankes: baca saja. Petugas Lab: tidak | Ya | BR-123 `[UP-17]` `[UP-26]` |
+| Foto bukti klaim | Miliknya | Tidak | Tidak | Layanan Pelanggan (klaim yang ditanganinya); Super Admin (klaim tereskalasi) | Tidak | Ya | BR-045 `[UP-36]` |
+| Transaksi, pembagian dana, refund | Transaksinya | Tidak | Transaksi rekanannya | Keuangan; Super Admin (baca); Layanan Pelanggan (baca, hanya pesanan terkait klaim atau tiket yang ditanganinya) | Tidak | Ya untuk detail transaksi seorang pasien yang dibuka admin (data keuangan pribadi); tidak untuk laporan berisi banyak transaksi | BR-046, BR-105 `[UP-17]` |
+| Permintaan hak subjek data | Miliknya | Tidak | Tidak | Petugas PDP; Super Admin (baca) | Tidak | Tidak (dicatat sebagai E-13) | BR-106 `[UP-18]` |
+| Audit log | Tidak di rilis 1 | Tidak | Tidak | Auditor (baca dan export), Super Admin (baca) | Admin Fasyankes: log akses rekam medis fasyankesnya | Tidak | BR-080 `[UP-18]` `[UP-26]` |
 
-Akses yang ditolak ke data sensitif dicatat di audit trail (KU-03, §7).
+**Data sensitif** untuk KU-03 dan E-05 adalah data bertanda "Ya" di kolom Sensitif: data pribadi spesifik (AB-70: data kesehatan termasuk keluhan awal, data anak, data keuangan pribadi), NIK lengkap, dokumen identitas, dan foto bukti klaim. E-05 dicatat saat detail data itu dibuka oleh pihak selain subjek data, bukan saat daftar ringkas tampil. Akses yang ditolak ke data sensitif dicatat dengan hasil "gagal" (KU-03, §7) `[KEPUTUSAN-07]`.
 
 ### 3.2 Verifikasi identitas dan pembatasan layanan
 
@@ -146,13 +148,14 @@ Akses yang ditolak ke data sensitif dicatat di audit trail (KU-03, §7).
 | ID | Aturan | Sumber |
 | --- | --- | --- |
 | AB-10 | Harga layanan yang dibayar pasien = harga rekanan + markup Rumah Sehat. Markup berbentuk persen atau nominal, diatur per rekanan oleh admin Rumah Sehat | BR-042 |
-| AB-11 | Untuk produk, total = harga produk (harga rekanan + markup) + ongkos kirim | BR-034, BR-042 |
+| AB-11 | Untuk produk, total = jumlah harga produk (harga rekanan + markup, per unit dikali jumlah) + ongkos kirim | BR-034, BR-042 |
+| AB-11a | Markup dihitung per unit layanan atau produk atas harga rekanan per unit. Markup persen dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Markup nominal berlaku per unit. Markup tidak dikenakan pada ongkos kirim dan biaya transaksi | `[UP-51]` |
 | AB-12 | Untuk metode pembayaran non-QRIS, biaya transaksi ditambahkan ke total dan ditampilkan sebelum pasien membayar. Untuk QRIS, pasien tidak dikenai biaya transaksi, dan MDR dipotong dari bagian rekanan. Pembebanan per metode menunggu L-12 | BR-044 `[SRC-24]` |
 | AB-13 | Pasien melihat harga layanan sebagai **satu angka** (harga rekanan + markup). Ongkos kirim dan biaya transaksi tampil sebagai baris terpisah. Markup tidak ditampilkan sebagai baris tersendiri | `[UP-07]` (sejalan dengan T2-Q20); keterbukaan rincian harga menunggu L-14 |
 | AB-14 | Informasi biaya MCU dan lab menampilkan harga yang sama dengan harga bayar di aplikasi | BR-023 `[USER] T2-Q20` |
 | AB-15 | Sebelum pembayaran dibuat, harga dan ketersediaan (slot atau stok) diperiksa ulang ke sistem rekanan. Kalau berbeda, pasien diberi tahu nilai terbaru dan harus menyetujuinya sebelum membayar | `[UP-25]` |
 | AB-16 | Layar ringkasan pesanan klinik, lab, dan home visit menyatakan bahwa harga hanya mencakup layanan yang tercantum, dan tindakan tambahan diselesaikan serta dibayar di luar aplikasi | BR-024 (L-14) |
-| AB-17 | Perubahan markup atau tarif rekanan tidak mengubah harga pesanan yang sudah dibayar. Harga dikunci saat pembayaran dibuat | ADR-004 `[UP-32]` |
+| AB-17 | Harga (harga rekanan atau tarif + markup) dan nilai parameter bisnis yang berlaku untuk suatu pesanan dikunci saat pembayaran dibuat di payment gateway. Perubahan sesudahnya tidak memengaruhi pesanan itu, walaupun pembayaran diselesaikan setelah perubahan berlaku. Perubahan markup atau tarif antara ringkasan harga dan pembuatan pembayaran ditangani seperti AB-15 | ADR-004 `[UP-32]` |
 
 ### 3.4 Pembayaran dan pembagian dana (T1)
 
@@ -174,71 +177,150 @@ Aturan pokok BR-045 dirinci dengan jawaban `[USER] T3-Q5, T3-Q6, T3-Q7, T3-Q8`. 
 **Definisi** (sumber: `[USER] T3-Q6` untuk definisi no-show yang disetujui bersama pertanyaan):
 
 - **Layanan terjadwal**: konsultasi online, pendaftaran klinik, pendaftaran lab, home visit.
+- **Bergabung (konsultasi)**: pihak membuka ruang sesi di aplikasinya saat ruang sudah terbuka. Server mencatat waktu pertama kali tiap pihak bergabung. Berlaku sama untuk chat dan video; menjawab panggilan video tidak disyaratkan `[UP-29]`.
+- **Batas ketidakhadiran konsultasi**: PB-02 (pasien) atau PB-03 (tenaga kesehatan) sejak jadwal mulai, atau akhir durasi sesi bila lebih dulu `[UP-29]`.
 - **Pasien tidak hadir (no-show)**:
-    - konsultasi: pasien tidak bergabung ke sesi sampai PB-02 habis sejak jadwal mulai;
-    - klinik/lab: appointment tidak di-check-in sampai jadwalnya berakhir;
-    - home visit: tenaga kesehatan menandai pasien tidak ada di lokasi.
+    - konsultasi: tenaga kesehatan sudah bergabung, tetapi pasien belum bergabung saat batas ketidakhadiran pasien habis;
+    - klinik/lab: appointment yang sudah diterima sistem rekanan tidak di-check-in sampai jadwalnya berakhir;
+    - home visit: tenaga kesehatan menandai pasien tidak ada di lokasi setelah berstatus "Tiba".
 - **Tenaga kesehatan tidak hadir**:
-    - konsultasi: tenaga kesehatan tidak bergabung ke sesi sampai PB-03 habis sejak jadwal mulai `[USER] T3-Q8`;
-    - home visit: tenaga kesehatan belum menandai "tiba" sampai PB-03 habis sejak jadwal mulai, lalu pasien melaporkannya `[UP-13]`.
-- **Harga layanan**: harga rekanan + markup (AB-10).
+    - konsultasi: tenaga kesehatan belum bergabung saat batas ketidakhadiran tenaga kesehatan habis `[USER] T3-Q8`;
+    - home visit: tenaga kesehatan belum menandai "Tiba" sampai PB-03 habis sejak jadwal mulai, lalu pasien melaporkannya `[UP-13]`.
+- **Harga layanan**: harga rekanan + markup (AB-10, AB-11a).
 - **Seluruh pembayaran**: harga layanan + ongkos kirim (produk) + biaya transaksi (non-QRIS).
 
 **Matriks refund**
 
-| # | Kejadian | Berlaku untuk | Refund? | Yang dikembalikan ke pasien | Penanggung | Cara | Sumber |
+| # | Kejadian | Berlaku untuk | Refund? | Yang dikembalikan ke pasien | Kelompok penanggung (AB-34) | Cara | Sumber |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| RF-01 | Pasien membatalkan paling lambat PB-01 sebelum jadwal | Layanan terjadwal | Ya | Harga layanan. Biaya transaksi non-QRIS tidak dikembalikan | Bagian rekanan dikembalikan rekanan; markup dikembalikan Rumah Sehat; MDR QRIS tetap ditanggung rekanan | Otomatis | BR-045 `[USER] T3-Q5, T3-Q7, T3-Q8` |
+| RF-01 | Pasien membatalkan paling lambat PB-01 sebelum jadwal | Layanan terjadwal | Ya | Harga layanan. Biaya transaksi non-QRIS tidak dikembalikan | Pembatalan pasien | Otomatis | BR-045 `[USER] T3-Q5, T3-Q7, T3-Q8` |
 | RF-02 | Pasien membatalkan kurang dari PB-01 sebelum jadwal | Layanan terjadwal | Tidak | — | — | — | BR-045 |
 | RF-03 | Pasien tidak hadir | Layanan terjadwal | Tidak | — | Rekanan tetap menerima bagiannya | — | `[USER] T3-Q6` |
-| RF-04 | Tenaga kesehatan tidak bergabung ke sesi konsultasi sampai PB-03 habis | Konsultasi | Ya | Seluruh pembayaran | Rekanan mengembalikan bagiannya dan menanggung biaya payment gateway yang tidak kembali; Rumah Sehat mengembalikan markup | Otomatis | `[USER] T3-Q7, T3-Q8` |
-| RF-05 | Rekanan atau tenaga kesehatan membatalkan | Layanan terjadwal | Ya | Seluruh pembayaran | Seperti RF-04 | Otomatis | BR-045 `[USER] T3-Q7, T3-Q8` |
-| RF-06 | Tenaga kesehatan home visit tidak datang, dilaporkan pasien | Home visit | Ya, bila klaim disetujui | Seluruh pembayaran | Seperti RF-04 | Pengajuan, diputuskan admin RS dalam PB-05 | `[USER] T3-Q7` `[UP-13]` |
-| RF-07 | Layanan gagal karena gangguan platform Rumah Sehat | Semua | Ya, bila klaim disetujui | Seluruh pembayaran | Rekanan mengembalikan bagiannya; Rumah Sehat mengembalikan markup dan menanggung biaya payment gateway yang tidak kembali | Pengajuan, diputuskan admin RS dalam PB-05 | `[USER] T3-Q7` |
-| RF-08 | Outlet menolak pesanan (misalnya stok habis) atau tidak memprosesnya sampai PB-06 | Produk | Ya | Seluruh pembayaran | Outlet mengembalikan bagiannya dan menanggung biaya payment gateway yang tidak kembali; Rumah Sehat mengembalikan markup | Otomatis | `[USER] T3-Q7, T3-Q8` `[UP-03]` |
-| RF-09 | Kurir gagal mengirim (status gagal dari kurir) | Produk | Ya | Seluruh pembayaran | `[TIDAK DIKETAHUI]` (PT-29): T3-Q7 hanya menyebut rekanan atau Rumah Sehat sebagai penyebab | Otomatis | `[USER] T3-Q7, T3-Q8` |
-| RF-10 | Barang rusak atau tidak sesuai, diajukan paling lambat PB-04 setelah diterima, dengan foto | Produk | Ya, bila klaim disetujui | Seluruh pembayaran | Outlet, seperti RF-08. Kerusakan dalam pengiriman `[TIDAK DIKETAHUI]` (PT-29). Pengembalian barang fisik `[TIDAK DIKETAHUI]` (PT-30) | Pengajuan, diputuskan admin RS dalam PB-05 | BR-045 `[USER] T3-Q7, T3-Q8` |
+| RF-04 | Tenaga kesehatan tidak hadir di sesi konsultasi | Konsultasi | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | `[USER] T3-Q7, T3-Q8` |
+| RF-05 | Rekanan atau tenaga kesehatan membatalkan, termasuk akibat penonaktifan akun rekanan atau tenaga kesehatan dan SIP berakhir | Layanan terjadwal | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | BR-045 `[USER] T3-Q7, T3-Q8` |
+| RF-06 | Tenaga kesehatan home visit tidak datang, dilaporkan pasien paling lambat PB-15 setelah jadwal berakhir | Home visit | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab rekanan | Pengajuan, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-13]` `[UP-53]` |
+| RF-07 | Layanan gagal karena gangguan platform Rumah Sehat, diajukan paling lambat PB-15 setelah jadwal berakhir (layanan terjadwal) atau PB-04 setelah status terakhir pesanan (produk) | Semua | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab platform | Pengajuan, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-53]` |
+| RF-08 | Outlet menolak pesanan (misalnya stok habis), tidak menerimanya sampai PB-06, membatalkannya sebelum diserahkan ke kurir, atau dinonaktifkan sebelum pesanan dikirim | Produk | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | `[USER] T3-Q7, T3-Q8` `[UP-03]` |
+| RF-09 | Kurir gagal mengirim (status gagal dari kurir) | Produk | Ya | Seluruh pembayaran | Penyebab kurir `[TIDAK DIKETAHUI]` (PT-29) | Otomatis | `[USER] T3-Q7, T3-Q8` |
+| RF-10 | Barang rusak, tidak sesuai, atau kurang, diajukan paling lambat PB-04 setelah status Diterima, dengan foto | Produk | Ya, bila klaim disetujui | Seluruh pembayaran. Klaim sebagian barang `[TIDAK DIKETAHUI]` (PT-33) | Penyebab rekanan. Kerusakan dalam pengiriman: penyebab kurir (PT-29). Pengembalian barang fisik `[TIDAK DIKETAHUI]` (PT-30) | Pengajuan, diputuskan dalam PB-05 | BR-045 `[USER] T3-Q7, T3-Q8` |
 | RF-11 | Pasien ingin membatalkan pesanan produk setelah membayar | Produk | Tidak. Pembatalan tidak disediakan | — | — | — | BR-045 `[UP-08]` |
-| RF-12 | Pasien terdebit dua kali untuk satu pesanan (pembayaran ganda) | Semua | Ya, untuk pembayaran ganda | Seluruh pembayaran ganda | Rumah Sehat (gangguan platform) | Otomatis setelah terdeteksi saat rekonsiliasi | `[USER] T3-Q7` `[UP-34]` |
+| RF-12 | Pasien terdebit dua kali untuk satu pesanan (pembayaran ganda) | Semua | Ya, untuk pembayaran ganda | Seluruh pembayaran ganda | Penyebab platform | Otomatis saat notifikasi berhasil kedua diterima, atau saat terdeteksi di rekonsiliasi | `[USER] T3-Q7` `[UP-34]` |
+| RF-13 | Pembayaran berhasil diterima setelah pesanan kedaluwarsa, dan slot atau stok sudah tidak tersedia | Semua | Ya | Seluruh pembayaran | Penyebab platform | Otomatis | `[USER] T3-Q7` `[UP-34]` |
+| RF-14 | Nominal di notifikasi pembayaran tidak sama dengan nominal pesanan | Semua | Ya. Pesanan tidak dikonfirmasi dan menjadi Kedaluwarsa | Seluruh nominal yang diterima | Penyebab platform | Keuangan memeriksa dalam PB-16, lalu refund dibuat | `[UP-52]` |
+| RF-15 | Outlet sudah menerima pesanan tetapi tidak menyerahkannya ke kurir sampai PB-17 sejak status Diproses outlet | Produk | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | `[USER] T3-Q7` `[UP-52]` |
+| RF-16 | Barang tidak sampai: status Dikirim tanpa kabar terkirim atau gagal sampai PB-18, atau kurir menyatakan terkirim tetapi pasien tidak menerima (diajukan paling lambat PB-04 setelah status Diterima) | Produk | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab kurir `[TIDAK DIKETAHUI]` (PT-29) | Pengajuan tanpa wajib foto, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-52]` |
+| RF-17 | Pasien keberatan atas status "Pasien tidak hadir" home visit, diajukan paling lambat PB-15 setelah jadwal berakhir | Home visit | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab rekanan | Pengajuan, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-13]` `[UP-53]` |
+| RF-18 | Pesanan klinik, lab, atau home visit yang sudah dibayar belum diterima sistem rekanan saat jadwal mulai | Pendaftaran klinik/lab, home visit | Ya | Seluruh pembayaran | Penyebab rekanan bila sistem rekanan menolak atau tidak tersedia; penyebab platform bila gangguan Rumah Sehat. Ditetapkan Keuangan dari log integrasi | Otomatis saat jadwal mulai | `[USER] T3-Q7` |
 
 Ketentuan tambahan:
 
 - **AB-30** Refund dieksekusi lewat payment gateway ke metode bayar asal bila penyedia mendukungnya `[TIDAK DIKETAHUI]` (Tahap 4–5). Waktu sampainya dana ke pasien mengikuti penyedia dan metode pembayaran `[TIDAK DIKETAHUI]`.
-- **AB-31** Setiap refund dicatat sebagai entri pembalik yang merujuk transaksi asal (ADR-004), termasuk bagian rekanan dan markup yang dikembalikan.
-- **AB-32** Refund yang gagal dieksekusi berstatus "Refund gagal" dan masuk antrean tindak lanjut peran Keuangan. Pasien diberi tahu bahwa refund sedang ditangani `[UP-35]`.
-- **AB-33** Klaim refund yang tidak diputuskan sampai PB-05 habis dieskalasi ke Super Admin dan ditandai terlambat di laporan. Klaim tidak otomatis disetujui atau ditolak `[UP-36]`.
+- **AB-31** Setiap refund dicatat sebagai entri pembalik yang merujuk transaksi asal (ADR-004), termasuk kewajiban rekanan dan Rumah Sehat menurut AB-34.
+- **AB-32** Refund yang gagal dieksekusi berstatus "Gagal" dan masuk antrean tindak lanjut peran Keuangan. Pasien diberi tahu bahwa refund sedang ditangani `[UP-35]`.
+- **AB-33** Klaim refund yang tidak diputuskan sampai PB-05 habis dieskalasi ke Super Admin dan ditandai terlambat di laporan. Super Admin dapat memutuskan klaim tereskalasi beserta melihat buktinya. Klaim tidak otomatis disetujui atau ditolak `[UP-36]`.
+- **AB-34** Rumus kewajiban pengembalian per kelompok penanggung. "Biaya payment gateway yang tidak kembali" mencakup MDR dan biaya transaksi sejauh tidak dikembalikan penyedia `[TIDAK DIKETAHUI]` (Tahap 4–5).
+
+  | Kelompok | Pasien menerima | Kewajiban rekanan | Kewajiban Rumah Sehat | Sumber |
+  | --- | --- | --- | --- | --- |
+  | Pembatalan pasien (RF-01) | Harga layanan | Harga rekanan penuh (MDR QRIS tetap ditanggung rekanan) | Markup | `[USER] T3-Q7` |
+  | Penyebab rekanan (RF-04, RF-05, RF-06, RF-08, RF-10, RF-15, RF-17, RF-18) | Seluruh pembayaran | Harga rekanan penuh + biaya payment gateway yang tidak kembali | Markup | `[USER] T3-Q7` |
+  | Penyebab platform (RF-07, RF-12, RF-13, RF-14, RF-18) | Seluruh pembayaran yang di-refund | Bagian yang benar-benar diterimanya dari pembayaran itu (harga rekanan dikurangi MDR bila QRIS) | Markup + semua biaya payment gateway yang tidak kembali | `[USER] T3-Q7` `[UP-34]` |
+  | Penyebab kurir (RF-09, RF-16, kerusakan dalam pengiriman) | Seluruh pembayaran | `[TIDAK DIKETAHUI]` (PT-29) | `[TIDAK DIKETAHUI]` (PT-29) | — |
+
+  Ongkos kirim dikembalikan oleh penerima dana ongkos kirim (AB-23, PT-31). Nominal kewajiban dihitung dari harga yang dikunci (AB-17).
+- **AB-35** Refund yang berstatus Diproses lebih dari PB-19 tanpa konfirmasi penyedia menjadi "Perlu dicek" dan masuk antrean Keuangan. Status ditanyakan ke penyedia, dan refund tidak dieksekusi ulang sebelum status penyedia diketahui. Keuangan menandai kewajiban rekanan "Selesai" dengan rujukan bukti `[UP-55]`.
+- **AB-36** Satu pesanan paling banyak punya satu refund, kecuali RF-12. Bila dua kejadian datang hampir bersamaan, transisi status yang tersimpan lebih dulu yang berlaku, dan kejadian berikutnya yang tidak sah dari status baru ditolak dan tercatat (E-09, hasil gagal) `[UP-10]`.
 
 ### 3.6 Status layanan dan pesanan
 
-Status berikut usulan penyusun `[UP-10]`. Perubahan status dicatat di audit trail (BR-080 butir 6).
+Status dan transisi berikut usulan penyusun `[UP-10]`. Perubahan status dicatat di audit trail (E-09). Transisi yang tidak ada di tabel ditolak, dan penolakannya tercatat dengan hasil gagal (US-1404 AC2, AB-36). "Status akhir" adalah status tanpa transisi keluar.
 
-**Konsultasi online:** Menunggu pembayaran → Terkonfirmasi → Berlangsung → Selesai. Cabang:
-- Kedaluwarsa (tidak dibayar sampai PB-07)
-- Dibatalkan pasien (refund mengikuti RF-01 atau RF-02)
-- Dibatalkan rekanan (RF-05)
-- Tenaga kesehatan tidak hadir (RF-04)
-- Pasien tidak hadir (RF-03)
+**Transisi bersama semua pesanan**
 
-**Pendaftaran klinik/lab:** Menunggu pembayaran → Terkonfirmasi → Check-in → Selesai. Cabang:
-- Kedaluwarsa, Dibatalkan pasien, Dibatalkan rekanan (seperti konsultasi)
-- Pasien tidak hadir (tidak check-in sampai jadwal berakhir)
+| Dari | Ke | Pemicu | Aktor | Refund |
+| --- | --- | --- | --- | --- |
+| Menunggu pembayaran | Terkonfirmasi (layanan terjadwal) atau Dibayar (produk) | Notifikasi pembayaran berhasil dengan nominal sama, sebelum PB-07 habis | Sistem | — |
+| Menunggu pembayaran | Kedaluwarsa | PB-07 habis, atau nominal notifikasi tidak sama | Sistem | RF-13 atau RF-14 bila dana sudah masuk |
+| Menunggu pembayaran | Dibatalkan pasien | Pasien membatalkan sebelum membayar | Pasien | — |
+| Kedaluwarsa | Terkonfirmasi atau Dibayar | Notifikasi berhasil datang setelah kedaluwarsa dan slot/stok masih tersedia | Sistem | — |
 
-Untuk lab, hasil lab adalah objek tersendiri yang terhubung ke pendaftaran (EP-09).
+**Konsultasi online**
 
-**Home visit:** Menunggu pembayaran → Terkonfirmasi → Ditugaskan → Berangkat → Tiba → Selesai. Cabang:
-- Kedaluwarsa, Dibatalkan pasien, Dibatalkan rekanan
-- Pasien tidak hadir (ditandai tenaga kesehatan)
-- Dilaporkan tidak datang → Klaim disetujui (RF-06) atau Klaim ditolak
+| Dari | Ke | Pemicu | Aktor | Refund |
+| --- | --- | --- | --- | --- |
+| Terkonfirmasi | Dibatalkan pasien | US-805 | Pasien | RF-01 atau RF-02 |
+| Terkonfirmasi | Dibatalkan rekanan | Tenaga kesehatan membatalkan; akun tenaga kesehatan atau rekanan dinonaktifkan; SIP berakhir | Tenaga kesehatan, admin RS, sistem | RF-05 |
+| Terkonfirmasi | Berlangsung | Pihak pertama bergabung (§3.5) | Sistem | — |
+| Terkonfirmasi atau Berlangsung | Tenaga kesehatan tidak hadir | Batas ketidakhadiran tenaga kesehatan habis dan tenaga kesehatan belum bergabung (berlaku juga bila keduanya tidak bergabung) | Sistem | RF-04 |
+| Berlangsung | Pasien tidak hadir | Tenaga kesehatan sudah bergabung dan batas ketidakhadiran pasien habis tanpa pasien bergabung | Sistem | — (RF-03) |
+| Berlangsung | Selesai | Durasi sesi habis dan kedua pihak pernah bergabung | Sistem | — |
 
-**Pesanan produk:** Menunggu pembayaran → Dibayar → Diproses outlet → Dikirim → Diterima → Selesai (setelah PB-04 habis tanpa klaim). Cabang:
-- Kedaluwarsa (tidak dibayar)
-- Ditolak outlet, atau Tidak diproses sampai PB-06 (RF-08)
-- Gagal kirim (RF-09)
-- Klaim → Klaim disetujui (RF-10) atau Klaim ditolak → Selesai
+**Pendaftaran klinik dan lab**
 
-**Refund:** Diproses → Berhasil, atau Diproses → Gagal → Diproses ulang oleh Keuangan.
+| Dari | Ke | Pemicu | Aktor | Refund |
+| --- | --- | --- | --- | --- |
+| Terkonfirmasi | Dibatalkan pasien | US-805 | Pasien | RF-01 atau RF-02 |
+| Terkonfirmasi | Dibatalkan rekanan | Rekanan membatalkan lewat integrasi; akun rekanan dinonaktifkan | Rekanan, admin RS | RF-05 |
+| Terkonfirmasi | Dibatalkan sistem | Pesanan belum diterima sistem rekanan saat jadwal mulai | Sistem | RF-18 |
+| Terkonfirmasi | Check-in | Status check-in dari sistem rekanan | Rekanan | — |
+| Terkonfirmasi | Pasien tidak hadir | Jadwal berakhir tanpa check-in, dan pesanan sudah diterima sistem rekanan | Sistem | — (RF-03) |
+| Check-in | Selesai | Status selesai dari sistem rekanan, atau akhir hari kalender rekanan | Rekanan, sistem | — |
 
-**Klaim:** Diajukan → Disetujui atau Ditolak (dengan alasan).
+Untuk lab, hasil lab adalah objek tersendiri yang terhubung ke pendaftaran (EP-09). Pembatalan oleh rekanan setelah Check-in ditolak.
+
+**Home visit**
+
+| Dari | Ke | Pemicu | Aktor | Refund |
+| --- | --- | --- | --- | --- |
+| Terkonfirmasi atau Ditugaskan | Dibatalkan pasien | US-805 | Pasien | RF-01 atau RF-02 |
+| Terkonfirmasi atau Ditugaskan | Dibatalkan rekanan | Klinik membatalkan; akun klinik dinonaktifkan | Rekanan, admin RS | RF-05 |
+| Terkonfirmasi | Dibatalkan sistem | Pesanan belum diterima sistem klinik saat jadwal mulai | Sistem | RF-18 |
+| Terkonfirmasi | Ditugaskan | Penugasan valid dari sistem klinik (US-502) | Rekanan | — |
+| Ditugaskan | Ditugaskan | Penugasan ulang ke tenaga kesehatan lain | Rekanan | — |
+| Ditugaskan | Terkonfirmasi | Tenaga kesehatan yang ditugaskan dinonaktifkan atau SIP-nya berakhir; menunggu penugasan ulang | Sistem | — |
+| Ditugaskan | Berangkat | Tenaga kesehatan menandai | Tenaga kesehatan | — |
+| Berangkat | Tiba | Tenaga kesehatan menandai | Tenaga kesehatan | — |
+| Tiba | Selesai | Tenaga kesehatan menandai | Tenaga kesehatan | — |
+| Tiba | Pasien tidak hadir | Tenaga kesehatan menandai pasien tidak ada di lokasi, dengan keterangan | Tenaga kesehatan | — (RF-03) |
+| Terkonfirmasi, Ditugaskan, atau Berangkat | Dilaporkan tidak datang | Pasien melapor setelah PB-03 habis sejak jadwal mulai, paling lambat PB-15 setelah jadwal berakhir | Pasien | Klaim RF-06 |
+| Dilaporkan tidak datang | Tenaga kesehatan tidak hadir | Klaim disetujui | Layanan Pelanggan, Super Admin | RF-06 |
+| Dilaporkan tidak datang | Klaim ditolak | Klaim ditolak | Layanan Pelanggan, Super Admin | — |
+| Pasien tidak hadir | Keberatan diajukan | Pasien keberatan paling lambat PB-15 setelah jadwal berakhir | Pasien | Klaim RF-17 |
+| Keberatan diajukan | Tenaga kesehatan tidak hadir | Klaim disetujui | Layanan Pelanggan, Super Admin | RF-17 |
+| Keberatan diajukan | Pasien tidak hadir | Klaim ditolak | Layanan Pelanggan, Super Admin | — |
+
+Status dari tenaga kesehatan yang datang setelah pasien melapor "tidak datang" ditolak (AB-36). Keputusan klaim yang diambil sesudahnya memakai bukti dari kedua pihak.
+
+**Pesanan produk**
+
+| Dari | Ke | Pemicu | Aktor | Refund |
+| --- | --- | --- | --- | --- |
+| Dibayar | Diproses outlet | Outlet menerima pesanan | Rekanan | — |
+| Dibayar | Ditolak outlet | Outlet menolak, PB-06 habis, atau outlet dinonaktifkan | Rekanan, sistem, admin RS | RF-08 |
+| Diproses outlet | Ditolak outlet | Outlet membatalkan, atau outlet dinonaktifkan | Rekanan, admin RS | RF-08 |
+| Diproses outlet | Tidak diserahkan | PB-17 habis tanpa barang diserahkan ke kurir | Sistem | RF-15 |
+| Diproses outlet | Dikirim | Nomor resi dan status kurir diterima | Rekanan, kurir | — |
+| Dikirim | Diterima | Kurir mengirim status terkirim, atau pasien menekan "Pesanan diterima" | Kurir, pasien | — |
+| Dikirim | Gagal kirim | Kurir mengirim status gagal | Kurir | RF-09 |
+| Dikirim | Klaim | PB-18 habis tanpa status terkirim atau gagal, dan pasien mengajukan "barang tidak sampai" | Pasien | Klaim RF-16 |
+| Diterima | Klaim | Pasien mengajukan klaim dalam PB-04 (rusak, tidak sesuai, kurang, atau tidak sampai) | Pasien | Klaim RF-10 atau RF-16 |
+| Diterima | Selesai | PB-04 habis tanpa klaim | Sistem | — |
+| Klaim | Klaim disetujui | Klaim disetujui | Layanan Pelanggan, Super Admin | RF-10 atau RF-16 |
+| Klaim | Selesai | Klaim ditolak | Layanan Pelanggan, Super Admin | — |
+
+Pesanan yang sudah Dikirim tetap berjalan walaupun outlet dinonaktifkan.
+
+**Refund**
+
+| Dari | Ke | Pemicu |
+| --- | --- | --- |
+| Diproses | Berhasil | Penyedia mengonfirmasi berhasil |
+| Diproses | Gagal | Penyedia mengembalikan galat (AB-32) |
+| Diproses | Perlu dicek | PB-19 habis tanpa konfirmasi penyedia (AB-35) |
+| Perlu dicek | Berhasil atau Gagal | Status penyedia diketahui |
+| Gagal | Diproses | Keuangan memproses ulang |
+
+**Klaim:** Diajukan → Disetujui atau Ditolak (dengan alasan). Klaim aktif adalah klaim berstatus Diajukan. Setelah klaim ditolak, klaim baru untuk pesanan yang sama tidak dapat diajukan `[UP-36]`.
 
 ### 3.7 Parameter bisnis
 
@@ -260,8 +342,13 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-12 | Biaya rekanan (tidak dipakai, langganan, atau per pendaftaran; besaran) | `[TIDAK DIKETAHUI]`, diputuskan CEO (PT-17) | Keuangan | BR-043, BR-063 |
 | PB-13 | Tarif dan durasi sesi konsultasi per tenaga kesehatan dan per jenis (chat/video) | Diisi klinik | Admin klinik (portal) | BR-018 `[USER] T3-Q4, T3-Q16` |
 | PB-14 | Dokumen izin wajib per jenis tenaga kesehatan | STR dan SIP untuk semua jenis, menunggu L-07 | Super Admin | BR-102 `[UP-19]` |
+| PB-15 | Batas pengajuan klaim layanan terjadwal (RF-06, RF-07, RF-17) | 2 x 24 jam setelah jadwal berakhir | Super Admin | `[UP-53]` |
+| PB-16 | Batas pemeriksaan Keuangan atas notifikasi pembayaran yang nominalnya tidak sama (RF-14) | 1 hari kerja | Super Admin | `[UP-52]` |
+| PB-17 | Batas outlet menyerahkan barang ke kurir sejak status Diproses outlet (RF-15) | 2 x 24 jam | Super Admin | `[UP-52]` |
+| PB-18 | Batas status Dikirim tanpa kabar kurir sebelum pasien dapat mengajukan "barang tidak sampai" (RF-16) | 7 hari | Super Admin | `[UP-52]` |
+| PB-19 | Batas refund berstatus Diproses tanpa konfirmasi penyedia sebelum menjadi "Perlu dicek" (AB-35) | 2 x 24 jam | Super Admin | `[UP-55]` |
 
-"Hari kerja" mengikuti kalender hari kerja yang diatur Super Admin `[UP-37]`.
+"Hari kerja" mengikuti kalender hari kerja yang diatur Super Admin. Batas berbasis hari kerja (PB-05, PB-16) dihitung dari waktu kejadian dan berakhir pukul 23.59 WIB pada hari kerja ke-N setelah hari kejadian; hari libur tidak dihitung `[UP-37]`.
 
 ### 3.8 Zona waktu
 
@@ -270,7 +357,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | AB-40 | Jadwal klinik, lab, dan home visit tampil dalam zona waktu lokasi rekanan, dengan label zona (misalnya "10.00 WITA") | `[USER] T3-Q10` |
 | AB-41 | Jadwal konsultasi online tampil dalam zona waktu perangkat masing-masing pengguna | `[USER] T3-Q10` |
 | AB-42 | Laporan di portal rekanan memakai zona waktu rekanan; laporan dan backoffice Rumah Sehat memakai WIB | `[USER] T3-Q10` |
-| AB-43 | Batas waktu berbasis jam (PB-01, PB-02, PB-03, PB-04, PB-06, PB-07) dihitung dari waktu absolut, tidak terpengaruh zona waktu tampilan | `[KEPUTUSAN-11]` |
+| AB-43 | Batas waktu berbasis jam atau hari kalender (PB-01–PB-04, PB-06, PB-07, PB-15, PB-17–PB-19) dihitung dari waktu absolut, tidak terpengaruh zona waktu tampilan | `[KEPUTUSAN-11]` |
 
 ### 3.9 Tenaga kesehatan
 
@@ -299,7 +386,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
 | AB-70 | Data kesehatan (catatan, isi chat, resep, hasil lab, rekam medis), data anak, dan data keuangan pribadi adalah data pribadi spesifik dengan akses lebih ketat (§3.1) | BR-105 `[SRC-15]` |
-| AB-71 | Pasien dapat melihat catatan konsultasi dan resep miliknya dan milik anggota keluarganya | BR-106 `[UP-15]` |
+| AB-71 | Pasien dapat melihat catatan konsultasi dan resep miliknya dan milik anggota keluarganya. Untuk anggota keluarga dewasa, akses pemilik akun adalah keputusan produk yang dibawa ke gate dan kebolehannya ditanyakan ke legal (L-05 rahasia kedokteran, L-08). Akses pemilik akun ke data klinis anggota keluarga dewasa dicatat di audit trail (E-05) | `[UP-15]` |
 | AB-72 | Catatan konsultasi memakai struktur data yang selaras dengan SATUSEHAT, sama dengan rekam medis RME minimalis, supaya siap kalau legal menyatakan catatan konsultasi termasuk rekam medis (L-05) | BR-114 `[UP-16]` |
 | AB-73 | Isi notifikasi push, email, dan WhatsApp tidak memuat data kesehatan rinci (diagnosis, nama obat, nilai hasil lab, isi chat) | BR-105 `[UP-23]` |
 | AB-74 | Panggilan video tidak direkam dan tidak disimpan | BR-016 |
@@ -376,10 +463,10 @@ Rujukan: BR-001 · Audit: E-01, E-02, E-03, E-04
 Sebagai pasien, saya ingin membaca dan memberikan persetujuan pemrosesan data, agar saya tahu data apa yang diproses dan untuk apa.
 Rujukan: BR-103, BR-104, BR-107 `[SRC-15]` · Audit: E-13
 
-- AC1. Given pasien mendaftar, When layar persetujuan tampil, Then layar memuat tujuan pemrosesan, jenis data yang diproses termasuk data kesehatan, masa retensi, hak subjek data, dan kontak Rumah Sehat. Teks masa retensi menunggu PT-24 dan wajib terisi sebelum go-live.
+- AC1. Given pasien mendaftar, When layar persetujuan tampil, Then layar memuat ketujuh informasi Pasal 21 ayat (1) UU PDP: (a) legalitas pemrosesan, (b) tujuan pemrosesan, (c) jenis dan relevansi data yang diproses termasuk data kesehatan, (d) jangka waktu retensi dokumen yang memuat data pribadi, (e) rincian informasi yang dikumpulkan, (f) jangka waktu pemrosesan, dan (g) hak subjek data, ditambah kontak Rumah Sehat `[SRC-15]`. Teks legalitas menunggu L-08; teks retensi dan jangka waktu pemrosesan menunggu PT-24. Semuanya wajib terisi sebelum go-live.
 - AC2. Given pasien menyetujui, When ia melanjutkan, Then bukti persetujuan tersimpan: versi teks, butir yang disetujui, waktu, dan kanal.
 - AC3. Given layar mendukung lebih dari satu butir persetujuan, When legal menetapkan dasar pemrosesan per jenis data (L-08), Then butir baru dapat ditambahkan tanpa mengubah aplikasi `[KEPUTUSAN-12]`.
-- AC4. Given teks persetujuan diperbarui ke versi baru, When pasien membuka aplikasi berikutnya, Then ia diminta menyetujui versi baru sebelum dapat memesan layanan.
+- AC4. Given teks persetujuan akan diperbarui ke versi baru dengan tanggal berlaku, When versi baru dijadwalkan, Then pemberitahuan perubahan beserta tanggal berlakunya dikirim ke pasien sebelum tanggal itu (Pasal 21 ayat (2) `[SRC-15]`). Setelah tanggal berlaku, pasien diminta menyetujui versi baru sebelum dapat memesan layanan.
 - AC5. Given pasien tidak menyetujui, When ia mencoba melanjutkan, Then akun tidak dibuat (registrasi) atau layanan tidak dapat dipesan (versi baru).
 
 #### US-105 Profil data diri
@@ -389,7 +476,7 @@ Rujukan: BR-002 · Audit: E-10 (perubahan data identitas)
 
 - AC1. Given pasien membuka profil, When ia mengisi nama, tanggal lahir, jenis kelamin, nomor HP, email, dan alamat, Then data tersimpan.
 - AC2. Given pasien menambah lebih dari satu alamat, When ia menyimpannya, Then alamat tersimpan di daftar alamat dan dapat dipilih saat pengiriman produk atau home visit `[UP-38]`.
-- AC3. Given identitas pasien sudah disetujui, When ia mengubah nama, tanggal lahir, atau NIK, Then status identitas kembali ke "Menunggu verifikasi", dan layanan yang mewajibkan identitas tidak dapat dipesan sampai disetujui lagi `[UP-39]`.
+- AC3. Given identitas pasien sudah disetujui, When ia mengubah nama atau tanggal lahir (perubahan NIK lewat US-106), Then status identitas kembali ke "Menunggu verifikasi", dan layanan yang mewajibkan identitas tidak dapat dipesan sampai disetujui lagi. Pesanan yang sudah dibayar tetap berlaku `[UP-39]`.
 - AC4. Given pasien mengubah email, When ia menyimpan, Then email baru baru berlaku setelah diverifikasi lewat tautan, dan email lama diberi tahu `[KEPUTUSAN-06]`.
 
 #### US-106 Unggah NIK dan foto KTP
@@ -422,6 +509,7 @@ Rujukan: BR-002, BR-008, BR-104, AB-03, AB-04 · Audit: E-15
 - AC3. Given pernyataan atau persetujuan tidak dipilih, When dikirim, Then penambahan ditolak.
 - AC4. Given NIK anggota keluarga sama dengan NIK pemilik akun, When dikirim, Then ditolak.
 - AC5. Given NIK yang sama sudah tercatat sebagai anggota keluarga di akun yang sama, When dikirim, Then ditolak sebagai duplikat (KU-05).
+- AC6. Given pasien mengisi tanggal lahir anggota keluarga, When formulir tampil, Then alur dewasa (KTP) atau anak (KK) ditentukan sistem dari tanggal lahir, bukan dipilih pasien. Batas usianya `[TIDAK DIKETAHUI]` (L-08) dan diatur sebagai parameter sebelum go-live.
 
 #### US-109 Ubah dan hapus anggota keluarga
 
@@ -456,6 +544,7 @@ Rujukan: BR-004, BR-008, AB-03, AB-05 · Audit: E-05 (membuka foto), E-07
 - AC4. Given pengajuan anak memakai KK, When Verifikator memeriksa, Then ia dapat memastikan pemilik akun tercantum sebagai orang tua/wali. Kalau tidak tercantum, pengajuan ditolak dengan alasan itu.
 - AC5. Given dua Verifikator membuka pengajuan yang sama, When keduanya memutuskan, Then hanya keputusan pertama yang tersimpan, dan yang kedua diberi tahu bahwa pengajuan sudah diputuskan.
 - AC6. Given pengguna bukan Verifikator, When ia mencoba membuka foto dokumen, Then akses ditolak dan tercatat (KU-03).
+- AC7. Given NIK sudah disetujui sebagai pemilik akun di akun lain, When Verifikator menyetujui pengajuan pemilik akun dengan NIK yang sama, Then persetujuan ditolak dengan alasan NIK sudah dipakai `[UP-40]`.
 
 #### US-202 Pendaftaran tenaga kesehatan
 
@@ -484,7 +573,7 @@ Rujukan: BR-102, AB-51, PB-09 · Audit: E-09, E-10
 
 - AC1. Given SIP berakhir dalam PB-09, When pemeriksaan harian berjalan, Then tenaga kesehatan, admin kliniknya (email), dan Verifikator diberi tahu.
 - AC2. Given tanggal berakhir SIP terlewati, When pemeriksaan harian berjalan, Then akun dinonaktifkan otomatis, tidak tampil untuk pasien, dan event tercatat dengan aktor "sistem".
-- AC3. Given akun dinonaktifkan karena SIP berakhir dan masih ada sesi terbayar di masa depan, When penonaktifan terjadi, Then sesi itu berstatus "Dibatalkan rekanan", refund RF-05 berjalan otomatis, dan pasien diberi tahu.
+- AC3. Given akun dinonaktifkan karena SIP berakhir, When penonaktifan terjadi, Then sesi konsultasi terbayar di masa depan berstatus "Dibatalkan rekanan" dengan refund RF-05 otomatis, home visit yang ditugaskan kepadanya kembali ke "Terkonfirmasi" untuk ditugaskan ulang oleh klinik (§3.6), dan pasien serta klinik diberi tahu.
 - AC4. Given tenaga kesehatan mengunggah SIP baru, When Verifikator menyetujuinya, Then akun aktif kembali.
 
 #### US-205 Onboarding rekanan
@@ -513,7 +602,7 @@ Sebagai admin Rumah Sehat, saya ingin menonaktifkan dan mengaktifkan kembali aku
 Rujukan: BR-060 · Audit: E-10
 
 - AC1. Given admin berhak (Super Admin; Verifikator untuk tenaga kesehatan dan rekanan; Layanan Pelanggan untuk pasien) mengisi alasan, When ia menonaktifkan akun, Then akun tidak dapat masuk (KU-10) dan alasan tersimpan.
-- AC2. Given tenaga kesehatan atau rekanan punya pesanan terbayar di masa depan, When akunnya dinonaktifkan, Then pesanan itu berstatus "Dibatalkan rekanan" dan refund RF-05 berjalan otomatis.
+- AC2. Given tenaga kesehatan atau rekanan punya pesanan terbayar yang belum selesai, When akunnya dinonaktifkan, Then: sesi konsultasi dan pendaftaran/home visit rekanan itu yang belum mulai menjadi "Dibatalkan rekanan" (RF-05); home visit yang ditugaskan ke tenaga kesehatan itu kembali ke "Terkonfirmasi" untuk ditugaskan ulang; pesanan produk outlet itu yang belum Dikirim menjadi "Ditolak outlet" (RF-08), sedangkan yang sudah Dikirim tetap berjalan.
 - AC3. Given pasien punya pesanan terbayar yang belum selesai, When admin mencoba menonaktifkannya, Then penonaktifan ditolak sampai pesanan selesai atau dibatalkan `[UP-41]`.
 - AC4. Given akun nonaktif, When admin mengaktifkannya kembali dengan alasan, Then akun dapat dipakai lagi.
 
@@ -551,7 +640,7 @@ Rujukan: BR-018, BR-064, PB-13 `[USER] T3-Q4, T3-Q16` · Audit: E-14
 
 - AC1. Given admin klinik membuka menu pengaturan konsultasi online, When ia mengisi tarif (Rupiah, lebih dari 0) dan durasi (kelipatan 5 menit, 10–120 menit) untuk chat dan/atau video seorang tenaga kesehatan kliniknya, Then pengaturan tersimpan `[UP-29]`.
 - AC2. Given suatu jenis belum diberi tarif, When pasien melihat tenaga kesehatan itu, Then jenis tersebut tidak dapat dipesan.
-- AC3. Given tarif diubah, When pasien memesan setelahnya, Then harga baru berlaku. Pesanan yang sudah dibayar tidak berubah (AB-17).
+- AC3. Given tarif diubah, When pembayaran dibuat setelah perubahan, Then harga baru berlaku. Pesanan yang pembayarannya sudah dibuat sebelum perubahan tidak berubah (AB-17).
 - AC4. Given admin klinik mencoba mengatur tenaga kesehatan klinik lain, When ia mengirim permintaan, Then ditolak (KU-03).
 - AC5. Given pasien melihat harga, When harga tampil, Then nilainya = tarif + markup rekanan itu (AB-10).
 
@@ -564,6 +653,7 @@ Rujukan: BR-017, AB-52, AB-55 `[USER] T3-Q4` · Audit: E-14
 - AC2. Given jadwal baru tumpang tindih dengan jadwal yang ada, When disimpan, Then ditolak (AB-52).
 - AC3. Given slot sudah dipesan dan dibayar, When tenaga kesehatan atau admin klinik menghapus jadwal yang memuat slot itu, Then penghapusan ditolak. Sesi itu harus dibatalkan lebih dulu (US-307 AC4).
 - AC4. Given admin klinik membuka jadwal tenaga kesehatan kliniknya di portal, When ia mengubahnya, Then aturan AC1–AC3 berlaku sama, dan perubahan tercatat atas nama admin klinik.
+- AC5. Given perubahan jam, durasi, atau penghapusan memengaruhi slot yang sudah dipesan dan dibayar, When disimpan, Then perubahan ditolak sampai sesi itu dibatalkan (RF-05).
 
 #### US-303 Cari dan pilih tenaga kesehatan
 
@@ -589,10 +679,10 @@ Rujukan: BR-010, BR-011, BR-012, BR-040, AB-01, AB-15, PB-07 · Audit: E-08, E-0
 Sebagai pasien dan tenaga kesehatan, kami ingin berkomunikasi lewat chat teks dan foto selama sesi, agar konsultasi berjalan.
 Rujukan: BR-010, BR-016, NFR-PERF-03 `[UP-29]` · Audit: E-05 (akses tenaga kesehatan ke riwayat chat setelah sesi), E-09
 
-- AC1. Given sesi chat "Terkonfirmasi", When waktu mulai tiba, Then ruang chat terbuka untuk pasien dan tenaga kesehatan sesi itu saja, dan status menjadi "Berlangsung" saat salah satu pihak bergabung.
+- AC1. Given sesi chat "Terkonfirmasi", When waktu mulai tiba, Then ruang chat terbuka untuk pasien dan tenaga kesehatan sesi itu saja. Waktu tiap pihak bergabung (§3.5) dicatat server, dan status menjadi "Berlangsung" saat pihak pertama bergabung.
 - AC2. Given ruang chat terbuka, When salah satu pihak mengirim teks atau foto (KEPUTUSAN-08), Then pesan sampai ke penerima yang online dalam p95 2 detik dan tersimpan (BR-016).
 - AC3. Given koneksi pengirim terputus, When ia mengirim pesan, Then pesan berstatus "belum terkirim" dan terkirim otomatis saat koneksi pulih selama sesi masih berjalan.
-- AC4. Given durasi sesi habis, When waktu berakhir, Then ruang chat menjadi baca-saja, status menjadi "Selesai", dan sesi tidak diperpanjang karena gangguan jaringan.
+- AC4. Given durasi sesi habis, When waktu berakhir, Then ruang chat menjadi baca-saja dan sesi tidak diperpanjang karena gangguan jaringan. Status menjadi "Selesai" hanya bila kedua pihak pernah bergabung; selain itu berlaku US-307.
 - AC5. Given pengguna lain (termasuk admin Rumah Sehat), When mencoba membuka isi chat, Then ditolak (§3.1, KU-03).
 
 #### US-306 Sesi video
@@ -600,9 +690,9 @@ Rujukan: BR-010, BR-016, NFR-PERF-03 `[UP-29]` · Audit: E-05 (akses tenaga kese
 Sebagai pasien dan tenaga kesehatan, kami ingin melakukan panggilan video selama sesi, agar konsultasi dapat dilakukan tatap muka.
 Rujukan: BR-010, BR-016, AB-74 `[UP-29]` · Audit: E-09
 
-- AC1. Given sesi video "Terkonfirmasi" dan waktu mulai tiba, When salah satu pihak memulai panggilan, Then pihak lain menerima panggilan masuk dan status menjadi "Berlangsung".
+- AC1. Given sesi video "Terkonfirmasi" dan waktu mulai tiba, When pihak membuka ruang sesi, Then ia tercatat bergabung (§3.5), status menjadi "Berlangsung" saat pihak pertama bergabung, dan salah satu pihak dapat memulai panggilan yang diterima pihak lain sebagai panggilan masuk.
 - AC2. Given panggilan terputus, When salah satu pihak menyambung ulang sebelum durasi habis, Then panggilan tersambung kembali tanpa menambah durasi.
-- AC3. Given durasi habis, When waktu berakhir, Then panggilan diakhiri dan status menjadi "Selesai".
+- AC3. Given durasi habis, When waktu berakhir, Then panggilan diakhiri. Status menjadi "Selesai" hanya bila kedua pihak pernah bergabung; selain itu berlaku US-307.
 - AC4. Given sesi berlangsung, When diperiksa, Then aplikasi tidak menyediakan fitur rekam, dan fitur rekam di layanan video pihak ketiga dinonaktifkan (AB-74). Cara memverifikasi pengaturan penyedia ditetapkan di Tahap 4.
 
 #### US-307 Ketidakhadiran dan pembatalan oleh tenaga kesehatan
@@ -610,8 +700,8 @@ Rujukan: BR-010, BR-016, AB-74 `[UP-29]` · Audit: E-09
 Sebagai pasien, saya ingin ketidakhadiran ditangani otomatis sesuai aturan, agar saya mendapat refund bila tenaga kesehatan tidak hadir.
 Rujukan: BR-045, RF-03, RF-04, RF-05, PB-02, PB-03 `[USER] T3-Q6, T3-Q8` `[UP-29]` · Audit: E-08, E-09
 
-- AC1. Given tenaga kesehatan belum bergabung sampai PB-03 habis sejak jadwal mulai, When batas habis, Then status menjadi "Tenaga kesehatan tidak hadir", refund RF-04 berjalan otomatis, dan pasien diberi tahu.
-- AC2. Given tenaga kesehatan sudah bergabung dan pasien belum bergabung sampai PB-02 habis, When batas habis, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03), dan pasien diberi tahu.
+- AC1. Given tenaga kesehatan belum bergabung saat batas ketidakhadiran tenaga kesehatan habis (PB-03 sejak jadwal mulai, atau akhir durasi bila lebih dulu), When batas habis, Then status menjadi "Tenaga kesehatan tidak hadir", refund RF-04 berjalan otomatis, dan pasien diberi tahu.
+- AC2. Given tenaga kesehatan sudah bergabung dan pasien belum bergabung saat batas ketidakhadiran pasien habis (PB-02 sejak jadwal mulai, atau akhir durasi bila lebih dulu), When batas habis, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03), dan pasien diberi tahu.
 - AC3. Given keduanya tidak bergabung, When batas habis, Then berlaku AC1, karena kehadiran tenaga kesehatan adalah syarat sesi dapat berlangsung.
 - AC4. Given tenaga kesehatan membatalkan sesi terkonfirmasi sebelum mulai dengan mengisi alasan, When pembatalan disimpan, Then status menjadi "Dibatalkan rekanan", refund RF-05 berjalan otomatis, dan pasien diberi tahu.
 
@@ -639,7 +729,7 @@ Rujukan: BR-015, BR-114, AB-53 `[UP-42]` · Audit: E-06, E-12 (unduh)
 #### US-310 Riwayat konsultasi pasien
 
 Sebagai pasien, saya ingin melihat riwayat konsultasi beserta catatan, resep, dan chat, agar bisa merujuknya kembali.
-Rujukan: BR-016, BR-106, AB-71 `[UP-15]` · Audit: E-12 (unduh)
+Rujukan: BR-016, BR-106, BR-008, AB-71 `[UP-15]` · Audit: E-05 (data anggota keluarga dewasa), E-12 (unduh)
 
 - AC1. Given pasien membuka riwayat, When ia memilih dirinya atau anggota keluarga, Then daftar sesi tampil dengan tanggal, tenaga kesehatan, jenis, dan status.
 - AC2. Given sesi selesai, When pasien membukanya, Then ia melihat chat (baca-saja), catatan final, dan resep.
@@ -648,7 +738,7 @@ Rujukan: BR-016, BR-106, AB-71 `[UP-15]` · Audit: E-12 (unduh)
 #### US-311 Daftar sesi tenaga kesehatan
 
 Sebagai tenaga kesehatan, saya ingin melihat sesi hari ini dan yang akan datang, agar siap melayani tepat waktu.
-Rujukan: BR-013 · Audit: tidak ada aksi sensitif
+Rujukan: BR-013 · Audit: E-05 (membuka detail sesi berisi keluhan awal)
 
 - AC1. Given tenaga kesehatan masuk, When ia membuka daftar sesi, Then tampil sesi terkonfirmasi dengan waktu (zona waktu perangkat), jenis, nama pasien, dan keluhan awal.
 - AC2. Given ada pesanan baru atau waktu pengingat PB-08 tiba, When kejadian terjadi, Then tenaga kesehatan menerima notifikasi push (US-1003).
@@ -681,7 +771,7 @@ Rujukan: BR-020, BR-021, BR-024, BR-040, AB-01, AB-15, AB-16 · Audit: E-08, E-0
 
 - AC1. Given penerima layanan terverifikasi, When pasien memilih layanan dan slot, Then slot ditahan selama PB-07 dan ringkasan harga tampil, termasuk pernyataan bahwa tindakan tambahan dibayar di luar aplikasi (AB-16).
 - AC2. Given pembayaran berhasil, When notifikasi diterima, Then pendaftaran berstatus "Terkonfirmasi" dan dikirim ke sistem rekanan dengan status lunas (US-1403).
-- AC3. Given pengiriman ke sistem rekanan gagal, When percobaan ulang otomatis juga gagal sampai batas waktu integrasi (Tahap 4), Then pendaftaran ditandai untuk tindak lanjut admin. Kalau rekanan menyatakan tidak dapat melayani, status menjadi "Dibatalkan rekanan" dan refund RF-05 berjalan otomatis.
+- AC3. Given pengiriman ke sistem rekanan gagal, When percobaan ulang otomatis juga gagal sampai batas waktu integrasi (Tahap 4), Then pendaftaran ditandai untuk tindak lanjut Layanan Pelanggan. Kalau rekanan menyatakan tidak dapat melayani, status menjadi "Dibatalkan rekanan" (RF-05). Kalau sampai jadwal mulai pesanan belum diterima sistem rekanan, status menjadi "Dibatalkan sistem" dan refund RF-18 berjalan otomatis.
 
 #### US-403 Appointment dan kode check-in
 
@@ -699,7 +789,7 @@ Rujukan: BR-024, BR-070, RF-03 `[UP-14]` · Audit: E-09
 
 - AC1. Given rekanan memindai atau memasukkan kode di sistemnya (sistem sendiri atau RME minimalis), When sistem rekanan mengirim status check-in, Then status di Rumah Sehat menjadi "Check-in".
 - AC2. Given sistem rekanan mengirim status selesai, When diterima, Then status menjadi "Selesai". Kalau status selesai tidak dikirim, pendaftaran yang sudah check-in otomatis menjadi "Selesai" pada akhir hari kalender rekanan.
-- AC3. Given tidak ada check-in sampai jadwal berakhir, When batas terlewati, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03).
+- AC3. Given pesanan sudah diterima sistem rekanan dan tidak ada check-in sampai jadwal berakhir, When batas terlewati, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03). Pesanan yang belum diterima sistem rekanan mengikuti US-402 AC3 (RF-18).
 - AC4. Given kode milik rekanan lain, tanggal lain, atau pendaftaran yang tidak berlaku, When dikirim ke Rumah Sehat, Then check-in ditolak dan alasannya dikembalikan ke sistem rekanan.
 
 #### US-405 Antrean real-time
@@ -744,15 +834,16 @@ Rujukan: BR-022, BR-070, AB-50, AB-51 `[UP-13]` · Audit: E-09
 
 - AC1. Given klinik menugaskan tenaga kesehatan di sistemnya (sistem sendiri atau RME minimalis), When penugasan diterima Rumah Sehat, Then status menjadi "Ditugaskan", tenaga kesehatan menerima notifikasi, dan pasien melihat nama serta jenis tenaga kesehatan.
 - AC2. Given tenaga kesehatan yang ditugaskan bukan tenaga kesehatan aktif klinik itu di Rumah Sehat, When penugasan diterima, Then penugasan ditolak dan alasannya dikembalikan ke sistem klinik.
+- AC3. Given pesanan berstatus "Ditugaskan", When klinik mengirim penugasan ke tenaga kesehatan lain, Then penugasan diganti, tenaga kesehatan lama dan baru serta pasien diberi tahu.
 
 #### US-503 Status kunjungan oleh tenaga kesehatan
 
 Sebagai tenaga kesehatan, saya ingin melihat tugas home visit dan memperbarui statusnya, agar pasien dan klinik tahu perkembangan kunjungan.
-Rujukan: BR-022, RF-03 `[UP-13]` · Audit: E-09
+Rujukan: BR-022, RF-03, RF-17 `[UP-13]` · Audit: E-05 (membuka alamat dan nomor HP pasien), E-09
 
 - AC1. Given tenaga kesehatan punya tugas, When ia membuka aplikasi, Then tampil jadwal, alamat (dengan tautan peta), nama pasien, layanan, dan nomor HP pasien. Nomor HP hanya tampil di hari kunjungan sampai kunjungan selesai.
 - AC2. Given tugas "Ditugaskan", When tenaga kesehatan menandai "Berangkat", lalu "Tiba", lalu "Selesai", Then setiap status tersimpan berurutan dan pasien diberi tahu saat "Berangkat" dan "Tiba". Urutan tidak boleh dilompati.
-- AC3. Given tenaga kesehatan menandai "Pasien tidak ada di lokasi" dengan keterangan, When disimpan, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03), dan pasien dapat mengajukan keberatan sebagai klaim (US-807).
+- AC3. Given status "Tiba", When tenaga kesehatan menandai "Pasien tidak ada di lokasi" dengan keterangan, Then status menjadi "Pasien tidak hadir" tanpa refund (RF-03), dan pasien dapat mengajukan keberatan paling lambat PB-15 setelah jadwal berakhir sebagai klaim RF-17 (US-807). Penandaan dari status selain "Tiba" ditolak.
 
 #### US-504 Pantau kunjungan dan laporkan tenaga kesehatan tidak datang
 
@@ -760,7 +851,7 @@ Sebagai pasien, saya ingin memantau status kunjungan dan melaporkan bila tenaga 
 Rujukan: BR-022, BR-045, RF-06, PB-03, PB-05 `[UP-13]` · Audit: E-08, E-09
 
 - AC1. Given pesanan home visit aktif, When pasien membukanya, Then tampil linimasa status dan nama tenaga kesehatan yang ditugaskan.
-- AC2. Given status belum "Tiba" sampai PB-03 habis sejak jadwal mulai, When pasien membuka pesanan, Then tombol "Laporkan tenaga kesehatan tidak datang" aktif, dan laporan menjadi klaim RF-06 (US-807).
+- AC2. Given status "Terkonfirmasi", "Ditugaskan", atau "Berangkat" saat PB-03 habis sejak jadwal mulai, When pasien membuka pesanan sebelum PB-15 habis setelah jadwal berakhir, Then tombol "Laporkan tenaga kesehatan tidak datang" aktif, dan laporan menjadi klaim RF-06 (US-807).
 - AC3. Given status sudah "Tiba", When pasien membuka pesanan, Then tombol laporan tidak tersedia. Keluhan lain diajukan lewat layanan pelanggan (US-1103).
 
 ### EP-06 Informasi biaya MCU dan lab
@@ -836,9 +927,11 @@ Sebagai pasien, saya ingin melihat status dan pelacakan pesanan, agar tahu kapan
 Rujukan: BR-033, BR-034, RF-08, RF-09, PB-06 · Audit: E-08, E-09
 
 - AC1. Given outlet menerima pesanan, When status diterima dari sistem outlet, Then status menjadi "Diproses outlet".
-- AC2. Given outlet menolak pesanan atau tidak menerimanya sampai PB-06, When kondisi terjadi, Then status menjadi "Ditolak outlet" atau "Tidak diproses", refund RF-08 berjalan otomatis, dan pasien diberi tahu.
+- AC2. Given outlet menolak pesanan, tidak menerimanya sampai PB-06, atau membatalkannya sebelum diserahkan ke kurir, When kondisi terjadi, Then status menjadi "Ditolak outlet", refund RF-08 berjalan otomatis, dan pasien diberi tahu.
 - AC3. Given barang diserahkan ke kurir, When nomor resi dan status kurir diterima, Then status menjadi "Dikirim" dan pasien dapat melihat riwayat pelacakan.
 - AC4. Given kurir mengirim status gagal kirim, When diterima, Then status menjadi "Gagal kirim", refund RF-09 berjalan otomatis, dan pasien diberi tahu.
+- AC5. Given status "Diproses outlet" dan PB-17 habis tanpa barang diserahkan ke kurir, When batas habis, Then status menjadi "Tidak diserahkan", refund RF-15 berjalan otomatis, dan pasien diberi tahu.
+- AC6. Given status "Dikirim" dan PB-18 habis tanpa status terkirim atau gagal dari kurir, When pasien membuka pesanan, Then tombol "Barang tidak sampai" aktif dan pengajuannya menjadi klaim RF-16 tanpa wajib foto (US-807).
 
 #### US-705 Konfirmasi terima dan klaim barang
 
@@ -846,7 +939,7 @@ Sebagai pasien, saya ingin mengonfirmasi barang diterima atau mengajukan klaim b
 Rujukan: BR-045, RF-10, PB-04 `[USER] T3-Q8` · Audit: E-08, E-09
 
 - AC1. Given kurir mengirim status terkirim atau pasien menekan "Pesanan diterima", When kejadian pertama terjadi, Then status menjadi "Diterima".
-- AC2. Given status "Diterima" dan PB-04 belum habis, When pasien mengajukan klaim dengan alasan (rusak, tidak sesuai, kurang) dan minimal satu foto, Then klaim tercatat (US-807) dan status menjadi "Klaim".
+- AC2. Given status "Diterima" dan PB-04 belum habis, When pasien mengajukan klaim dengan alasan rusak, tidak sesuai, atau kurang (minimal satu foto), atau tidak sampai (foto tidak wajib), Then klaim tercatat (US-807) dan status menjadi "Klaim".
 - AC3. Given PB-04 sudah habis, When pasien mencari tombol klaim, Then tombol tidak tersedia dan status menjadi "Selesai".
 - AC4. Given pasien mencoba membatalkan pesanan setelah membayar, When ia mencari fitur pembatalan, Then fitur tidak tersedia (RF-11).
 
@@ -881,20 +974,22 @@ Sebagai pasien, saya ingin melihat rincian harga sebelum membayar, agar tahu per
 Rujukan: BR-042, BR-044, BR-024, AB-10–AB-16 `[UP-07]` `[UP-43]` · Audit: tidak ada aksi sensitif
 
 - AC1. Given pasien di ringkasan pesanan, When ia memilih metode pembayaran, Then tampil harga layanan (satu angka), ongkos kirim (produk), biaya transaksi metode itu (Rp0 untuk QRIS), dan total, semuanya dihitung server.
-- AC2. Given markup berbentuk persen, When harga dihitung, Then hasilnya dibulatkan ke Rupiah penuh terdekat (setengah ke atas) `[UP-43]`.
+- AC2. Given markup berbentuk persen, When harga dihitung, Then markup dihitung dan dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Given markup nominal, Then markup berlaku per unit (AB-11a) `[UP-43]` `[UP-51]`.
 - AC3. Given pesanan layanan terjadwal, When ringkasan tampil, Then ringkasan aturan pembatalan (PB-01, no-show) tampil. Untuk klinik, lab, dan home visit, pernyataan AB-16 juga tampil.
 - AC4. Given pesanan produk, When ringkasan tampil, Then pernyataan bahwa pesanan tidak dapat dibatalkan setelah dibayar tampil (RF-11).
+- AC5. Given markup atau tarif berubah setelah ringkasan tampil dan sebelum pembayaran dibuat, When pasien menekan bayar, Then total baru tampil dan pasien harus menyetujuinya sebelum pembayaran dibuat (AB-15, AB-17).
 
 #### US-802 Pembayaran lewat payment gateway
 
 Sebagai pasien, saya ingin membayar dengan metode yang tersedia, agar pesanan saya terkonfirmasi.
-Rujukan: BR-040, BR-115, AB-20, AB-25, PB-07 `[UP-34]` · Audit: E-08
+Rujukan: BR-040, BR-115, AB-20, AB-25, PB-07, RF-12, RF-13, RF-14 `[UP-34]` `[UP-52]` · Audit: E-08
 
 - AC1. Given pasien memilih metode dan menekan bayar, When pembayaran dibuat di payment gateway, Then nominalnya sama dengan total di ringkasan, dan pasien diarahkan ke instruksi atau halaman pembayaran.
 - AC2. Given notifikasi pembayaran berhasil diterima dan terverifikasi berasal dari payment gateway, When diproses, Then pesanan dikonfirmasi satu kali saja walaupun notifikasi diterima berulang (KU-05).
-- AC3. Given nominal di notifikasi tidak sama dengan nominal pesanan, When diproses, Then pesanan tidak dikonfirmasi dan ditandai untuk peran Keuangan.
-- AC4. Given pembayaran gagal, When pasien kembali ke aplikasi, Then ia dapat mencoba metode lain selama PB-07 belum habis.
-- AC5. Given notifikasi berhasil datang setelah pesanan kedaluwarsa, When slot atau stok masih tersedia, Then pesanan dikonfirmasi. Kalau tidak tersedia, refund penuh berjalan otomatis dengan penanggung Rumah Sehat `[UP-34]`.
+- AC3. Given nominal di notifikasi tidak sama dengan nominal pesanan, When diproses, Then pesanan tidak dikonfirmasi dan menjadi "Kedaluwarsa", lalu masuk antrean Keuangan. Setelah Keuangan memeriksa dalam PB-16, refund RF-14 sebesar seluruh nominal yang diterima dibuat.
+- AC4. Given pembayaran gagal atau pasien berganti metode, When pasien kembali ke aplikasi, Then ia dapat mencoba metode lain selama PB-07 belum habis, dan instruksi pembayaran sebelumnya dibatalkan di payment gateway bila penyedia mendukungnya.
+- AC5. Given notifikasi berhasil datang setelah pesanan kedaluwarsa, When slot atau stok masih tersedia, Then pesanan dikonfirmasi. Kalau tidak tersedia, refund RF-13 berjalan otomatis `[UP-34]`.
+- AC6. Given pesanan sudah dibayar, When notifikasi berhasil untuk pembayaran lain atas pesanan yang sama diterima, Then refund RF-12 dibuat langsung tanpa menunggu rekonsiliasi.
 
 #### US-803 Pembagian dana per transaksi
 
@@ -919,39 +1014,41 @@ Rujukan: BR-040, BR-014 · Audit: tidak ada aksi sensitif
 Sebagai pasien, saya ingin membatalkan layanan terjadwal, agar slot dapat dipakai orang lain dan saya mendapat refund bila masih dalam batas waktu.
 Rujukan: BR-045, RF-01, RF-02, PB-01 `[USER] T3-Q5` · Audit: E-08, E-09
 
-- AC1. Given layanan "Terkonfirmasi" dan sisa waktu sebelum jadwal minimal PB-01, When pasien menekan batal, Then pasien melihat nominal refund (harga layanan; biaya transaksi non-QRIS tidak kembali) dan harus mengonfirmasi.
-- AC2. Given pasien mengonfirmasi, When pembatalan disimpan, Then status menjadi "Dibatalkan pasien", slot dilepas, rekanan diberi tahu lewat integrasi, dan refund RF-01 berjalan otomatis.
+- AC1. Given layanan berstatus "Terkonfirmasi" (atau "Ditugaskan" untuk home visit) dan sisa waktu sebelum jadwal minimal PB-01, When pasien menekan batal, Then pasien melihat nominal refund (harga layanan; biaya transaksi non-QRIS tidak kembali) dan harus mengonfirmasi.
+- AC2. Given pasien mengonfirmasi, When pembatalan disimpan, Then status menjadi "Dibatalkan pasien", slot dilepas, rekanan (dan tenaga kesehatan yang sudah ditugaskan untuk home visit) diberi tahu, dan refund RF-01 berjalan otomatis.
 - AC3. Given sisa waktu kurang dari PB-01, When pasien menekan batal, Then pasien diberi tahu tidak ada refund (RF-02). Kalau tetap dibatalkan, status menjadi "Dibatalkan pasien" tanpa refund dan slot dilepas.
-- AC4. Given layanan sudah dimulai, check-in, atau berstatus akhir, When pasien mencari tombol batal, Then tombol tidak tersedia.
+- AC4. Given konsultasi "Berlangsung", klinik/lab "Check-in", home visit "Berangkat" atau sesudahnya, atau status akhir, When pasien mencari tombol batal, Then tombol tidak tersedia.
 
 #### US-806 Refund otomatis
 
 Sebagai pasien, saya ingin refund berjalan otomatis untuk kejadian yang tercatat sistem, agar tidak perlu mengajukan klaim.
-Rujukan: BR-045, RF-01, RF-04, RF-05, RF-08, RF-09, RF-12 `[USER] T3-Q7, T3-Q8` · Audit: E-08
+Rujukan: BR-045, RF-01, RF-04, RF-05, RF-08, RF-09, RF-12, RF-13, RF-15, RF-18, AB-34 `[USER] T3-Q7, T3-Q8` · Audit: E-08
 
-- AC1. Given salah satu kejadian RF-01, RF-04, RF-05, RF-08, RF-09, atau RF-12 terjadi, When sistem mencatatnya, Then refund dibuat dengan nominal dan penanggung sesuai matriks §3.5 tanpa persetujuan manual, dan pasien diberi tahu.
-- AC2. Given refund untuk satu pesanan sudah dibuat, When kejadian yang sama tercatat ulang, Then refund kedua tidak dibuat (KU-05).
-- AC3. Given refund RF-01, When nominal dihitung, Then nominalnya harga layanan tanpa biaya transaksi non-QRIS. Given RF-04, RF-05, RF-08, RF-09, atau RF-12, Then nominalnya seluruh pembayaran.
+- AC1. Given salah satu kejadian RF-01, RF-04, RF-05, RF-08, RF-09, RF-12, RF-13, RF-15, atau RF-18 terjadi, When sistem mencatatnya, Then refund dibuat dengan nominal ke pasien sesuai matriks §3.5 dan kewajiban per pihak sesuai AB-34, tanpa persetujuan manual, dan pasien diberi tahu.
+- AC2. Given refund untuk satu pesanan sudah dibuat, When kejadian lain atau kejadian yang sama tercatat untuk pesanan itu, Then refund kedua tidak dibuat, kecuali RF-12 (AB-36, KU-05).
+- AC3. Given refund RF-01, When nominal dihitung, Then pasien menerima harga layanan tanpa biaya transaksi non-QRIS, kewajiban rekanan = harga rekanan penuh, dan kewajiban Rumah Sehat = markup. Given refund kelompok penyebab rekanan atau penyebab platform, Then pasien menerima seluruh pembayaran dan kewajiban per pihak mengikuti AB-34.
 
 #### US-807 Klaim refund
 
 Sebagai pasien, saya ingin mengajukan klaim untuk kejadian yang perlu diperiksa, agar mendapat refund bila klaim saya benar.
-Rujukan: BR-045, RF-06, RF-07, RF-10, PB-04, PB-05 `[USER] T3-Q8` `[UP-36]` · Audit: E-05 (membuka bukti), E-08
+Rujukan: BR-045, RF-06, RF-07, RF-10, RF-16, RF-17, PB-04, PB-05, PB-15 `[USER] T3-Q8` `[UP-36]` `[UP-52]` `[UP-53]` · Audit: E-05 (membuka bukti), E-08
 
-- AC1. Given kejadian RF-06, RF-07, atau RF-10 dan masih dalam batas pengajuan, When pasien mengirim klaim dengan alasan dan bukti (foto wajib untuk RF-10), Then klaim berstatus "Diajukan" dan pasien melihat batas keputusan PB-05.
+- AC1. Given kejadian RF-06, RF-07, RF-10, RF-16, atau RF-17 dan masih dalam batas pengajuannya (PB-15 untuk RF-06, RF-07 layanan terjadwal, dan RF-17; PB-04 untuk RF-07 produk, RF-10, dan RF-16), When pasien mengirim klaim dengan alasan dan bukti (foto wajib untuk RF-10), Then klaim berstatus "Diajukan" dan pasien melihat batas keputusan PB-05. Di luar batas pengajuan, tombol klaim tidak tersedia.
 - AC2. Given pesanan sudah punya klaim aktif, When pasien mengajukan klaim lagi, Then ditolak (KU-05).
-- AC3. Given Layanan Pelanggan menyetujui klaim, When keputusan disimpan, Then refund dibuat dengan nominal dan penanggung sesuai matriks, dan pasien diberi tahu.
-- AC4. Given Layanan Pelanggan menolak klaim, When alasan diisi, Then pasien diberi tahu alasannya. Penolakan tanpa alasan tidak dapat disimpan.
+- AC3. Given Layanan Pelanggan (atau Super Admin untuk klaim tereskalasi) menyetujui klaim, When keputusan disimpan, Then refund dibuat dengan nominal sesuai matriks dan kewajiban per pihak sesuai AB-34, dan pasien diberi tahu.
+- AC4. Given Layanan Pelanggan atau Super Admin menolak klaim, When alasan diisi, Then pasien diberi tahu alasannya, dan klaim baru untuk pesanan itu tidak dapat diajukan. Penolakan tanpa alasan tidak dapat disimpan.
 - AC5. Given PB-05 habis tanpa keputusan, When batas terlewati, Then klaim ditandai terlambat dan dieskalasi ke Super Admin, tanpa disetujui atau ditolak otomatis (AB-33).
 
 #### US-808 Eksekusi dan status refund
 
 Sebagai Keuangan, saya ingin refund dieksekusi dan dipantau sampai berhasil, agar dana pasien kembali dan pencatatan lengkap.
-Rujukan: BR-045, AB-30–AB-32, ADR-004 `[UP-35]` · Audit: E-08
+Rujukan: BR-045, AB-30–AB-35, PB-19, ADR-004 `[UP-35]` `[UP-55]` · Audit: E-08
 
-- AC1. Given refund dibuat, When dieksekusi lewat payment gateway, Then status "Diproses" lalu "Berhasil" setelah dikonfirmasi penyedia, dan entri pembalik untuk bagian rekanan dan markup tercatat (AB-31).
+- AC1. Given refund dibuat, When dieksekusi lewat payment gateway, Then status "Diproses" lalu "Berhasil" setelah dikonfirmasi penyedia, dan entri pembalik untuk kewajiban rekanan dan Rumah Sehat (AB-34) tercatat (AB-31).
 - AC2. Given eksekusi gagal, When penyedia mengembalikan galat, Then status menjadi "Gagal", refund masuk antrean Keuangan, pasien diberi tahu bahwa refund sedang ditangani, dan Keuangan dapat memproses ulang.
-- AC3. Given refund menimbulkan kewajiban rekanan mengembalikan bagiannya, When refund dibuat, Then nominal kewajiban tercatat dan tampil di laporan rekanan (US-1201) dan laporan Keuangan sampai dinyatakan selesai. Mekanisme penarikan dana ditetapkan di Tahap 4–5 (PT-27) `[UP-35]`.
+- AC3. Given refund menimbulkan kewajiban rekanan (AB-34), When refund dibuat, Then nominal kewajiban tercatat dan tampil di laporan rekanan (US-1201) dan laporan Keuangan berstatus "Terbuka". Mekanisme penarikan dana ditetapkan di Tahap 4–5 (PT-27) `[UP-35]`.
+- AC4. Given refund berstatus "Diproses" lebih dari PB-19 tanpa konfirmasi penyedia, When batas habis, Then status menjadi "Perlu dicek", refund masuk antrean Keuangan, dan refund tidak dapat dieksekusi ulang sebelum status penyedia diketahui (AB-35).
+- AC5. Given kewajiban rekanan sudah dilunasi, When Keuangan menandainya "Selesai" dengan rujukan bukti, Then status kewajiban berubah di kedua laporan dan tercatat (E-08). Penandaan tanpa rujukan bukti ditolak.
 
 #### US-809 Pengaturan markup per rekanan
 
@@ -959,7 +1056,7 @@ Sebagai Keuangan, saya ingin mengatur markup per rekanan, agar harga pasien sesu
 Rujukan: BR-042, BR-063, PB-11 `[UP-44]` · Audit: E-14
 
 - AC1. Given Keuangan memilih rekanan, When ia mengisi jenis (persen atau nominal), nilai (persen 0–100; nominal Rupiah 0 atau lebih), dan waktu berlaku (segera atau tanggal mendatang), Then pengaturan tersimpan dan riwayat perubahan tetap ada.
-- AC2. Given markup diubah, When pesanan dibayar sebelum waktu berlaku, Then harga pesanan itu tidak berubah (AB-17).
+- AC2. Given markup diubah dengan waktu berlaku tertentu, When pembayaran suatu pesanan dibuat sebelum waktu berlaku, Then harga pesanan itu memakai markup lama walaupun pembayarannya diselesaikan sesudahnya (AB-17).
 - AC3. Given rekanan belum punya pengaturan markup, When Verifikator mencoba menampilkannya ke pasien, Then rekanan tidak tampil sampai markup diatur. Nilai 0 diperbolehkan (US-205 AC2).
 - AC4. Given pengguna bukan Keuangan, When ia mencoba mengubah markup, Then ditolak (KU-03).
 
@@ -986,8 +1083,8 @@ Rujukan: BR-046 · Audit: E-12 (export)
 Sebagai Super Admin, saya ingin mengatur parameter bisnis, agar aturan operasional dapat disesuaikan tanpa mengubah aplikasi.
 Rujukan: BR-045, BR-063, §3.7 `[UP-32]` · Audit: E-14
 
-- AC1. Given Super Admin mengubah parameter PB-01–PB-10 atau PB-14, When nilainya valid (angka positif dengan satuan yang ditentukan), Then perubahan tersimpan dengan riwayat.
-- AC2. Given parameter diubah, When pesanan yang dibayar sebelum perubahan dievaluasi (misalnya batas pembatalan), Then nilai yang berlaku saat pesanan dibayar yang dipakai `[UP-32]`.
+- AC1. Given Super Admin mengubah parameter PB-01–PB-10 atau PB-14–PB-19, When nilainya valid (angka positif dengan satuan yang ditentukan; untuk PB-14 daftar dokumen tidak kosong), Then perubahan tersimpan dengan riwayat.
+- AC2. Given parameter diubah, When pesanan yang pembayarannya dibuat sebelum perubahan dievaluasi (misalnya batas pembatalan), Then nilai yang berlaku saat pembayaran dibuat yang dipakai (AB-17) `[UP-32]`.
 - AC3. Given nilai tidak valid (kosong, negatif, atau nol untuk batas waktu), When disimpan, Then ditolak (KU-01).
 
 ### EP-09 Hasil lab
@@ -1009,7 +1106,7 @@ Rujukan: BR-025, BR-070, AB-73 · Audit: E-06, E-17
 #### US-902 Lihat dan unduh hasil lab
 
 Sebagai pasien, saya ingin melihat dan mengunduh hasil lab saya dan anggota keluarga, agar dapat memakainya.
-Rujukan: BR-025, BR-050, AB-71 · Audit: E-12 (unduh)
+Rujukan: BR-025, BR-050, BR-008, AB-71 `[UP-15]` · Audit: E-05 (data anggota keluarga dewasa), E-12 (unduh)
 
 - AC1. Given hasil tersedia, When pasien membukanya, Then hasil tampil di aplikasi dan dapat diunduh sebagai PDF.
 - AC2. Given pengguna lain, When mencoba membuka hasil lab pasien, Then ditolak (§3.1, KU-03).
@@ -1170,9 +1267,10 @@ Aplikasi web terpisah dari aplikasi dan portal Rumah Sehat, untuk klinik dan lab
 Sebagai Operator RME, saya ingin mendaftarkan klinik atau lab rekanan ke RME minimalis, agar mereka dapat melayani pasien Rumah Sehat tanpa sistem sendiri.
 Rujukan: BR-120, BR-121 `[UP-26]` · Audit: E-10
 
-- AC1. Given rekanan klinik atau lab sudah terverifikasi di Rumah Sehat dengan sumber sistem "RME minimalis" (US-205), When Operator RME mendaftarkannya dan membuat akun Admin Fasyankes pertama, Then fasyankes aktif di RME minimalis dan koneksi integrasinya ke Rumah Sehat siap diuji.
+- AC1. Given rekanan klinik atau lab sudah terverifikasi di Rumah Sehat dengan sumber sistem "RME minimalis" (US-205) dan perjanjian penggunaan RME minimalis serta pemrosesan data dengan fasyankes itu sudah tercatat `[UP-49]`, When Operator RME mendaftarkannya beserta kode registrasi fasyankesnya (rincian Tahap 4) dan membuat akun Admin Fasyankes pertama, Then fasyankes aktif di RME minimalis dan koneksi integrasinya ke Rumah Sehat siap diuji.
 - AC2. Given rekanan belum terverifikasi atau sumber sistemnya "sistem sendiri", When Operator RME mencoba mendaftarkannya, Then ditolak.
 - AC3. Given Operator RME, When ia mencoba membuka data pasien atau rekam medis fasyankes, Then ditolak (§3.1).
+- AC4. Given fasyankes berhenti memakai RME minimalis, When Admin Fasyankes meminta ekspor, Then rekam medis milik fasyankes itu dapat diekspor sebelum akses ditutup `[UP-50]`. Perlakuan data setelahnya menunggu L-05.
 
 #### US-1302 Akun dan peran pengguna RME
 
@@ -1182,6 +1280,9 @@ Rujukan: BR-120 `[UP-26]` `[KEPUTUSAN-06]` · Audit: E-10, E-11
 - AC1. Given Admin Fasyankes membuat akun dengan peran Tenaga Kesehatan Fasyankes, Petugas Lab, atau Admin Fasyankes, When disimpan, Then undangan aktivasi dikirim, dan MFA wajib saat aktivasi.
 - AC2. Given akun Tenaga Kesehatan Fasyankes, When dibuat, Then identitas profesi yang dibutuhkan SATUSEHAT wajib diisi. Rinciannya ditetapkan di Tahap 4 `[SRC-26]` `[TIDAK DIKETAHUI]`.
 - AC3. Given pengguna fasyankes A, When ia mencoba mengakses data fasyankes B, Then ditolak dan tercatat (KU-03).
+- AC4. Given Admin Fasyankes menonaktifkan akun atau mengubah perannya dengan alasan, When disimpan, Then akses berakhir seketika termasuk sesi yang masih terbuka (KU-10), dan tercatat (E-10, E-11).
+- AC5. Given hanya tersisa satu Admin Fasyankes aktif, When akunnya akan dinonaktifkan atau perannya dicabut, Then aksi ditolak.
+- AC6. Given akun Tenaga Kesehatan Fasyankes milik orang yang juga tenaga kesehatan Rumah Sehat di klinik itu, When Admin Fasyankes menghubungkan kedua akun, Then tenaga kesehatan itu dapat menulis rekam medis home visit yang ditugaskan kepadanya (US-1306 AC6) `[UP-26]`.
 
 #### US-1303 Jadwal, layanan, dan harga
 
@@ -1220,7 +1321,8 @@ Rujukan: BR-123, BR-126 `[USER] T3-Q1b` `[SRC-18]` `[SRC-28]` `[UP-27]` · Audit
 - AC2. Given kelompok data dan kode yang dipakai, When diperiksa, Then mengikuti dokumentasi SATUSEHAT. Daftar final kelompok data, variabel, dan terminologinya ditetapkan di Tahap 4 setelah L-05 `[SRC-28]` `[TIDAK DIKETAHUI]`.
 - AC3. Given rekam medis sudah final, When penulis mengoreksinya, Then versi baru dibuat dengan alasan koreksi, dan versi lama tetap tersimpan.
 - AC4. Given pasien tidak datang lewat Rumah Sehat (tanpa appointment Rumah Sehat), When pengguna mencoba membuat rekam medis untuknya, Then aplikasi tidak menyediakan pendaftaran pasien baru (BR-126).
-- AC5. Given pengguna berperan Petugas Lab atau Operator RME, When mencoba membuat atau mengubah rekam medis kunjungan, Then ditolak.
+- AC5. Given pengguna berperan Admin Fasyankes, Petugas Lab, atau Operator RME, When mencoba membuat atau mengubah rekam medis kunjungan, Then ditolak. Admin Fasyankes hanya dapat membaca (§3.1) `[UP-26]`.
+- AC6. Given home visit dari klinik pengguna RME berstatus "Tiba" atau "Selesai", When Tenaga Kesehatan Fasyankes yang terhubung ke tenaga kesehatan yang ditugaskan (US-1302 AC6) mengisi rekam medis, Then rekam medis kunjungan home visit tersimpan dengan aturan AC1–AC3.
 
 #### US-1307 Hasil lab
 
@@ -1245,9 +1347,10 @@ Rujukan: BR-125, BR-022 `[USER] T3-Q1b` `[UP-13]` · Audit: E-09
 Sebagai fasyankes pengguna RME minimalis, saya ingin rekam medis yang sudah final terkirim ke SATUSEHAT, agar kewajiban keterhubungan SATUSEHAT terpenuhi.
 Rujukan: BR-123 `[SRC-18]` `[SRC-26]` `[SRC-27]` `[UP-28]` · Audit: E-17
 
-- AC1. Given fasyankes sudah mengisi kredensial dan identitas SATUSEHAT-nya, When rekam medis difinalkan, Then data dikirim ke SATUSEHAT dengan status per rekam medis: Terkirim, Gagal (dengan alasan), atau Dikirim ulang.
-- AC2. Given pengiriman gagal karena gangguan, When gangguan berakhir, Then pengiriman dicoba ulang otomatis. Kegagalan karena data tidak valid ditampilkan ke Admin Fasyankes untuk diperbaiki.
-- AC3. Prasyarat: RME minimalis terdaftar sebagai sistem RME mitra di SATUSEHAT. Pendaftaran memerlukan nomor PSE, nomor afiliasi SNOMED CT, survei keamanan, dan verifikasi `[SRC-27]` (PT-32). Cara memperoleh kredensial per fasyankes `[TIDAK DIKETAHUI]`.
+- AC1. Given rekam medis difinalkan, When fasyankes sudah mengisi kredensial dan identitas SATUSEHAT-nya, Then status pengiriman "Antre" lalu "Terkirim" atau "Gagal" (dengan alasan). Given kredensial belum diisi, Then status "Menunggu kredensial", dan rekam medis otomatis masuk antrean setelah kredensial diisi `[KEPUTUSAN-16]`.
+- AC2. Given pengiriman gagal karena gangguan, When dicoba ulang, Then percobaan ulang otomatis berjalan sampai 24 jam sejak percobaan pertama, lalu status menjadi "Gagal" dan Admin Fasyankes diberi tahu. Kegagalan karena data klinis tidak valid dikembalikan ke penulis untuk dikoreksi (US-1306 AC3); kegagalan karena data identitas fasyankes diperbaiki Admin Fasyankes `[KEPUTUSAN-16]`.
+- AC4. Given rekam medis yang sudah "Terkirim" dikoreksi (US-1306 AC3), When versi baru difinalkan, Then versi baru dikirim sebagai pembaruan atas data yang sama di SATUSEHAT, dengan status pengiriman sendiri `[KEPUTUSAN-16]`.
+- AC3. Prasyarat: RME minimalis terdaftar sebagai sistem RME mitra di SATUSEHAT. Pendaftaran memerlukan nomor PSE untuk sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra (atau surat pernyataan resmi bila belum bermitra), survei keamanan, dan verifikasi `[SRC-27]` (PT-32). Cara memperoleh kredensial per fasyankes `[TIDAK DIKETAHUI]`.
 
 #### US-1310 Riwayat rekam medis pasien di fasyankes
 
@@ -1358,9 +1461,9 @@ Spesifikasi isi audit trail ada di §7. Story di bawah adalah fiturnya.
 Sebagai Auditor, saya ingin setiap aksi sensitif tercatat lengkap, agar dapat ditelusuri siapa melakukan apa.
 Rujukan: BR-080, BR-081, BR-107, ADR-005 `[KEPUTUSAN-07]` `[KEPUTUSAN-15]` · Audit: §7
 
-- AC1. Given aksi yang termasuk event §7.1 terjadi di komponen mana pun (aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal, RME minimalis, proses otomatis, integrasi), When aksi selesai atau gagal, Then satu event tercatat dengan semua field §7.2.
+- AC1. Given aksi yang termasuk event §7.1 terjadi di komponen mana pun (aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal, RME minimalis, proses otomatis, integrasi), When aksi selesai atau gagal, Then satu event tercatat dengan semua field wajib §7.2 terisi, dan field bersyarat terisi bila kondisinya berlaku.
 - AC2. Given event dicatat, When isinya diperiksa, Then tidak memuat data terlarang §7.3.
-- AC3. Given event audit untuk aksi sensitif tidak dapat dicatat, When aksi dijalankan, Then aksi dibatalkan dan pengguna menerima pesan gagal `[KEPUTUSAN-15]`.
+- AC3. Given event audit untuk suatu aksi §7.1 tidak dapat dicatat, When aksi dijalankan, Then: aksi pengguna dibatalkan dan pesan gagal tampil; aksi sistem atau integrasi tidak dianggap selesai dan dicoba ulang dari antrean sampai event tercatat (pesan integrasi masuk dibalas galat sementara agar dikirim ulang); efek eksternal yang sudah terjadi (misalnya refund yang sudah dieksekusi penyedia) dicatat dari antrean dan tidak boleh hilang. Kegagalan mencatat event memicu peringatan keamanan. Event aksi gagal (misalnya login gagal) tetap dicoba dicatat tanpa mengubah hasil aksinya `[KEPUTUSAN-15]`.
 
 #### US-1502 Halaman Audit Log
 
@@ -1405,15 +1508,16 @@ Sebagai pasien, saya ingin melihat persetujuan yang pernah saya berikan dan mena
 Rujukan: BR-103, BR-106 `[SRC-15]` `[UP-47]` · Audit: E-13
 
 - AC1. Given pasien membuka pengaturan privasi, When tampil, Then daftar persetujuan (butir, versi, tanggal) tampil.
-- AC2. Given pasien menarik persetujuan, When ia mengonfirmasi setelah membaca akibatnya (layanan tidak dapat dipakai; data yang wajib disimpan tetap disimpan sesuai ketentuan retensi, L-06), Then pemrosesan yang berdasar persetujuan itu dihentikan paling lambat 3 x 24 jam.
-- AC3. Given pasien punya pesanan terjadwal terbayar yang belum selesai, When ia menarik persetujuan, Then ia diberi tahu bahwa pesanan itu akan dibatalkan dengan aturan pembatalan pasien (RF-01 atau RF-02), dan harus mengonfirmasi `[UP-47]`.
+- AC2. Given pasien menarik butir persetujuan utama, When ia mengonfirmasi setelah membaca akibatnya, Then akun berstatus "Persetujuan ditarik": pasien hanya dapat masuk untuk melihat riwayat dan status, mengajukan hak subjek data, dan memberi persetujuan kembali; pemesanan baru ditolak; data tidak lagi dikirim ke rekanan atau kanal notifikasi, kecuali untuk menuntaskan pesanan yang tetap diselesaikan (AC3) dan memenuhi kewajiban simpan (L-06). Perubahan ini berlaku paling lambat 3 x 24 jam `[UP-54]`.
+- AC3. Given pasien punya pesanan terbayar yang belum selesai, When ia menarik butir persetujuan utama, Then sebelum konfirmasi ia diberi tahu bahwa pesanan terjadwal akan dibatalkan dengan aturan pembatalan pasien (RF-01 atau RF-02), sedangkan pesanan produk yang sudah dibayar tetap diselesaikan sampai diterima. Kelayakan pembatalan tanpa refund (RF-02) karena penarikan persetujuan ditanyakan ke legal (L-08, L-14) `[UP-47]` `[UP-54]`.
+- AC4. Given pasien menarik butir persetujuan tambahan (KEPUTUSAN-12), When dikonfirmasi, Then hanya pemrosesan untuk tujuan butir itu yang berhenti, dan layanan lain tetap dapat dipakai `[UP-54]`.
 
 #### US-1602 Ajukan permintaan hak subjek data
 
 Sebagai pasien, saya ingin mengajukan permintaan hak atas data saya, agar dapat menjalankan hak yang diatur UU PDP.
 Rujukan: BR-106 `[SRC-15]` · Audit: E-13
 
-- AC1. Given pasien memilih jenis permintaan (informasi, akses dan salinan, perbaikan, penghapusan, penundaan atau pembatasan, keberatan, portabilitas) untuk dirinya atau anggota keluarganya, When ia mengirim setelah memasukkan ulang password, Then permintaan berstatus "Diterima" dan batas waktunya tampil.
+- AC1. Given pasien memilih jenis permintaan (informasi, akses dan salinan, perbaikan, penghapusan, penundaan atau pembatasan, keberatan, portabilitas) untuk dirinya atau anggota keluarganya, When ia mengirim setelah autentikasi ulang (password untuk akun email, atau otorisasi ulang Google/Apple untuk akun yang masuk lewat Google/Apple), Then permintaan berstatus "Diterima" dan batas waktunya tampil.
 - AC2. Given permintaan masih diproses, When pasien membuka status, Then tahap penanganan tampil.
 - AC3. Cara anggota keluarga dewasa menjalankan haknya sendiri tanpa lewat pemilik akun `[TIDAK DIKETAHUI]` (L-08).
 
@@ -1426,14 +1530,17 @@ Rujukan: BR-106, BR-111 `[SRC-15]` `[UP-18]` `[UP-47]` · Audit: E-13
 - AC2. Given batas waktu tinggal 12 jam, When belum selesai, Then permintaan ditandai mendesak dan Super Admin diberi tahu `[UP-47]`.
 - AC3. Given permintaan diselesaikan atau ditolak, When Petugas PDP mengisi tanggapan dan alasan, Then pasien menerima tanggapan lewat email dan aplikasi.
 - AC4. Batas 3 x 24 jam ditetapkan UU PDP untuk akses, perbaikan, penundaan/pembatasan, dan penghentian pemrosesan setelah persetujuan ditarik `[SRC-15]`. Untuk jenis lain, batas yang sama dipakai sebagai target internal `[UP-47]`.
+- AC5. Given permintaan perbaikan, When Petugas PDP menyetujuinya, Then data yang diminta diubah lewat backoffice; perubahan nama, tanggal lahir, atau NIK mengembalikan status identitas ke "Menunggu verifikasi" (US-105 AC3); perubahan tercatat (E-10, E-13).
+- AC6. Given permintaan penundaan/pembatasan atau keberatan disetujui, When Petugas PDP menerapkannya, Then akun berstatus "Pemrosesan dibatasi" dengan efek yang sama seperti US-1601 AC2, sampai pembatasan dicabut `[UP-54]`.
+- AC7. Given permintaan informasi, When diselesaikan, Then tanggapan tertulis beserta waktu dan isi tanggapan tersimpan dan terkirim ke pasien. Pengerjaan manual di luar sistem diperbolehkan, tetapi sistem tetap mencatat permintaan, tanggapan, bukti, dan waktunya.
 
 #### US-1604 Salinan data pribadi
 
 Sebagai pasien, saya ingin mengunduh salinan data pribadi saya dalam format yang dapat dibaca mesin, agar dapat memakai hak akses dan portabilitas.
 Rujukan: BR-106 `[SRC-15]` · Audit: E-12
 
-- AC1. Given permintaan akses atau portabilitas disetujui, When salinan dibuat, Then file berisi profil, identitas, anggota keluarga, transaksi, isi chat, catatan konsultasi, resep, dan hasil lab dalam format yang dapat dibaca mesin dan format yang dapat dibaca orang, paling lambat 3 x 24 jam sejak permintaan.
-- AC2. Given salinan siap, When pasien mengunduhnya dari aplikasi setelah masuk ulang, Then unduhan tercatat. Tautan unduhan berlaku 7 hari `[UP-47]`.
+- AC1. Given permintaan akses atau portabilitas disetujui, When salinan dibuat, Then file berisi profil, identitas, anggota keluarga, transaksi, isi chat, catatan konsultasi, resep, hasil lab, dan rekam jejak pemrosesan data pribadinya (Pasal 32 ayat (1) `[SRC-15]`; bersumber dari field subjek data audit trail §7.2 dan event E-17, bentuknya ditetapkan di Tahap 4) dalam format yang dapat dibaca mesin dan format yang dapat dibaca orang, paling lambat 3 x 24 jam sejak permintaan.
+- AC2. Given salinan siap, When pasien mengunduhnya dari aplikasi setelah autentikasi ulang (seperti US-1602 AC1), Then unduhan tercatat. Tautan unduhan berlaku 7 hari `[UP-47]`.
 - AC3. Rekam medis yang disimpan fasyankes di RME minimalis termasuk atau tidak `[TIDAK DIKETAHUI]` (L-05).
 
 #### US-1605 Penghapusan dan anonimisasi
@@ -1587,7 +1694,7 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 | E-02 | Login gagal, termasuk akun terkunci | | BR-080 butir 1 |
 | E-03 | Logout | | BR-080 butir 1 |
 | E-04 | Pembuatan akun dan perubahan kredensial (nilai tidak dicatat) | Registrasi, atur ulang password, aktivasi MFA, penautan Google/Apple | ADR-005 `[KEPUTUSAN-07]` |
-| E-05 | Akses ke data pasien sensitif oleh pihak selain pemilik data dan pemilik akunnya | Tenaga kesehatan membuka riwayat chat, Verifikator membuka foto KTP/KK, Tenaga Kesehatan Fasyankes membuka rekam medis, admin membuka bukti klaim | BR-080 butir 2 `[KEPUTUSAN-07]` |
+| E-05 | Akses ke data pasien sensitif oleh pihak selain subjek data, termasuk pemilik akun yang membuka data klinis anggota keluarga dewasa | Tenaga kesehatan membuka riwayat chat, Verifikator membuka foto KTP/KK, Tenaga Kesehatan Fasyankes membuka rekam medis, admin membuka bukti klaim | BR-080 butir 2 `[KEPUTUSAN-07]` |
 | E-06 | Pembuatan dan perubahan catatan tenaga kesehatan, resep, rekam medis RME, dan hasil lab | | BR-080 butir 3, BR-123 |
 | E-07 | Verifikasi identitas disetujui atau ditolak | | BR-080 butir 4 |
 | E-08 | Pembayaran, pembagian dana, refund, dan keputusan klaim | | BR-080 butir 5 |
@@ -1603,20 +1710,20 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 
 ### 7.2 Field per event
 
-Field minimum mengikuti ADR-005: siapa, apa, kapan, dari mana, nilai before/after, dan hasil.
+Field minimum mengikuti ADR-005: siapa, apa, kapan, dari mana, nilai before/after, dan hasil. Kolom "Wajib" membedakan field yang selalu terisi dari field bersyarat (US-1501 AC1).
 
-| Field | Isi | Sumber |
-| --- | --- | --- |
-| ID event | Unik | ADR-005 |
-| Waktu | Waktu server. Disimpan dalam satu acuan baku (Tahap 4), ditampilkan dalam WIB | ADR-005, AB-42 |
-| Aktor | ID akun, jenis akun, peran dan sub-peran, atau "sistem" untuk proses otomatis | ADR-005 |
-| Aksi | Kode event (§7.1) dan nama aksi | ADR-005 |
-| Objek | Jenis dan ID objek | ADR-005 |
-| Subjek data | ID pasien atau anggota keluarga yang datanya terkena, bila ada | BR-106, BR-107 `[KEPUTUSAN-07]` |
-| Sumber | Alamat IP, komponen (aplikasi atau web), versi aplikasi, perangkat atau user agent | ADR-005 |
-| Before/after | Nilai field non-klinis sebelum dan sesudah, termasking sesuai §7.3. Untuk konten klinis dan dokumen hanya daftar field yang berubah dan versi | ADR-005 `[KEPUTUSAN-07]` |
-| Hasil | Sukses atau gagal, dengan kode alasan | ADR-005 |
-| ID korelasi | Penghubung event dalam satu permintaan atau proses | `[KEPUTUSAN-07]` |
+| Field | Isi | Wajib | Sumber |
+| --- | --- | --- | --- |
+| ID event | Unik | Ya | ADR-005 |
+| Waktu | Waktu server. Disimpan dalam satu acuan baku (Tahap 4), ditampilkan dalam WIB | Ya | ADR-005, AB-42 |
+| Aktor | ID akun, jenis akun, peran dan sub-peran, atau "sistem" untuk proses otomatis | Ya | ADR-005 |
+| Aksi | Kode event (§7.1) dan nama aksi | Ya | ADR-005 |
+| Objek | Jenis dan ID objek | Ya | ADR-005 |
+| Subjek data | ID pasien atau anggota keluarga yang datanya terkena, bila ada | Bila ada data pribadi yang terkena | BR-106, BR-107 `[KEPUTUSAN-07]` |
+| Sumber | Alamat IP, komponen (aplikasi atau web), versi aplikasi, perangkat atau user agent | Ya untuk aksi pengguna dan integrasi; untuk proses otomatis cukup nama komponen | ADR-005 |
+| Before/after | Nilai field non-klinis sebelum dan sesudah, termasking sesuai §7.3. Untuk konten klinis dan dokumen hanya daftar field yang berubah dan versi | Bila ada nilai yang berubah | ADR-005 `[KEPUTUSAN-07]` |
+| Hasil | Sukses atau gagal, dengan kode alasan | Ya | ADR-005 |
+| ID korelasi | Penghubung event dalam satu permintaan atau proses | Ya | `[KEPUTUSAN-07]` |
 
 ### 7.3 Data yang dilarang atau di-masking
 
@@ -1753,7 +1860,7 @@ Angka NFR berlabel `[USER]` tidak diubah. Butir yang berisiko ditandai untuk dip
 | NFR-PERF-01/02 | Realistis | Rendah. Pemeriksaan ulang ke sistem rekanan saat checkout (AB-15) menambah waktu tunggu yang dirasakan pasien, tetapi tidak dihitung di NFR | Tetap; batas waktu tunggu ke rekanan ditetapkan di Tahap 4 |
 | NFR-PERF-03 chat 2 detik | Realistis dengan koneksi real-time | Rendah | Tetap |
 | **Scope rilis 1 setelah CR-006** | Rilis 1 kini memuat 2 aplikasi mobile, backoffice, portal, **aplikasi web RME minimalis**, integrasi SATUSEHAT, dan integrasi rekanan, dengan 104 hari dan 1 mobile developer | **Sangat tinggi** (R-02, R-04). Urutan pengurangan scope (§2.3) tidak mencakup RME minimalis, padahal RME minimalis adalah komponen baru yang besar | (a) Tetap, dan kelayakan dinilai di Tahap 7 dengan estimasi effort; (b) bertahap di dalam RME minimalis: data layanan, appointment/check-in, dan hasil lab dulu (agar rekanan tanpa sistem bisa bergabung), rekam medis dan pengiriman SATUSEHAT menyusul; (c) tambah kapasitas tim |
-| Registrasi SATUSEHAT (US-1309) | Prasyarat di luar kendali tim: nomor PSE, nomor afiliasi SNOMED CT, survei keamanan, verifikasi `[SRC-27]` | **Tinggi.** Lama prosesnya `[TIDAK DIKETAHUI]`, dan nomor PSE juga menunggu pendaftaran PSE (BR-100) | Mulai pengurusan segera setelah gate (PT-32) |
+| Registrasi SATUSEHAT (US-1309) | Prasyarat di luar kendali tim: nomor PSE untuk sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra atau surat pernyataan resmi, survei keamanan, verifikasi `[SRC-27]` | **Tinggi.** Lama prosesnya `[TIDAK DIKETAHUI]`, dan nomor PSE juga menunggu pendaftaran PSE (BR-100) | Mulai pengurusan segera setelah gate (PT-32) |
 | Ketergantungan pada sistem rekanan (EP-14) | Check-in, antrean, penugasan home visit, dan hasil lab membutuhkan kemampuan sistem rekanan | Tinggi (PT-05). Rekanan dengan sistem sendiri mungkin tidak mendukung semua data | Dinilai di Tahap 4 setelah PT-05 |
 
 ## 10. Kebutuhan kepatuhan di luar perangkat lunak
@@ -1762,7 +1869,7 @@ Butir ini syarat go-live 5, tetapi bukan fitur aplikasi. Dicatat agar tidak hila
 
 | BR | Kebutuhan | Pemilik | Dibutuhkan sebelum |
 | --- | --- | --- | --- |
-| BR-100 | Pendaftaran PSE Lingkup Privat, juga prasyarat registrasi SATUSEHAT | CEO | Go-live, dan sebelum registrasi SATUSEHAT `[SRC-27]` |
+| BR-100 | Pendaftaran PSE Lingkup Privat untuk Rumah Sehat dan untuk aplikasi RME minimalis; pendaftaran PSE sistem RME adalah prasyarat registrasi SATUSEHAT. Apakah satu pendaftaran mencakup kedua sistem ditanyakan di L-02 | CEO | Go-live; untuk RME minimalis sebelum registrasi SATUSEHAT `[SRC-27]` |
 | BR-101 | Skema telemedisin dan registrasi Kemenkes bila diwajibkan (L-01) | CEO, legal | Tahap 4 |
 | BR-109 | Prosedur pemberitahuan kegagalan pelindungan data 3 x 24 jam | Petugas PDP (PT-23) | Tahap 10 |
 | BR-110 | DPIA, termasuk RME minimalis dan data anggota keluarga | Petugas PDP, legal | Go-live |
@@ -1787,12 +1894,12 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-07 | Harga layanan tampil sebagai satu angka; markup tidak ditampilkan terpisah | Sejalan dengan T2-Q20; keterbukaan menunggu L-14 |
 | UP-08 | Pesanan produk tidak dapat dibatalkan pasien setelah dibayar | BR-045 tidak memberi refund, sehingga pembatalan tidak berguna dan membingungkan |
 | UP-09 | Satu checkout produk hanya untuk satu outlet | Pembagian dana dan pengiriman per outlet |
-| UP-10 | Daftar status layanan, pesanan, refund, klaim, dan verifikasi (§3.2, §3.6) | Dasar acceptance criteria dan audit perubahan status |
+| UP-10 | Status dan tabel transisi layanan, pesanan, refund, klaim, dan verifikasi (§3.2, §3.6); transisi yang tersimpan lebih dulu berlaku; satu pesanan satu refund kecuali RF-12 (AB-36) | Dasar acceptance criteria, penolakan status dari rekanan, dan audit perubahan status |
 | UP-11 | Satu tenaga kesehatan melayani satu sesi pada satu waktu | Dasar kapasitas T3-Q11 dan mutu layanan |
 | UP-12 | Perilaku antrean: nomor per layanan per hari, keterlambatan maksimal 30 detik, PB-10 = 3 nomor, fitur tersembunyi bila rekanan tidak mengirim antrean | Rincian BR-027 |
-| UP-13 | Alur home visit: penugasan oleh klinik, status Berangkat–Tiba–Selesai, nomor HP pasien hanya di hari kunjungan, "tenaga kesehatan tidak datang" dan keberatan "pasien tidak ada" lewat klaim, PB-03 berlaku untuk tiba di lokasi | Kehadiran di lokasi tidak tercatat otomatis seperti sesi online |
+| UP-13 | Alur home visit: penugasan dan penugasan ulang oleh klinik, status Berangkat–Tiba–Selesai, nomor HP dan alamat pasien hanya di hari kunjungan, "pasien tidak ada di lokasi" hanya dari status Tiba, "tenaga kesehatan tidak datang" (RF-06) dan keberatan "pasien tidak hadir" (RF-17) lewat klaim, PB-03 berlaku untuk tiba di lokasi, penugasan kembali ke Terkonfirmasi bila tenaga kesehatan dinonaktifkan | Kehadiran di lokasi tidak tercatat otomatis seperti sesi online |
 | UP-14 | Check-in dengan kode/QR di sistem rekanan; QR tetap tampil offline; otomatis "Selesai" di akhir hari setelah check-in | Mekanisme pencocokan appointment yang diserahkan BR-070 ke PRD |
-| UP-15 | Pasien dapat melihat catatan konsultasi dan resep miliknya dan anggota keluarganya | Hak akses data (BR-106) |
+| UP-15 | Pasien dapat melihat catatan konsultasi, resep, dan hasil lab miliknya dan anggota keluarganya. **Untuk anggota keluarga dewasa ini keputusan produk yang berdampak privasi**: hak akses UU PDP hanya atas data "tentang dirinya" (Pasal 7 `[SRC-15]`), sehingga kebolehannya ditanyakan ke legal (L-05, L-08). Akses pemilik akun ke data klinis anggota keluarga dewasa dicatat di E-05 | Untuk diri sendiri: hak akses data (BR-106). Untuk anggota keluarga: kebutuhan pemesanan atas nama keluarga (BR-008), menunggu legal |
 | UP-16 | Catatan konsultasi terstruktur, berversi, dan selaras SATUSEHAT | Siap bila L-05 menyatakan catatan konsultasi rekam medis |
 | UP-17 | Matriks akses §3.1: tidak ada admin Rumah Sehat yang melihat isi klinis; foto KTP/KK hanya Verifikator; tenaga kesehatan hanya data sesi yang ditanganinya; riwayat dari tenaga kesehatan lain tidak tersedia di rilis 1 | Minimisasi akses data spesifik (BR-105) |
 | UP-18 | Sub-peran admin Rumah Sehat: Super Admin, Verifikator, Layanan Pelanggan, Keuangan, Konten, Auditor, Petugas PDP | Hak minimum per fungsi backoffice |
@@ -1803,18 +1910,18 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-23 | Matriks kanal notifikasi (EP-10); isi notifikasi tanpa data kesehatan rinci | Minimisasi data di kanal pihak ketiga |
 | UP-24 | KPI: tenaga kesehatan "siap melayani" (AB-54); KPI-01 menghitung pemilik akun dengan layanan berstatus akhir berhasil (US-1701 AC1) | Definisi T2-Q10/Q11 perlu bentuk yang dapat dihitung sistem |
 | UP-25 | Harga dan ketersediaan diperiksa ulang ke sistem rekanan sebelum pembayaran | Mencegah pasien membayar layanan atau barang yang tidak tersedia |
-| UP-26 | Peran RME minimalis: Admin Fasyankes, Tenaga Kesehatan Fasyankes, Petugas Lab, Operator RME (tanpa akses rekam medis); Admin Fasyankes dapat melihat log akses rekam medis fasyankesnya | Hak minimum; fasyankes dapat memantau akses |
+| UP-26 | Peran RME minimalis: Admin Fasyankes (baca rekam medis, tidak menulis), Tenaga Kesehatan Fasyankes (baca dan tulis), Petugas Lab, Operator RME (tanpa akses rekam medis); akun Tenaga Kesehatan Fasyankes dapat dihubungkan ke akun tenaga kesehatan Rumah Sehat untuk rekam medis home visit; Admin Fasyankes dapat melihat log akses rekam medis fasyankesnya | Hak minimum; fasyankes dapat memantau akses |
 | UP-27 | Kelompok data rekam medis minimal: anamnesis, pemeriksaan fisik/tanda vital, diagnosis, tindakan, peresepan, permintaan lab, resume; final di Tahap 4 | Subset dari 29 kelompok data SATUSEHAT rawat jalan `[SRC-28]`, sesuai "RME minimalis" |
 | UP-28 | RME minimalis mengirim rekam medis ke SATUSEHAT atas nama fasyankes pengguna | Fasyankes wajib terhubung ke SATUSEHAT `[SRC-18]`, dan user meminta kesesuaian dengan ketentuan SATUSEHAT (T3-Q1b) |
-| UP-29 | Aturan sesi konsultasi: durasi kelipatan 5 menit (10–120); chat menjadi baca-saja setelah durasi habis; tidak ada perpanjangan; video dapat disambung ulang; bila keduanya tidak hadir berlaku "tenaga kesehatan tidak hadir" | Perilaku sesi yang dapat diuji |
+| UP-29 | Aturan sesi konsultasi: durasi kelipatan 5 menit (10–120); "bergabung" = membuka ruang sesi, dicatat server; batas ketidakhadiran = PB-02/PB-03 atau akhir durasi bila lebih dulu; Selesai hanya bila kedua pihak pernah bergabung; chat baca-saja setelah durasi habis; tidak ada perpanjangan; video dapat disambung ulang; bila keduanya tidak hadir berlaku "tenaga kesehatan tidak hadir" | Perilaku sesi yang dapat diuji |
 | UP-30 | Alur tiket keluhan, penerusan ke rekanan, dibuka kembali bila pasien membalas dalam 7 hari | Rincian BR-062 dan menu keluhan portal |
 | UP-31 | Profil rekanan di portal hanya dilihat; perubahan diajukan ke admin Rumah Sehat; perubahan rekening wajib disetujui Verifikator | Portal hanya laporan; mencegah pengalihan dana |
 | UP-32 | Harga, markup, dan parameter dikunci saat pembayaran dibuat | Kepastian bagi pasien dan rekanan |
 | UP-33 | RME minimalis tidak diberi nomor di urutan pengurangan scope; fiturnya ikut dilepas bersama layanan yang memakainya | Disampaikan setelah T3-Q2 |
-| UP-34 | Pembayaran ganda dan pembayaran yang berhasil setelah kedaluwarsa (bila slot/stok sudah tidak ada) di-refund penuh otomatis dengan penanggung Rumah Sehat | Kesalahan platform, sesuai prinsip penyebab menanggung (T3-Q7) |
-| UP-35 | Refund gagal masuk antrean Keuangan; kewajiban pengembalian rekanan dicatat dan tampil di laporan sampai selesai | Dana pasien tidak tertahan diam-diam; dasar rekonsiliasi PT-27 |
-| UP-36 | Klaim yang melewati PB-05 dieskalasi ke Super Admin, tanpa disetujui atau ditolak otomatis | Keputusan uang tetap oleh manusia |
-| UP-37 | Kalender hari kerja diatur Super Admin | PB-05 memakai satuan hari kerja |
+| UP-34 | Pembayaran ganda (RF-12) dan pembayaran yang berhasil setelah kedaluwarsa bila slot/stok sudah tidak ada (RF-13) di-refund penuh otomatis sebagai penyebab platform: rekanan mengembalikan bagian yang benar-benar diterimanya dari pembayaran itu, Rumah Sehat menanggung semua biaya payment gateway yang tidak kembali (AB-34) | Kesalahan platform, sesuai prinsip penyebab menanggung (T3-Q7); rekanan tidak memberi layanan tambahan atas pembayaran itu |
+| UP-35 | Refund gagal masuk antrean Keuangan; kewajiban pengembalian rekanan dicatat berstatus Terbuka dan tampil di laporan sampai Keuangan menandainya Selesai dengan rujukan bukti | Dana pasien tidak tertahan diam-diam; dasar rekonsiliasi PT-27 |
+| UP-36 | Klaim diputuskan Layanan Pelanggan; klaim yang melewati PB-05 dieskalasi ke Super Admin yang dapat memutuskannya, tanpa disetujui atau ditolak otomatis; setelah klaim ditolak, klaim baru untuk pesanan yang sama tidak dapat diajukan | Keputusan uang tetap oleh manusia; mencegah klaim berulang |
+| UP-37 | Kalender hari kerja diatur Super Admin; batas hari kerja berakhir pukul 23.59 WIB pada hari kerja ke-N setelah hari kejadian | PB-05 dan PB-16 memakai satuan hari kerja |
 | UP-38 | Pasien dapat menyimpan lebih dari satu alamat | Pengiriman produk dan home visit ke alamat berbeda |
 | UP-39 | Perubahan nama, tanggal lahir, NIK, atau dokumen setelah disetujui mengembalikan status ke "Menunggu verifikasi" | Verifikasi tetap sah |
 | UP-40 | NIK pemilik akun tidak boleh dipakai sebagai pemilik akun di akun lain; NIK anggota keluarga boleh di lebih dari satu akun | Mencegah akun ganda; anak dapat didaftarkan kedua orang tua |
@@ -1826,6 +1933,13 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-46 | Sinkronisasi data rekanan paling lambat 15 menit; peringatan bila integrasi gagal 30 menit | Data cukup mutakhir; harga tetap dijaga AB-15 |
 | UP-47 | Hak subjek data: target internal 3 x 24 jam untuk semua jenis permintaan; tanda mendesak 12 jam sebelum batas; tautan salinan data berlaku 7 hari; menarik persetujuan membatalkan pesanan aktif dengan aturan pembatalan pasien | Batas UU PDP untuk sebagian jenis `[SRC-15]`; perlakuan seragam |
 | UP-48 | Target performa web dan ketersediaan juga berlaku untuk backoffice dan RME minimalis | T3-Q12/Q13 menyebut layanan inti dan portal |
+| UP-49 | Perjanjian penggunaan RME minimalis dan pemrosesan data dengan setiap fasyankes wajib tercatat sebelum fasyankes aktif (US-1301 AC1) | Review kepatuhan C3-N02: Pasal 18 ayat (2) huruf a (perjanjian antar-pengendali) atau Pasal 51 ayat (1) dan (5) (pemrosesan berdasarkan perintah pengendali; persetujuan tertulis untuk prosesor lain) `[SRC-15]`; isi perjanjian menunggu L-05/L-15 |
+| UP-50 | Fasyankes yang berhenti memakai RME minimalis dapat mengekspor rekam medisnya sebelum akses ditutup (US-1301 AC4) | Review kepatuhan C3-N02: rekam medis milik fasyankes tidak tertahan di sistem PT. Arunika |
+| UP-51 | Markup dihitung per unit atas harga rekanan per unit; markup persen dibulatkan per unit lalu dikalikan jumlah; markup nominal berlaku per unit; markup tidak dikenakan pada ongkos kirim dan biaya transaksi (AB-11a) | Review QA QA-B03: tanpa basis yang jelas, dua perhitungan memberi total berbeda |
+| UP-52 | Kejadian uang tambahan: RF-14 nominal notifikasi tidak sama (Keuangan memeriksa dalam PB-16 = 1 hari kerja, lalu refund seluruh nominal); RF-15 outlet tidak menyerahkan barang ke kurir dalam PB-17 = 2 x 24 jam (refund otomatis); RF-16 barang tidak sampai (klaim tanpa wajib foto setelah PB-18 = 7 hari tanpa kabar kurir, atau kurir menyatakan terkirim tetapi tidak diterima) | Review QA QA-B05: kejadian ini tidak punya hasil di matriks |
+| UP-53 | PB-15 batas pengajuan klaim layanan terjadwal (RF-06, RF-07, RF-17): 2 x 24 jam setelah jadwal berakhir; keberatan "pasien tidak hadir" home visit menjadi RF-17 dan bila disetujui diperlakukan seperti RF-06 | Review QA QA-B07; disamakan dengan PB-04 |
+| UP-54 | Efek menarik persetujuan utama, pembatasan, dan keberatan yang disetujui: akun hanya dapat melihat riwayat, mengajukan hak subjek data, dan memberi persetujuan kembali; pemesanan baru ditolak; data tidak dikirim ke pihak luar kecuali untuk menuntaskan pesanan produk yang sudah dibayar dan kewajiban simpan; butir tambahan hanya menghentikan tujuan butir itu | Review QA QA-B17, QA-B18: "pemrosesan dihentikan" harus teramati |
+| UP-55 | PB-19: refund berstatus Diproses lebih dari 2 x 24 jam tanpa konfirmasi penyedia menjadi "Perlu dicek" dan tidak dieksekusi ulang sebelum status penyedia diketahui | Review QA QA-B10: mencegah refund tertahan atau ganda |
 
 ## 12. Ketergantungan, konfirmasi legal, dan pertanyaan terbuka
 
@@ -1850,17 +1964,20 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 | PT-29 | Siapa menanggung biaya payment gateway yang tidak kembali dan nilai barang bila kegagalan atau kerusakan disebabkan kurir (RF-09, RF-10)? | CEO | Tahap 7 (sebelum pengembangan EP-07) |
 | PT-30 | Apakah barang wajib dikembalikan ke outlet saat klaim barang rusak atau tidak sesuai disetujui, dan siapa menanggung ongkos kirim baliknya? | CEO | Tahap 7 |
 | PT-31 | Ke mana dana ongkos kirim disalurkan (outlet atau kurir) dan bagaimana dalam pembagian dana payment gateway? | User (PM), CTO; konfirmasi L-04 | Tahap 4–5 |
-| PT-32 | Pengurusan registrasi RME minimalis sebagai sistem RME mitra di SATUSEHAT (nomor PSE, nomor afiliasi SNOMED CT, survei keamanan) dan cara fasyankes pengguna memperoleh kredensial SATUSEHAT | User (PM), CEO | Dimulai setelah gate Tahap 3; status dilaporkan di gate Tahap 4 |
+| PT-32 | Pengurusan registrasi RME minimalis sebagai sistem RME mitra di SATUSEHAT (nomor PSE sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra atau surat pernyataan resmi bila belum bermitra, survei keamanan) dan cara fasyankes pengguna memperoleh kredensial SATUSEHAT `[SRC-27]` | User (PM), CEO | Dimulai setelah gate Tahap 3; status dilaporkan di gate Tahap 4 |
+| PT-33 | Bila klaim barang hanya menyangkut sebagian isi pesanan (satu dari beberapa barang rusak atau kurang), apakah refund tetap seluruh pembayaran atau sebanding dengan barang yang diklaim? | CEO | Tahap 7 (sebelum pengembangan EP-07) |
 
 ### 12.3 Konfirmasi legal yang berdampak ke PRD
 
 | # | Dampak ke PRD | Status |
 | --- | --- | --- |
-| L-05 (meluas, CR-006) | Status catatan konsultasi sebagai rekam medis (US-308); kewajiban PT. Arunika sebagai penyedia sistem RME; pengendali data RME minimalis; kecukupan kelompok data minimal (UP-27); kewajiban pengiriman ke SATUSEHAT (US-1309); validasi hasil lab (US-1307); resep elektronik (US-309) | Menunggu tim legal (PT-20); dibutuhkan sebelum Tahap 4 |
+| L-05 (meluas, CR-006) | Status catatan konsultasi sebagai rekam medis (US-308); kewajiban PT. Arunika sebagai penyedia sistem RME; pengendali bersama atau prosesor untuk data RME minimalis dan catatan konsultasi, beserta isi perjanjiannya, persetujuan tertulis sub-prosesor, serah terima rekam medis saat kerja sama berakhir, dan jalur hak subjek atas data RME; kecukupan kelompok data minimal (UP-27); dasar dan kewajiban pengiriman ke SATUSEHAT (US-1309); posisi RME yang hanya mencatat pasien Rumah Sehat terhadap kewajiban RME fasyankes untuk pasien lain; validasi hasil lab (US-1307); resep elektronik (US-309); akses pemilik akun ke data klinis anggota keluarga dewasa dari sisi rahasia kedokteran (UP-15) | Menunggu tim legal (PT-20); dibutuhkan sebelum Tahap 4 |
 | L-07 | Dokumen izin wajib per jenis tenaga kesehatan (PB-14) dan kanal verifikasi STR/SIP (US-203) | Tenggat BRD "Tahap 3" belum terpenuhi karena legal belum ditunjuk (PT-20). PRD memakai dokumen wajib yang dapat diatur, nilai awal STR + SIP |
-| L-08 (meluas) | Pernyataan persetujuan anggota keluarga dewasa oleh pemilik akun dan persetujuan orang tua/wali lewat KK (AB-04); hak anggota keluarga dewasa (US-1602); butir persetujuan per jenis data (US-104); data minimal ke payment gateway dan rekanan (AB-75) | Menunggu tim legal |
+| L-08 (meluas) | Pernyataan persetujuan anggota keluarga dewasa oleh pemilik akun terhadap kewajiban bukti persetujuan dari subjek (Pasal 24) dan persetujuan orang tua/wali lewat KK (AB-04); akses pemilik akun ke data kesehatan anggota keluarga dewasa (UP-15); permintaan hak subjek atas nama anggota keluarga dewasa (US-1602); batas usia anak dan perlakuan saat anak menjadi dewasa; satu NIK di beberapa akun (UP-40); minimisasi foto KK; pihak yang wajib DPIA atas data RME; butir persetujuan per jenis data dan apakah perlu menyebut penerima data (US-104); dasar pengiriman data ke rekanan; data minimal ke payment gateway dan rekanan (AB-75) | Menunggu tim legal |
 | L-14 | Aturan refund §3.5 dan penyajian harga (AB-13, AB-16) terhadap perlindungan konsumen | Tenggat BRD "Tahap 3" belum terpenuhi (PT-20). Aturan refund ditetapkan user; kalau legal meminta perubahan, dicatat sebagai change request |
 | L-04, L-12 | Mekanisme refund dan penarikan dana rekanan; biaya transaksi per metode; *merchant of record* di bukti bayar | Menunggu tim legal; sebelum Tahap 4 |
+| L-02 (meluas) | Pendaftaran PSE untuk aplikasi RME minimalis (apakah satu pendaftaran cukup untuk dua sistem) dan perizinan berusaha PT. Arunika sebagai penyedia sistem RME. Bagian PSE diusulkan dimajukan ke Tahap 4, karena menjadi prasyarat PT-32 | Usulan review kepatuhan, dimintakan persetujuan di gate |
+| L-15 (usulan baru) | Perjanjian pemrosesan data antara PT. Arunika dan setiap fasyankes pengguna RME minimalis, serta antara PT. Arunika dan klinik rekanan untuk data konsultasi (UP-49) | Usulan review kepatuhan, dimintakan persetujuan di gate; sebelum Tahap 4 |
 
 ### 12.4 Ketergantungan lain
 
