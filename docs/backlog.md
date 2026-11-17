@@ -20,7 +20,191 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 
 ## Epic dan Story
 
-_Belum ada._
+Sumber: `docs/03-prd.md` v1.0 (Tahap 3). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui atau diubah di gate Tahap 3. Kolom Fase diisi di Tahap 7.
+
+Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Story dengan ketergantungan legal yang dapat mengubah AC: US-104, US-108, US-203, US-308, US-309, US-805–US-808, US-1306, US-1309 (lihat PRD §12.3).
+
+### [EP-01] Akun, identitas, dan anggota keluarga (aplikasi pasien)
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | — | Backlog |
+| US-102 | Masuk dengan akun Google atau Apple | BR-001 | Must | — | Backlog |
+| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | — | Backlog |
+| US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | — | Backlog |
+| US-105 | Profil data diri | BR-002 | Must | — | Backlog |
+| US-106 | Unggah NIK dan foto KTP | BR-003 | Must | — | Backlog |
+| US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must | — | Backlog |
+| US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should | — | Backlog |
+| US-109 | Ubah dan hapus anggota keluarga | BR-008, BR-106 | Should | — | Backlog |
+
+### [EP-02] Verifikasi dan pengelolaan akun
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | — | Backlog |
+| US-202 | Pendaftaran tenaga kesehatan | BR-005, BR-102 | Must | — | Backlog |
+| US-203 | Verifikasi tenaga kesehatan | BR-005, BR-102 | Must | — | Backlog |
+| US-204 | Pemantauan masa berlaku SIP | BR-102 | Must | — | Backlog |
+| US-205 | Onboarding rekanan | BR-006, BR-031 | Must | — | Backlog |
+| US-206 | Akun admin mitra | BR-006 | Must | — | Backlog |
+| US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | — | Backlog |
+| US-208 | Akun dan sub-peran admin Rumah Sehat | BR-060, BR-080 | Must | — | Backlog |
+
+### [EP-03] Konsultasi online
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-301 | Tarif dan durasi konsultasi (menu portal klinik) | BR-018, BR-064 | Must | — | Backlog |
+| US-302 | Jadwal praktik online | BR-017 | Must | — | Backlog |
+| US-303 | Cari dan pilih tenaga kesehatan | BR-010, BR-011, BR-012, BR-014 | Must | — | Backlog |
+| US-304 | Pesan sesi konsultasi | BR-010, BR-011, BR-012, BR-040 | Must | — | Backlog |
+| US-305 | Sesi chat | BR-010, BR-016 | Must | — | Backlog |
+| US-306 | Sesi video | BR-010, BR-016 | Must | — | Backlog |
+| US-307 | Ketidakhadiran dan pembatalan oleh tenaga kesehatan | BR-045 | Must | — | Backlog |
+| US-308 | Catatan konsultasi | BR-013, BR-016, BR-114 | Must | — | Backlog |
+| US-309 | Resep digital | BR-015, BR-114 | Must | — | Backlog |
+| US-310 | Riwayat konsultasi pasien | BR-016, BR-106 | Must | — | Backlog |
+| US-311 | Daftar sesi tenaga kesehatan | BR-013 | Must | — | Backlog |
+
+### [EP-04] Pendaftaran klinik dan lab, check-in, dan antrean
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-401 | Cari klinik, lab, dan layanannya | BR-020, BR-021 | Must | — | Backlog |
+| US-402 | Pesan pendaftaran klinik atau lab | BR-020, BR-021, BR-024, BR-040 | Must | — | Backlog |
+| US-403 | Appointment dan kode check-in | BR-024 | Must | — | Backlog |
+| US-404 | Check-in lewat sistem rekanan | BR-024, BR-070 | Must | — | Backlog |
+| US-405 | Antrean real-time | BR-027 | Should | — | Backlog |
+| US-406 | Riwayat pendaftaran | BR-026 | Must | — | Backlog |
+
+### [EP-05] Home visit
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-501 | Cari dan pesan home visit | BR-022, BR-024, BR-040 | Must | — | Backlog |
+| US-502 | Penugasan tenaga kesehatan | BR-022, BR-070 | Must | — | Backlog |
+| US-503 | Status kunjungan oleh tenaga kesehatan | BR-022 | Must | — | Backlog |
+| US-504 | Pantau kunjungan dan laporkan tenaga kesehatan tidak datang | BR-022, BR-045 | Must | — | Backlog |
+
+### [EP-06] Informasi biaya MCU dan lab
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-601 | Cari dan bandingkan biaya MCU dan pemeriksaan lab | BR-023 | Must | — | Backlog |
+| US-602 | Lanjut mendaftar dari informasi biaya | BR-023, BR-020, BR-021 | Should | — | Backlog |
+
+### [EP-07] Pembelian produk
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-701 | Jelajah dan cari katalog | BR-030, BR-033 | Must | — | Backlog |
+| US-702 | Detail produk | BR-030, BR-031, BR-032, BR-116 | Must | — | Backlog |
+| US-703 | Keranjang dan checkout | BR-034, BR-040 | Must | — | Backlog |
+| US-704 | Status dan pelacakan pesanan | BR-033, BR-034 | Must | — | Backlog |
+| US-705 | Konfirmasi terima dan klaim barang | BR-045 | Must | — | Backlog |
+| US-706 | Riwayat pesanan | BR-035 | Must | — | Backlog |
+
+### [EP-08] Pembayaran, harga, pembagian dana, dan refund (T1)
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-801 | Ringkasan harga sebelum membayar | BR-042, BR-044, BR-024 | Must | — | Backlog |
+| US-802 | Pembayaran lewat payment gateway | BR-040, BR-115 | Must | — | Backlog |
+| US-803 | Pembagian dana per transaksi | BR-041, BR-044 | Must | — | Backlog |
+| US-804 | Bukti pembayaran | BR-040 | Must | — | Backlog |
+| US-805 | Pembatalan layanan terjadwal oleh pasien | BR-045 | Must | — | Backlog |
+| US-806 | Refund otomatis | BR-045 | Must | — | Backlog |
+| US-807 | Klaim refund | BR-045 | Must | — | Backlog |
+| US-808 | Eksekusi dan status refund | BR-045 | Must | — | Backlog |
+| US-809 | Pengaturan markup per rekanan | BR-042, BR-063 | Must | — | Backlog |
+| US-810 | Pengaturan biaya rekanan | BR-043, BR-063 | Must | — | Backlog |
+| US-811 | Laporan transaksi dan rekonsiliasi pembagian dana | BR-046 | Must | — | Backlog |
+| US-812 | Pengaturan parameter bisnis | BR-045, BR-063 | Must | — | Backlog |
+
+### [EP-09] Hasil lab
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-901 | Penerimaan hasil lab | BR-025, BR-070 | Must | — | Backlog |
+| US-902 | Lihat dan unduh hasil lab | BR-025, BR-050 | Must | — | Backlog |
+
+### [EP-10] Notifikasi
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1001 | Notifikasi pasien per kejadian dan kanal | BR-050 | Must | — | Backlog |
+| US-1002 | Pengingat jadwal | BR-050 | Must | — | Backlog |
+| US-1003 | Notifikasi tenaga kesehatan dan admin | BR-013, BR-102 | Must | — | Backlog |
+
+### [EP-11] Konten dan layanan pelanggan
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1101 | Pengelolaan konten (CMS) | BR-061 | Must | — | Backlog |
+| US-1102 | Konten di aplikasi pasien | BR-061 | Must | — | Backlog |
+| US-1103 | Ajukan keluhan | BR-062 | Must | — | Backlog |
+| US-1104 | Kelola keluhan | BR-062, BR-064, BR-065 | Must | — | Backlog |
+
+### [EP-12] Portal rekanan
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1201 | Laporan transaksi dan pembagian dana rekanan | BR-046, BR-064, BR-065 | Must | — | Backlog |
+| US-1202 | Profil rekanan | BR-064, BR-065 | Must | — | Backlog |
+| US-1203 | Keluhan terkait rekanan | BR-064, BR-065 | Must | — | Backlog |
+
+### [EP-13] Aplikasi RME minimalis (T1)
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1301 | Onboarding fasyankes ke RME minimalis | BR-120 | Must | — | Backlog |
+| US-1302 | Akun dan peran pengguna RME | BR-120 | Must | — | Backlog |
+| US-1303 | Jadwal, layanan, dan harga | BR-122 | Must | — | Backlog |
+| US-1304 | Appointment dan check-in | BR-125, BR-024 | Must | — | Backlog |
+| US-1305 | Antrean | BR-125, BR-027 | Should | — | Backlog |
+| US-1306 | Catatan rekam medis kunjungan | BR-123 | Must | — | Backlog |
+| US-1307 | Hasil lab | BR-124, BR-025 | Must | — | Backlog |
+| US-1308 | Home visit | BR-125, BR-022 | Must | — | Backlog |
+| US-1309 | Pengiriman data rekam medis ke SATUSEHAT | BR-123 | Must | — | Backlog |
+| US-1310 | Riwayat rekam medis pasien di fasyankes | BR-123, BR-126 | Must | — | Backlog |
+
+### [EP-14] Integrasi rekanan dan pihak ketiga
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1401 | Spesifikasi kontrak integrasi dan lingkungan uji | BR-070, BR-121 | Must | — | Backlog |
+| US-1402 | Sinkronisasi data rekanan | BR-070 | Must | — | Backlog |
+| US-1403 | Pengiriman pesanan dan pembatalan ke rekanan | BR-070 | Must | — | Backlog |
+| US-1404 | Penerimaan status dari rekanan | BR-070 | Must | — | Backlog |
+| US-1405 | Pemantauan dan status integrasi per rekanan | BR-070, BR-090 | Must | — | Backlog |
+| US-1406 | Integrasi pihak ketiga | BR-071 | Must | — | Backlog |
+
+### [EP-15] Audit trail (fitur)
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | — | Backlog |
+| US-1502 | Halaman Audit Log | BR-080 | Must | — | Backlog |
+| US-1503 | Export audit log | BR-080 | Must | — | Backlog |
+| US-1504 | Perlindungan audit log | BR-080 | Must | — | Backlog |
+
+### [EP-16] Persetujuan dan hak subjek data (T1)
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1601 | Lihat dan tarik persetujuan | BR-103, BR-106 | Must | — | Backlog |
+| US-1602 | Ajukan permintaan hak subjek data | BR-106 | Must | — | Backlog |
+| US-1603 | Proses permintaan hak subjek data | BR-106, BR-111 | Must | — | Backlog |
+| US-1604 | Salinan data pribadi | BR-106 | Must | — | Backlog |
+| US-1605 | Penghapusan dan anonimisasi | BR-106, BR-112 | Must | — | Backlog |
+| US-1606 | Retensi dan pemusnahan otomatis | BR-112 | Must | — | Backlog |
+
+### [EP-17] Pengukuran KPI
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1701 | Dasbor KPI | BR-090 | Must | — | Backlog |
 
 ## Bug
 
@@ -67,6 +251,14 @@ Deskripsi: Setiap layanan yang dimulai atau didaftarkan di aplikasi dibayar di a
 Alasan: keputusan user.
 Dampak ke scope / waktu / arsitektur: pembagian dana langsung (CR-003) dan aturan refund (BR-045, PT-27) berlaku juga untuk klinik, lab, dan home visit. Cakupan konfirmasi legal L-04, L-08, L-10, L-12, L-13, dan L-14 meluas; PT-28 (pajak) ditambahkan. Sistem rekanan perlu menerima status lunas dan mencocokkan appointment saat pasien datang (PT-05). Business Case §5 perlu memuat markup klinik, lab, dan home visit saat diperbarui.
 Keputusan: Diterima user (T2-Q13 sampai T2-Q20): tindakan tambahan yang tidak tercantum di aplikasi dibayar di luar aplikasi; markup dan aturan biaya transaksi T2-Q12 berlaku untuk semua layanan; biaya rekanan dipakai atau tidak diputuskan CEO (PT-17); pembatalan layanan terjadwal sebelum batas waktu di-refund; informasi biaya MCU/lab menampilkan harga bayar di aplikasi. Berlaku sejak BRD v1.1 (disetujui user di gate revisi 2026-11-17, T2-Gate-CR005)
+
+### CR-006: RME minimalis sebagai aplikasi terpisah dan antrean real-time klinik
+
+Diajukan: 2026-11-17 (wawancara Tahap 3, `docs/03-catatan-prd.md` T3-Q1, T3-Q1a, T3-Q1b, T3-Q1c, T3-Q14, T3-Q15, T3-Q16)
+Deskripsi: Dari empat butir yang belum diputuskan (BRD §4.3, PT-13), RME **minimalis** dan antrean real-time klinik masuk rilis 1; RME lengkap, loyalitas/poin/voucher, dan multi-bahasa tidak masuk. RME minimalis adalah aplikasi web terpisah dari aplikasi dan portal Rumah Sehat, dibangun di proyek ini untuk rilis 1, menjadi "sistem rekanan" bagi klinik dan lab yang belum punya sistem, dan terhubung ke Rumah Sehat lewat integrasi yang sama dengan sistem rekanan lain. Isinya: jadwal, layanan, dan harga; appointment dan check-in; antrean; rekam medis kunjungan yang datanya sesuai ketentuan SATUSEHAT; hasil lab; penugasan home visit. Hanya mencatat pasien yang datang lewat Rumah Sehat. Portal Rumah Sehat untuk rekanan ditegaskan hanya untuk pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online (T3-Q4 tetap, T3-Q16).
+Alasan: keputusan user, agar rekanan tanpa sistem dapat bergabung ("stimulus").
+Dampak ke scope / waktu / arsitektur: BRD naik ke v1.2 (S-17, S-18, BR-027, BR-120–BR-126, perubahan BR-018, BR-064, BR-070, perluasan L-05). Komponen baru yang besar (aplikasi web RME minimalis dan integrasi SATUSEHAT) di dalam 104 hari dengan 1 mobile developer: risiko jadwal R-02 dan kapasitas R-04 naik; opsi penyesuaian ada di PRD §9 untuk diputuskan user. PT. Arunika berposisi sebagai penyedia sistem RME: registrasi SATUSEHAT memerlukan nomor PSE, nomor afiliasi SNOMED CT, dan survei keamanan `[SRC-27]` (PT-32). Klinik/lab pengguna RME minimalis terhitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/04. Business Case §6 dan R-02/R-04 ditinjau ulang di gate Tahap 4 dan Tahap 7.
+Keputusan: Diterima user (T3-Q1a, T3-Q1b, T3-Q1c, T3-Q15, T3-Q16). Berlaku setelah BRD v1.2 dan PRD disetujui di gate Tahap 3
 
 ## Tech Debt
 
