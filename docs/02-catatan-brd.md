@@ -84,3 +84,43 @@ Catatan pewawancara: jawaban Q8 dikoreksi. MDR QRIS ditanggung rekanan (dipotong
 
 2026-11-17. Ditampilkan: rekap jawaban Q1–Q12, butir susunan penyusun yang perlu persetujuan (BR-080 pencatatan perubahan markup/biaya rekanan di audit trail; catatan PT-06 honor nakes menjadi urusan klinik rekanan; pemilik/tenggat PT-20–PT-27 dan tenggat baru PT-19 = gate Tahap 4), checklist gate, serta catatan 14 butir konfirmasi legal dan tinjauan ulang Business Case. Pertanyaan: apakah user menyetujui BRD termasuk scope/non-scope §4 dan butir-butir tersebut?
 Jawaban (T2-Gate): "Setujui".
+
+## Putaran setelah gate Tahap 2: CR-005
+
+Tanggal: 2026-11-17. Diawali permintaan user saat meninjau ringkasan visual BRD v1.0. Cara bertanya tetap satu pertanyaan per giliran.
+
+**Q13. Permintaan user (teks bebas, tanpa pertanyaan pewawancara).**
+Pernyataan user: "ada yang perlu disesuaikan di BRD, semua layanan yang dimulai atau diregistrasikan di Apps maka pembayarannya pun di aplikasi. jadi pasien datang hanya menunjukan appointment di mopbile apps."
+Catatan pewawancara: mengubah keputusan brief P3.3 dan BRD v1.0 BR-024 (klinik, lab, home visit dibayar langsung ke mitra). Dicatat sebagai CR-005 di `docs/backlog.md`. Dampak yang disampaikan ke user: pembagian dana langsung, markup, dan refund ikut berlaku; cakupan L-04, L-12, L-14 meluas; sistem rekanan perlu menerima status lunas dan mencocokkan appointment.
+
+**Q14. Untuk pendaftaran klinik, total biaya baru diketahui setelah pasien diperiksa. Apa yang dibayar pasien di aplikasi saat mendaftar klinik?** (pilihan: biaya awal saja, tambahan dibayar di tempat; semua lewat aplikasi termasuk tagihan susulan; paket harga tetap)
+Jawaban (teks bebas): "Adapun tuindakan tambahan yang tidak tercantum diaplikasi maka diselesaikan diluar aplikasi dan pembayarannya pun diluar palikasi".
+Catatan pewawancara: yang dibayar di aplikasi adalah layanan yang tercantum di aplikasi. Tindakan tambahan yang tidak tercantum diselesaikan dan dibayar di luar aplikasi. Pewawancara menerapkannya juga ke lab dan home visit karena pernyataan user berbentuk umum ("tindakan tambahan yang tidak tercantum di aplikasi").
+
+**Q15. Apakah markup Rumah Sehat juga ditambahkan ke harga pendaftaran klinik, lab, dan home visit yang dibayar di aplikasi?** (pilihan: ya, semua; tidak, pendapatan hanya lewat biaya rekanan; diatur per rekanan)
+Jawaban: "Ya, semua".
+
+**Q16. Dengan markup berlaku juga untuk klinik dan lab, apakah biaya dari rekanan (BR-043: langganan atau biaya per pendaftaran) tetap ada?** (pilihan: tetap ada; dihapus; diputuskan CEO, sistem tetap menyediakan pengaturannya)
+Jawaban: "Diputuskan CEO".
+Catatan pewawancara: pengaturan biaya rekanan tetap tersedia di backoffice (BR-063); dipakai atau tidak masuk PT-17.
+
+**Q17. Apakah aturan refund BRD v1.0 (refund hanya bila layanan gagal; pembatalan pasien setelah bayar tidak di-refund) berlaku sama untuk pendaftaran klinik, lab, dan home visit, termasuk pasien yang tidak datang?** (pilihan: ya, sama persis; sama, plus reschedule; ada pengecualian = pembatalan pasien sebelum batas waktu tertentu tetap di-refund, rincian di PRD)
+Jawaban: "Ada pengecualian".
+Catatan pewawancara: untuk klinik, lab, dan home visit, pembatalan oleh pasien sebelum batas waktu tertentu di-refund; batas waktunya ditetapkan di PRD. Refund bila layanan gagal tetap berlaku.
+
+**Q18. Apakah pengecualian refund itu juga berlaku untuk konsultasi online yang sudah dijadwalkan?** (pilihan: ya, berlaku juga; tidak, tetap seperti v1.0)
+Jawaban: "Ya, berlaku juga".
+Catatan pewawancara: pengecualian berlaku untuk semua layanan terjadwal (konsultasi online, klinik, lab, home visit). Pembelian produk tidak ditanyakan dan tetap mengikuti T2-Q9.
+
+**Q19. Apakah aturan biaya transaksi T2-Q12 (MDR QRIS ditanggung rekanan; biaya transaksi metode lain dibebankan ke pasien) juga berlaku untuk pendaftaran klinik, lab, dan home visit yang sekarang dibayar di aplikasi?** (konteks: fact-check CR-005 B-1 mencatat bahwa T2-Q8/Q12 dijawab saat transaksi di aplikasi hanya konsultasi dan produk. Pilihan: ya, sama; MDR QRIS dari markup, non-QRIS ke pasien; semua dari markup)
+Jawaban: "Ya, sama".
+Catatan pewawancara: BR-044 berlaku untuk semua layanan yang dibayar di aplikasi. Klinik dan lab menanggung MDR QRIS dari bagiannya; biaya transaksi non-QRIS ke pasien, menunggu L-12.
+
+**Q20. Harga mana yang ditampilkan di informasi biaya MCU dan lab (BR-023), setelah pendaftaran di aplikasi dibayar harga rekanan + markup?** (konteks: review kepatuhan CR-005 NB-1. Pilihan: harga bayar di aplikasi = harga rekanan + markup (rekomendasi pewawancara, menghindari selisih harga); harga rekanan, selisih dijelaskan di layar; bahas di Tahap 3)
+Jawaban: "Harga bayar di app".
+Catatan pewawancara: biaya yang ditampilkan di informasi biaya sama dengan harga yang dibayar bila mendaftar di aplikasi.
+
+## Gate revisi BRD v1.1 (CR-005)
+
+2026-11-17. Ditampilkan: rekap jawaban Q13–Q20; hasil fact-check (`docs/fact-check/tahap-02-cr-005.md`, LULUS setelah B-1 ditutup lewat Q19) dan review kepatuhan (`docs/compliance/tahap-02-cr-005.md`, LULUS, 0 blokir); perluasan L-04, L-08, L-10, L-12, L-13, L-14. Butir susunan penyusun yang dimintakan persetujuan: (1) aturan tindakan tambahan di luar aplikasi diterapkan juga ke lab dan home visit; (2) sistem rekanan menerima status lunas dan mencocokkan appointment, mekanisme di PRD/Tahap 4 (BR-070); (3) PT-28 pajak, pemilik CEO dengan konsultan pajak, tenggat gate Tahap 4. Pertanyaan: setujui BRD v1.1 beserta ketiga butir itu?
+Jawaban (T2-Gate-CR005): "Setujui".
