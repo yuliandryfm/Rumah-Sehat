@@ -1673,7 +1673,7 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 
 | ID | Kebutuhan | Sumber |
 | --- | --- | --- |
-| NFR-OBS-01 | Ketersediaan dipantau otomatis dan gangguan memicu peringatan, sebagai dasar pengukuran NFR-AVL | `[KEPUTUSAN-14]` (cara mengukur target `[USER] T3-Q12`) |
+| NFR-OBS-01 | Ketersediaan dipantau otomatis dan gangguan memicu peringatan, sebagai dasar pengukuran NFR-AVL | `[KEPUTUSAN-17]` (cara mengukur target `[USER] T3-Q12`) |
 | NFR-OBS-02 | Application log, security log, dan audit trail dipisahkan | ADR-005 |
 | NFR-OBS-03 | Application log dan security log juga tidak memuat data terlarang §7.3 | ADR-005 `[KEPUTUSAN-07]` |
 
