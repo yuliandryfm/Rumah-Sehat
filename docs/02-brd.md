@@ -1,7 +1,7 @@
 # BRD (Business Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.0 (disetujui di gate Tahap 2, 2026-11-17)
+Versi: 1.1 (revisi CR-005, disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`). Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
 Penyusun: Claude (persona Business Analyst + Compliance Officer); review kepatuhan oleh subagent `compliance-reviewer`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1 Kritis** untuk bagian 6 (kepatuhan dan data pribadi/kesehatan) dan bagian 5.5 (alur uang); **T2 Standar** untuk bagian lain.
@@ -88,11 +88,11 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | P-01 Registrasi dan verifikasi pasien | Pasien mendaftar dengan email + password atau akun Google/Apple, memberikan persetujuan pemrosesan data, dan mengisi data diri. Sebelum memakai konsultasi, home visit, atau pendaftaran klinik/lab, pasien mengunggah NIK dan foto KTP, lalu admin Rumah Sehat memverifikasinya secara manual (disetujui/ditolak) | `[DOK] P4.4, P4.6a, P4.6b` `[SRC-15]` |
 | P-02 Onboarding rekanan dan tenaga kesehatan | Klinik, lab, dan outlet bergabung; admin Rumah Sehat memverifikasi akun dan izin rekanan; sistem rekanan diintegrasikan. Tenaga kesehatan didaftarkan di bawah klinik rekanan dan diverifikasi admin Rumah Sehat, termasuk STR/SIP | `[DOK] P8.2a, PS6a` `[USER] T2-Q2, T2-Q3b` `[SRC-02]` `[SRC-21]` |
 | P-03 Konsultasi online | Pasien memilih tenaga kesehatan (dokter, psikolog, fisioterapis, tenaga medis) dan jadwalnya, melihat harga (tarif rekanan + markup, ditambah biaya transaksi untuk metode non-QRIS), membayar di aplikasi, lalu berkonsultasi lewat chat atau video di Rumah Sehat. Tenaga kesehatan menulis catatan; dokter dapat menerbitkan resep digital yang ditebus pasien di apotek mana pun. Payment gateway membagi dana langsung ke rekening klinik rekanan dan Rumah Sehat | `[DOK] P3.2, P3.4, PS6b` `[USER] T2-Q2, T2-Q4, T2-Q5, T2-Q6a, T2-Q8, T2-Q12` `[SRC-24]` |
-| P-04 Pendaftaran klinik dan lab | Pasien melihat jadwal klinik atau jadwal dan harga lab (dari sistem rekanan), mendaftar, dan membayar langsung ke mitra. Hasil lab dari lab rekanan masuk ke Rumah Sehat dan pasien diberi tahu | `[DOK] P3.3, PS6a, P4.1, P4.5` |
-| P-05 Home visit | Pasien memesan home visit yang disediakan klinik rekanan (data dari sistem rekanan) dan membayar langsung ke mitra. Kunjungan dilakukan oleh tenaga kesehatan klinik itu, termasuk fisioterapis dan tenaga medis | `[DOK] P1.2, P3.3, PS6a` `[USER] T2-Q5` |
-| P-06 Informasi biaya MCU dan lab | Pasien melihat biaya MCU dan pemeriksaan lab yang berasal dari sistem rekanan | `[DOK] P1.2, PS6a` |
+| P-04 Pendaftaran klinik dan lab | Pasien melihat jadwal dan harga layanan klinik atau lab (dari sistem rekanan), mendaftar, dan membayar di aplikasi (harga rekanan + markup, ditambah biaya transaksi untuk metode non-QRIS). Saat datang, pasien cukup menunjukkan appointment di aplikasi. Tindakan tambahan yang tidak tercantum di aplikasi diselesaikan dan dibayar di luar aplikasi. Payment gateway membagi dana langsung ke rekening rekanan dan Rumah Sehat. Hasil lab dari lab rekanan masuk ke Rumah Sehat dan pasien diberi tahu | `[DOK] PS6a, P4.1, P4.5` `[USER] T2-Q4, T2-Q8, T2-Q12, T2-Q13, T2-Q14, T2-Q15, T2-Q19` `[SRC-24]` (CR-005) |
+| P-05 Home visit | Pasien memesan home visit yang disediakan klinik rekanan (data dari sistem rekanan) dan membayar di aplikasi (harga rekanan + markup, ditambah biaya transaksi untuk metode non-QRIS). Kunjungan dilakukan oleh tenaga kesehatan klinik itu, termasuk fisioterapis dan tenaga medis. Tindakan tambahan yang tidak tercantum di aplikasi diselesaikan dan dibayar di luar aplikasi | `[DOK] P1.2, PS6a` `[USER] T2-Q5, T2-Q8, T2-Q12, T2-Q13, T2-Q14, T2-Q15, T2-Q19` `[SRC-24]` (CR-005) |
+| P-06 Informasi biaya MCU dan lab | Pasien melihat biaya MCU dan pemeriksaan lab berdasarkan harga dari sistem rekanan. Biaya yang ditampilkan sama dengan harga yang dibayar bila mendaftar di aplikasi (harga rekanan + markup) | `[DOK] P1.2, PS6a` `[USER] T2-Q15, T2-Q20` (CR-005) |
 | P-07 Pembelian produk | Pasien memilih produk dari katalog outlet rekanan (dari sistem rekanan), membayar di aplikasi (harga rekanan + markup + ongkir, ditambah biaya transaksi untuk metode non-QRIS), outlet memproses pesanan, kurir pihak ketiga mengirim. Payment gateway membagi dana langsung ke rekening outlet dan Rumah Sehat | `[DOK] PS1, PS4, PS5, PS6` `[USER] T2-Q4, T2-Q6a, T2-Q7, T2-Q8, T2-Q12` `[SRC-24]` |
-| P-08 Refund | Refund hanya diberikan bila layanan gagal (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim atau rusak). Pembatalan oleh pasien setelah membayar tidak di-refund | `[USER] T2-Q9` |
+| P-08 Refund | Refund diberikan bila layanan gagal (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim atau rusak). Untuk layanan terjadwal (konsultasi online, pendaftaran klinik, pendaftaran lab, home visit), pembatalan oleh pasien sebelum batas waktu tertentu juga di-refund. Pembatalan pembelian produk oleh pasien setelah membayar tidak di-refund | `[USER] T2-Q9, T2-Q17, T2-Q18` (CR-005) |
 | P-09 Operasional backoffice | Admin Rumah Sehat memverifikasi akun, mengelola konten, menangani layanan pelanggan, mengatur markup dan biaya rekanan, serta memantau dan merekonsiliasi pembagian dana | `[DOK] P8.2a` `[USER] T2-Q1, T2-Q4, T2-Q6` |
 | P-10 Permintaan hak data pasien | Pasien mengajukan permintaan akses, perbaikan, penghapusan, atau penarikan persetujuan; Rumah Sehat menanggapi dalam batas waktu yang diatur | `[DOK] P5.4` `[SRC-15]` |
 
@@ -111,7 +111,7 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | S-07 | Informasi biaya MCU dan pemeriksaan lab | `[DOK] P1.2, P3.1` |
 | S-08 | Pembelian obat bebas (dari apotek dan klinik rekanan berizin), produk kecantikan, dan produk kesehatan lain (vitamin, suplemen, alat kesehatan) dari outlet rekanan | `[DOK] PS1` `[USER] T2-Q3, T2-Q3b` |
 | S-09 | Resep digital oleh dokter, ditebus pasien di apotek mana pun di luar aplikasi | `[DOK] P3.4` |
-| S-10 | Pembayaran di aplikasi untuk konsultasi dan produk lewat payment gateway berizin BI, dengan pembagian dana langsung ke rekening rekanan | `[DOK] P3.3, PS4` `[USER] T2-Q4` |
+| S-10 | Pembayaran di aplikasi untuk semua layanan yang dipesan di aplikasi (konsultasi, pendaftaran klinik dan lab, home visit, produk) lewat payment gateway berizin BI, dengan pembagian dana langsung ke rekening rekanan. Bagian klinik, lab, dan home visit di brief P3.3 diganti CR-005 | `[DOK] P3.3, PS4` `[USER] T2-Q4, T2-Q13` (CR-005) |
 | S-11 | Integrasi otomatis ke sistem klinik, lab, dan outlet rekanan | `[DOK] PS6a` |
 | S-12 | Backoffice admin Rumah Sehat (verifikasi dan kelola akun, laporan dan rekonsiliasi dana, CMS termasuk konten edukasi, layanan pelanggan) | `[DOK] P8.2, P8.2a` |
 | S-13 | Portal admin klinik, admin lab, dan admin outlet | `[DOK] PS6c, PS6d` |
@@ -137,8 +137,9 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes rekanan (diganti, CR-001) | `[USER] T2-Q2` |
 | Penampungan dana pasien di rekening PT. Arunika lalu diteruskan sendiri ke mitra (diganti, CR-003) | `[USER] T2-Q4` |
 | Model komisi berupa potongan dari harga rekanan (diganti markup, CR-004) | `[USER] T2-Q6a` |
-| Refund atas pembatalan oleh pasien setelah membayar | `[USER] T2-Q9` |
-| Pembayaran klinik, lab, dan home visit di aplikasi (dibayar langsung ke mitra) | `[DOK] P3.3` |
+| Refund atas pembatalan pembelian produk oleh pasien setelah membayar, dan atas pembatalan layanan terjadwal setelah batas waktu pembatalan | `[USER] T2-Q9, T2-Q17, T2-Q18` |
+| Pembayaran tindakan tambahan yang tidak tercantum di aplikasi (diselesaikan dan dibayar di luar aplikasi) | `[USER] T2-Q14` |
+| Pembayaran klinik, lab, dan home visit langsung ke mitra (diganti pembayaran di aplikasi, CR-005) | `[USER] T2-Q13` |
 | Katalog produk milik Rumah Sehat sendiri (katalog dari sistem rekanan) | `[DOK] PS6a` |
 
 ### 4.3 Belum diputuskan (dibahas di Tahap 3)
@@ -179,11 +180,11 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
-| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal dan data klinik dari sistem rekanan | `[DOK] P3.1, PS6a` |
+| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal, data klinik, dan harga layanan dari sistem rekanan | `[DOK] P3.1, PS6a` `[USER] T2-Q13` |
 | BR-021 | Pasien dapat mendaftar pemeriksaan di lab rekanan berdasarkan jadwal dan harga dari sistem rekanan | `[DOK] P3.1, PS6a` |
 | BR-022 | Pasien dapat memesan home visit yang disediakan klinik rekanan, dilayani tenaga kesehatan klinik itu termasuk fisioterapis dan tenaga medis. Data home visit berasal dari sistem rekanan | `[DOK] P1.2, PS6a` `[USER] T2-Q5` |
-| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab dari sistem rekanan sebelum mendaftar | `[DOK] P1.2, PS6a` |
-| BR-024 | Pembayaran pendaftaran klinik, lab, dan home visit dilakukan langsung ke mitra, tidak lewat aplikasi | `[DOK] P3.3` |
+| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab sebelum mendaftar, berdasarkan harga dari sistem rekanan. Biaya yang ditampilkan sama dengan harga yang dibayar bila mendaftar di aplikasi (harga rekanan + markup, BR-042) | `[DOK] P1.2, PS6a` `[USER] T2-Q20` |
+| BR-024 | Pendaftaran klinik, pendaftaran lab, dan home visit yang dipesan di aplikasi dibayar di aplikasi. Saat datang ke klinik atau lab, pasien cukup menunjukkan appointment di aplikasi. Tindakan tambahan yang tidak tercantum di aplikasi diselesaikan dan dibayar di luar aplikasi (user menjawab untuk klinik; penerapan ke lab dan home visit adalah tafsiran penyusun atas pernyataan umum user, disetujui user di gate revisi `[USER] T2-Gate-CR005`). Menggantikan keputusan brief P3.3 (CR-005) | `[USER] T2-Q13, T2-Q14` |
 | BR-025 | Hasil lab dari lab rekanan diterima lewat integrasi, disimpan, dan diberitahukan ke pasien | `[DOK] P4.1, P4.5, PS6a` |
 | BR-026 | Riwayat pendaftaran klinik, lab, dan home visit pasien disimpan | `[DOK] P4.1` |
 
@@ -202,12 +203,12 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
-| BR-040 | Konsultasi online dan pembelian produk dibayar di aplikasi melalui payment gateway berizin Bank Indonesia | `[DOK] P3.3, PS4` `[USER] T2-Q4` `[SRC-19]` |
+| BR-040 | Semua layanan yang dipesan di aplikasi (konsultasi online, pendaftaran klinik, pendaftaran lab, home visit, dan pembelian produk) dibayar di aplikasi melalui payment gateway berizin Bank Indonesia. Bagian klinik, lab, dan home visit di brief P3.3 diganti CR-005 | `[DOK] P3.3, PS4` `[USER] T2-Q4, T2-Q13` `[SRC-19]` |
 | BR-041 | Payment gateway membagi dana setiap pembayaran langsung: bagian rekanan ke rekening rekanan, bagian Rumah Sehat ke rekening PT. Arunika. PT. Arunika tidak menampung dana bagian rekanan | `[USER] T2-Q4` |
-| BR-042 | Harga yang dibayar pasien untuk konsultasi dan produk = harga dari rekanan + markup Rumah Sehat. Markup berbentuk persen atau nominal dan dapat diatur per rekanan oleh admin Rumah Sehat. Besarannya ditetapkan CEO sebelum go-live (PT-17) | `[USER] T2-Q1, T2-Q6, T2-Q6a` |
-| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur admin Rumah Sehat. Bentuk yang dipakai dan besarannya `[TIDAK DIKETAHUI]` (PT-17) | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1` |
-| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan ke pasien. Biaya transaksi metode pembayaran lain dibebankan ke pasien dan ditampilkan di total pembayaran, menunggu konfirmasi legal per metode (L-12) | `[USER] T2-Q8, T2-Q12` `[SRC-24]` |
-| BR-045 | Refund hanya diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim atau rusak). Pembatalan oleh pasien setelah membayar tidak di-refund. Daftar kondisi, pihak yang memutuskan, dan batas waktunya ditetapkan di PRD dengan persetujuan user | `[USER] T2-Q9` |
+| BR-042 | Harga yang dibayar pasien untuk konsultasi, pendaftaran klinik, pendaftaran lab, home visit, dan produk = harga dari rekanan + markup Rumah Sehat. Markup berbentuk persen atau nominal dan dapat diatur per rekanan oleh admin Rumah Sehat. Besarannya ditetapkan CEO sebelum go-live (PT-17) | `[USER] T2-Q1, T2-Q6, T2-Q6a, T2-Q15` |
+| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur admin Rumah Sehat. Dipakai atau tidak, bentuk, dan besarannya diputuskan CEO sebelum go-live (PT-17) | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1, T2-Q16` |
+| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan ke pasien. Biaya transaksi metode pembayaran lain dibebankan ke pasien dan ditampilkan di total pembayaran, menunggu konfirmasi legal per metode (L-12). Aturan ini berlaku untuk semua layanan yang dibayar di aplikasi, termasuk pendaftaran klinik, lab, dan home visit (CR-005) | `[USER] T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` |
+| BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim atau rusak). Untuk layanan terjadwal (konsultasi online, pendaftaran klinik, pendaftaran lab, home visit), pembatalan oleh pasien sebelum batas waktu tertentu juga di-refund; pembatalan setelah batas waktu itu tidak di-refund. Pembatalan pembelian produk oleh pasien setelah membayar tidak di-refund. Daftar kondisi, batas waktu pembatalan, perlakuan pasien yang tidak datang (no-show), pihak yang memutuskan, dan batas waktu refund ditetapkan di PRD dengan persetujuan user | `[USER] T2-Q9, T2-Q17, T2-Q18` |
 | BR-046 | Admin Rumah Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagian dana sesuai haknya; admin Rumah Sehat memantau dan merekonsiliasi pembagian dana oleh payment gateway | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` |
 
 ### 5.6 Notifikasi
@@ -231,7 +232,7 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
-| BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan tarif, home visit, katalog, stok, pesanan, dan hasil lab. Kemampuan integrasi sistem rekanan `[TIDAK DIKETAHUI]` (PT-05) | `[DOK] PS6a, P4.3` `[USER] T2-Q6` |
+| BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan tarif, home visit, katalog, stok, pesanan, hasil lab, serta status lunas dan appointment yang dibayar di aplikasi (CR-005); mekanisme pencocokan appointment saat pasien datang (integrasi atau portal admin klinik/lab) ditetapkan di PRD dan Tahap 4. Kemampuan integrasi sistem rekanan `[TIDAK DIKETAHUI]` (PT-05) | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13` |
 | BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir pihak ketiga, WhatsApp, email, notifikasi push, serta login Google dan Apple. Penyedia dipilih di Tahap 4–5 dengan persetujuan user | `[DOK] P4.2` `[USER] T2-Q4` |
 
 ### 5.9 Audit trail
@@ -299,17 +300,17 @@ Wajib dijawab tim legal/compliance manusia. Rincian pertanyaan ada di `docs/comp
 | L-01 | Skema telemedisin: PT. Arunika sebagai PSE dengan klinik rekanan sebagai penyelenggara; registrasi Kemenkes dan *regulatory sandbox* | BR-014, BR-101 | Tahap 4 (arsitektur peran dan data) |
 | L-02 | Perizinan berusaha, KBLI, kategori PSE, perlu-tidaknya badan usaha terpisah (PT-02) | BR-100, BR-117 | Tahap 12 (syarat go-live 5); lebih awal kalau memengaruhi biaya |
 | L-03 | Obat bebas lewat platform: ketentuan BPOM dan kewajiban PSEF (apoteker penanggung jawab, jaringan apotek) (PT-04) | BR-031, BR-116 | Tahap 7 (agar urutan pengurangan scope jelas) |
-| L-04 | Pembagian dana langsung oleh payment gateway: perlu-tidaknya izin atau penetapan BI bagi PT. Arunika; ketentuan refund; kebolehan membebankan biaya transaksi payment gateway ke pasien (termasuk per metode pembayaran) | BR-041, BR-044, BR-045, BR-115 | Tahap 4 |
+| L-04 | Pembagian dana langsung oleh payment gateway, kini untuk semua layanan termasuk klinik, lab, dan home visit (CR-005): perlu-tidaknya izin atau penetapan BI bagi PT. Arunika; ketentuan refund; kebolehan membebankan biaya transaksi payment gateway ke pasien (termasuk per metode pembayaran) | BR-024, BR-040, BR-041, BR-044, BR-045, BR-115 | Tahap 4 |
 | L-05 | Status catatan konsultasi sebagai rekam medis, pengendalinya, masa retensinya, SATUSEHAT, resep elektronik, rahasia kedokteran | BR-112, BR-114 | Tahap 4 (model data) |
 | L-06 | Hak hapus pasien terhadap kewajiban retensi rekam medis | BR-106 | Tahap 4 |
 | L-07 | STR/SIP: status psikolog, kanal verifikasi resmi, SIP yang berlaku untuk telemedisin; kebolehan konsultasi daring oleh fisioterapis dan tenaga medis, serta profesi yang dimaksud "tenaga medis" | BR-012, BR-102 | Tahap 3 (alur verifikasi nakes) |
-| L-08 | PDP: dasar pemrosesan per jenis data, DPIA, DPO, lembaga penerima notifikasi, data anggota keluarga/anak | BR-103–BR-105, BR-109–BR-111 | Tahap 4 |
+| L-08 | PDP: dasar pemrosesan per jenis data, DPIA, DPO, lembaga penerima notifikasi, data anggota keluarga/anak; apakah data transaksi yang memuat nama layanan klinik, pemeriksaan lab, atau home visit tergolong data kesehatan, dan batas data minimal yang boleh dikirim ke payment gateway (CR-005) | BR-103–BR-105, BR-109–BR-111, BR-040 | Tahap 4 |
 | L-09 | Lokasi data sektor kesehatan; syarat transfer ke penyedia pihak ketiga di luar negeri | BR-113 | Tahap 4–5 (pemilihan penyedia) |
-| L-10 | Pengaturan tarif konsultasi atau markup platform oleh Kemenkes | BR-042, BR-118 | Tahap 12 |
+| L-10 | Pengaturan tarif pelayanan kesehatan digital atau markup platform oleh Kemenkes, untuk konsultasi, pendaftaran klinik, pendaftaran lab, dan home visit (CR-005), serta kebolehan menambahkan markup di atas tarif fasyankes rekanan. Peraturan yang sudah terbit tidak ditemukan; yang ada pernyataan rencana `[SRC-06]` | BR-024, BR-042, BR-118 | Tahap 12 |
 | L-11 | Instansi pengawas dan auditor yang akan memeriksa Rumah Sehat (PT-03) | Bagian 6.1 | Tahap 10 |
-| L-12 | Pembebanan biaya transaksi (MDR) per instrumen pembayaran (kartu, virtual account, e-wallet) ke pasien, dan siapa *merchant of record* dalam pembagian dana langsung | BR-044 | Tahap 4 |
-| L-13 | Kesesuaian markup atas harga barang dan tarif rekanan dengan posisi PT. Arunika sebagai platform yang bukan penjual barang dan bukan fasyankes | BR-042, BR-031 | Tahap 4 |
-| L-14 | Kebijakan refund "hanya bila layanan gagal" dan penyajian rincian harga terhadap ketentuan perlindungan konsumen PMSE | BR-042, BR-044, BR-045 | Tahap 3 (aturan refund di PRD) |
+| L-12 | Pembebanan biaya transaksi (MDR) per instrumen pembayaran (kartu, virtual account, e-wallet) ke pasien, dan siapa *merchant of record* dalam pembagian dana langsung, untuk semua layanan termasuk klinik, lab, dan home visit (CR-005). Kategori usaha merchant menentukan tarif MDR QRIS `[SRC-24]` | BR-044 | Tahap 4 |
+| L-13 | Kesesuaian markup atas harga barang dan tarif rekanan (konsultasi, klinik, lab, home visit) dengan posisi PT. Arunika sebagai platform yang bukan penjual barang dan bukan fasyankes | BR-042, BR-031 | Tahap 4 |
+| L-14 | Kebijakan refund (bila layanan gagal, ditambah pembatalan layanan terjadwal sebelum batas waktu), penyajian rincian harga, dan keterbukaan bahwa harga di aplikasi hanya mencakup layanan yang tercantum sedangkan tindakan tambahan dibayar di luar aplikasi, terhadap ketentuan perlindungan konsumen PMSE | BR-023, BR-024, BR-042, BR-044, BR-045 | Tahap 3 (aturan refund di PRD) |
 
 ## 7. Asumsi, batasan, dan dependensi
 
@@ -333,7 +334,7 @@ Tidak ada asumsi atas fakta bisnis. Keputusan Tahap 2 yang bergantung pada konfi
 | Dependensi | Dampak bila terlambat | Sumber |
 | --- | --- | --- |
 | Rekanan (min. 2 klinik, 1 lab, 3 outlet) bergabung dan sistemnya bisa diintegrasikan (PT-05) | Layanan S-04 sampai S-08 dan semua konsultasi (karena nakes di bawah klinik rekanan) tidak bisa berjalan | `[DOK] P4.3, P8.2` `[USER] T2-Q2` |
-| Payment gateway berizin BI yang mendukung pembagian dana langsung ke rekening rekanan | BR-041 tidak bisa dipenuhi; ketersediaan fitur diverifikasi di Tahap 4–5 | `[USER] T2-Q4` |
+| Payment gateway berizin BI yang mendukung pembagian dana langsung ke rekening rekanan | BR-041 tidak bisa dipenuhi untuk semua layanan berbayar; ketersediaan fitur diverifikasi di Tahap 4–5 | `[USER] T2-Q4, T2-Q13` |
 | Penyedia video, kurir, WhatsApp, email, push yang sesuai keputusan lokasi data (PT-22) | Pemilihan penyedia di Tahap 4–5 tertahan | `[DOK] P4.2, P5.5` |
 | Konfirmasi legal L-01 sampai L-14 | Lihat kolom "Dibutuhkan sebelum" di bagian 6.3 | Bagian 6.3 |
 | Pendaftaran PSE, perizinan berusaha, dan ketentuan Kemenkes yang mungkin terbit sebelum go-live | Syarat go-live 5 tidak terpenuhi | `[SRC-06]` `[SRC-12]` |
@@ -341,7 +342,7 @@ Tidak ada asumsi atas fakta bisnis. Keputusan Tahap 2 yang bergantung pada konfi
 
 ## 8. Perubahan terhadap dokumen yang sudah lulus gate
 
-Dicatat sebagai change request di `docs/backlog.md`. Semuanya keputusan user di wawancara Tahap 2.
+Dicatat sebagai change request di `docs/backlog.md`. Semuanya keputusan user: CR-001 sampai CR-004 di wawancara Tahap 2, CR-005 di putaran setelah gate Tahap 2.
 
 | CR | Perubahan | Dokumen terdampak | Sumber |
 | --- | --- | --- | --- |
@@ -349,6 +350,7 @@ Dicatat sebagai change request di `docs/backlog.md`. Semuanya keputusan user di 
 | CR-002 | Apotek rekanan menjadi outlet rekanan; obat bebas dijual apotek dan klinik rekanan berizin | Brief PS2, PS2a | `[USER] T2-Q3, T2-Q3b` |
 | CR-003 | Pembayaran dibagi langsung oleh payment gateway ke rekening rekanan; PT. Arunika tidak menampung dan meneruskan dana sendiri | Brief PS4, P8.2a | `[USER] T2-Q4` |
 | CR-004 | Pendapatan transaksi berupa markup di atas harga rekanan (persen/nominal, per rekanan), menggantikan komisi potongan | Business Case §5.1, §5.2 Tabel A–B | `[USER] T2-Q6, T2-Q6a` |
+| CR-005 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi, termasuk pendaftaran klinik, lab, dan home visit; pasien cukup menunjukkan appointment; tindakan tambahan di luar aplikasi. Markup dan aturan biaya transaksi berlaku untuk semua layanan; refund atas pembatalan layanan terjadwal sebelum batas waktu. Diajukan setelah gate Tahap 2 | Brief P3.3; BRD v1.0 P-04, P-05, P-06, P-08, S-10, §4.2, BR-020, BR-023, BR-024, BR-040, BR-042, BR-043, BR-044, BR-045, BR-070, L-04, L-08, L-10, L-12, L-13, L-14, PT-17, PT-27, PT-28; Business Case §5 | `[USER] T2-Q13–T2-Q20` |
 
 ## 9. Tinjauan ulang Business Case (gate Tahap 2)
 
@@ -357,10 +359,12 @@ Sesuai rencana tinjauan `[DOK: 01-business-case.md]` §9:
 | Butir | Dampak | Sumber |
 | --- | --- | --- |
 | Model pendapatan | Komisi potongan diganti markup (CR-004). Rumus Tabel A–B di Business Case §5.2 hanya setara untuk markup **persen** bila "nilai transaksi" dibaca sebagai harga rekanan sebelum markup; untuk markup **nominal**, pendapatan = nominal × jumlah transaksi. Istilah dan rumusnya perlu diperbarui. Besaran tetap `[TIDAK DIKETAHUI]` (PT-17) | `[USER] T2-Q6a` |
-| Biaya transaksi dan ongkir | Ongkir dan biaya transaksi non-QRIS dibebankan ke pasien; MDR QRIS ditanggung rekanan. Dengan begitu biaya transaksi tidak lagi mengurangi pendapatan Rumah Sehat seperti dicatat di Business Case §6.1, selama konfirmasi legal L-12 tidak mengubahnya | `[USER] T2-Q7, T2-Q8, T2-Q12` `[SRC-24]` |
+| Biaya transaksi dan ongkir | Ongkir dan biaya transaksi non-QRIS dibebankan ke pasien; MDR QRIS ditanggung rekanan. Dengan begitu biaya transaksi tidak lagi mengurangi pendapatan Rumah Sehat seperti dicatat di Business Case §6.1, selama konfirmasi legal L-12 tidak mengubahnya | `[USER] T2-Q7, T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` |
 | Biaya perizinan, legal, dan kepatuhan | Bertambah komponen yang belum bernilai: konsultan hukum, pendaftaran PSE, perizinan berusaha, kemungkinan PSEF, DPIA, petugas PDP (PT-25) | Bagian 6 |
 | Risiko R-03 (izin) | Sudah diriset. Kebutuhan teridentifikasi (bagian 6.2), tetapi beberapa butir kritis menunggu konfirmasi legal (L-01, L-03, L-04, L-05). Penilaian ulang kemungkinan dilakukan di gate | `[DOK: compliance/tahap-02-riset.md]` |
 | Risiko R-01 (rekanan) | Bertambah cakupannya: konsultasi online kini juga bergantung pada klinik rekanan karena semua nakes berpraktik di bawahnya | `[USER] T2-Q2` |
+| Model pendapatan (CR-005) | Markup kini juga berlaku untuk pendaftaran klinik, lab, dan home visit, sehingga sumber pendapatan transaksi bertambah. Biaya rekanan dipakai atau tidak diputuskan CEO (PT-17). Business Case §5 perlu memuat keduanya saat diperbarui | `[USER] T2-Q15, T2-Q16` |
+| Risiko R-01 (rekanan), tambahan CR-005 | Pembayaran klinik, lab, dan home visit di aplikasi menambah kebutuhan integrasi: sistem rekanan perlu menerima status lunas dan mencocokkan appointment (BR-070, PT-05) | `[USER] T2-Q13` |
 | Risiko baru: regulasi berubah | Kemenkes menyatakan akan mengatur seluruh platform kesehatan digital, termasuk tarif, sehingga aturan baru bisa terbit sebelum go-live | `[SRC-06]` |
 
 ## 10. Pertanyaan terbuka
@@ -377,7 +381,7 @@ Sesuai rencana tinjauan `[DOK: 01-business-case.md]` §9:
 | PT-07 | Terjawab | Konsultasi online + home visit; berpraktik atas nama klinik rekanan (T2-Q2, T2-Q5) | — |
 | PT-08, PT-10, PT-12, PT-13, PT-15 | Terbuka | Tetap; tenggat Tahap 3 | Tidak (dijawab di Tahap 3) |
 | PT-16 | Terjawab | T2-Q10, T2-Q11 (bagian 1.2) | — |
-| PT-17 | Terbuka | Besaran markup dan bentuk serta besaran biaya rekanan ditetapkan CEO sebelum go-live; sistem menyediakan pengaturannya (T2-Q1) | Tidak |
+| PT-17 | Terbuka | Besaran markup, serta dipakai-tidaknya, bentuk, dan besaran biaya rekanan ditetapkan CEO sebelum go-live; sistem menyediakan pengaturannya (T2-Q1, T2-Q16) | Tidak |
 | PT-18 | Terbuka | Tetap; tenggat sebelum gate Tahap 4 | Tidak |
 | PT-19 | Terbuka | Status mobile developer penuh waktu belum dijawab. Tenggat baru: gate Tahap 4 (disetujui di gate Tahap 2) (bersama baseline biaya) | Tidak |
 
@@ -396,4 +400,5 @@ Kolom Pemilik dan Tenggat diusulkan penyusun dan disetujui user di gate Tahap 2 
 | PT-24 | Masa retensi per jenis data (setelah L-05) | CEO, berdasarkan pendapat legal | Sebelum Tahap 4 (model data) | Tidak |
 | PT-25 | Anggaran dan waktu perizinan, legal, dan kepatuhan | CEO | Gate Tahap 4 (baseline biaya) | Tidak |
 | PT-26 | Bagaimana data anggota keluarga dipakai: apakah pasien dapat memesan konsultasi, pendaftaran, home visit, atau produk untuk anggota keluarga? | User (PM) | Tahap 3 | Tidak (dijawab di awal Tahap 3) |
-| PT-27 | Refund setelah dana terbagi langsung ke rekening rekanan (BR-041, BR-045): siapa yang menanggung dan bagaimana dana ditarik kembali dari rekanan? | CEO; mekanisme teknis di Tahap 4–5 | Tahap 3 (aturan bisnis), Tahap 4–5 (mekanisme) | Tidak |
+| PT-27 | Refund setelah dana terbagi langsung ke rekening rekanan (BR-041, BR-045), kini untuk semua layanan termasuk pembatalan sebelum batas waktu (CR-005): siapa yang menanggung, termasuk MDR atas transaksi yang di-refund, dan bagaimana dana ditarik kembali dari rekanan? | CEO; mekanisme teknis di Tahap 4–5 | Tahap 3 (aturan bisnis), Tahap 4–5 (mekanisme) | Tidak |
+| PT-28 | Perlakuan pajak atas markup dan pembagian dana langsung untuk semua layanan (usulan review kepatuhan CR-005, pemilik dan tenggat diusulkan penyusun dan disetujui user di gate revisi `[USER] T2-Gate-CR005`; ketentuannya `[TIDAK DIKETAHUI]`) | CEO, dengan konsultan pajak | Gate Tahap 4 (baseline biaya) | Tidak |

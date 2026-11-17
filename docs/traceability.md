@@ -22,11 +22,11 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-016 | Isi chat konsultasi (termasuk foto), catatan tenaga kesehatan, dan resep disimpan. Panggilan video tidak… | `[DOK] P4.1` | | | | BRD v1.0 |
 | BR-017 | Aplikasi tersedia 24 jam, 7 hari. Ketersediaan tenaga kesehatan mengikuti jadwal masing-masing. Target… | `[DOK] P6.4` | | | | BRD v1.0 |
 | BR-018 | Tarif konsultasi berasal dari rekanan | `[USER] T2-Q6` | | | | BRD v1.0 |
-| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal dan data klinik dari sistem rekanan | `[DOK] P3.1, PS6a` | | | | BRD v1.0 |
+| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal, data klinik, dan harga layanan dari sistem rekanan | `[DOK] P3.1, PS6a` `[USER] T2-Q13` | | | | BRD v1.1 (CR-005) |
 | BR-021 | Pasien dapat mendaftar pemeriksaan di lab rekanan berdasarkan jadwal dan harga dari sistem rekanan | `[DOK] P3.1, PS6a` | | | | BRD v1.0 |
 | BR-022 | Pasien dapat memesan home visit yang disediakan klinik rekanan, dilayani tenaga kesehatan klinik itu… | `[DOK] P1.2, PS6a` `[USER] T2-Q5` | | | | BRD v1.0 |
-| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab dari sistem rekanan sebelum mendaftar | `[DOK] P1.2, PS6a` | | | | BRD v1.0 |
-| BR-024 | Pembayaran pendaftaran klinik, lab, dan home visit dilakukan langsung ke mitra, tidak lewat aplikasi | `[DOK] P3.3` | | | | BRD v1.0 |
+| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab sebelum mendaftar; biaya yang ditampilkan sama dengan… | `[DOK] P1.2, PS6a` `[USER] T2-Q20` | | | | BRD v1.1 (CR-005) |
+| BR-024 | Pendaftaran klinik, pendaftaran lab, dan home visit yang dipesan di aplikasi dibayar di aplikasi. Saat datang… | `[USER] T2-Q13, T2-Q14` | | | | BRD v1.1 (CR-005) |
 | BR-025 | Hasil lab dari lab rekanan diterima lewat integrasi, disimpan, dan diberitahukan ke pasien | `[DOK] P4.1, P4.5, PS6a` | | | | BRD v1.0 |
 | BR-026 | Riwayat pendaftaran klinik, lab, dan home visit pasien disimpan | `[DOK] P4.1` | | | | BRD v1.0 |
 | BR-030 | Pasien dapat membeli obat bebas, produk kecantikan, dan produk kesehatan lain (vitamin, suplemen, alat… | `[DOK] PS1` | | | | BRD v1.0 |
@@ -35,12 +35,12 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-033 | Katalog, stok, dan pesanan produk berasal dari sistem outlet rekanan lewat integrasi. Rumah Sehat tidak… | `[DOK] PS6, PS6a` | | | | BRD v1.0 |
 | BR-034 | Produk dikirim kurir pihak ketiga yang terintegrasi. Ongkos kirim dibayar pasien dan ditambahkan ke total… | `[DOK] PS5` `[USER] T2-Q7` | | | | BRD v1.0 |
 | BR-035 | Riwayat pesanan produk pasien disimpan | `[DOK] P4.1` | | | | BRD v1.0 |
-| BR-040 | Konsultasi online dan pembelian produk dibayar di aplikasi melalui payment gateway berizin Bank Indonesia | `[DOK] P3.3, PS4` `[USER] T2-Q4` `[SRC-19]` | | | | BRD v1.0 |
-| BR-041 | Payment gateway membagi dana setiap pembayaran langsung: bagian rekanan ke rekening rekanan, bagian Rumah… | `[USER] T2-Q4` | | | | BRD v1.0 |
-| BR-042 | Harga yang dibayar pasien untuk konsultasi dan produk = harga dari rekanan + markup Rumah Sehat. Markup… | `[USER] T2-Q1, T2-Q6, T2-Q6a` | | | | BRD v1.0 |
-| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur… | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1` | | | | BRD v1.0 |
-| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan ke… | `[USER] T2-Q8, T2-Q12` `[SRC-24]` | | | | BRD v1.0 |
-| BR-045 | Refund hanya diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak… | `[USER] T2-Q9` | | | | BRD v1.0 |
+| BR-040 | Semua layanan yang dipesan di aplikasi (konsultasi online, pendaftaran klinik, pendaftaran lab, home visit,… | `[DOK] P3.3, PS4` `[USER] T2-Q4, T2-Q13` `[SRC-19]` | | | | BRD v1.1 (CR-005) |
+| BR-041 | Payment gateway membagi dana setiap pembayaran langsung: bagian rekanan ke rekening rekanan, bagian Rumah… | `[USER] T2-Q4` | | | | BRD v1.1 (cakupan meluas, CR-005) |
+| BR-042 | Harga yang dibayar pasien untuk konsultasi, pendaftaran klinik, pendaftaran lab, home visit, dan produk =… | `[USER] T2-Q1, T2-Q6, T2-Q6a, T2-Q15` | | | | BRD v1.1 (CR-005) |
+| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur… | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1, T2-Q16` | | | | BRD v1.1 (CR-005) |
+| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan ke… | `[USER] T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` | | | | BRD v1.1 (CR-005) |
+| BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim… | `[USER] T2-Q9, T2-Q17, T2-Q18` | | | | BRD v1.1 (CR-005) |
 | BR-046 | Admin Rumah Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagian… | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` | | | | BRD v1.0 |
 | BR-050 | Rumah Sehat mengirim pemberitahuan ke pasien (konfirmasi, pengingat, status pesanan, hasil lab) lewat… | `[DOK] P4.5` | | | | BRD v1.0 |
 | BR-060 | Backoffice admin Rumah Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, rekanan) | `[DOK] P8.2a` | | | | BRD v1.0 |
@@ -49,7 +49,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-063 | Backoffice admin Rumah Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | | | | BRD v1.0 |
 | BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan | `[DOK] PS6c` | | | | BRD v1.0 |
 | BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | | | | BRD v1.0 |
-| BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6` | | | | BRD v1.0 |
+| BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13` | | | | BRD v1.1 (CR-005) |
 | BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir… | `[DOK] P4.2` `[USER] T2-Q4` | | | | BRD v1.0 |
 | BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | | | | BRD v1.0 |
 | BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | | | | BRD v1.0 |
