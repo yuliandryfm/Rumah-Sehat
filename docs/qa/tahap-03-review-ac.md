@@ -14,7 +14,8 @@ Kriteria blokir: `.claude/skills/runbook/references/aturan-kerja.md` §1–§2, 
 | Story yang direview | 97 (EP-01 sampai EP-17), ditambah aturan §3.1–§3.11, KU-01–KU-10, matriks refund RF-01–RF-12, status §3.6, PB-01–PB-14, NFR §6, dan spesifikasi audit trail §7 |
 | Temuan blokir | 18 (QA-B01 sampai QA-B18) |
 | Temuan non-blokir | 10 (QA-N01 sampai QA-N10; dibatasi 10 butir terpenting) |
-| Status | **TIDAK LULUS** |
+| Status | **TIDAK LULUS** (review awal) |
+| Status setelah cek ulang commit 10ddb0b | **TIDAK LULUS**: 16 blokir tertutup, 2 terbuka sebagian (QA-B08, QA-B15), 1 blokir baru (QA-B19). Lihat §6 |
 
 Sebaran blokir: §3.1 akses (1), harga dan pembayaran §3.3–§3.4 / EP-08 (2), refund §3.5 / EP-08 (5), status §3.6 (1), konsultasi dan no-show (1), pendaftaran klinik/lab (1), EP-13 RME minimalis (2), EP-15 audit trail (2), EP-16 data pribadi (3).
 
@@ -80,3 +81,64 @@ Setiap temuan di bawah menyebut ID story/AC dan nomor baris di `docs/03-prd.md`.
 - Usulan rumusan di tabel adalah contoh agar AC dapat diuji. Nilai baru (batas waktu, basis markup, nasib dana rekanan pada RF-12, batas usia) adalah keputusan bisnis yang perlu dibawa ke user sebagai UP atau pertanyaan, bukan ditetapkan penyusun.
 - Kolom "Test case" di `docs/traceability.md` belum diisi, karena review ini menilai AC dan belum menghasilkan test case. Menurut kepala `docs/traceability.md`, test case disusun di Tahap 7.
 - Cek ulang cukup pada baris yang berubah untuk menutup QA-B01 sampai QA-B18. Bila PRD berubah lagi sebelum cek ulang, nomor baris di laporan ini dapat bergeser; ID story/AC tetap menjadi rujukan utama.
+
+## 6. Cek ulang putaran 1 (commit 10ddb0b)
+
+Tanggal: 2026-11-17. Cakupan: hanya baris yang berubah, sesuai `git diff 8eec20c 10ddb0b -- docs/03-prd.md` (PRD kini 1.988 baris). Nomor baris di bagian 3–4 merujuk ke versi sebelum perbaikan; nomor baris di bagian ini merujuk ke 10ddb0b. Nilai bisnis baru berlabel UP (UP-51–UP-55, PB-15–PB-19) dibawa ke gate dan tidak dinilai sebagai cacat. Blokir baru hanya diberikan bila perbaikan itu sendiri menimbulkan AC yang tidak bisa diuji atau kontradiksi.
+
+Perintah yang dijalankan:
+
+```
+$ git diff --stat 8eec20c 10ddb0b
+ docs/03-prd.md | 401 +++++++++++++++++++++++++++---------------
+ (dan 6 berkas lain)
+$ grep -n "RF-18\|PB-16\|RF-14" docs/03-prd.md      # RF-18 ada di dua kelompok AB-34 (baris 226 dan 227); tidak ada AC penetapan oleh Keuangan
+$ grep -n "^- AC3. Given rekanan membatalkan pesanan terbayar" docs/03-prd.md   # baris 1428, tidak berubah
+$ grep -n "E-05 (data anggota keluarga dewasa)\|E-05 (membuka alamat" docs/03-prd.md   # baris 732, 842, 1109
+$ grep -n "KEPUTUSAN-16" docs/decision-log.md        # terdaftar (baris 32)
+```
+
+### 6.1 Status per blokir
+
+| ID | Status | Bukti perbaikan (baris di 10ddb0b) | Catatan |
+| --- | --- | --- | --- |
+| QA-B01 | Tertutup | §1.2 (67) memuat Petugas PDP; §3.1 (122–134) menambah Petugas PDP, Layanan Pelanggan (transaksi terkait klaim/tiket, foto bukti klaim), Super Admin (klaim tereskalasi), alamat dan nomor HP untuk tenaga kesehatan home visit; AB-33 | — |
+| QA-B02 | Tertutup | AB-17 (158), US-301 AC3, US-801 AC5, US-809 AC2, US-812 AC2 memakai satu titik "pembayaran dibuat" | — |
+| QA-B03 | Tertutup | AB-11, AB-11a (152), US-801 AC2 | Basis per unit adalah UP-51, dibawa ke gate |
+| QA-B04 | Tertutup | AB-34 (221–228) memberi rumus per kelompok; RF-01 = harga rekanan penuh; RF-12/RF-13 sebagai penyebab platform | Pengelompokan RF-18 menimbulkan masalah baru, lihat QA-B19 |
+| QA-B05 | Tertutup | RF-13–RF-16 (208–211), US-207 AC2, US-704 AC2/AC5/AC6, US-705 AC2, US-802 AC3–AC6, US-806 AC1 | Langkah Keuangan di RF-14 menimbulkan masalah baru, lihat QA-B19 |
+| QA-B06 | Tertutup | Definisi "bergabung" dan batas ketidakhadiran §3.5; tabel transisi konsultasi; US-305 AC1/AC4, US-306 AC1/AC3, US-307 AC1–AC2 | — |
+| QA-B07 | Tertutup | PB-15, RF-06/RF-07/RF-17, tabel transisi home visit (271–292), US-503 AC3, US-504 AC2, US-807 AC1 | — |
+| QA-B08 | **Terbuka sebagian** | Tabel transisi §3.6 (234–323) dan AB-36 menutup bagian utama (status asal, kejadian bersamaan) | US-1404 AC3 (1428) tidak berubah: masih menetapkan "Dibatalkan rekanan" untuk semua pembatalan rekanan termasuk produk, tanpa syarat status asal. Ini bertentangan dengan §3.6: pembatalan outlet menjadi "Ditolak outlet" (baris 299–300), dan pembatalan klinik setelah Check-in ditolak (baris 269). Lihat 6.2 |
+| QA-B09 | Tertutup | US-805 AC1, AC2, AC4; tabel transisi home visit (275) | — |
+| QA-B10 | Tertutup | AB-35, PB-19, tabel transisi refund, US-808 AC4–AC5 | — |
+| QA-B11 | Tertutup | RF-18, transisi "Dibatalkan sistem" (264, 277), US-402 AC3, US-404 AC3, definisi no-show klinik/lab | Kewajiban rekanan RF-18 dibahas di QA-B19 |
+| QA-B12 | Tertutup | US-1302 AC4–AC6, US-1306 AC5, §3.1 baris rekam medis RME (baca/tulis dibedakan) | — |
+| QA-B13 | Tertutup | US-1306 AC6, US-1302 AC6, US-1309 AC1/AC2/AC4, KEPUTUSAN-16 terdaftar | Catatan kecil C3 di 6.3 |
+| QA-B14 | Tertutup | US-1501 AC3 membedakan aksi pengguna, aksi sistem/integrasi, efek eksternal, dan event aksi gagal | — |
+| QA-B15 | **Terbuka sebagian** | Kolom Sensitif dan definisi data sensitif §3.1 (134); US-311 dan US-503 diberi event E-05 | Perbaikan menimbulkan dua kontradiksi baru, lihat 6.2 |
+| QA-B16 | Tertutup | US-1602 AC1, US-1604 AC2 (autentikasi ulang untuk akun Google/Apple) | — |
+| QA-B17 | Tertutup | US-1601 AC2–AC4 (efek teramati, butir utama dan tambahan, pesanan produk) | Kelayakan RF-02 karena penarikan persetujuan sudah ditanyakan ke L-08/L-14 |
+| QA-B18 | Tertutup | US-1603 AC5–AC7 | Catatan kecil C4 di 6.3 |
+
+### 6.2 Blokir yang masih terbuka
+
+| ID | Story / bagian (baris di 10ddb0b) | Masalah | Kondisi uji yang gagal | Usulan rumusan perbaikan |
+| --- | --- | --- | --- | --- |
+| QA-B08 (sisa) | US-1404 AC3 (1428); §3.6 klinik/lab (269), produk (299–300) | US-1404 AC3 masih berbunyi "status menjadi Dibatalkan rekanan dan refund RF-05 atau RF-08", tanpa syarat status asal. Tabel §3.6 menetapkan pembatalan outlet menjadi "Ditolak outlet", dan menolak pembatalan klinik setelah Check-in | Outlet membatalkan pesanan berstatus Diproses outlet lewat integrasi: menurut US-1404 AC3 status "Dibatalkan rekanan", menurut §3.6 dan US-704 AC2 "Ditolak outlet". Klinik membatalkan pendaftaran berstatus Check-in: menurut US-1404 AC3 diterima dengan RF-05, menurut §3.6 ditolak | "Given rekanan membatalkan pesanan terbayar, When diterima, Then status berubah sesuai tabel §3.6 (layanan terjadwal: Dibatalkan rekanan dengan RF-05; produk: Ditolak outlet dengan RF-08). Pembatalan dari status yang tidak diizinkan ditolak (AC2)" |
+| QA-B15 (sisa) | §3.1 definisi data sensitif (134); E-05 (1697); US-310 Audit (732); US-902 Audit (1109); §3.1 baris profil (124); US-503 Audit (842) | (a) §3.1 menetapkan E-05 dicatat saat data sensitif dibuka "oleh pihak selain subjek data". Pemilik akun yang membuka data anak (data anak dan data kesehatan bertanda Ya) termasuk "pihak selain subjek data", tetapi US-310 dan US-902 hanya menyebut "E-05 (data anggota keluarga dewasa)". (b) Kolom Sensitif baris profil menyatakan profil dewasa selain keluhan awal tidak sensitif, sedangkan US-503 mencatat E-05 saat tenaga kesehatan membuka alamat dan nomor HP pasien dewasa. Padahal E-05 didefinisikan sebagai akses ke data sensitif | Orang tua membuka hasil lab anaknya: penguji A mengharap E-05 (aturan umum §3.1), penguji B tidak (baris Audit US-902). Tenaga kesehatan membuka alamat pasien dewasa: penguji A mengharap E-05 (US-503), penguji B tidak (kolom Sensitif "tidak") | (a) Tambahkan di §3.1 baris 134, misalnya: "Pemilik akun yang membuka data anggota keluarga anak yang menjadi tanggungannya tidak dicatat sebagai E-05" (atau sebaliknya, lalu samakan baris Audit US-310 dan US-902). (b) Pilih satu: tandai alamat dan nomor HP pada tugas home visit sebagai Sensitif "Ya" di §3.1, atau hapus E-05 dari baris Audit US-503 |
+| QA-B19 (baru) | RF-14 (209), US-802 AC3 (989), PB-16 (346); RF-18 (213), AB-34 (226–227), US-806 AC1 (1027), US-808 AC3 (1049) | Perbaikan QA-B05 dan QA-B11 menambah dua langkah manual Keuangan tanpa AC: (a) RF-14: refund dibuat "setelah Keuangan memeriksa dalam PB-16", tetapi tidak ada akibat bila PB-16 habis tanpa pemeriksaan, tidak jelas apakah refund dipicu aksi Keuangan atau otomatis, dan tidak ada AC aksi pemeriksaan itu. (b) RF-18 masuk dua kelompok AB-34 sekaligus (penyebab rekanan dan penyebab platform) dan kelompoknya "ditetapkan Keuangan dari log integrasi". Padahal US-806 AC1 menyatakan refund RF-18 dibuat dengan kewajiban per pihak "tanpa persetujuan manual", dan US-808 AC3 mencatat nominal kewajiban rekanan saat refund dibuat. Kedua kelompok memberi kewajiban rekanan berbeda (harga rekanan penuh ditambah biaya, lawan bagian yang diterima) | RF-14: PB-16 habis dan Keuangan belum memeriksa; refund dibuat otomatis, dieskalasi, atau tetap tertahan? RF-18: saat refund otomatis dibuat di jadwal mulai, berapa kewajiban rekanan yang tercatat di laporan rekanan (US-808 AC3)? | (a) Tambah AC di US-802 atau US-811: "Given notifikasi nominal tidak sama masuk antrean, When Keuangan menyelesaikan pemeriksaan, Then refund RF-14 dibuat dan tercatat E-08. Given PB-16 habis tanpa pemeriksaan, Then [refund dibuat otomatis, atau dieskalasi ke Super Admin seperti AB-33]". (b) "Refund RF-18 ke pasien dibuat otomatis saat jadwal mulai. Kewajiban per pihak berstatus 'Menunggu penetapan penyebab' sampai Keuangan memilih kelompok (penyebab rekanan atau platform) berdasarkan log integrasi dalam [batas], tercatat E-08; setelah itu nominal dihitung dengan AB-34". Batas waktu dan perilaku bila terlewat adalah keputusan user (UP) |
+
+### 6.3 Catatan non-blokir dari cek ulang
+
+| ID | Bagian (baris di 10ddb0b) | Catatan | Usulan |
+| --- | --- | --- | --- |
+| C1 | §3.6 home visit (271–292) | Tidak ada transisi bila jadwal lewat tanpa laporan pasien (pesanan tetap Terkonfirmasi, Ditugaskan, atau Berangkat setelah PB-15), atau bila tenaga kesehatan tidak pernah menandai "Selesai" setelah "Tiba". Pendaftaran klinik punya penutupan otomatis di akhir hari, home visit tidak. Akibatnya status tertahan, dan KPI-01 (yang menghitung home visit "Selesai") tidak menghitungnya | Tambah transisi penutupan otomatis, misalnya "Tiba → Selesai pada akhir hari kalender rekanan", dan status akhir untuk pesanan tanpa laporan setelah PB-15 |
+| C2 | RF-16 (211); US-807 AC1 (1036); US-704 AC6 (934) | US-807 AC1 memberlakukan PB-04 untuk RF-16, padahal PB-04 dihitung dari status Diterima. Untuk jalur "Dikirim tanpa kabar" yang tidak pernah Diterima, batas pengajuannya tidak berjangkar | "RF-16 lewat status Dikirim dapat diajukan selama status masih Dikirim setelah PB-18" (atau batas lain) |
+| C3 | US-1309 AC2 (Gagal setelah 24 jam) | Setelah status "Gagal" karena gangguan, tidak ada AC kirim ulang manual oleh Admin Fasyankes. Urutan AC tertulis AC1, AC2, AC4, AC3 | Tambah AC kirim ulang manual; rapikan urutan |
+| C4 | US-1603 AC6 (1534) | "Sampai pembatasan dicabut": tidak disebut siapa yang mencabut dan bagaimana | Tambah AC pencabutan oleh Petugas PDP atas permintaan pasien atau berakhirnya alasan, tercatat E-13 |
+| C5 | US-1303 AC3 (1294); US-311 AC1 | QA-N07 baru ditangani untuk jadwal tenaga kesehatan (US-302 AC5); jadwal RME (US-1303 AC3) masih hanya mengatur penghapusan. US-311 AC1 menampilkan keluhan awal di daftar, padahal E-05 dikaitkan dengan "detail sesi" yang tidak punya AC. QA-N06 (soft delete lalu tambah ulang anggota keluarga) belum ditangani | Samakan US-1303 dengan US-302 AC5; nyatakan apakah keluhan awal tampil di daftar atau hanya di detail |
+
+### 6.4 Status akhir cek ulang
+
+**TIDAK LULUS.** Blokir yang masih terbuka: QA-B08 (sisa: US-1404 AC3), QA-B15 (sisa: E-05 untuk data anak dan alamat home visit), dan QA-B19 (baru: langkah manual Keuangan di RF-14 dan RF-18). Ketiganya dapat ditutup dengan perubahan beberapa baris. Cek ulang berikutnya cukup memeriksa baris 1428, 134, 732, 842, 1109, dan baris yang menyentuh RF-14, RF-18, US-802 AC3, US-806 AC1, serta US-808 AC3.
