@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Git pre-merge-commit hook: merge commit juga harus hijau.
+# Menjalankan aturan yang sama dengan pre-commit.
+exec "$(git rev-parse --show-toplevel)/.githooks/pre-commit"

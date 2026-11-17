@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Git pre-commit hook: HANYA COMMIT HIJAU.
+#
+# Aktif setelah: git config core.hooksPath .githooks
+#
+# Aturan:
+# 1. Commit yang hanya berisi dokumen/konfigurasi runbook (docs/, .claude/, .githooks/,
+#    README*, CLAUDE.md, .gitignore, .gitattributes) boleh langsung.
+# 2. Commit yang berisi kode wajib punya scripts/verify.sh.
+# 3. Semua perubahan kode harus ikut di-commit (tidak ada perubahan unstaged atau file
+#    untracked di luar docs/), supaya yang diverifikasi = persis yang di-commit.
+# 4. scripts/verify.sh dijalankan. Kalau gagal, commit ditolak.
+
+set -u
+
+ROOT="$(git rev-parse --show-toplevel)" || exit 1
+cd "$ROOT" || exit 1
+
+NONCODE='^(docs/|\.claude/|\.githooks/|README|CLAUDE\.md$|\.gitignore$|\.gitattributes$)'
+VERIFY="scripts/verify.sh"
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMRD)"
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+CODE_STAGED="$(printf '%s\n' "$STAGED" | grep -Ev "$NONCODE" || true)"
+if [ -z "$CODE_STAGED" ]; then
+  exit 0
+fi
+
+if [ ! -f "$VERIFY" ]; then
+  {
+    echo "COMMIT DITOLAK: ada perubahan kode, tapi $VERIFY belum ada."
+    echo "Buat $VERIFY (lint + type check + test) terlebih dahulu. Lihat Tahap 8."
+    echo "File kode yang di-stage:"
+    printf '  %s\n' $CODE_STAGED
+  } >&2
+  exit 1
+fi
+
+UNSTAGED="$(git diff --name-only | grep -Ev '^docs/' || true)"
+UNTRACKED="$(git ls-files --others --exclude-standard | grep -Ev '^docs/' || true)"
+if [ -n "$UNSTAGED" ] || [ -n "$UNTRACKED" ]; then
+  {
+    echo "COMMIT DITOLAK: ada perubahan kode yang tidak ikut di-commit."
+    echo "Yang diverifikasi harus persis sama dengan yang di-commit."
+    echo "Stage semua perubahan (git add) atau kembalikan, lalu commit lagi."
+    [ -n "$UNSTAGED" ] && { echo "Belum di-stage:"; printf '  %s\n' $UNSTAGED; }
+    [ -n "$UNTRACKED" ] && { echo "Untracked:"; printf '  %s\n' $UNTRACKED; }
+  } >&2
+  exit 1
+fi
+
+echo "pre-commit: menjalankan $VERIFY ..." >&2
+if ! bash "$VERIFY"; then
+  echo "COMMIT DITOLAK: $VERIFY merah. Hanya kode hijau yang boleh di-commit." >&2
+  exit 1
+fi
+
+echo "pre-commit: hijau, commit diizinkan." >&2
+exit 0
