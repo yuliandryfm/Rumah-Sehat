@@ -103,3 +103,35 @@ Catatan pewawancara: T3-Q4 tetap berlaku. Portal rekanan memiliki satu menu peng
 ## Akhir wawancara
 
 Wawancara Tahap 3 (T3-Q1 sampai T3-Q16, termasuk Q1a, Q1b, Q1c, Q3a) selesai 2026-11-17. PRD disusun di `docs/03-prd.md`.
+
+## Review sebelum gate
+
+- Review QA (`docs/qa/tahap-03-review-ac.md`): 18 blokir di putaran pertama dan 1 blokir baru dari perbaikan; LULUS setelah 2 putaran perbaikan.
+- Review kepatuhan (`docs/compliance/tahap-03.md`): 1 blokir (C3-B01, informasi Pasal 21 ayat (1) UU PDP di layar persetujuan); LULUS setelah cek ulang. Usulan L-15 dan pemajuan bagian PSE L-02 ke Tahap 4.
+- Fact-check (`docs/fact-check/tahap-03.md`): 2 blokir (rumus kewajiban refund MDR, label peran operator RME); LULUS setelah cek ulang.
+
+## Gate Tahap 3
+
+2026-11-17. Ditampilkan: hasil ketiga review, rekap jawaban T3-Q1–T3-Q16, checklist gate dan gate anti-halu. Pertanyaan diajukan satu per satu.
+
+**G1. Apakah rekap jawaban Tahap 3 (T3-Q1 sampai T3-Q16) sudah benar?** (pilihan: benar semua; ada yang salah)
+Jawaban: "Benar semua".
+
+**G2. (UP-15) Bolehkah pemilik akun melihat catatan konsultasi, resep, dan hasil lab anggota keluarga dewasa yang ia pesankan layanan?** (konteks: hak akses UU PDP atas data "tentang dirinya" (Pasal 7); kebolehan ditanyakan ke L-05/L-08; review kepatuhan meminta keputusan eksplisit. Pilihan: boleh, dicatat audit (usulan awal); tidak boleh kecuali anak; tunggu legal)
+Jawaban: "Boleh, dicatat audit".
+Catatan pewawancara: UP-15 berlaku; setiap akses dicatat E-05; kalau legal menyatakan tidak boleh, diubah lewat change request.
+
+**G3. Apakah admin rekanan boleh menanggapi keluhan pasien dan mengajukan perubahan profil lewat portal Rumah Sehat?** (konteks: T3-Q14 "hanya pelaporan atau rekap"; BR-064/065 menyebut "profil dan keluhan"; temuan fact-check FC3-N02. Pilihan: boleh, keduanya; hanya baca)
+Jawaban: "Hanya baca".
+Catatan pewawancara: rekanan hanya melihat keluhan dan profil di portal. Tanggapan keluhan dan perubahan profil lewat Layanan Pelanggan di luar portal, lalu dimasukkan admin Rumah Sehat. US-1104, US-1202, US-1203, UP-30, UP-31, AB-62, dan BR-064/065 disesuaikan.
+
+**G4. Bagaimana menangani risiko jadwal "sangat tinggi" setelah CR-006?** (pilihan: nilai di Tahap 7 (rekomendasi pewawancara); bertahap di dalam RME; tambah kapasitas tim)
+Jawaban: "Nilai di Tahap 7 (Recommended)".
+Catatan pewawancara: scope tetap; kelayakan dinilai dengan estimasi effort di Tahap 7; pengurusan PSE untuk RME minimalis dan registrasi SATUSEHAT (PT-32) dimulai segera setelah gate.
+
+**G5. Target pemulihan sistem (RTO) yang dipakai, mengingat belum ada petugas siaga 24 jam?** (konteks: T3-Q13 RTO 4 jam; tinjauan Tech Lead berisiko sedang. Pilihan: tetap 4 jam + jadwal siaga; 4 jam di jam kerja, 8 jam di luar jam kerja)
+Jawaban: "4 jam kerja / 8 jam luar".
+Catatan pewawancara: NFR-DR-02 diubah menjadi 4 jam di jam kerja (WIB, kalender hari kerja) dan 8 jam di luar jam kerja. Jam kerja ditetapkan bersama kalender hari kerja sebelum go-live.
+
+**G6. Persetujuan gate Tahap 3: PRD v1.0, BRD v1.2 (CR-006), UP-01–UP-57, AB-64, L-15 dan pemajuan bagian PSE L-02 ke Tahap 4, PT-29–PT-33 beserta pemilik dan tenggatnya, KEPUTUSAN-03–KEPUTUSAN-17, dengan penyesuaian G2–G5.** (pilihan: setujui semua; setujui dengan koreksi; belum disetujui)
+Jawaban (T3-Gate): "Setujui semua".

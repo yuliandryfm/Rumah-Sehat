@@ -1,7 +1,7 @@
 # BRD (Business Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.2 (revisi CR-006 dari wawancara Tahap 3, diajukan bersama PRD di gate Tahap 3). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
+Versi: 1.2 (revisi CR-006 dari wawancara Tahap 3, disetujui bersama PRD di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
 Penyusun: Claude (persona Business Analyst + Compliance Officer); review kepatuhan oleh subagent `compliance-reviewer`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1 Kritis** untuk bagian 6 (kepatuhan dan data pribadi/kesehatan), bagian 5.5 (alur uang), dan bagian 5.11 (rekam medis, CR-006); **T2 Standar** untuk bagian lain.
@@ -38,7 +38,7 @@ KPI diambil dari Business Case `[DOK: 01-business-case.md]` §4.1. Definisi peng
 
 Tidak berubah dari brief `[DOK] P8.2, P8.3`: minimal 2 klinik, 1 lab, dan 3 outlet rekanan terintegrasi; minimal 5 dokter dan 1 psikolog terverifikasi; ketujuh layanan berjalan; tayang di Play Store dan App Store; izin dan kepatuhan regulasi terpenuhi; lulus audit keamanan; sign-off UAT CEO, CTO, dan konsultan medis. Tanggal tetap. Scope boleh dikurangi, kecuali syarat izin/kepatuhan, audit keamanan, dan UAT. Kebutuhan kepatuhan yang menjadi isi syarat izin dirinci di bagian 6.
 
-Klinik dan lab yang memakai RME minimalis (BR-120) terhubung ke Rumah Sehat lewat integrasi, sehingga terhitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/KPI-04. Ini konsekuensi jawaban `[USER] T3-Q14, T3-Q15` dan dimintakan konfirmasi di gate Tahap 3.
+Klinik dan lab yang memakai RME minimalis (BR-120) terhubung ke Rumah Sehat lewat integrasi, sehingga terhitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/KPI-04. Ini konsekuensi jawaban `[USER] T3-Q14, T3-Q15`, dikonfirmasi di gate Tahap 3 `[USER] T3-Gate`.
 
 ## 2. Stakeholder dan peran pengguna
 
@@ -71,7 +71,7 @@ Klinik dan lab yang memakai RME minimalis (BR-120) terhubung ke Rumah Sehat lewa
 
 Semua dokter, psikolog, fisioterapis, dan tenaga medis berpraktik **atas nama klinik rekanan** `[USER] T2-Q2`. Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes tidak ada lagi (CR-001). Apoteker tetap tidak dipakai di rilis pertama `[DOK] P3.5, PS3`. Pesanan obat bebas di klinik rekanan dikelola admin klinik `[DOK] PS3`; pembagian fitur portal admin klinik dan admin outlet untuk klinik yang menjual produk ditetapkan di PRD.
 
-Aplikasi RME minimalis (BR-120, CR-006) dipakai staf klinik dan lab rekanan yang belum punya sistem `[USER] T3-Q15`. Peran rincinya, termasuk operator PT. Arunika untuk onboarding, diusulkan di PRD (UP-26) dan diputuskan di gate Tahap 3.
+Aplikasi RME minimalis (BR-120, CR-006) dipakai staf klinik dan lab rekanan yang belum punya sistem `[USER] T3-Q15`. Peran rincinya, termasuk operator PT. Arunika untuk onboarding, diusulkan di PRD (UP-26) dan disetujui di gate Tahap 3 `[USER] T3-Gate`.
 
 ## 3. Proses bisnis
 
@@ -239,8 +239,8 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 | BR-061 | Backoffice admin Rumah Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehatan, dan promo | `[DOK] P8.2a` |
 | BR-062 | Backoffice admin Rumah Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` |
 | BR-063 | Backoffice admin Rumah Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` |
-| BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan. Untuk klinik ditambah satu menu pengaturan konsultasi online (tarif, durasi, jadwal tenaga kesehatan, BR-018). Selain itu portal rekanan hanya untuk pelaporan dan rekap | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16` |
-| BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana, profil, dan keluhan | `[DOK] PS6d` `[USER] T2-Q3b` |
+| BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan. Untuk klinik ditambah satu menu pengaturan konsultasi online (tarif, durasi, jadwal tenaga kesehatan, BR-018). Selain itu portal rekanan hanya untuk pelaporan dan rekap; profil dan keluhan hanya dapat dilihat, tanggapan dan perubahan lewat Layanan Pelanggan | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16, T3-Gate G3` |
+| BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana, profil, dan keluhan. Profil dan keluhan hanya dapat dilihat, seperti BR-064 | `[DOK] PS6d` `[USER] T2-Q3b, T3-Gate G3` |
 
 ### 5.8 Integrasi
 
@@ -324,7 +324,7 @@ Wajib dijawab tim legal/compliance manusia. Rincian pertanyaan ada di `docs/comp
 | # | Topik | BR terkait | Dibutuhkan sebelum |
 | --- | --- | --- | --- |
 | L-01 | Skema telemedisin: PT. Arunika sebagai PSE dengan klinik rekanan sebagai penyelenggara; registrasi Kemenkes dan *regulatory sandbox* | BR-014, BR-101 | Tahap 4 (arsitektur peran dan data) |
-| L-02 | Perizinan berusaha, KBLI, kategori PSE, perlu-tidaknya badan usaha terpisah (PT-02). Meluas karena CR-006: pendaftaran PSE untuk aplikasi RME minimalis (apakah satu pendaftaran cukup untuk dua sistem) dan perizinan PT. Arunika sebagai penyedia sistem RME | BR-100, BR-117, BR-120 | Tahap 12 (syarat go-live 5); lebih awal kalau memengaruhi biaya. Bagian PSE diusulkan dimajukan ke Tahap 4 karena menjadi prasyarat registrasi SATUSEHAT `[SRC-27]` (usulan review kepatuhan Tahap 3, dimintakan persetujuan di gate Tahap 3) |
+| L-02 | Perizinan berusaha, KBLI, kategori PSE, perlu-tidaknya badan usaha terpisah (PT-02). Meluas karena CR-006: pendaftaran PSE untuk aplikasi RME minimalis (apakah satu pendaftaran cukup untuk dua sistem) dan perizinan PT. Arunika sebagai penyedia sistem RME | BR-100, BR-117, BR-120 | Tahap 12 (syarat go-live 5); lebih awal kalau memengaruhi biaya. Bagian PSE diusulkan dimajukan ke Tahap 4 karena menjadi prasyarat registrasi SATUSEHAT `[SRC-27]` (usulan review kepatuhan Tahap 3, disetujui di gate Tahap 3 `[USER] T3-Gate`) |
 | L-03 | Obat bebas lewat platform: ketentuan BPOM dan kewajiban PSEF (apoteker penanggung jawab, jaringan apotek) (PT-04) | BR-031, BR-116 | Tahap 7 (agar urutan pengurangan scope jelas) |
 | L-04 | Pembagian dana langsung oleh payment gateway, kini untuk semua layanan termasuk klinik, lab, dan home visit (CR-005): perlu-tidaknya izin atau penetapan BI bagi PT. Arunika; ketentuan refund; kebolehan membebankan biaya transaksi payment gateway ke pasien (termasuk per metode pembayaran) | BR-024, BR-040, BR-041, BR-044, BR-045, BR-115 | Tahap 4 |
 | L-05 | Status catatan konsultasi sebagai rekam medis, pengendalinya, masa retensinya, SATUSEHAT, resep elektronik, rahasia kedokteran. Meluas karena CR-006: kewajiban PT. Arunika sebagai penyedia sistem RME minimalis, pengendali data rekam medis di RME minimalis (fasyankes atau PT. Arunika), kecukupan kelompok data minimal, dasar dan kewajiban pengiriman ke SATUSEHAT, validasi hasil lab, isi perjanjian pengendali/prosesor dan serah terima rekam medis saat kerja sama berakhir, serta akses pemilik akun ke data klinis anggota keluarga dewasa dari sisi rahasia kedokteran (rincian `docs/compliance/tahap-03.md` bagian 4) | BR-112, BR-114, BR-120–BR-126, BR-008 | Tahap 4 (model data) |
@@ -337,7 +337,7 @@ Wajib dijawab tim legal/compliance manusia. Rincian pertanyaan ada di `docs/comp
 | L-12 | Pembebanan biaya transaksi (MDR) per instrumen pembayaran (kartu, virtual account, e-wallet) ke pasien, dan siapa *merchant of record* dalam pembagian dana langsung, untuk semua layanan termasuk klinik, lab, dan home visit (CR-005). Kategori usaha merchant menentukan tarif MDR QRIS `[SRC-24]` | BR-044 | Tahap 4 |
 | L-13 | Kesesuaian markup atas harga barang dan tarif rekanan (konsultasi, klinik, lab, home visit) dengan posisi PT. Arunika sebagai platform yang bukan penjual barang dan bukan fasyankes | BR-042, BR-031 | Tahap 4 |
 | L-14 | Kebijakan refund (bila layanan gagal, ditambah pembatalan layanan terjadwal sebelum batas waktu), penyajian rincian harga, dan keterbukaan bahwa harga di aplikasi hanya mencakup layanan yang tercantum sedangkan tindakan tambahan dibayar di luar aplikasi, terhadap ketentuan perlindungan konsumen PMSE | BR-023, BR-024, BR-042, BR-044, BR-045 | Tahap 3 (aturan refund di PRD). Belum terjawab di Tahap 3 (PT-20); aturan refund ditetapkan user di PRD §3.5, dan perubahan dari legal dicatat sebagai change request |
-| L-15 | Perjanjian pemrosesan data antara PT. Arunika dan setiap fasyankes pengguna RME minimalis, serta antara PT. Arunika dan klinik rekanan untuk data konsultasi (usulan review kepatuhan Tahap 3, dimintakan persetujuan di gate Tahap 3) | BR-014, BR-120, BR-123 | Tahap 4 |
+| L-15 | Perjanjian pemrosesan data antara PT. Arunika dan setiap fasyankes pengguna RME minimalis, serta antara PT. Arunika dan klinik rekanan untuk data konsultasi (usulan review kepatuhan Tahap 3, disetujui di gate Tahap 3 `[USER] T3-Gate`) | BR-014, BR-120, BR-123 | Tahap 4 |
 
 ## 7. Asumsi, batasan, dan dependensi
 

@@ -1,10 +1,10 @@
 # PRD (Product Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.0 (draf untuk gate Tahap 3)
+Versi: 1.0, disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
-Dasar: BRD v1.2 `[DOK: 02-brd.md]`. BRD v1.1 sudah lulus gate; revisi v1.2 (CR-006) diajukan bersama PRD ini di gate Tahap 3.
+Dasar: BRD v1.2 `[DOK: 02-brd.md]`, disetujui bersama PRD ini di gate Tahap 3.
 Tingkat ketelitian:
 - **T1 Kritis**: §3.1 (akses), §3.3–§3.5 (harga, pembayaran, refund), EP-08 (pembayaran), EP-13 (RME minimalis), EP-15 (audit trail), EP-16 (data pribadi), §6.4–§6.6 (keamanan, privasi, retensi), §7 (audit trail).
 - **T2 Standar**: bagian lain.
@@ -20,7 +20,7 @@ PRD menetapkan *apa* yang dibangun dan bagaimana mengujinya. *Bagaimana* membang
 | `BR-xxx` | Kebutuhan bisnis di BRD v1.2 (dokumen yang lulus gate atau diajukan bersama PRD ini). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
 | `[USER] T3-Qx` | Jawaban user di wawancara Tahap 3, tercatat di `docs/03-catatan-prd.md`. `[USER] T2-Qx` merujuk ke `docs/02-catatan-brd.md` |
 | `[DOK] Px.x` | Project Brief dan catatan intake (`docs/00-project-brief.md`, `docs/00-catatan-intake.md`) |
-| `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user. Semua UP terdaftar di §11 dan dibawa ke gate Tahap 3 untuk disetujui atau diubah user. Setelah disetujui, statusnya menjadi `[USER] T3-Gate` |
+| `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5 |
 | `[KEPUTUSAN-xx]` | Keputusan teknis penyusun, tercatat di `docs/decision-log.md` |
 | `[SRC-xx]` | Fakta eksternal yang sudah diverifikasi, tercatat di `docs/sources.md` |
 | `[TIDAK DIKETAHUI]` | Belum ada informasi. Masuk pertanyaan terbuka (§12) beserta pemiliknya |
@@ -93,6 +93,7 @@ Semua butir non-scope BRD §4.2 tetap berlaku. Tambahan:
 | Jadwal ulang (reschedule) layanan terjadwal | Tafsiran penyusun atas opsi yang tidak dipilih user di T2-Q17 dan T3-Q6 `[UP-57]` |
 | Pengisian katalog, stok, atau pesanan produk di portal oleh outlet tanpa sistem | BR-033 `[USER] T3-Q1b` (tidak disebut user) |
 | Rekam medis, check-in, antrean, hasil lab, atau home visit yang diisi di portal Rumah Sehat | `[USER] T3-Q14` |
+| Menanggapi keluhan atau mengajukan perubahan profil lewat portal rekanan (keduanya hanya dapat dilihat) | `[USER] T3-Gate G3` |
 | Pembatalan pesanan produk oleh pasien setelah membayar | BR-045 `[UP-08]` |
 
 ### 2.3 Urutan pengurangan scope
@@ -379,9 +380,9 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | --- | --- | --- |
 | AB-60 | Jadwal, layanan, harga, home visit, katalog, stok, pesanan produk, status appointment, check-in, antrean, dan hasil lab berasal dari sistem rekanan lewat integrasi | BR-033, BR-070 |
 | AB-61 | Klinik dan lab yang belum punya sistem memakai aplikasi RME minimalis. RME minimalis terhubung ke Rumah Sehat lewat integrasi yang sama dengan sistem rekanan lain | BR-120, BR-121 `[USER] T3-Q14, T3-Q15` |
-| AB-62 | Portal rekanan hanya untuk pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online untuk klinik (PB-13, AB-55) | BR-064, BR-065 `[USER] T3-Q14, T3-Q16` |
+| AB-62 | Portal rekanan hanya untuk pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online untuk klinik (PB-13, AB-55). Keluhan dan profil rekanan hanya dapat dilihat; tanggapan keluhan dan perubahan profil lewat Layanan Pelanggan di luar portal | BR-064, BR-065 `[USER] T3-Q14, T3-Q16, T3-Gate G3` |
 | AB-63 | Outlet wajib terhubung lewat integrasi sistemnya sendiri. RME minimalis tidak menyediakan katalog produk | BR-033 `[USER] T3-Q1b` |
-| AB-64 | Klinik/lab yang memakai RME minimalis dihitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/KPI-04, karena terhubung lewat integrasi | `[USER] T3-Q14, T3-Q15` (konsekuensi yang dimintakan konfirmasi di gate) |
+| AB-64 | Klinik/lab yang memakai RME minimalis dihitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/KPI-04, karena terhubung lewat integrasi | `[USER] T3-Q14, T3-Q15, T3-Gate` |
 | AB-65 | Klinik rekanan yang juga menjual produk memakai satu akun rekanan dengan dua kemampuan (klinik dan outlet). Portalnya menampilkan laporan keduanya | `[UP-20]` |
 
 ### 3.11 Data klinis dan kerahasiaan
@@ -1211,18 +1212,18 @@ Sebagai Layanan Pelanggan, saya ingin mengelola tiket keluhan, agar setiap keluh
 Rujukan: BR-062, BR-064, BR-065 `[UP-30]` · Audit: tidak ada aksi sensitif
 
 - AC1. Given tiket baru, When Layanan Pelanggan membuka antrean, Then tiket tampil urut dari yang terlama dan dapat diubah statusnya: Baru, Diproses, Menunggu pasien, Selesai.
-- AC2. Given tiket terkait pesanan rekanan, When Layanan Pelanggan meneruskannya ke rekanan, Then admin rekanan itu melihat tiket di portal (US-1203) tanpa data klinis pasien.
+- AC2. Given tiket terkait pesanan rekanan, When Layanan Pelanggan meneruskannya ke rekanan, Then admin rekanan itu dapat melihat tiket di portal (US-1203) tanpa data klinis pasien. Tanggapan rekanan yang diterima di luar portal dicatat Layanan Pelanggan di tiket.
 - AC3. Given tiket ditutup, When pasien membalas dalam 7 hari, Then tiket dibuka kembali `[UP-30]`.
 
 ### EP-12 Portal rekanan
 
-Portal rekanan hanya untuk pelaporan dan rekap, ditambah menu pengaturan konsultasi online untuk klinik (US-301, US-302 AC4) `[USER] T3-Q14, T3-Q16`.
+Portal rekanan hanya untuk pelaporan dan rekap, ditambah menu pengaturan konsultasi online untuk klinik (US-301, US-302 AC4). Keluhan dan profil hanya dapat dilihat `[USER] T3-Q14, T3-Q16, T3-Gate G3`.
 
 | Story | Fitur | BR | Prioritas |
 | --- | --- | --- | --- |
 | US-1201 | Laporan transaksi dan pembagian dana rekanan | BR-046, BR-064, BR-065 | Must |
-| US-1202 | Profil rekanan | BR-064, BR-065 | Must |
-| US-1203 | Keluhan terkait rekanan | BR-064, BR-065 | Must |
+| US-1202 | Lihat profil rekanan | BR-064, BR-065 | Must |
+| US-1203 | Lihat keluhan terkait rekanan | BR-064, BR-065 | Must |
 
 #### US-1201 Laporan transaksi dan pembagian dana rekanan
 
@@ -1234,21 +1235,21 @@ Rujukan: BR-046, BR-064, BR-065, AB-42, AB-65 `[UP-45]` · Audit: E-12 (export)
 - AC3. Given klinik juga outlet (AB-65), When admin membuka laporan, Then transaksi layanan klinik dan penjualan produk dapat dilihat terpisah atau gabungan.
 - AC4. Given admin mengekspor laporan, When file dibuat, Then file CSV hanya berisi data rekanannya dan event export tercatat.
 
-#### US-1202 Profil rekanan
+#### US-1202 Lihat profil rekanan
 
-Sebagai admin rekanan, saya ingin melihat profil rekanan dan mengajukan perubahan, agar data rekanan tetap benar.
-Rujukan: BR-064, BR-065 `[UP-31]` · Audit: E-10
+Sebagai admin rekanan, saya ingin melihat profil rekanan, agar dapat memastikan datanya benar.
+Rujukan: BR-064, BR-065 `[UP-31]` `[USER] T3-Gate G3` · Audit: E-10 (perubahan oleh admin Rumah Sehat)
 
 - AC1. Given admin rekanan membuka profil, When tampil, Then memuat nama, jenis, alamat, zona waktu, kontak, rekening (nomor termasking), sumber sistem, dan status integrasi.
-- AC2. Given admin rekanan mengajukan perubahan, When dikirim, Then perubahan tidak langsung berlaku, dan menjadi pengajuan yang diproses admin Rumah Sehat.
-- AC3. Given pengajuan menyangkut rekening penerima, When diproses, Then perubahan hanya berlaku setelah disetujui Verifikator.
+- AC2. Given admin rekanan membuka profil, When ia mencari fitur ubah, Then fitur ubah tidak tersedia, dan portal menampilkan petunjuk menghubungi Layanan Pelanggan untuk perubahan. Perubahan dimasukkan admin Rumah Sehat di backoffice.
+- AC3. Given perubahan menyangkut rekening penerima, When admin Rumah Sehat memasukkannya, Then perubahan hanya berlaku setelah disetujui Verifikator.
 
-#### US-1203 Keluhan terkait rekanan
+#### US-1203 Lihat keluhan terkait rekanan
 
-Sebagai admin rekanan, saya ingin melihat dan menanggapi keluhan pasien terkait rekanan saya, agar keluhan selesai lebih cepat.
-Rujukan: BR-064, BR-065 `[UP-30]` · Audit: tidak ada aksi sensitif
+Sebagai admin rekanan, saya ingin melihat keluhan pasien terkait rekanan saya beserta statusnya, agar dapat menindaklanjutinya bersama Layanan Pelanggan.
+Rujukan: BR-064, BR-065 `[UP-30]` `[USER] T3-Gate G3` · Audit: tidak ada aksi sensitif
 
-- AC1. Given Layanan Pelanggan meneruskan tiket (US-1104 AC2), When admin rekanan membuka menu keluhan, Then tiket tampil dan dapat ditanggapi dengan teks.
+- AC1. Given Layanan Pelanggan meneruskan tiket (US-1104 AC2), When admin rekanan membuka menu keluhan, Then tiket tampil beserta status dan riwayat tanggapan, tanpa fitur menanggapi. Tanggapan rekanan disampaikan ke Layanan Pelanggan di luar portal.
 - AC2. Given tiket milik rekanan lain, When admin rekanan mencoba membukanya, Then ditolak (KU-03).
 
 ### EP-13 Aplikasi RME minimalis (T1)
@@ -1619,7 +1620,7 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | NFR-AVL-03 | Pemeliharaan terjadwal tidak dihitung sebagai gangguan bila diumumkan paling lambat 48 jam sebelumnya dan dilakukan di jam sepi | — | `[USER] T3-Q12` |
 | NFR-AVL-04 | Gangguan sistem rekanan dan penyedia pihak ketiga dicatat terpisah dan tidak dihitung di NFR-AVL-01 | — | `[USER] T3-Q12` |
 | NFR-DR-01 | Batas kehilangan data saat bencana (RPO) | ≤ 15 menit | `[USER] T3-Q13` |
-| NFR-DR-02 | Batas waktu pemulihan (RTO) | ≤ 4 jam | `[USER] T3-Q13` |
+| NFR-DR-02 | Batas waktu pemulihan (RTO) | ≤ 4 jam bila gangguan terjadi di jam kerja (WIB, kalender hari kerja UP-37); ≤ 8 jam bila di luar jam kerja. Jam kerja ditetapkan bersama kalender hari kerja sebelum go-live `[TIDAK DIKETAHUI]` | `[USER] T3-Q13, T3-Gate G5` |
 | NFR-DR-03 | Uji pemulihan dari backup dilakukan minimal sekali sebelum go-live, dan hasilnya memenuhi NFR-DR-01 dan NFR-DR-02 | Lulus | `[KEPUTUSAN-14]` |
 | NFR-DR-04 | Backup disimpan di Indonesia | — | BR-113 |
 
@@ -1863,11 +1864,11 @@ Angka NFR berlabel `[USER]` tidak diubah. Butir yang berisiko ditandai untuk dip
 | Butir | Penilaian | Risiko | Opsi untuk diputuskan user |
 | --- | --- | --- | --- |
 | NFR-AVL-01 99,0% | Realistis. Lebih longgar dari rekomendasi 99,5%, sehingga lebih mudah dicapai tim kecil | Rendah (teknis). Gangguan sampai sekitar 7,2 jam per bulan terasa bagi pasien yang terjadwal | Tetap; tidak ada usulan perubahan |
-| NFR-DR-02 RTO 4 jam | Tercapai bila pemulihan diotomasi dan dilatih (NFR-DR-03) | **Sedang.** Tanpa petugas siaga 24 jam (biaya staf belum diketahui, PT-18), gangguan malam hari bisa melewati 4 jam sebelum ada yang menangani | (a) Tetap 4 jam, dengan jadwal siaga yang ditetapkan sebelum go-live; (b) 4 jam di jam kerja, 8 jam di luar jam kerja |
+| NFR-DR-02 RTO | Tercapai bila pemulihan diotomasi dan dilatih (NFR-DR-03) | Sedang tanpa petugas siaga 24 jam (PT-18) | **Diputuskan di gate (G5):** 4 jam di jam kerja, 8 jam di luar jam kerja |
 | NFR-CAP-03 100 sesi video bersamaan | Tercapai secara teknis dengan penyedia video terkelola | Sedang (biaya). Biaya per menit dan batas kapasitas penyedia `[TIDAK DIKETAHUI]` sampai Tahap 4–5 | Tetap; diverifikasi saat pemilihan penyedia |
 | NFR-PERF-01/02 | Realistis | Rendah. Pemeriksaan ulang ke sistem rekanan saat checkout (AB-15) menambah waktu tunggu yang dirasakan pasien, tetapi tidak dihitung di NFR | Tetap; batas waktu tunggu ke rekanan ditetapkan di Tahap 4 |
 | NFR-PERF-03 chat 2 detik | Realistis dengan koneksi real-time | Rendah | Tetap |
-| **Scope rilis 1 setelah CR-006** | Rilis 1 kini memuat 2 aplikasi mobile, backoffice, portal, **aplikasi web RME minimalis**, integrasi SATUSEHAT, dan integrasi rekanan, dengan 104 hari dan 1 mobile developer | **Sangat tinggi** (R-02, R-04). Urutan pengurangan scope (§2.3) tidak mencakup RME minimalis, padahal RME minimalis adalah komponen baru yang besar | (a) Tetap, dan kelayakan dinilai di Tahap 7 dengan estimasi effort; (b) bertahap di dalam RME minimalis: data layanan, appointment/check-in, dan hasil lab dulu (agar rekanan tanpa sistem bisa bergabung), rekam medis dan pengiriman SATUSEHAT menyusul; (c) tambah kapasitas tim |
+| **Scope rilis 1 setelah CR-006** | Rilis 1 kini memuat 2 aplikasi mobile, backoffice, portal, **aplikasi web RME minimalis**, integrasi SATUSEHAT, dan integrasi rekanan, dengan 104 hari dan 1 mobile developer | **Sangat tinggi** (R-02, R-04). Urutan pengurangan scope (§2.3) tidak mencakup RME minimalis, padahal RME minimalis adalah komponen baru yang besar | (a) Tetap, dan kelayakan dinilai di Tahap 7 dengan estimasi effort; (b) bertahap di dalam RME minimalis: data layanan, appointment/check-in, dan hasil lab dulu (agar rekanan tanpa sistem bisa bergabung), rekam medis dan pengiriman SATUSEHAT menyusul; (c) tambah kapasitas tim; **diputuskan di gate (G4): opsi (a), kelayakan dinilai di Tahap 7; pengurusan PSE RME dan registrasi SATUSEHAT dimulai segera** |
 | Registrasi SATUSEHAT (US-1309) | Prasyarat di luar kendali tim: nomor PSE untuk sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra atau surat pernyataan resmi, survei keamanan, verifikasi `[SRC-27]` | **Tinggi.** Lama prosesnya `[TIDAK DIKETAHUI]`, dan nomor PSE juga menunggu pendaftaran PSE (BR-100) | Mulai pengurusan segera setelah gate (PT-32) |
 | Ketergantungan pada sistem rekanan (EP-14) | Check-in, antrean, penugasan home visit, dan hasil lab membutuhkan kemampuan sistem rekanan | Tinggi (PT-05). Rekanan dengan sistem sendiri mungkin tidak mendukung semua data | Dinilai di Tahap 4 setelah PT-05 |
 
@@ -1889,7 +1890,7 @@ Butir ini syarat go-live 5, tetapi bukan fitur aplikasi. Dicatat agar tidak hila
 
 ## 11. Usulan penyusun (UP) untuk disetujui di gate
 
-Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan untuk disetujui sekaligus di gate Tahap 3, dan user boleh menyebut butir yang ingin diubah.
+Usulan ini mengisi detail produk yang belum diputuskan user. **Seluruhnya disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`.** UP-15 diputuskan terpisah di G2 (boleh, dicatat audit); UP-30 dan UP-31 disesuaikan dengan G3 (portal hanya baca).
 
 | ID | Usulan | Alasan singkat |
 | --- | --- | --- |
@@ -1922,8 +1923,8 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-27 | Kelompok data rekam medis minimal: anamnesis, pemeriksaan fisik/tanda vital, diagnosis, tindakan, peresepan, permintaan lab, resume; final di Tahap 4 | Subset dari 29 kelompok data SATUSEHAT rawat jalan `[SRC-28]`, sesuai "RME minimalis" |
 | UP-28 | RME minimalis mengirim rekam medis ke SATUSEHAT atas nama fasyankes pengguna | Fasyankes wajib terhubung ke SATUSEHAT `[SRC-18]`, dan user meminta kesesuaian dengan ketentuan SATUSEHAT (T3-Q1b) |
 | UP-29 | Aturan sesi konsultasi: durasi kelipatan 5 menit (10–120); "bergabung" = membuka ruang sesi, dicatat server; batas ketidakhadiran = PB-02/PB-03 atau akhir durasi bila lebih dulu; Selesai hanya bila kedua pihak pernah bergabung; chat baca-saja setelah durasi habis; tidak ada perpanjangan; video dapat disambung ulang; bila keduanya tidak hadir berlaku "tenaga kesehatan tidak hadir" | Perilaku sesi yang dapat diuji |
-| UP-30 | Alur tiket keluhan, penerusan ke rekanan, dibuka kembali bila pasien membalas dalam 7 hari | Rincian BR-062 dan menu keluhan portal |
-| UP-31 | Profil rekanan di portal hanya dilihat; perubahan diajukan ke admin Rumah Sehat; perubahan rekening wajib disetujui Verifikator | Portal hanya laporan; mencegah pengalihan dana |
+| UP-30 | Alur tiket keluhan, penerusan ke rekanan (rekanan hanya melihat di portal; tanggapannya dicatat Layanan Pelanggan), dibuka kembali bila pasien membalas dalam 7 hari | Rincian BR-062 dan menu keluhan portal; disesuaikan dengan G3 |
+| UP-31 | Profil rekanan di portal hanya dilihat; perubahan diminta lewat Layanan Pelanggan dan dimasukkan admin Rumah Sehat; perubahan rekening wajib disetujui Verifikator | Portal hanya laporan (T3-Q14, G3); mencegah pengalihan dana |
 | UP-32 | Harga, markup, dan parameter dikunci saat pembayaran dibuat | Kepastian bagi pasien dan rekanan |
 | UP-33 | RME minimalis tidak diberi nomor di urutan pengurangan scope; fiturnya ikut dilepas bersama layanan yang memakainya | Disampaikan setelah T3-Q2 |
 | UP-34 | Pembayaran ganda (RF-12) dan pembayaran yang berhasil setelah kedaluwarsa bila slot/stok sudah tidak ada (RF-13) di-refund penuh otomatis sebagai penyebab platform: rekanan mengembalikan bagian yang benar-benar diterimanya dari pembayaran itu, Rumah Sehat menanggung semua biaya payment gateway yang tidak kembali (AB-34) | Kesalahan platform, sesuai prinsip penyebab menanggung (T3-Q7); rekanan tidak memberi layanan tambahan atas pembayaran itu |
