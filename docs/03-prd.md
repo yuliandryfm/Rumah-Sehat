@@ -90,7 +90,7 @@ Semua butir non-scope BRD §4.2 tetap berlaku. Tambahan:
 | RME minimalis untuk pasien yang tidak datang lewat Rumah Sehat (walk-in) | `[USER] T3-Q1c` |
 | Program loyalitas, poin, dan voucher | `[USER] T3-Q1a` (tidak dipilih) |
 | Multi-bahasa; antarmuka hanya Bahasa Indonesia | `[USER] T3-Q1a` (tidak dipilih) |
-| Jadwal ulang (reschedule) layanan terjadwal | `[USER] T2-Q17, T3-Q6` (opsi tidak dipilih) |
+| Jadwal ulang (reschedule) layanan terjadwal | Tafsiran penyusun atas opsi yang tidak dipilih user di T2-Q17 dan T3-Q6 `[UP-57]` |
 | Pengisian katalog, stok, atau pesanan produk di portal oleh outlet tanpa sistem | BR-033 `[USER] T3-Q1b` (tidak disebut user) |
 | Rekam medis, check-in, antrean, hasil lab, atau home visit yang diisi di portal Rumah Sehat | `[USER] T3-Q14` |
 | Pembatalan pesanan produk oleh pasien setelah membayar | BR-045 `[UP-08]` |
@@ -112,7 +112,7 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 
 - Ketujuh layanan rilis 1 berprioritas Must, karena "ketujuh layanan berjalan" adalah syarat go-live 3 `[DOK] P8.2`.
 - Fitur kepatuhan (EP-15, EP-16) dan pembayaran (EP-08) berprioritas Must, karena syarat izin dan kepatuhan tidak bisa dikurangi `[DOK] P8.3`.
-- Antrean real-time berprioritas Should, sesuai posisinya di urutan pertama pengurangan scope `[USER] T3-Q2`.
+- Antrean real-time diusulkan berprioritas Should, mengikuti posisinya di urutan pertama pengurangan scope (`[USER] T3-Q2`) `[UP-01]`.
 - MoSCoW per story di bagian 5 adalah usulan penyusun `[UP-01]`.
 
 ## 3. Aturan bisnis lintas modul
@@ -197,7 +197,7 @@ Aturan pokok BR-045 dirinci dengan jawaban `[USER] T3-Q5, T3-Q6, T3-Q7, T3-Q8`. 
 | RF-02 | Pasien membatalkan kurang dari PB-01 sebelum jadwal | Layanan terjadwal | Tidak | — | — | — | BR-045 |
 | RF-03 | Pasien tidak hadir | Layanan terjadwal | Tidak | — | Rekanan tetap menerima bagiannya | — | `[USER] T3-Q6` |
 | RF-04 | Tenaga kesehatan tidak hadir di sesi konsultasi | Konsultasi | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | `[USER] T3-Q7, T3-Q8` |
-| RF-05 | Rekanan atau tenaga kesehatan membatalkan, termasuk akibat penonaktifan akun rekanan atau tenaga kesehatan dan SIP berakhir | Layanan terjadwal | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | BR-045 `[USER] T3-Q7, T3-Q8` |
+| RF-05 | Rekanan atau tenaga kesehatan membatalkan, termasuk akibat penonaktifan akun rekanan atau tenaga kesehatan dan SIP berakhir | Layanan terjadwal | Ya | Seluruh pembayaran | Penyebab rekanan (penggolongan penonaktifan oleh admin dan SIP berakhir sebagai penyebab rekanan adalah tafsiran penyusun `[UP-57]`) | Otomatis | BR-045 `[USER] T3-Q7, T3-Q8` |
 | RF-06 | Tenaga kesehatan home visit tidak datang, dilaporkan pasien paling lambat PB-15 setelah jadwal berakhir | Home visit | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab rekanan | Pengajuan, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-13]` `[UP-53]` |
 | RF-07 | Layanan gagal karena gangguan platform Rumah Sehat, diajukan paling lambat PB-15 setelah jadwal berakhir (layanan terjadwal) atau PB-04 setelah status terakhir pesanan (produk) | Semua | Ya, bila klaim disetujui | Seluruh pembayaran | Penyebab platform | Pengajuan, diputuskan dalam PB-05 | `[USER] T3-Q7` `[UP-53]` |
 | RF-08 | Outlet menolak pesanan (misalnya stok habis), tidak menerimanya sampai PB-06, membatalkannya sebelum diserahkan ke kurir, atau dinonaktifkan sebelum pesanan dikirim | Produk | Ya | Seluruh pembayaran | Penyebab rekanan | Otomatis | `[USER] T3-Q7, T3-Q8` `[UP-03]` |
@@ -223,7 +223,7 @@ Ketentuan tambahan:
   | Kelompok | Pasien menerima | Kewajiban rekanan | Kewajiban Rumah Sehat | Sumber |
   | --- | --- | --- | --- | --- |
   | Pembatalan pasien (RF-01) | Harga layanan | Harga rekanan penuh (MDR QRIS tetap ditanggung rekanan) | Markup | `[USER] T3-Q7` |
-  | Penyebab rekanan (RF-04, RF-05, RF-06, RF-08, RF-10, RF-15, RF-17; RF-18 bila ditetapkan penyebab rekanan) | Seluruh pembayaran | Harga rekanan penuh + biaya payment gateway yang tidak kembali | Markup | `[USER] T3-Q7` |
+  | Penyebab rekanan (RF-04, RF-05, RF-06, RF-08, RF-10, RF-15, RF-17; RF-18 bila ditetapkan penyebab rekanan) | Seluruh pembayaran | Bagian yang benar-benar diterimanya dari pembayaran itu (AB-22) + semua biaya payment gateway yang tidak kembali. Untuk QRIS hasilnya sama dengan harga rekanan penuh bila MDR tidak dikembalikan penyedia | Markup | `[USER] T3-Q7` |
   | Penyebab platform (RF-07, RF-12, RF-13, RF-14; RF-18 bila ditetapkan penyebab platform atau PB-20 habis) | Seluruh pembayaran yang di-refund | Bagian yang benar-benar diterimanya dari pembayaran itu (harga rekanan dikurangi MDR bila QRIS) | Markup + semua biaya payment gateway yang tidak kembali | `[USER] T3-Q7` `[UP-34]` |
   | Penyebab kurir (RF-09, RF-16, kerusakan dalam pengiriman) | Seluruh pembayaran | `[TIDAK DIKETAHUI]` (PT-29) | `[TIDAK DIKETAHUI]` (PT-29) | — |
 
@@ -359,14 +359,14 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | --- | --- | --- |
 | AB-40 | Jadwal klinik, lab, dan home visit tampil dalam zona waktu lokasi rekanan, dengan label zona (misalnya "10.00 WITA") | `[USER] T3-Q10` |
 | AB-41 | Jadwal konsultasi online tampil dalam zona waktu perangkat masing-masing pengguna | `[USER] T3-Q10` |
-| AB-42 | Laporan di portal rekanan memakai zona waktu rekanan; laporan dan backoffice Rumah Sehat memakai WIB | `[USER] T3-Q10` |
+| AB-42 | Laporan di portal rekanan memakai zona waktu rekanan; laporan Rumah Sehat memakai WIB `[USER] T3-Q10`. Tampilan backoffice lainnya juga memakai WIB `[UP-48]` | `[USER] T3-Q10` `[UP-48]` |
 | AB-43 | Batas waktu berbasis jam atau hari kalender (PB-01–PB-04, PB-06, PB-07, PB-15, PB-17–PB-19; PB-20 berbasis hari kerja seperti PB-05) dihitung dari waktu absolut, tidak terpengaruh zona waktu tampilan | `[KEPUTUSAN-11]` |
 
 ### 3.9 Tenaga kesehatan
 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
-| AB-50 | Setiap tenaga kesehatan terhubung ke satu klinik rekanan yang menaunginya, dan melayani atas nama klinik itu | BR-005, BR-014 |
+| AB-50 | Setiap tenaga kesehatan terhubung ke satu klinik rekanan yang menaunginya, dan melayani atas nama klinik itu. Batasan "satu klinik" adalah tafsiran penyusun atas BR-005 | BR-005, BR-014 `[UP-57]` |
 | AB-51 | Tenaga kesehatan hanya dapat diaktifkan bila dokumen wajib (PB-14) terverifikasi dan masih berlaku. Akun dinonaktifkan otomatis saat SIP berakhir | BR-102 |
 | AB-52 | Satu tenaga kesehatan melayani satu sesi konsultasi pada satu waktu. Slot jadwalnya tidak boleh tumpang tindih | `[UP-11]` |
 | AB-53 | Hanya dokter yang dapat menerbitkan resep digital | BR-015 |
@@ -1673,7 +1673,7 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 
 | ID | Kebutuhan | Sumber |
 | --- | --- | --- |
-| NFR-OBS-01 | Ketersediaan dipantau otomatis dan gangguan memicu peringatan, sebagai dasar pengukuran NFR-AVL | `[USER] T3-Q12` |
+| NFR-OBS-01 | Ketersediaan dipantau otomatis dan gangguan memicu peringatan, sebagai dasar pengukuran NFR-AVL | `[KEPUTUSAN-14]` (cara mengukur target `[USER] T3-Q12`) |
 | NFR-OBS-02 | Application log, security log, dan audit trail dipisahkan | ADR-005 |
 | NFR-OBS-03 | Application log dan security log juga tidak memuat data terlarang §7.3 | ADR-005 `[KEPUTUSAN-07]` |
 
@@ -1940,7 +1940,7 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-45 | Laporan portal rekanan tidak menampilkan markup Rumah Sehat dan total bayar pasien | Rekanan menerima harga rekanan; informasi markup milik Rumah Sehat |
 | UP-46 | Sinkronisasi data rekanan paling lambat 15 menit; peringatan bila integrasi gagal 30 menit | Data cukup mutakhir; harga tetap dijaga AB-15 |
 | UP-47 | Hak subjek data: target internal 3 x 24 jam untuk semua jenis permintaan; tanda mendesak 12 jam sebelum batas; tautan salinan data berlaku 7 hari; menarik persetujuan membatalkan pesanan aktif dengan aturan pembatalan pasien | Batas UU PDP untuk sebagian jenis `[SRC-15]`; perlakuan seragam |
-| UP-48 | Target performa web dan ketersediaan juga berlaku untuk backoffice dan RME minimalis | T3-Q12/Q13 menyebut layanan inti dan portal |
+| UP-48 | Target performa web dan ketersediaan juga berlaku untuk backoffice dan RME minimalis; tampilan backoffice memakai WIB (AB-42) | T3-Q10/Q12/Q13 menyebut laporan Rumah Sehat, layanan inti, dan portal |
 | UP-49 | Perjanjian penggunaan RME minimalis dan pemrosesan data dengan setiap fasyankes wajib tercatat sebelum fasyankes aktif (US-1301 AC1) | Review kepatuhan C3-N02: Pasal 18 ayat (2) huruf a (perjanjian antar-pengendali) atau Pasal 51 ayat (1) dan (5) (pemrosesan berdasarkan perintah pengendali; persetujuan tertulis untuk prosesor lain) `[SRC-15]`; isi perjanjian menunggu L-05/L-15 |
 | UP-50 | Fasyankes yang berhenti memakai RME minimalis dapat mengekspor rekam medisnya sebelum akses ditutup (US-1301 AC4) | Review kepatuhan C3-N02: rekam medis milik fasyankes tidak tertahan di sistem PT. Arunika |
 | UP-51 | Markup dihitung per unit atas harga rekanan per unit; markup persen dibulatkan per unit lalu dikalikan jumlah; markup nominal berlaku per unit; markup tidak dikenakan pada ongkos kirim dan biaya transaksi (AB-11a) | Review QA QA-B03: tanpa basis yang jelas, dua perhitungan memberi total berbeda |
@@ -1949,6 +1949,7 @@ Usulan ini mengisi detail produk yang belum diputuskan user. Usulan ditawarkan u
 | UP-54 | Efek menarik persetujuan utama, pembatasan, dan keberatan yang disetujui: akun hanya dapat melihat riwayat, mengajukan hak subjek data, dan memberi persetujuan kembali; pemesanan baru ditolak; data tidak dikirim ke pihak luar kecuali untuk menuntaskan pesanan produk yang sudah dibayar dan kewajiban simpan; butir tambahan hanya menghentikan tujuan butir itu | Review QA QA-B17, QA-B18: "pemrosesan dihentikan" harus teramati |
 | UP-55 | PB-19: refund berstatus Diproses lebih dari 2 x 24 jam tanpa konfirmasi penyedia menjadi "Perlu dicek" dan tidak dieksekusi ulang sebelum status penyedia diketahui | Review QA QA-B10: mencegah refund tertahan atau ganda |
 | UP-56 | RF-18: refund ke pasien otomatis saat jadwal mulai; penyebab (rekanan atau platform) ditetapkan Keuangan dari log integrasi dalam PB-20 = 3 hari kerja; bila tidak ditetapkan, berlaku penyebab platform | Review QA QA-B19: pasien tidak menunggu penetapan penyebab; Rumah Sehat sebagai operator integrasi menanggung bila penyebab tidak dapat dipastikan |
+| UP-57 | Tiga tafsiran penyusun: (a) reschedule tidak dibangun di rilis 1 karena opsinya tidak dipilih di T2-Q17 dan T3-Q6; (b) satu tenaga kesehatan hanya dinaungi satu klinik rekanan (AB-50); (c) pembatalan akibat penonaktifan akun oleh admin atau SIP berakhir digolongkan penyebab rekanan (RF-05) | Fact-check FC3-N01: tafsiran perlu persetujuan eksplisit |
 
 ## 12. Ketergantungan, konfirmasi legal, dan pertanyaan terbuka
 

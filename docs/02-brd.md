@@ -71,7 +71,7 @@ Klinik dan lab yang memakai RME minimalis (BR-120) terhubung ke Rumah Sehat lewa
 
 Semua dokter, psikolog, fisioterapis, dan tenaga medis berpraktik **atas nama klinik rekanan** `[USER] T2-Q2`. Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes tidak ada lagi (CR-001). Apoteker tetap tidak dipakai di rilis pertama `[DOK] P3.5, PS3`. Pesanan obat bebas di klinik rekanan dikelola admin klinik `[DOK] PS3`; pembagian fitur portal admin klinik dan admin outlet untuk klinik yang menjual produk ditetapkan di PRD.
 
-Aplikasi RME minimalis (BR-120, CR-006) dipakai staf klinik dan lab rekanan yang belum punya sistem, serta operator PT. Arunika untuk onboarding. Peran rincinya ditetapkan di PRD `[USER] T3-Q15`.
+Aplikasi RME minimalis (BR-120, CR-006) dipakai staf klinik dan lab rekanan yang belum punya sistem `[USER] T3-Q15`. Peran rincinya, termasuk operator PT. Arunika untuk onboarding, diusulkan di PRD (UP-26) dan diputuskan di gate Tahap 3.
 
 ## 3. Proses bisnis
 
@@ -363,7 +363,7 @@ Tidak ada asumsi atas fakta bisnis. Keputusan Tahap 2 yang bergantung pada konfi
 | Rekanan (min. 2 klinik, 1 lab, 3 outlet) bergabung dan sistemnya bisa diintegrasikan (PT-05) | Layanan S-04 sampai S-08 dan semua konsultasi (karena nakes di bawah klinik rekanan) tidak bisa berjalan | `[DOK] P4.3, P8.2` `[USER] T2-Q2` |
 | Payment gateway berizin BI yang mendukung pembagian dana langsung ke rekening rekanan | BR-041 tidak bisa dipenuhi untuk semua layanan berbayar; ketersediaan fitur diverifikasi di Tahap 4–5 | `[USER] T2-Q4, T2-Q13` |
 | Penyedia video, kurir, WhatsApp, email, push yang sesuai keputusan lokasi data (PT-22) | Pemilihan penyedia di Tahap 4–5 tertahan | `[DOK] P4.2, P5.5` |
-| Konfirmasi legal L-01 sampai L-14 | Lihat kolom "Dibutuhkan sebelum" di bagian 6.3 | Bagian 6.3 |
+| Konfirmasi legal L-01 sampai L-15 | Lihat kolom "Dibutuhkan sebelum" di bagian 6.3 | Bagian 6.3 |
 | Pendaftaran PSE, perizinan berusaha, dan ketentuan Kemenkes yang mungkin terbit sebelum go-live | Syarat go-live 5 tidak terpenuhi | `[SRC-06]` `[SRC-12]` |
 | Akun developer Google Play dan Apple atas nama PT. Arunika | Syarat go-live 4 | `[DOK: 01-business-case.md]` R-08 |
 
@@ -379,6 +379,8 @@ Dicatat sebagai change request di `docs/backlog.md`. Semuanya keputusan user: CR
 | CR-004 | Pendapatan transaksi berupa markup di atas harga rekanan (persen/nominal, per rekanan), menggantikan komisi potongan | Business Case §5.1, §5.2 Tabel A–B | `[USER] T2-Q6, T2-Q6a` |
 | CR-005 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi, termasuk pendaftaran klinik, lab, dan home visit; pasien cukup menunjukkan appointment; tindakan tambahan di luar aplikasi. Markup dan aturan biaya transaksi berlaku untuk semua layanan; refund atas pembatalan layanan terjadwal sebelum batas waktu. Diajukan setelah gate Tahap 2 | Brief P3.3; BRD v1.0 P-04, P-05, P-06, P-08, S-10, §4.2, BR-020, BR-023, BR-024, BR-040, BR-042, BR-043, BR-044, BR-045, BR-070, L-04, L-08, L-10, L-12, L-13, L-14, PT-17, PT-27, PT-28; Business Case §5 | `[USER] T2-Q13–T2-Q20` |
 | CR-006 | RME minimalis sebagai aplikasi terpisah untuk klinik dan lab tanpa sistem, terhubung lewat integrasi, data rekam medis sesuai SATUSEHAT, hanya pasien Rumah Sehat; antrean real-time klinik masuk rilis 1; RME lengkap, loyalitas/poin/voucher, dan multi-bahasa tidak masuk; portal rekanan hanya untuk pelaporan dan rekap ditambah menu pengaturan konsultasi online | BRD v1.1 §1.3, §2.2, §4.1–§4.3, BR-018, BR-064, BR-070, L-05; Business Case §6 (biaya) dan R-02, R-04 | `[USER] T3-Q1–T3-Q1c, T3-Q14–T3-Q16` |
+
+Bagian BRD v1.1 yang diubah oleh CR-006 dan jawaban Tahap 3 lainnya: §1.3, §2.2, §4.1–§4.3, BR-002, BR-007 (BR-008 baru), BR-017, BR-018, BR-027 baru, BR-045, BR-064, BR-070, BR-100, §5.11 (BR-120–BR-126 baru), §6.1, L-02, L-05, L-07, L-08, L-14, L-15 baru, §9, §10.
 
 ## 9. Tinjauan ulang Business Case (gate Tahap 2)
 
@@ -422,7 +424,7 @@ Kolom Pemilik dan Tenggat diusulkan penyusun dan disetujui user di gate Tahap 2 
 
 | # | Pertanyaan | Pemilik | Tenggat | Memblokir PRD? |
 | --- | --- | --- | --- | --- |
-| PT-20 | Penunjukan konsultan hukum/tim legal untuk menjawab L-01 sampai L-14 | User (PM) dan CEO | Segera; L-01, L-04, L-05, L-06, L-08, L-12, L-13 sebelum Tahap 4 | Tidak |
+| PT-20 | Penunjukan konsultan hukum/tim legal untuk menjawab L-01 sampai L-15 (L-15 ditambahkan di Tahap 3) | User (PM) dan CEO | Segera; L-01, L-04, L-05, L-06, L-08, L-12, L-13 sebelum Tahap 4 | Tidak |
 | PT-21 | Kalau legal menyatakan Rumah Sehat wajib PSEF (dengan apoteker penanggung jawab), apa tindakannya: obat bebas ditunda lewat P8.3, atau PSEF dipenuhi? | CEO | Setelah jawaban L-03 | Tidak (obat bebas dapat dilepas lewat P8.3) |
 | PT-22 | Apakah keputusan "data di Indonesia" juga berlaku untuk penyedia video, email, WhatsApp, push, dan login Google/Apple? | User (PM), CEO, CTO | Sebelum Tahap 4 | Tidak |
 | PT-23 | Siapa pejabat/petugas PDP dan pemilik proses notifikasi insiden (internal atau eksternal)? | CEO | Sebelum Tahap 10 | Tidak |

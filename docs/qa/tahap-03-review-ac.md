@@ -16,6 +16,7 @@ Kriteria blokir: `.claude/skills/runbook/references/aturan-kerja.md` §1–§2, 
 | Temuan non-blokir | 10 (QA-N01 sampai QA-N10; dibatasi 10 butir terpenting) |
 | Status | **TIDAK LULUS** (review awal) |
 | Status setelah cek ulang commit 10ddb0b | **TIDAK LULUS**: 16 blokir tertutup, 2 terbuka sebagian (QA-B08, QA-B15), 1 blokir baru (QA-B19). Lihat §6 |
+| Status setelah cek ulang kedua commit 484d73c | **LULUS**: QA-B08, QA-B15, QA-B19 tertutup; tidak ada blokir baru. Lihat §7 |
 
 Sebaran blokir: §3.1 akses (1), harga dan pembayaran §3.3–§3.4 / EP-08 (2), refund §3.5 / EP-08 (5), status §3.6 (1), konsultasi dan no-show (1), pendaftaran klinik/lab (1), EP-13 RME minimalis (2), EP-15 audit trail (2), EP-16 data pribadi (3).
 
@@ -142,3 +143,32 @@ $ grep -n "KEPUTUSAN-16" docs/decision-log.md        # terdaftar (baris 32)
 ### 6.4 Status akhir cek ulang
 
 **TIDAK LULUS.** Blokir yang masih terbuka: QA-B08 (sisa: US-1404 AC3), QA-B15 (sisa: E-05 untuk data anak dan alamat home visit), dan QA-B19 (baru: langkah manual Keuangan di RF-14 dan RF-18). Ketiganya dapat ditutup dengan perubahan beberapa baris. Cek ulang berikutnya cukup memeriksa baris 1428, 134, 732, 842, 1109, dan baris yang menyentuh RF-14, RF-18, US-802 AC3, US-806 AC1, serta US-808 AC3.
+
+## 7. Cek ulang kedua (commit 484d73c, putaran terakhir T1)
+
+Tanggal: 2026-11-17. Cakupan: hanya QA-B08, QA-B15, dan QA-B19, pada baris yang berubah di `git diff 10ddb0b 484d73c -- docs/03-prd.md` (PRD kini 1.997 baris). Nomor baris di bagian ini merujuk ke 484d73c. Nilai baru PB-20 (3 hari kerja) dan UP-56 berlabel UP dan dibawa ke gate, sehingga tidak dinilai sebagai cacat.
+
+Perintah yang dijalankan:
+
+```
+$ git diff --stat 10ddb0b 484d73c
+ docs/03-prd.md                | 57 ++++++++++++++++++++++----------------
+ docs/decision-log.md          |  2 +-
+$ git diff -U0 10ddb0b 484d73c -- docs/03-prd.md | grep "^[-+]"   # seluruh baris yang berubah dibaca
+$ grep -n "Alamat\|alamat" docs/03-prd.md | grep "E-05"          # hanya baris 847 (US-503: alamat dan nomor HP bukan E-05)
+$ git diff --word-diff=plain 10ddb0b 484d73c -- docs/decision-log.md   # KEPUTUSAN-07 diselaraskan: E-05 untuk anggota keluarga dewasa maupun anak; alamat/HP home visit bukan data sensitif
+```
+
+### 7.1 Status per blokir
+
+| ID | Status | Bukti perbaikan (baris di 484d73c) | Pemeriksaan kontradiksi baru |
+| --- | --- | --- | --- |
+| QA-B08 | Tertutup | US-1404 AC3 (1436): status mengikuti tabel §3.6 (layanan terjadwal "Dibatalkan rekanan" dengan RF-05; produk "Ditolak outlet" dengan RF-08); pembatalan dari status yang tidak diizinkan, misalnya setelah Check-in atau Dikirim, ditolak lewat AC2 | Sama dengan §3.6 klinik/lab ("Pembatalan oleh rekanan setelah Check-in ditolak"), §3.6 produk (Dibayar dan Diproses outlet ke Ditolak outlet), dan US-704 AC2. Tidak ada kontradiksi |
+| QA-B15 | Tertutup | (a) E-05 (1705), AB-71, UP-15, Audit US-310 (736) dan US-902 (1115) kini mencakup data anggota keluarga dewasa maupun anak, sama dengan aturan "pihak selain subjek data" di §3.1 (134). (b) US-503 (847) tidak lagi mencatat E-05 untuk alamat dan nomor HP, sama dengan kolom Sensitif §3.1 baris profil; KEPUTUSAN-07 diselaraskan. Catatan C5 ikut tertutup: keluhan awal pindah dari daftar (US-311 AC1) ke detail sesi dengan E-05 (US-311 AC4, 750) | Tidak ada lagi rujukan E-05 untuk alamat atau nomor HP. Aturan umum §3.1, §7.1, dan baris Audit story kini sejalan |
+| QA-B19 | Tertutup | (a) RF-14 (209) dan US-802 AC3 (994): Keuangan memeriksa dan membuat refund dalam PB-16; bila PB-16 habis tanpa tindakan, refund dibuat otomatis dan Super Admin diberi tahu. (b) RF-18 (213): refund ke pasien otomatis saat jadwal mulai; kewajiban berstatus "Menunggu penetapan penyebab" sampai Keuangan menetapkan dalam PB-20 (352), atau berlaku penyebab platform bila PB-20 habis. Pengelompokan AB-34 (226–227) diperjelas, US-806 AC1 (1032) mengecualikan RF-18 dari pencatatan kewajiban langsung, US-808 AC3 (1054) mengatur tampilan kewajiban yang belum ditetapkan, dan US-808 AC6 (1057) menetapkan aksi Keuangan beserta perilaku bila batas habis | Nominal ke pasien sama di kedua kelompok, sehingga refund otomatis tidak bergantung pada penetapan. PB-20 masuk aturan hari kerja (baris setelah tabel PB), AB-43, dan US-812 AC1. Tidak ada kontradiksi |
+
+Catatan non-blokir C1–C5 dari §6.3 yang diperiksa sekilas sudah ditangani: penutupan otomatis home visit (§3.6, baris 284–285), titik awal batas RF-16 jalur Dikirim (RF-16 dan US-807 AC1), urutan AC US-1309 kini AC1–AC5 dengan AC5 kirim ulang, pencabutan pembatasan di US-1603 AC6, US-1303 AC4, US-311 AC1/AC4, dan US-109 AC4 untuk QA-N06.
+
+### 7.2 Status akhir
+
+**LULUS.** Semua blokir QA-B01 sampai QA-B19 tertutup, dan perbaikan putaran kedua tidak menimbulkan AC yang tidak bisa diuji atau kontradiksi baru. Butir yang tersisa adalah usulan penyusun (UP-01 sampai UP-56, PB-15 sampai PB-20) dan pertanyaan terbuka/legal (`[TIDAK DIKETAHUI]`, PT-29 sampai PT-33, L-xx). Semuanya dibawa ke gate Tahap 3 untuk diputuskan user, dan bukan cacat acceptance criteria.
