@@ -8,7 +8,7 @@ Diperbarui otomatis oleh `/runbook`. Status: `belum` | `berjalan` | `selesai (me
 | --- | --- | --- | --- | --- |
 | 0 | Intake | selesai | 2026-11-17 | Jalur B (wawancara). Brief disetujui user (Checkpoint 1). Fact-check LULUS setelah 1 perbaikan. 15 pertanyaan terbuka, 4 risiko untuk Tahap 1 |
 | 1 | Business Case | selesai | 2026-11-17 | Layak dilanjutkan (keputusan Executive). Fact-check LULUS, 0 blokir. KEPUTUSAN-01/02 dikonfirmasi. PT baru: PT-16–PT-19 (PT-17 sebelum Tahap 2, PT-19 masih terbuka) |
-| 2 | BRD | belum | | |
+| 2 | BRD | selesai | 2026-11-17 | BRD v1.0, 67 BR. Compliance LULUS (1 blokir MDR QRIS ditutup via Q12), fact-check LULUS 0 blokir. CR-001–CR-004. 14 konfirmasi legal (L-01–L-14), 7 sebelum Tahap 4 (PT-20). PT-26, PT-27 dijawab awal Tahap 3. Business Case perlu update markup (CR-004) |
 | 3 | PRD + NFR | belum | | |
 | 4 | Arsitektur | belum | | |
 | 5 | Stack + Coding Standards | belum | | |
