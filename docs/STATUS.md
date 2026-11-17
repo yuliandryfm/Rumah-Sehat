@@ -1,12 +1,12 @@
 # Status Runbook
 
-Mode terakhir: belum dipilih
+Mode terakhir: terpandu
 
 Diperbarui otomatis oleh `/runbook`. Status: `belum` | `berjalan` | `selesai (menunggu checkpoint N)` | `selesai`.
 
 | # | Tahap | Status | Tanggal gate | Catatan |
 | --- | --- | --- | --- | --- |
-| 0 | Intake | belum | | |
+| 0 | Intake | selesai | 2026-11-17 | Jalur B (wawancara). Brief disetujui user (Checkpoint 1). Fact-check LULUS setelah 1 perbaikan. 15 pertanyaan terbuka, 4 risiko untuk Tahap 1 |
 | 1 | Business Case | belum | | |
 | 2 | BRD | belum | | |
 | 3 | PRD + NFR | belum | | |

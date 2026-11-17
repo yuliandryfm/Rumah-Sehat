@@ -1,6 +1,6 @@
-# <Nama Aplikasi>
+# Rumah Sehat
 
-<Ringkasan satu paragraf. Diisi setelah Tahap 0 selesai.>
+Aplikasi mobile kesehatan (Flutter, Android dan iOS) untuk pasien yang kesulitan datang ke klinik atau apotek. Rilis pertama berisi tujuh layanan: konsultasi online dokter dan psikolog (chat dan video, berlangsung di Rumah Sehat), pendaftaran klinik dan lab rekanan, home visit tenaga medis, informasi biaya MCU dan lab, serta pembelian obat bebas, produk kecantikan, dan produk kesehatan dari outlet rekanan. Rumah Sehat berperan sebagai gateway: data klinik, lab, home visit, dan produk berasal dari integrasi dengan sistem rekanan. Tenaga kesehatan memakai aplikasi mobile, sedangkan admin klinik, lab, outlet, dan Rumah Sehat memakai portal web. Data wajib disimpan di Indonesia. Target go-live 1 Maret 2027. Rincian dan pertanyaan terbuka: `docs/00-project-brief.md`.
 
 ## Cara kerja proyek ini
 
