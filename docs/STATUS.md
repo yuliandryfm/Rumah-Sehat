@@ -7,7 +7,7 @@ Diperbarui otomatis oleh `/runbook`. Status: `belum` | `berjalan` | `selesai (me
 | # | Tahap | Status | Tanggal gate | Catatan |
 | --- | --- | --- | --- | --- |
 | 0 | Intake | selesai | 2026-11-17 | Jalur B (wawancara). Brief disetujui user (Checkpoint 1). Fact-check LULUS setelah 1 perbaikan. 15 pertanyaan terbuka, 4 risiko untuk Tahap 1 |
-| 1 | Business Case | belum | | |
+| 1 | Business Case | selesai | 2026-11-17 | Layak dilanjutkan (keputusan Executive). Fact-check LULUS, 0 blokir. KEPUTUSAN-01/02 dikonfirmasi. PT baru: PT-16–PT-19 (PT-17 sebelum Tahap 2, PT-19 masih terbuka) |
 | 2 | BRD | belum | | |
 | 3 | PRD + NFR | belum | | |
 | 4 | Arsitektur | belum | | |
