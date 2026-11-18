@@ -6,7 +6,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 
 | BR | Kebutuhan bisnis | Sumber BR | Story | Test case | File kode / test | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password atau akun Google/Apple | `[DOK] P4.4` | US-101, US-102, US-103 |  |  | BRD v1.0 |
+| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` | US-101, US-103 (US-102 dihapus CR-007) |  |  | BRD v1.3 (CR-007/Tahap 4) |
 | BR-002 | Rumah Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email,… | `[DOK] P4.1` `[USER] T3-Q3` | US-105, US-108 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik da… | `[DOK] P4.6a` | US-106, US-107 |  |  | BRD v1.0 |
 | BR-004 | Admin Rumah Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan… | `[DOK] P4.6b` | US-106, US-107, US-201 |  |  | BRD v1.0 |
@@ -44,7 +44,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan k… | `[USER] T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` | US-801, US-803 |  |  | BRD v1.1 (CR-005) |
 | BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim… | `[USER] T2-Q9, T2-Q17, T2-Q18, T3-Q5, T3-Q6, T3-Q7, T3-Q8` | US-307, US-504, US-705, US-805, US-806, US-807, US-808, US-812, US-1403 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-046 | Admin Rumah Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagi… | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` | US-811, US-1201 |  |  | BRD v1.0 |
-| BR-050 | Rumah Sehat mengirim pemberitahuan ke pasien (konfirmasi, pengingat, status pesanan, hasil lab) lewat no… | `[DOK] P4.5` | US-902, US-1001, US-1002 |  |  | BRD v1.0 |
+| BR-050 | Rumah Sehat mengirim pemberitahuan ke pasien lewat email dan notifikasi di dalam aplikasi; push dan WhatsApp dihapus (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` | US-902, US-1001, US-1002 |  |  | BRD v1.3 (CR-007/Tahap 4) |
 | BR-060 | Backoffice admin Rumah Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 |  |  | BRD v1.0 |
 | BR-061 | Backoffice admin Rumah Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehata… | `[DOK] P8.2a` | US-1101, US-1102 |  |  | BRD v1.0 |
 | BR-062 | Backoffice admin Rumah Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` | US-1003, US-1103, US-1104 |  |  | BRD v1.0 |
@@ -52,7 +52,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan.… | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16` | US-301, US-1104, US-1201, US-1202, US-1203 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | US-1104, US-1201, US-1202, US-1203 |  |  | BRD v1.0 |
 | BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` | US-404, US-502, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir… | `[DOK] P4.2` `[USER] T2-Q4` | US-1406 |  |  | BRD v1.0 |
+| BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir, dan email; semua penyedia di Indonesia (CR-007) | `[DOK] P4.2` `[USER] T2-Q4, T4-Q1, T4-Q2` | US-1406 |  |  | BRD v1.3 (CR-007/Tahap 4) |
 | BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 |  |  | BRD v1.0 |
 | BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 |  |  | BRD v1.0 |
 | BR-090 | Rumah Sehat menyediakan data untuk mengukur KPI-01 sampai KPI-04 sesuai definisi di bagian 1.2: MAU bert… | `[USER] T2-Q10, T2-Q11` `[DOK: 01-business-case.md]` | US-1405, US-1701 |  |  | BRD v1.0 |
@@ -69,7 +69,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-110 | Penilaian dampak pelindungan data pribadi (DPIA) dilakukan sebelum go-live | `[SRC-15]` | PRD §10 |  |  | BRD v1.0 |
 | BR-111 | Rumah Sehat menunjuk pejabat/petugas pelindungan data pribadi | `[SRC-15]` `[SRC-16]` | US-1603, PRD §10 |  |  | BRD v1.0 |
 | BR-112 | Setiap jenis data memiliki masa retensi; setelah masa retensi berakhir, data diakhiri pemrosesannya, dih… | `[SRC-15]` `[SRC-25]` | US-1605, US-1606, NFR-RET-01 |  |  | BRD v1.0 |
-| BR-113 | Data disimpan di server atau cloud yang berlokasi di Indonesia. Pengiriman data pribadi ke luar wilayah… | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` | US-1406, NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 |  |  | BRD v1.0 |
+| BR-113 | Data disimpan di Indonesia; penyedia pihak ketiga juga memproses dan menyimpan data pribadi di Indonesia, tanpa kecuali | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` `[USER] T4-Q1` | US-1406, NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 |  |  | BRD v1.3 (CR-007/Tahap 4) |
 | BR-114 | Catatan konsultasi dan resep digital memenuhi ketentuan rekam medis elektronik dan resep elektronik yang… | `[SRC-18]` `[SRC-06]` `[SRC-07]` `[USER] T2-Q2` | US-308, US-309, PRD §10 |  |  | BRD v1.0 |
 | BR-115 | Pembayaran hanya diproses lewat penyedia jasa pembayaran berizin BI. Model pembagian dana langsung (BR-0… | `[SRC-19]` `[SRC-20]` `[USER] T2-Q4` | US-802, US-1406, NFR-INT-04 |  |  | BRD v1.0 |
 | BR-116 | Obat bebas, produk kecantikan, dan produk kesehatan yang dijual lewat Rumah Sehat memenuhi ketentuan per… | `[SRC-08]` `[SRC-10]` `[SRC-11]` `[USER] T2-Q3` | US-702, PRD §10 |  |  | BRD v1.0 |
@@ -82,3 +82,20 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-125 | RME minimalis menyediakan penerimaan appointment dari Rumah Sehat, check-in pasien, antrean real-time kl… | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 |  |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Rumah Sehat | `[USER] T3-Q1c` | US-1306, US-1310 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+
+## NFR → arsitektur (Tahap 4)
+
+Pemetaan setiap NFR PRD §6 dan spesifikasi audit trail §7 ke jawaban arsitektur, ADR, dan cara pembuktiannya ada di `docs/04-arsitektur.md` §10. Ringkasan per kelompok:
+
+| Kelompok NFR | ADR |
+| --- | --- |
+| NFR-PERF-01–05, NFR-CAP-01–04 | ADR-006, ADR-007, ADR-014, ADR-016, ADR-019 |
+| NFR-AVL-01–04, NFR-DR-01–04 | ADR-019, ADR-010 |
+| NFR-SEC-01–09 | ADR-011, ADR-012, ADR-013, ADR-018, ADR-009 |
+| NFR-PRIV-01–05 | ADR-013, ADR-014, ADR-016, ADR-019, ADR-008 |
+| NFR-RET-01–02 | ADR-013, ADR-009 |
+| NFR-COMP-01–03, NFR-LOC-01–02 | ADR-006, ADR-015, ADR-017 |
+| NFR-OBS-01–03 | ADR-010 |
+| NFR-INT-01–04 | ADR-014, ADR-015, ADR-007 |
+| Audit trail PRD §7 (BR-080, BR-081, BR-107) | ADR-009, ADR-010 |
+| Model data (semua BR) | `docs/04-erd.md`, `docs/04-data-dictionary.md`, ADR-008 |

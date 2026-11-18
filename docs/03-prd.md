@@ -1,10 +1,10 @@
 # PRD (Product Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.0, disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
+Versi: 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
-Dasar: BRD v1.2 `[DOK: 02-brd.md]`, disetujui bersama PRD ini di gate Tahap 3.
+Dasar: BRD v1.3 `[DOK: 02-brd.md]` (v1.2 disetujui bersama PRD v1.0 di gate Tahap 3; v1.3 revisi CR-007).
 Tingkat ketelitian:
 - **T1 Kritis**: §3.1 (akses), §3.3–§3.5 (harga, pembayaran, refund), EP-08 (pembayaran), EP-13 (RME minimalis), EP-15 (audit trail), EP-16 (data pribadi), §6.4–§6.6 (keamanan, privasi, retensi), §7 (audit trail).
 - **T2 Standar**: bagian lain.
@@ -17,7 +17,7 @@ PRD menetapkan *apa* yang dibangun dan bagaimana mengujinya. *Bagaimana* membang
 
 | Penanda | Arti |
 | --- | --- |
-| `BR-xxx` | Kebutuhan bisnis di BRD v1.2 (dokumen yang lulus gate atau diajukan bersama PRD ini). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
+| `BR-xxx` | Kebutuhan bisnis di BRD v1.3 (dokumen yang lulus gate atau diajukan bersama PRD ini; v1.3 memuat CR-007). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
 | `[USER] T3-Qx` | Jawaban user di wawancara Tahap 3, tercatat di `docs/03-catatan-prd.md`. `[USER] T2-Qx` merujuk ke `docs/02-catatan-brd.md` |
 | `[DOK] Px.x` | Project Brief dan catatan intake (`docs/00-project-brief.md`, `docs/00-catatan-intake.md`) |
 | `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5 |
@@ -95,6 +95,8 @@ Semua butir non-scope BRD §4.2 tetap berlaku. Tambahan:
 | Rekam medis, check-in, antrean, hasil lab, atau home visit yang diisi di portal Rumah Sehat | `[USER] T3-Q14` |
 | Menanggapi keluhan atau mengajukan perubahan profil lewat portal rekanan (keduanya hanya dapat dilihat) | `[USER] T3-Gate G3` |
 | Pembatalan pesanan produk oleh pasien setelah membayar | BR-045 `[UP-08]` |
+| Login dengan akun Google atau Apple (US-102 dihapus) | BR-001 `[USER] T4-Q1, T4-Q2` (CR-007) |
+| Notifikasi push dan WhatsApp | BR-050 `[USER] T4-Q1, T4-Q2` (CR-007) |
 
 ### 2.3 Urutan pengurangan scope
 
@@ -230,7 +232,7 @@ Ketentuan tambahan:
 
   Ongkos kirim dikembalikan oleh penerima dana ongkos kirim (AB-23, PT-31). Nominal kewajiban dihitung dari harga yang dikunci (AB-17).
 - **AB-35** Refund yang berstatus Diproses lebih dari PB-19 tanpa konfirmasi penyedia menjadi "Perlu dicek" dan masuk antrean Keuangan. Status ditanyakan ke penyedia, dan refund tidak dieksekusi ulang sebelum status penyedia diketahui. Keuangan menandai kewajiban rekanan "Selesai" dengan rujukan bukti `[UP-55]`.
-- **AB-36** Satu pesanan paling banyak punya satu refund, kecuali RF-12. Bila dua kejadian datang hampir bersamaan, transisi status yang tersimpan lebih dulu yang berlaku, dan kejadian berikutnya yang tidak sah dari status baru ditolak dan tercatat (E-09, hasil gagal) `[UP-10]`.
+- **AB-36** Satu pesanan paling banyak punya satu refund, kecuali RF-12, RF-13, dan RF-14. RF-13 dan RF-14 dikecualikan karena keduanya refund atas dana yang tidak menjadi pembayaran pesanan (CR-010 `[USER] T4-G3`). Bila dua kejadian datang hampir bersamaan, transisi status yang tersimpan lebih dulu yang berlaku, dan kejadian berikutnya yang tidak sah dari status baru ditolak dan tercatat (E-09, hasil gagal) `[UP-10]`.
 
 ### 3.6 Status layanan dan pesanan
 
@@ -392,7 +394,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | AB-70 | Data kesehatan (catatan, isi chat, resep, hasil lab, rekam medis), data anak, dan data keuangan pribadi adalah data pribadi spesifik dengan akses lebih ketat (§3.1) | BR-105 `[SRC-15]` |
 | AB-71 | Pasien dapat melihat catatan konsultasi dan resep miliknya dan milik anggota keluarganya. Untuk anggota keluarga dewasa, akses pemilik akun adalah keputusan produk yang dibawa ke gate dan kebolehannya ditanyakan ke legal (L-05 rahasia kedokteran, L-08). Akses pemilik akun ke data klinis anggota keluarga, dewasa maupun anak, dicatat di audit trail (E-05) | `[UP-15]` |
 | AB-72 | Catatan konsultasi memakai struktur data yang selaras dengan SATUSEHAT, sama dengan rekam medis RME minimalis, supaya siap kalau legal menyatakan catatan konsultasi termasuk rekam medis (L-05) | BR-114 `[UP-16]` |
-| AB-73 | Isi notifikasi push, email, dan WhatsApp tidak memuat data kesehatan rinci (diagnosis, nama obat, nilai hasil lab, isi chat) | BR-105 `[UP-23]` |
+| AB-73 | Isi notifikasi email dan notifikasi di dalam aplikasi tidak memuat data kesehatan rinci (diagnosis, nama obat, nilai hasil lab, isi chat) | BR-105 `[UP-23]` |
 | AB-74 | Panggilan video tidak direkam dan tidak disimpan | BR-016 |
 | AB-75 | Data yang dikirim ke payment gateway dibatasi pada yang diperlukan untuk pembayaran. Batas datanya menunggu L-08 | BR-105 (L-08) |
 
@@ -422,7 +424,7 @@ Setiap story mencantumkan rujukan BR (induk), prioritas, event audit (§7.1), da
 | Story | Fitur | BR | Prioritas |
 | --- | --- | --- | --- |
 | US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must |
-| US-102 | Masuk dengan akun Google atau Apple | BR-001 | Must |
+| US-102 | Dihapus oleh CR-007 (sebelumnya: masuk dengan akun Google atau Apple) | BR-001 | Won't |
 | US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must |
 | US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must |
 | US-105 | Profil data diri | BR-002 | Must |
@@ -438,18 +440,12 @@ Rujukan: BR-001, BR-103 · Audit: E-04
 
 - AC1. Given email belum terdaftar dan password memenuhi kebijakan NFR-SEC-03, When pasien mengisi formulir, menyetujui persetujuan pemrosesan data (US-104), dan mengirim, Then akun dibuat berstatus "email belum diverifikasi" dan tautan verifikasi dikirim ke email itu `[KEPUTUSAN-06]`.
 - AC2. Given tautan verifikasi masih berlaku, When pasien membukanya, Then email berstatus terverifikasi dan pasien dapat masuk. Given tautan sudah kedaluwarsa atau sudah dipakai, Then pasien diminta mengirim ulang tautan.
-- AC3. Given email sudah terdaftar (termasuk lewat Google/Apple), When pasien mendaftar dengan email itu, Then akun baru tidak dibuat dan pasien diarahkan untuk masuk atau mengatur ulang password.
+- AC3. Given email sudah terdaftar, When pasien mendaftar dengan email itu, Then akun baru tidak dibuat dan pasien diarahkan untuk masuk atau mengatur ulang password.
 - AC4. Given kotak persetujuan belum dipilih, When pasien mengirim formulir, Then pendaftaran ditolak dan pasien diberi tahu bahwa persetujuan wajib (BR-103).
 
-#### US-102 Masuk dengan akun Google atau Apple
+#### US-102 (dihapus oleh CR-007)
 
-Sebagai pasien, saya ingin masuk dengan akun Google atau Apple, agar tidak perlu membuat password baru.
-Rujukan: BR-001 · Audit: E-01, E-02, E-04
-
-- AC1. Given pasien belum punya akun, When ia memilih Google atau Apple dan otorisasi berhasil, Then akun dibuat setelah pasien menyetujui persetujuan pemrosesan data (US-104).
-- AC2. Given pasien sudah punya akun dari Google/Apple yang sama, When ia masuk lagi, Then ia masuk ke akun yang sama.
-- AC3. Given email dari Google/Apple sama dengan akun email-password yang sudah ada, When pasien masuk dengan Google/Apple, Then akun tidak otomatis digabung, dan pasien diminta memasukkan password akun lama untuk menautkannya `[KEPUTUSAN-06]`.
-- AC4. Given pasien membatalkan atau otorisasi gagal di halaman Google/Apple, When ia kembali ke aplikasi, Then ia berada di layar masuk tanpa akun dibuat, dan percobaan dicatat sebagai login gagal.
+Login dengan akun Google atau Apple tidak dibangun di rilis 1. Lokasi pemrosesannya tidak dapat dipastikan di Indonesia, padahal semua penyedia pihak ketiga wajib memproses data di Indonesia `[USER] T4-Q1, T4-Q2`. Nomor story tidak dipakai ulang.
 
 #### US-103 Masuk, keluar, dan atur ulang password
 
@@ -695,7 +691,7 @@ Rujukan: BR-010, BR-016, NFR-PERF-03 `[UP-29]` · Audit: E-05 (akses tenaga kese
 Sebagai pasien dan tenaga kesehatan, kami ingin melakukan panggilan video selama sesi, agar konsultasi dapat dilakukan tatap muka.
 Rujukan: BR-010, BR-016, AB-74 `[UP-29]` · Audit: E-09
 
-- AC1. Given sesi video "Terkonfirmasi" dan waktu mulai tiba, When pihak membuka ruang sesi, Then ia tercatat bergabung (§3.5), status menjadi "Berlangsung" saat pihak pertama bergabung, dan salah satu pihak dapat memulai panggilan yang diterima pihak lain sebagai panggilan masuk.
+- AC1. Given sesi video "Terkonfirmasi" dan waktu mulai tiba, When pihak membuka ruang sesi, Then ia tercatat bergabung (§3.5), status menjadi "Berlangsung" saat pihak pertama bergabung, dan salah satu pihak dapat memulai panggilan yang diterima pihak lain sebagai panggilan masuk selama pihak lain berada di ruang sesi. Panggilan tidak dapat diterima saat aplikasi tertutup, karena push tidak tersedia (CR-007 `[USER] T4-Q1, T4-Q2`).
 - AC2. Given panggilan terputus, When salah satu pihak menyambung ulang sebelum durasi habis, Then panggilan tersambung kembali tanpa menambah durasi.
 - AC3. Given durasi habis, When waktu berakhir, Then panggilan diakhiri. Status menjadi "Selesai" hanya bila kedua pihak pernah bergabung; selain itu berlaku US-307.
 - AC4. Given sesi berlangsung, When diperiksa, Then aplikasi tidak menyediakan fitur rekam, dan fitur rekam di layanan video pihak ketiga dinonaktifkan (AB-74). Cara memverifikasi pengaturan penyedia ditetapkan di Tahap 4.
@@ -723,13 +719,16 @@ Rujukan: BR-013, BR-016, BR-114, AB-72 `[UP-16]` · Audit: E-06
 #### US-309 Resep digital
 
 Sebagai dokter, saya ingin menerbitkan resep digital setelah konsultasi, agar pasien dapat menebus obat di apotek mana pun.
-Rujukan: BR-015, BR-114, AB-53 `[UP-42]` · Audit: E-06, E-12 (unduh)
+Rujukan: BR-015, BR-114, AB-53 `[UP-42]` `[USER] T4-Q5` (CR-008) · Audit: E-06, E-12 (unduh), E-05 (verifikasi resep)
 
 - AC1. Given pengguna berjenis dokter dan sesinya "Berlangsung" atau "Selesai", When ia mengisi daftar obat (nama, kekuatan/dosis, jumlah, aturan pakai) lalu menerbitkan, Then resep bernomor unik terbit memuat identitas pasien, nama dokter dan nomor SIP, klinik, dan tanggal.
 - AC2. Given pengguna bukan dokter, When ia mencari fitur resep, Then fitur tidak tersedia (AB-53).
 - AC3. Given resep sudah terbit, When dokter perlu mengoreksi, Then resep tidak dapat diubah. Dokter membatalkannya dengan alasan lalu menerbitkan resep baru, dan resep batal tetap tersimpan berstatus "Dibatalkan".
 - AC4. Given resep terbit, When pasien membukanya, Then ia dapat melihat dan mengunduhnya sebagai PDF untuk ditunjukkan di apotek.
-- AC5. Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05) `[SRC-07]`. Kanal apotek untuk memeriksa keaslian resep `[TIDAK DIKETAHUI]`.
+- AC5. Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05) `[SRC-07]`. Kanal apotek untuk memeriksa keaslian resep: AC6–AC8 (CR-008); tanda tangan elektronik dipertimbangkan setelah L-05 terjawab.
+- AC6. Given resep terbit, When PDF resep dibuat, Then PDF memuat kode verifikasi acak, QR yang mengarah ke halaman verifikasi di domain resmi Rumah Sehat, dan alamat halaman itu dalam teks agar dapat diketik manual `[USER] T4-Q5`.
+- AC7. Given seseorang membuka halaman verifikasi dengan kode yang valid, When halaman tampil, Then tampil status resep (Terbit atau Dibatalkan), tanggal terbit, nama dokter dan nomor SIP, klinik, daftar obat, dan nama pasien yang disamarkan; isi final mengikuti L-05/L-08. Given kode tidak valid, Then tampil "resep tidak ditemukan" `[USER] T4-Q5`.
+- AC8. Given percobaan verifikasi dari sumber yang sama melebihi batas laju, When dicoba lagi, Then ditolak sementara. Setiap verifikasi yang menampilkan data resep dicatat E-05 dengan aktor "pemeriksa anonim" dan alamat IP `[USER] T4-Q5`.
 
 #### US-310 Riwayat konsultasi pasien
 
@@ -746,7 +745,7 @@ Sebagai tenaga kesehatan, saya ingin melihat sesi hari ini dan yang akan datang,
 Rujukan: BR-013 · Audit: E-05 (membuka detail sesi berisi keluhan awal)
 
 - AC1. Given tenaga kesehatan masuk, When ia membuka daftar sesi, Then tampil sesi terkonfirmasi dengan waktu (zona waktu perangkat), jenis, dan nama pasien.
-- AC2. Given ada pesanan baru atau waktu pengingat PB-08 tiba, When kejadian terjadi, Then tenaga kesehatan menerima notifikasi push (US-1003).
+- AC2. Given ada pesanan baru atau waktu pengingat PB-08 tiba, When kejadian terjadi, Then tenaga kesehatan menerima email dan notifikasi di dalam aplikasi (US-1003, CR-007).
 - AC3. Given waktu mulai sesi belum tiba, When ia menekan tombol bergabung, Then tombol belum aktif.
 - AC4. Given tenaga kesehatan membuka detail sesi yang ditanganinya, When detail tampil, Then keluhan awal pasien tampil dan akses tercatat (E-05).
 
@@ -804,7 +803,7 @@ Sebagai pasien yang sudah check-in, saya ingin melihat antrean secara langsung, 
 Rujukan: BR-027, PB-10 `[UP-12]` · Audit: tidak ada aksi sensitif
 
 - AC1. Given rekanan mengirim data antrean, When pasien sudah check-in, Then aplikasi menampilkan nomor antrean pasien dan nomor yang sedang dilayani, diperbarui otomatis dengan keterlambatan maksimal 30 detik dari data rekanan.
-- AC2. Given giliran pasien tinggal PB-10 nomor, When kondisi terpenuhi, Then pasien menerima notifikasi push.
+- AC2. Given giliran pasien tinggal PB-10 nomor, When kondisi terpenuhi, Then notifikasi tampil di dalam aplikasi; bila aplikasi tertutup, notifikasi tersedia di kotak notifikasi saat aplikasi dibuka (CR-007).
 - AC3. Given sistem rekanan tidak menyediakan data antrean, When pasien membuka appointment, Then tampilan antrean tidak muncul.
 
 #### US-406 Riwayat pendaftaran
@@ -1126,31 +1125,31 @@ Rujukan: BR-025, BR-050, BR-008, AB-71 `[UP-15]` · Audit: E-05 (pemilik akun me
 | US-1002 | Pengingat jadwal | BR-050 | Must |
 | US-1003 | Notifikasi tenaga kesehatan dan admin | BR-013, BR-102 | Must |
 
-Matriks kanal notifikasi pasien `[UP-23]`. Tidak ada SMS (BR-050).
+Matriks kanal notifikasi pasien `[UP-23]`, disesuaikan CR-007 `[USER] T4-Q2`. Push dan WhatsApp dihapus. Kejadian yang sebelumnya hanya lewat push tampil di dalam aplikasi, dan pengingat jadwal dipindah ke email. Notifikasi di dalam aplikasi tampil langsung saat aplikasi terbuka dan tersimpan di kotak notifikasi. Tidak ada SMS (BR-050).
 
-| Kejadian | Push | Email | WhatsApp |
-| --- | --- | --- | --- |
-| Verifikasi identitas diputuskan (disetujui atau ditolak) | Ya | Ya | Tidak |
-| Pembayaran berhasil dan bukti bayar | Ya | Ya | Ya |
-| Pengingat jadwal (PB-08) | Ya | Tidak | Ya |
-| Pesanan dibatalkan rekanan, tenaga kesehatan tidak hadir, refund dibuat | Ya | Ya | Ya |
-| Perubahan status lain (ditugaskan, berangkat, tiba, dikirim, diterima) | Ya | Tidak | Tidak |
-| Pesan chat baru saat aplikasi tidak dibuka | Ya | Tidak | Tidak |
-| Antrean mendekati giliran (PB-10) | Ya | Tidak | Tidak |
-| Hasil lab tersedia atau dikoreksi | Ya | Ya | Ya |
-| Klaim diputuskan, refund berhasil atau gagal | Ya | Ya | Tidak |
-| Permintaan hak subjek data ditanggapi | Tidak | Ya | Tidak |
+| Kejadian | Email | Di dalam aplikasi |
+| --- | --- | --- |
+| Verifikasi identitas diputuskan (disetujui atau ditolak) | Ya | Ya |
+| Pembayaran berhasil dan bukti bayar | Ya | Ya |
+| Pengingat jadwal (PB-08) | Ya | Ya |
+| Pesanan dibatalkan rekanan, tenaga kesehatan tidak hadir, refund dibuat | Ya | Ya |
+| Perubahan status lain (ditugaskan, berangkat, tiba, dikirim, diterima) | Tidak | Ya |
+| Pesan chat baru | Tidak | Ya |
+| Antrean mendekati giliran (PB-10) | Tidak | Ya |
+| Hasil lab tersedia atau dikoreksi | Ya | Ya |
+| Klaim diputuskan, refund berhasil atau gagal | Ya | Ya |
+| Permintaan hak subjek data ditanggapi | Ya | Ya |
 
 #### US-1001 Notifikasi pasien per kejadian dan kanal
 
 Sebagai pasien, saya ingin diberi tahu setiap kejadian penting lewat kanal yang sesuai, agar tidak melewatkan layanan.
 Rujukan: BR-050, AB-73, NFR-PERF-05 `[UP-23]` · Audit: tidak ada aksi sensitif
 
-- AC1. Given kejadian di matriks terjadi, When diproses, Then notifikasi diserahkan ke penyedia kanal sesuai matriks paling lambat 1 menit setelah kejadian.
+- AC1. Given kejadian di matriks terjadi, When diproses, Then notifikasi email diserahkan ke penyedia email dan notifikasi di dalam aplikasi tersedia, sesuai matriks, paling lambat 1 menit setelah kejadian.
 - AC2. Given notifikasi dibuat, When isinya diperiksa, Then tidak memuat diagnosis, nama obat, nilai hasil lab, atau isi chat (AB-73).
 - AC3. Given penyedia kanal menolak atau gagal mengirim, When kegagalan terjadi, Then pengiriman dicoba ulang dan kegagalan akhirnya tercatat. Kegagalan satu kanal tidak menghentikan kanal lain.
-- AC4. Given pasien tidak mengizinkan notifikasi push, When kejadian terjadi, Then kanal email dan WhatsApp tetap dikirim sesuai matriks.
-- AC5. Syarat persetujuan penerima dan template pesan WhatsApp mengikuti penyedia terpilih (Tahap 4–5) `[TIDAK DIKETAHUI]`.
+- AC4. Given pasien membuka aplikasi, When ada notifikasi di dalam aplikasi, Then kotak notifikasi menampilkannya urut terbaru dan menandai yang belum dibaca (CR-007).
+- AC5. Penyedia email memproses dan menyimpan data di Indonesia (BR-113 `[USER] T4-Q1`); dipilih di Tahap 5.
 
 #### US-1002 Pengingat jadwal
 
@@ -1166,8 +1165,8 @@ Rujukan: BR-050, PB-08 `[UP-05]` · Audit: tidak ada aksi sensitif
 Sebagai tenaga kesehatan dan admin, saya ingin diberi tahu kejadian yang menjadi tugas saya, agar dapat menindaklanjutinya.
 Rujukan: BR-013, BR-102, BR-062 `[UP-23]` · Audit: tidak ada aksi sensitif
 
-- AC1. Given ada pesanan konsultasi baru, pembatalan, atau tugas home visit, When kejadian terjadi, Then tenaga kesehatan menerima push dan email.
-- AC2. Given waktu pengingat PB-08 tiba, When tenaga kesehatan punya sesi atau kunjungan, Then ia menerima push.
+- AC1. Given ada pesanan konsultasi baru, pembatalan, atau tugas home visit, When kejadian terjadi, Then tenaga kesehatan menerima email dan notifikasi di dalam aplikasi (CR-007).
+- AC2. Given waktu pengingat PB-08 tiba, When tenaga kesehatan punya sesi atau kunjungan, Then ia menerima email dan notifikasi di dalam aplikasi (CR-007).
 - AC3. Given SIP akan berakhir (PB-09) atau ada keluhan baru terkait rekanan, When kejadian terjadi, Then tenaga kesehatan atau admin rekanan terkait menerima email.
 
 ### EP-11 Konten dan layanan pelanggan
@@ -1447,11 +1446,11 @@ Rujukan: BR-070, BR-090 `[UP-46]` · Audit: E-10 (perubahan status integrasi)
 
 #### US-1406 Integrasi pihak ketiga
 
-Sebagai Rumah Sehat, saya ingin terhubung dengan penyedia pihak ketiga, agar login, pembayaran, video, kurir, dan notifikasi berjalan.
+Sebagai Rumah Sehat, saya ingin terhubung dengan penyedia pihak ketiga, agar pembayaran, video, kurir, dan notifikasi email berjalan.
 Rujukan: BR-071, BR-113, BR-115 · Audit: mengikuti story pemakai
 
-- AC1. Given penyedia (login Google dan Apple, payment gateway dengan pembagian dana, video, kurir, WhatsApp, email, push) dipilih di Tahap 4–5 dan disetujui user, When integrasi dibangun, Then setiap fitur pemakainya (US-102, US-802, US-306, US-703, US-1001) lulus AC-nya.
-- AC2. Given penyedia memproses data pribadi di luar Indonesia, When dipilih, Then pemilihan mengikuti keputusan PT-22 dan konfirmasi L-09 (BR-113).
+- AC1. Given penyedia (payment gateway dengan pembagian dana, video, kurir, email) dipilih di Tahap 4–5 dan disetujui user, When integrasi dibangun, Then setiap fitur pemakainya (US-802, US-306, US-703, US-1001) lulus AC-nya.
+- AC2. Given calon penyedia memproses atau menyimpan data pribadi di luar Indonesia, When dievaluasi, Then penyedia itu tidak dipilih (BR-113 `[USER] T4-Q1`).
 - AC3. Given satu penyedia gangguan, When fitur lain dipakai, Then fitur lain tetap berjalan (KU-08).
 
 ### EP-15 Audit trail (fitur)
@@ -1526,7 +1525,7 @@ Rujukan: BR-103, BR-106 `[SRC-15]` `[UP-47]` · Audit: E-13
 Sebagai pasien, saya ingin mengajukan permintaan hak atas data saya, agar dapat menjalankan hak yang diatur UU PDP.
 Rujukan: BR-106 `[SRC-15]` · Audit: E-13
 
-- AC1. Given pasien memilih jenis permintaan (informasi, akses dan salinan, perbaikan, penghapusan, penundaan atau pembatasan, keberatan, portabilitas) untuk dirinya atau anggota keluarganya, When ia mengirim setelah autentikasi ulang (password untuk akun email, atau otorisasi ulang Google/Apple untuk akun yang masuk lewat Google/Apple), Then permintaan berstatus "Diterima" dan batas waktunya tampil.
+- AC1. Given pasien memilih jenis permintaan (informasi, akses dan salinan, perbaikan, penghapusan, penundaan atau pembatasan, keberatan, portabilitas) untuk dirinya atau anggota keluarganya, When ia mengirim setelah autentikasi ulang dengan password, Then permintaan berstatus "Diterima" dan batas waktunya tampil.
 - AC2. Given permintaan masih diproses, When pasien membuka status, Then tahap penanganan tampil.
 - AC3. Cara anggota keluarga dewasa menjalankan haknya sendiri tanpa lewat pemilik akun `[TIDAK DIKETAHUI]` (L-08).
 
@@ -1637,13 +1636,14 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | NFR-SEC-07 | Hak akses mengikuti prinsip hak minimum per peran dan sub-peran (§3.1) | BR-105 `[UP-17]` |
 | NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MB; dokumen PDF ≤ 10 MB) dan hanya dapat diakses pihak yang berhak | `[KEPUTUSAN-08]` |
 | NFR-SEC-09 | Lulus audit keamanan sebelum go-live | `[DOK] P8.2` (syarat go-live 6) |
+| NFR-SEC-10 | Aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biometrik atau PIN perangkat) saat dibuka kembali setelah 15 menit tidak aktif (CR-009) | `[USER] T4-Q6` |
 
 ### 6.5 Privasi dan lokasi data (T1)
 
 | ID | Kebutuhan | Sumber |
 | --- | --- | --- |
 | NFR-PRIV-01 | Data dan backup disimpan di server atau cloud yang berlokasi di Indonesia, termasuk data RME minimalis | BR-113 `[DOK] P5.5` |
-| NFR-PRIV-02 | Pengiriman data pribadi ke penyedia di luar Indonesia hanya bila sesuai keputusan PT-22 dan konfirmasi L-09 | BR-113 |
+| NFR-PRIV-02 | Penyedia pihak ketiga memproses dan menyimpan data pribadi di Indonesia, tanpa kecuali | BR-113 `[USER] T4-Q1` |
 | NFR-PRIV-03 | Data yang dikirim ke payment gateway, rekanan, dan kanal notifikasi dibatasi pada yang diperlukan (AB-73, AB-75) | BR-105 |
 | NFR-PRIV-04 | Panggilan video tidak direkam (AB-74) | BR-016 |
 | NFR-PRIV-05 | Bukti persetujuan tersimpan per versi teks (US-104) | BR-103 |
@@ -1702,7 +1702,7 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 | E-01 | Login berhasil | Semua jenis akun dan komponen | BR-080 butir 1 |
 | E-02 | Login gagal, termasuk akun terkunci | | BR-080 butir 1 |
 | E-03 | Logout | | BR-080 butir 1 |
-| E-04 | Pembuatan akun dan perubahan kredensial (nilai tidak dicatat) | Registrasi, atur ulang password, aktivasi MFA, penautan Google/Apple | ADR-005 `[KEPUTUSAN-07]` |
+| E-04 | Pembuatan akun dan perubahan kredensial (nilai tidak dicatat) | Registrasi, atur ulang password, aktivasi MFA | ADR-005 `[KEPUTUSAN-07]` |
 | E-05 | Akses ke data pasien sensitif oleh pihak selain subjek data, termasuk pemilik akun yang membuka data klinis anggota keluarga (dewasa maupun anak) | Tenaga kesehatan membuka riwayat chat, Verifikator membuka foto KTP/KK, Tenaga Kesehatan Fasyankes membuka rekam medis, admin membuka bukti klaim | BR-080 butir 2 `[KEPUTUSAN-07]` |
 | E-06 | Pembuatan dan perubahan catatan tenaga kesehatan, resep, rekam medis RME, dan hasil lab | | BR-080 butir 3, BR-123 |
 | E-07 | Verifikasi identitas disetujui atau ditolak | | BR-080 butir 4 |
@@ -1975,7 +1975,7 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 | PT-29 | Siapa menanggung biaya payment gateway yang tidak kembali dan nilai barang bila kegagalan atau kerusakan disebabkan kurir (RF-09, RF-10)? | CEO | Tahap 7 (sebelum pengembangan EP-07) |
 | PT-30 | Apakah barang wajib dikembalikan ke outlet saat klaim barang rusak atau tidak sesuai disetujui, dan siapa menanggung ongkos kirim baliknya? | CEO | Tahap 7 |
 | PT-31 | Ke mana dana ongkos kirim disalurkan (outlet atau kurir) dan bagaimana dalam pembagian dana payment gateway? | User (PM), CTO; konfirmasi L-04 | Tahap 4–5 |
-| PT-32 | Pengurusan registrasi RME minimalis sebagai sistem RME mitra di SATUSEHAT (nomor PSE sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra atau surat pernyataan resmi bila belum bermitra, survei keamanan) dan cara fasyankes pengguna memperoleh kredensial SATUSEHAT `[SRC-27]` | User (PM), CEO | Dimulai setelah gate Tahap 3; status dilaporkan di gate Tahap 4 |
+| PT-32 | Pengurusan registrasi RME minimalis sebagai sistem RME mitra di SATUSEHAT (nomor PSE sistem RME, nomor afiliasi SNOMED CT, kode registrasi fasyankes mitra atau surat pernyataan resmi bila belum bermitra, survei keamanan) dan cara fasyankes pengguna memperoleh kredensial SATUSEHAT `[SRC-27]` | User (PM), CEO | Dimulai setelah gate Tahap 3; status di gate Tahap 4: sedang diurus `[USER] T4-G4` |
 | PT-33 | Bila klaim barang hanya menyangkut sebagian isi pesanan (satu dari beberapa barang rusak atau kurang), apakah refund tetap seluruh pembayaran atau sebanding dengan barang yang diklaim? | CEO | Tahap 7 (sebelum pengembangan EP-07) |
 
 ### 12.3 Konfirmasi legal yang berdampak ke PRD
@@ -1992,7 +1992,7 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 
 ### 12.4 Ketergantungan lain
 
-PT-05 (kemampuan sistem rekanan), PT-17 (markup dan biaya rekanan), PT-22 (lokasi data penyedia pihak ketiga), PT-24 (retensi; memblokir US-1605 dan US-1606), dan PT-28 (pajak) tetap terbuka sesuai BRD §10.
+PT-05 (kemampuan sistem rekanan), PT-17 (markup dan biaya rekanan), PT-24 (retensi; memblokir US-1605 dan US-1606), dan PT-28 (pajak) tetap terbuka sesuai BRD §10. PT-22 terjawab di Tahap 4: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia `[USER] T4-Q1`, dengan akibat CR-007 `[USER] T4-Q2`.
 
 ## 13. Keterlacakan
 

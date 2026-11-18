@@ -1,7 +1,7 @@
 # BRD (Business Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.2 (revisi CR-006 dari wawancara Tahap 3, disetujui bersama PRD di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
+Versi: 1.3 (revisi CR-007 dari Tahap 4: semua penyedia pihak ketiga memproses data di Indonesia; login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`, disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.2 (revisi CR-006 dari wawancara Tahap 3, disetujui bersama PRD di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
 Penyusun: Claude (persona Business Analyst + Compliance Officer); review kepatuhan oleh subagent `compliance-reviewer`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1 Kritis** untuk bagian 6 (kepatuhan dan data pribadi/kesehatan), bagian 5.5 (alur uang), dan bagian 5.11 (rekam medis, CR-006); **T2 Standar** untuk bagian lain.
@@ -52,7 +52,7 @@ Klinik dan lab yang memakai RME minimalis (BR-120) terhubung ke Rumah Sehat lewa
 | Klinik rekanan (fasyankes) | Menaungi semua tenaga kesehatan yang melayani di Rumah Sehat; menerima pendaftaran dan home visit; dapat menjual obat bebas | `[DOK] PS6a` `[USER] T2-Q2, T2-Q3b` |
 | Lab rekanan | Menerima pendaftaran; menyediakan harga, jadwal, dan hasil lab | `[DOK] PS6a, P4.1` |
 | Outlet rekanan | Toko kecantikan, toko alat kesehatan, klinik rekanan, dan apotek rekanan yang menjual produk | `[DOK] PS2` `[USER] T2-Q3b` |
-| Penyedia pihak ketiga | Payment gateway berizin BI, layanan video, kurir, WhatsApp/email/push, login Google/Apple. Belum dipilih | `[DOK] P4.2` `[USER] T2-Q4` |
+| Penyedia pihak ketiga | Payment gateway berizin BI, layanan video, kurir, email. Belum dipilih. Semua wajib memproses dan menyimpan data di Indonesia; WhatsApp, push, dan login Google/Apple dihapus (CR-007) | `[DOK] P4.2` `[USER] T2-Q4` `[USER] T4-Q1, T4-Q2` |
 | Regulator dan auditor eksternal | Pihak yang menerima pembuktian kepatuhan. Instansi yang teridentifikasi dari riset ada di bagian 6.1 | `[DOK] P5.3` |
 
 ### 2.2 Peran pengguna (9 peran)
@@ -89,7 +89,7 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 
 | Proses | Alur *to-be* | Sumber |
 | --- | --- | --- |
-| P-01 Registrasi dan verifikasi pasien | Pasien mendaftar dengan email + password atau akun Google/Apple, memberikan persetujuan pemrosesan data, dan mengisi data diri. Sebelum memakai konsultasi, home visit, atau pendaftaran klinik/lab, pasien mengunggah NIK dan foto KTP, lalu admin Rumah Sehat memverifikasinya secara manual (disetujui/ditolak) | `[DOK] P4.4, P4.6a, P4.6b` `[SRC-15]` |
+| P-01 Registrasi dan verifikasi pasien | Pasien mendaftar dengan email + password (login Google/Apple dihapus oleh CR-007), memberikan persetujuan pemrosesan data, dan mengisi data diri. Sebelum memakai konsultasi, home visit, atau pendaftaran klinik/lab, pasien mengunggah NIK dan foto KTP, lalu admin Rumah Sehat memverifikasinya secara manual (disetujui/ditolak) | `[DOK] P4.4, P4.6a, P4.6b` `[SRC-15]` |
 | P-02 Onboarding rekanan dan tenaga kesehatan | Klinik, lab, dan outlet bergabung; admin Rumah Sehat memverifikasi akun dan izin rekanan; sistem rekanan diintegrasikan. Tenaga kesehatan didaftarkan di bawah klinik rekanan dan diverifikasi admin Rumah Sehat, termasuk STR/SIP | `[DOK] P8.2a, PS6a` `[USER] T2-Q2, T2-Q3b` `[SRC-02]` `[SRC-21]` |
 | P-03 Konsultasi online | Pasien memilih tenaga kesehatan (dokter, psikolog, fisioterapis, tenaga medis) dan jadwalnya, melihat harga (tarif rekanan + markup, ditambah biaya transaksi untuk metode non-QRIS), membayar di aplikasi, lalu berkonsultasi lewat chat atau video di Rumah Sehat. Tenaga kesehatan menulis catatan; dokter dapat menerbitkan resep digital yang ditebus pasien di apotek mana pun. Payment gateway membagi dana langsung ke rekening klinik rekanan dan Rumah Sehat | `[DOK] P3.2, P3.4, PS6b` `[USER] T2-Q2, T2-Q4, T2-Q5, T2-Q6a, T2-Q8, T2-Q12` `[SRC-24]` |
 | P-04 Pendaftaran klinik dan lab | Pasien melihat jadwal dan harga layanan klinik atau lab (dari sistem rekanan), mendaftar, dan membayar di aplikasi (harga rekanan + markup, ditambah biaya transaksi untuk metode non-QRIS). Saat datang, pasien cukup menunjukkan appointment di aplikasi. Tindakan tambahan yang tidak tercantum di aplikasi diselesaikan dan dibayar di luar aplikasi. Payment gateway membagi dana langsung ke rekening rekanan dan Rumah Sehat. Hasil lab dari lab rekanan masuk ke Rumah Sehat dan pasien diberi tahu | `[DOK] PS6a, P4.1, P4.5` `[USER] T2-Q4, T2-Q8, T2-Q12, T2-Q13, T2-Q14, T2-Q15, T2-Q19` `[SRC-24]` (CR-005) |
@@ -119,7 +119,7 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | S-11 | Integrasi otomatis ke sistem klinik, lab, dan outlet rekanan | `[DOK] PS6a` |
 | S-12 | Backoffice admin Rumah Sehat (verifikasi dan kelola akun, laporan dan rekonsiliasi dana, CMS termasuk konten edukasi, layanan pelanggan) | `[DOK] P8.2, P8.2a` |
 | S-13 | Portal admin klinik, admin lab, dan admin outlet | `[DOK] PS6c, PS6d` |
-| S-14 | Notifikasi push, email, dan WhatsApp | `[DOK] P4.5` |
+| S-14 | Notifikasi email dan notifikasi di dalam aplikasi. Push dan WhatsApp dihapus (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` |
 | S-15 | Audit trail aktivitas sensitif dan transaksi | `[DOK] P5.4` |
 | S-16 | Kemampuan kepatuhan pelindungan data pribadi (persetujuan, hak subjek data, retensi) | `[SRC-15]` |
 | S-17 | Aplikasi RME minimalis untuk klinik dan lab rekanan yang belum punya sistem, terpisah dari Rumah Sehat dan terhubung lewat integrasi (CR-006) | `[USER] T3-Q1a, T3-Q1b, T3-Q1c, T3-Q14, T3-Q15` |
@@ -141,6 +141,7 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | Integrasi perangkat kesehatan atau wearable | `[DOK] P3.6a` |
 | Pengantaran sampel lab atau pengambilan sampel di rumah | `[DOK] P3.6a` |
 | Login pasien dengan nomor HP + OTP; notifikasi SMS | `[DOK] P4.4, P4.5` |
+| Login dengan akun Google atau Apple; notifikasi push; notifikasi WhatsApp (dihapus, CR-007) | `[USER] T4-Q1, T4-Q2` |
 | Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes rekanan (diganti, CR-001) | `[USER] T2-Q2` |
 | Penampungan dana pasien di rekening PT. Arunika lalu diteruskan sendiri ke mitra (diganti, CR-003) | `[USER] T2-Q4` |
 | Model komisi berupa potongan dari harga rekanan (diganti markup, CR-004) | `[USER] T2-Q6a` |
@@ -166,7 +167,7 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
-| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password atau akun Google/Apple | `[DOK] P4.4` |
+| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus karena lokasi pemrosesannya tidak dapat dipastikan di Indonesia (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` |
 | BR-002 | Rumah Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email, alamat) dan data anggota keluarga pasien. Cara data anggota keluarga dipakai: BR-008 (PT-26 terjawab) | `[DOK] P4.1` `[USER] T3-Q3` |
 | BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik dan lab. Tidak wajib untuk pembelian produk | `[DOK] P4.6a` |
 | BR-004 | Admin Rumah Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan yang mewajibkannya dapat dipakai | `[DOK] P4.6b` |
@@ -229,7 +230,7 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
-| BR-050 | Rumah Sehat mengirim pemberitahuan ke pasien (konfirmasi, pengingat, status pesanan, hasil lab) lewat notifikasi push, email, dan WhatsApp, tanpa SMS | `[DOK] P4.5` |
+| BR-050 | Rumah Sehat mengirim pemberitahuan ke pasien (konfirmasi, pengingat, status pesanan, hasil lab) lewat email dan notifikasi di dalam aplikasi, tanpa SMS. Push dan WhatsApp dihapus karena pemrosesannya tidak dapat dipastikan di Indonesia (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` |
 
 ### 5.7 Backoffice dan portal mitra
 
@@ -247,7 +248,7 @@ Penomoran dikelompokkan per area dan sengaja diberi celah agar kebutuhan baru bi
 | ID | Kebutuhan bisnis | Sumber |
 | --- | --- | --- |
 | BR-070 | Rumah Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan tarif, home visit, katalog, stok, pesanan, hasil lab, serta status lunas dan appointment yang dibayar di aplikasi (CR-005); mekanisme pencocokan appointment saat pasien datang ditetapkan di PRD dan Tahap 4; portal rekanan tidak dipakai untuk itu (T3-Q14). Klinik dan lab tanpa sistem memakai RME minimalis yang terhubung lewat integrasi yang sama (BR-121). Kemampuan integrasi sistem rekanan `[TIDAK DIKETAHUI]` (PT-05) | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` |
-| BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir pihak ketiga, WhatsApp, email, notifikasi push, serta login Google dan Apple. Penyedia dipilih di Tahap 4–5 dengan persetujuan user | `[DOK] P4.2` `[USER] T2-Q4` |
+| BR-071 | Rumah Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir pihak ketiga, dan email. Semua penyedia wajib memproses dan menyimpan data di Indonesia; WhatsApp, notifikasi push, dan login Google/Apple dihapus (CR-007). Penyedia dipilih di Tahap 4–5 dengan persetujuan user | `[DOK] P4.2` `[USER] T2-Q4` `[USER] T4-Q1, T4-Q2` |
 
 ### 5.9 Audit trail
 
@@ -310,7 +311,7 @@ Hasil riset dari sumber resmi `[DOK: compliance/tahap-02-riset.md]`. Daftar ini 
 | BR-110 | Penilaian dampak pelindungan data pribadi (DPIA) dilakukan sebelum go-live | `[SRC-15]` | Kewajiban bagi Rumah Sehat (L-08) |
 | BR-111 | Rumah Sehat menunjuk pejabat/petugas pelindungan data pribadi | `[SRC-15]` `[SRC-16]` | Kewajiban bagi Rumah Sehat (L-08); penunjukan oleh CEO (PT-23) |
 | BR-112 | Setiap jenis data memiliki masa retensi; setelah masa retensi berakhir, data diakhiri pemrosesannya, dihapus, atau dimusnahkan. Angka retensi `[TIDAK DIKETAHUI]` (PT-24). Masukan untuk legal: berita resmi Setkab tentang PP 80/2019 menyebut penyimpanan data PMSE terkait transaksi keuangan paling singkat 10 tahun dan lainnya paling singkat 5 tahun; status terkini PP itu belum diverifikasi | `[SRC-15]` `[SRC-25]` | Ya, terutama rekam medis (L-05) |
-| BR-113 | Data disimpan di server atau cloud yang berlokasi di Indonesia. Pengiriman data pribadi ke luar wilayah hukum Indonesia, termasuk oleh penyedia pihak ketiga, hanya boleh bila memenuhi syarat UU PDP dan diputuskan user (PT-22) | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` | Ya (L-09) |
+| BR-113 | Data disimpan di server atau cloud yang berlokasi di Indonesia. Penyedia pihak ketiga juga wajib memproses dan menyimpan data pribadi di Indonesia, tanpa kecuali (PT-22 terjawab `[USER] T4-Q1`) | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` `[USER] T4-Q1` | Ya (L-09) |
 | BR-114 | Catatan konsultasi dan resep digital memenuhi ketentuan rekam medis elektronik dan resep elektronik yang berlaku, termasuk integrasi dengan sistem Kemenkes bila diwajibkan. Status catatan konsultasi sebagai rekam medis, pengendalinya (klinik rekanan atau PT. Arunika), dan rinciannya `[TIDAK DIKETAHUI]` | `[SRC-18]` `[SRC-06]` `[SRC-07]` `[USER] T2-Q2` | Ya, kritis (L-05) |
 | BR-115 | Pembayaran hanya diproses lewat penyedia jasa pembayaran berizin BI. Model pembagian dana langsung (BR-041) dikonfirmasi tidak memerlukan izin atau penetapan BI bagi PT. Arunika sebelum go-live | `[SRC-19]` `[SRC-20]` `[USER] T2-Q4` | Ya, kritis (L-04) |
 | BR-116 | Obat bebas, produk kecantikan, dan produk kesehatan yang dijual lewat Rumah Sehat memenuhi ketentuan peredaran daring BPOM. Kewajiban PSEF bagi Rumah Sehat dikonfirmasi; bila wajib, tindak lanjutnya diputuskan CEO (PT-21) | `[SRC-08]` `[SRC-10]` `[SRC-11]` `[USER] T2-Q3` | Ya, kritis (L-03) |
@@ -362,7 +363,7 @@ Tidak ada asumsi atas fakta bisnis. Keputusan Tahap 2 yang bergantung pada konfi
 | --- | --- | --- |
 | Rekanan (min. 2 klinik, 1 lab, 3 outlet) bergabung dan sistemnya bisa diintegrasikan (PT-05) | Layanan S-04 sampai S-08 dan semua konsultasi (karena nakes di bawah klinik rekanan) tidak bisa berjalan | `[DOK] P4.3, P8.2` `[USER] T2-Q2` |
 | Payment gateway berizin BI yang mendukung pembagian dana langsung ke rekening rekanan | BR-041 tidak bisa dipenuhi untuk semua layanan berbayar; ketersediaan fitur diverifikasi di Tahap 4–5 | `[USER] T2-Q4, T2-Q13` |
-| Penyedia video, kurir, WhatsApp, email, push yang sesuai keputusan lokasi data (PT-22) | Pemilihan penyedia di Tahap 4–5 tertahan | `[DOK] P4.2, P5.5` |
+| Penyedia video, kurir, dan email yang memproses dan menyimpan data di Indonesia (T4-Q1) | Pemilihan penyedia di Tahap 4–5 tertahan | `[DOK] P4.2, P5.5` |
 | Konfirmasi legal L-01 sampai L-15 | Lihat kolom "Dibutuhkan sebelum" di bagian 6.3 | Bagian 6.3 |
 | Pendaftaran PSE, perizinan berusaha, dan ketentuan Kemenkes yang mungkin terbit sebelum go-live | Syarat go-live 5 tidak terpenuhi | `[SRC-06]` `[SRC-12]` |
 | Akun developer Google Play dan Apple atas nama PT. Arunika | Syarat go-live 4 | `[DOK: 01-business-case.md]` R-08 |
@@ -379,6 +380,7 @@ Dicatat sebagai change request di `docs/backlog.md`. Semuanya keputusan user: CR
 | CR-004 | Pendapatan transaksi berupa markup di atas harga rekanan (persen/nominal, per rekanan), menggantikan komisi potongan | Business Case §5.1, §5.2 Tabel A–B | `[USER] T2-Q6, T2-Q6a` |
 | CR-005 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi, termasuk pendaftaran klinik, lab, dan home visit; pasien cukup menunjukkan appointment; tindakan tambahan di luar aplikasi. Markup dan aturan biaya transaksi berlaku untuk semua layanan; refund atas pembatalan layanan terjadwal sebelum batas waktu. Diajukan setelah gate Tahap 2 | Brief P3.3; BRD v1.0 P-04, P-05, P-06, P-08, S-10, §4.2, BR-020, BR-023, BR-024, BR-040, BR-042, BR-043, BR-044, BR-045, BR-070, L-04, L-08, L-10, L-12, L-13, L-14, PT-17, PT-27, PT-28; Business Case §5 | `[USER] T2-Q13–T2-Q20` |
 | CR-006 | RME minimalis sebagai aplikasi terpisah untuk klinik dan lab tanpa sistem, terhubung lewat integrasi, data rekam medis sesuai SATUSEHAT, hanya pasien Rumah Sehat; antrean real-time klinik masuk rilis 1; RME lengkap, loyalitas/poin/voucher, dan multi-bahasa tidak masuk; portal rekanan hanya untuk pelaporan dan rekap ditambah menu pengaturan konsultasi online | BRD v1.1 §1.3, §2.2, §4.1–§4.3, BR-018, BR-064, BR-070, L-05; Business Case §6 (biaya) dan R-02, R-04 | `[USER] T3-Q1–T3-Q1c, T3-Q14–T3-Q16` |
+| CR-007 | Semua penyedia pihak ketiga memproses dan menyimpan data pribadi di Indonesia tanpa kecuali (PT-22). Login Google/Apple, notifikasi push, dan WhatsApp dihapus karena lokasi pemrosesannya tidak dapat dipastikan di Indonesia; notifikasi lewat email dan di dalam aplikasi. Diajukan di Tahap 4 | Brief P4.4, P4.5; BRD v1.2 §2.1, P-01, S-14, BR-001, BR-050, BR-071, BR-113, §7.3, PT-22; PRD v1.0 | `[USER] T4-Q1, T4-Q2` |
 
 Bagian BRD v1.1 yang diubah oleh CR-006 dan jawaban Tahap 3 lainnya: §1.3, §2.2, §4.1–§4.3, BR-002, BR-007 (BR-008 baru), BR-017, BR-018, BR-027 baru, BR-045, BR-064, BR-070, BR-100, §5.11 (BR-120–BR-126 baru), §6.1, L-02, L-05, L-07, L-08, L-14, L-15 baru, §9, §10.
 
@@ -413,8 +415,8 @@ Sesuai rencana tinjauan `[DOK: 01-business-case.md]` §9:
 | PT-08, PT-10, PT-12, PT-13, PT-15 | Terjawab di Tahap 3 | PT-08: T3-Q9; PT-10: target desain T3-Q11; PT-12: T3-Q12; PT-13: T3-Q1–Q1c, T3-Q15 (CR-006); PT-15: T3-Q10. Rincian di PRD §12.1 | — |
 | PT-16 | Terjawab | T2-Q10, T2-Q11 (bagian 1.2) | — |
 | PT-17 | Terbuka | Besaran markup, serta dipakai-tidaknya, bentuk, dan besaran biaya rekanan ditetapkan CEO sebelum go-live; sistem menyediakan pengaturannya (T2-Q1, T2-Q16) | Tidak |
-| PT-18 | Terbuka | Tetap; tenggat sebelum gate Tahap 4 | Tidak |
-| PT-19 | Terbuka | Status mobile developer penuh waktu belum dijawab. Tenggat baru: gate Tahap 4 (disetujui di gate Tahap 2) (bersama baseline biaya) | Tidak |
+| PT-18 | Terbuka | Tenggat dipindah ke gate Tahap 5 bersama baseline biaya `[USER] T4-G4` | Tidak |
+| PT-19 | Terbuka | Status mobile developer penuh waktu belum dijawab. Tenggat baru: gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
 
 Catatan PT-06: kalimat "pembayaran ke tenaga kesehatan menjadi urusan klinik rekanan" adalah turunan logis dari T2-Q2 dan disetujui user di gate Tahap 2 `[USER] T2-Gate`.
 
@@ -426,12 +428,12 @@ Kolom Pemilik dan Tenggat diusulkan penyusun dan disetujui user di gate Tahap 2 
 | --- | --- | --- | --- | --- |
 | PT-20 | Penunjukan konsultan hukum/tim legal untuk menjawab L-01 sampai L-15 (L-15 ditambahkan di Tahap 3) | User (PM) dan CEO | Segera; L-01, L-04, L-05, L-06, L-08, L-12, L-13 sebelum Tahap 4 | Tidak |
 | PT-21 | Kalau legal menyatakan Rumah Sehat wajib PSEF (dengan apoteker penanggung jawab), apa tindakannya: obat bebas ditunda lewat P8.3, atau PSEF dipenuhi? | CEO | Setelah jawaban L-03 | Tidak (obat bebas dapat dilepas lewat P8.3) |
-| PT-22 | Apakah keputusan "data di Indonesia" juga berlaku untuk penyedia video, email, WhatsApp, push, dan login Google/Apple? | User (PM), CEO, CTO | Sebelum Tahap 4 | Tidak |
+| PT-22 | Apakah keputusan "data di Indonesia" juga berlaku untuk penyedia video, email, WhatsApp, push, dan login Google/Apple? **Terjawab:** semua di Indonesia tanpa kecuali `[USER] T4-Q1`; akibatnya CR-007 `[USER] T4-Q2` | User (PM), CEO, CTO | Sebelum Tahap 4 | Tidak |
 | PT-23 | Siapa pejabat/petugas PDP dan pemilik proses notifikasi insiden (internal atau eksternal)? | CEO | Sebelum Tahap 10 | Tidak |
 | PT-24 | Masa retensi per jenis data (setelah L-05) | CEO, berdasarkan pendapat legal | Sebelum Tahap 4 (model data) | Tidak |
-| PT-25 | Anggaran dan waktu perizinan, legal, dan kepatuhan | CEO | Gate Tahap 4 (baseline biaya) | Tidak |
+| PT-25 | Anggaran dan waktu perizinan, legal, dan kepatuhan | CEO | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
 | PT-26 | Bagaimana data anggota keluarga dipakai: apakah pasien dapat memesan konsultasi, pendaftaran, home visit, atau produk untuk anggota keluarga? **Terjawab:** BR-008 `[USER] T3-Q3, T3-Q3a` | User (PM) | Tahap 3 | — |
 | PT-27 | Refund setelah dana terbagi langsung ke rekening rekanan (BR-041, BR-045), kini untuk semua layanan termasuk pembatalan sebelum batas waktu (CR-005): siapa yang menanggung, termasuk MDR atas transaksi yang di-refund, dan bagaimana dana ditarik kembali dari rekanan? | CEO; mekanisme teknis di Tahap 4–5 | Tahap 3 (aturan bisnis), Tahap 4–5 (mekanisme). **Aturan bisnis terjawab:** penyebab menanggung, PRD §3.5 `[USER] T3-Q7` | Tidak |
-| PT-28 | Perlakuan pajak atas markup dan pembagian dana langsung untuk semua layanan (usulan review kepatuhan CR-005, pemilik dan tenggat diusulkan penyusun dan disetujui user di gate revisi `[USER] T2-Gate-CR005`; ketentuannya `[TIDAK DIKETAHUI]`) | CEO, dengan konsultan pajak | Gate Tahap 4 (baseline biaya) | Tidak |
+| PT-28 | Perlakuan pajak atas markup dan pembagian dana langsung untuk semua layanan (usulan review kepatuhan CR-005, pemilik dan tenggat diusulkan penyusun dan disetujui user di gate revisi `[USER] T2-Gate-CR005`; ketentuannya `[TIDAK DIKETAHUI]`) | CEO, dengan konsultan pajak | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
 
 Pertanyaan terbuka baru dari Tahap 3 (PT-29 sampai PT-33) tercatat di `docs/03-prd.md` §12.2.

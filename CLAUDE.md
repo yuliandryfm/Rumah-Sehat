@@ -32,6 +32,21 @@ IMPORTANT: tidak ada kode merah yang boleh di-commit, di branch mana pun. Git ho
 - Perubahan skema hanya lewat file migrasi.
 - Kalau menemukan pola baru yang belum ada standarnya, berhenti dan usulkan ADR.
 
+## Modul kritis (T1)
+
+Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di modul ini wajib review penuh (code-reviewer, ditambah security dan/atau DBA sesuai bidangnya) dan test termasuk skenario negatif (`aturan-kerja.md` §1):
+- Autentikasi, sesi, dan MFA, termasuk konfigurasi realm Keycloak dan validasi token di backend (ADR-011)
+- Otorisasi dan isolasi data, termasuk RLS dan role database RME minimalis (ADR-012)
+- Harga dan markup, pembayaran, jurnal, refund, klaim, dan kewajiban rekanan (ADR-015)
+- Pustaka audit, relay, dan database audit (ADR-009)
+- Enkripsi, kunci data, pekerja privasi, retensi, dan anonimisasi (ADR-013)
+- Persetujuan dan hak subjek data (EP-16)
+- Gateway Partner Integration API: autentikasi klien, tanda tangan webhook, idempotensi (ADR-014)
+- Berkas dokumen identitas dan klinis (ADR-018)
+- Rekam medis RME minimalis dan pengiriman SATUSEHAT (ADR-020)
+- File migrasi skema dan hak role database (ADR-008)
+- Konfigurasi akses administratif production dan pipeline CI/CD (ADR-021)
+
 ## Perintah
 
 <Diisi di Tahap 5: build, lint, test, migrasi, menjalankan aplikasi lokal.>
