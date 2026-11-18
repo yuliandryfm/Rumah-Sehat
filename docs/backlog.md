@@ -345,6 +345,20 @@ Alasan: celah teknis yang ditemukan DBA. Memberi `UPDATE` ke role aplikasi atas 
 Dampak ke scope / waktu / arsitektur: data dictionary A19 dan C (tabel baru dan hak role) diperbarui setelah gate; desain fisik di `docs/05-physical-schema.md`. Tanpa perubahan PRD atau BRD. Keputusan teknis penyusun, ditampilkan di gate.
 Keputusan: Disetujui di gate Tahap 5 (2026-11-18, T5-G2 e); data dictionary A19 dan C diperbarui saat migrasi terkait dibuat di Tahap 8
 
+### CR-015: Vaksinasi dan suntik/infus vitamin sebagai layanan lab rekanan
+
+Diajukan: 2026-11-18 (setelah gate Tahap 5, sebelum Tahap 6; pernyataan user saat membahas pamflet `docs/input/Rumah Sehat Apps.jpeg`)
+Deskripsi: layanan vaksinasi dan suntik/infus vitamin yang tampil di pamflet masuk ke scope lab: ditawarkan lab rekanan, dipesan dan dibayar di aplikasi seperti pendaftaran lab (P-04, BR-024) `[USER] "sebenarnya vaksinasi atau infus masuk ke scope lab, mirip secara bisnis"`.
+Alasan: secara bisnis serupa dengan pendaftaran lab (menurut user).
+Dampak ke scope / waktu / arsitektur:
+- Brief, BRD, PRD, dan backlog saat ini tidak menyebut vaksinasi maupun infus (dicek dengan pencarian teks 2026-11-18). Jenis layanan yang dikenal US-1303 AC1, PRD model data, dan data dictionary: layanan klinik, pemeriksaan lab, paket MCU, home visit.
+- Jenis "pemeriksaan lab" terhubung ke alur hasil lab (US-901, US-902, US-1307) dan pengodean LOINC (ADR-020 butir 5). Vaksinasi dan infus tidak menghasilkan nilai lab, sehingga perlu diputuskan: jenis layanan baru, atau jenis yang ada tanpa alur hasil.
+- Pencatatan tindakan dan vaksin/obat yang diberikan di RME minimalis serta pengirimannya ke SATUSEHAT: `[TIDAK DIKETAHUI]`, perlu dicek ke sumber resmi bila CR diterima.
+- Kepatuhan: apakah laboratorium klinik rekanan boleh melakukan vaksinasi dan infus, atau harus fasyankes lain: `[TIDAK DIKETAHUI]`, diusulkan menjadi pertanyaan legal baru (menunggu PT-20).
+- Tempat layanan: di lokasi lab, atau home visit sesuai regulasi `[USER] "di lab, atau home visit sesuai regulasi"` (2026-11-18). Varian home visit oleh lab memperluas BRD P-05 (saat ini home visit hanya disediakan klinik rekanan) dan bersinggungan dengan butir di luar scope BRD §4.2 "Pengantaran sampel lab atau pengambilan sampel di rumah" `[DOK] P3.6a`, sehingga perlu keputusan eksplisit: hanya vaksinasi/infus yang boleh di rumah, sedangkan pengambilan sampel tetap di luar scope, atau keduanya. Syarat regulasi home visit vaksinasi/infus oleh lab: `[TIDAK DIKETAHUI]`, masuk pertanyaan legal yang sama.
+- Fakta bisnis yang belum diketahui: apakah klinik rekanan juga boleh menawarkan vaksinasi/infus.
+Keputusan: Dicatat; dampak ke BRD/PRD dan penempatan (rilis 1 atau berikutnya) diputuskan di Checkpoint 2 / Tahap 7. Wireframe Tahap 6 boleh menampilkannya hanya sebagai butir katalog lab bertanda "menunggu CR-015"
+
 ## Tech Debt
 
 _Belum ada._
