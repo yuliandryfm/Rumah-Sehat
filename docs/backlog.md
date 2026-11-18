@@ -8,6 +8,8 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 - Merujuk ke bagian PRD dan ADR yang relevan
 - Dependensi sudah selesai atau jelas
 - Ukurannya muat dalam satu sesi kerja (satu PR yang bisa direview dalam 15 menit)
+- Tambahan Tahap 7: story sudah dipecah menjadi task 2–4 jam dengan urutan, dependensi, dan penanda kelas T1/T2 (`docs/07-phase-plan.md` §7.3 untuk Fase 1); gerbang eksternal yang dibutuhkan (`docs/07-phase-plan.md` §9) sudah terbuka, atau task yang bergantung padanya ditandai dan tidak dimulai
+- Tambahan Tahap 7: bila sebagian AC bergantung pada story di fase berikutnya, AC itu ditulis eksplisit di kolom Fase dan diverifikasi di fase tujuan `[KEPUTUSAN-179]`
 
 ## Definition of Done
 
@@ -23,10 +25,12 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 - Setiap `response_code` baru didaftarkan di `docs/05-response-codes.md`, tiga digit pertamanya sama dengan kode HTTP, dan satu kode kasus tidak dipakai ulang untuk arti berbeda (ADR-023, KEPUTUSAN-84; usulan CR-012, berlaku setelah gate Tahap 5)
 - Dependensi baru sudah dicek di registry resmi dan dicatat di `docs/sources.md`; pemindaian dependensi dan image (cargo-deny, cargo-audit, osv-scanner, Trivy) tidak menyisakan advisory Critical atau High yang belum ditangani (ADR-024, ADR-025, KEPUTUSAN-81; usulan CR-012, berlaku setelah gate Tahap 5)
 - Perubahan di modul T1 baru dari Tahap 5 (BFF auth di server Next.js, konfigurasi OpenBao, bastion dan skrip deploy production) direview penuh termasuk security, dengan test negatif (ADR-024, ADR-025; usulan CR-012, berlaku setelah gate Tahap 5)
+- Tambahan Tahap 7: setiap test yang membuktikan AC memakai penanda `trace: US-xxx ACn` dan kolom "File kode / test" di `docs/traceability.md` diperbarui (KEPUTUSAN-133); task ditandai selesai di backlog beserta commit hash (anti-halu §5)
+- Tambahan Tahap 7: layar baru memenuhi aturan aksesibilitas design guideline §7 dan lulus test guideline `flutter_test` (mobile) atau test keyboard/fokus Playwright (web) untuk alur utama (KEPUTUSAN-176)
 
 ## Epic dan Story
 
-Sumber: `docs/03-prd.md` v1.1 (v1.0 Tahap 3, revisi CR-007 Tahap 4). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7.
+Sumber: `docs/03-prd.md` v1.1 (v1.0 Tahap 3, revisi CR-007 Tahap 4). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7 sebagai usulan `[UP-65]` `[UP-66]` yang menunggu Checkpoint 2; rincian fase, tanggal, dan task Fase 1 ada di `docs/07-phase-plan.md`. Fase 4 bersifat bersyarat (dikerjakan hanya bila gerbang re-plan 2026-12-11 memilih Opsi A; di Opsi B, US-108 dan US-109 pindah ke Fase 3). Enabler (EN-xx) dan story UI (UI-xx) ada di bagian tersendiri di bawah `[KEPUTUSAN-179]`.
 
 Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Story dengan ketergantungan legal yang dapat mengubah AC: US-104, US-108, US-203, US-308, US-309, US-805–US-808, US-1306, US-1309 (lihat PRD §12.3).
 
@@ -34,183 +38,231 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | — | Backlog |
+| US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 | US-102 | Dihapus oleh CR-007 (sebelumnya: masuk dengan akun Google atau Apple) | BR-001 | Won't | — | Dihapus |
-| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | — | Backlog |
-| US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | — | Backlog |
-| US-105 | Profil data diri | BR-002 | Must | — | Backlog |
-| US-106 | Unggah NIK dan foto KTP | BR-003 | Must | — | Backlog |
-| US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must | — | Backlog |
-| US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should | — | Backlog |
-| US-109 | Ubah dan hapus anggota keluarga | BR-008, BR-106 | Should | — | Backlog |
+| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | 1 (AC3 menunggu PT-44/UP-73; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | 1 (AC4 di Fase 2 bersama US-1001; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-105 | Profil data diri | BR-002 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-106 | Unggah NIK dan foto KTP | BR-003 | Must | 1 (reference implementation; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must | 2 | Backlog |
+| US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should | 4 (Opsi B: 3) | Backlog |
+| US-109 | Ubah dan hapus anggota keluarga | BR-008, BR-106 | Should | 4 (Opsi B: 3) | Backlog |
 
 ### [EP-02] Verifikasi dan pengelolaan akun
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | — | Backlog |
-| US-202 | Pendaftaran tenaga kesehatan | BR-005, BR-102 | Must | — | Backlog |
-| US-203 | Verifikasi tenaga kesehatan | BR-005, BR-102 | Must | — | Backlog |
-| US-204 | Pemantauan masa berlaku SIP | BR-102 | Must | — | Backlog |
-| US-205 | Onboarding rekanan | BR-006, BR-031 | Must | — | Backlog |
-| US-206 | Akun admin mitra | BR-006 | Must | — | Backlog |
-| US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | — | Backlog |
-| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | — | Backlog |
+| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | 1 (reference implementation; pemberitahuan AC2 di Fase 2 bersama US-1001; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-202 | Pendaftaran tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
+| US-203 | Verifikasi tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
+| US-204 | Pemantauan masa berlaku SIP | BR-102 | Must | 2 | Backlog |
+| US-205 | Onboarding rekanan | BR-006, BR-031 | Must | 2 (PT-47; status integrasi penuh dari US-1405 di Fase 3) | Backlog |
+| US-206 | Akun admin mitra | BR-006 | Must | 2 | Backlog |
+| US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | 2 (kaskade ke produk dan home visit di AC2 diverifikasi di Fase 4) | Backlog |
+| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 
 ### [EP-03] Konsultasi online
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-301 | Tarif dan durasi konsultasi (menu portal klinik) | BR-018, BR-064 | Must | — | Backlog |
-| US-302 | Jadwal praktik online | BR-017 | Must | — | Backlog |
-| US-303 | Cari dan pilih tenaga kesehatan | BR-010, BR-011, BR-012, BR-014 | Must | — | Backlog |
-| US-304 | Pesan sesi konsultasi | BR-010, BR-011, BR-012, BR-040 | Must | — | Backlog |
-| US-305 | Sesi chat | BR-010, BR-016 | Must | — | Backlog |
-| US-306 | Sesi video | BR-010, BR-016 | Must | — | Backlog |
-| US-307 | Ketidakhadiran dan pembatalan oleh tenaga kesehatan | BR-045 | Must | — | Backlog |
-| US-308 | Catatan konsultasi | BR-013, BR-016, BR-114 | Must | — | Backlog |
-| US-309 | Resep digital | BR-015, BR-114 | Must | — | Backlog |
-| US-310 | Riwayat konsultasi pasien | BR-016, BR-106 | Must | — | Backlog |
-| US-311 | Daftar sesi tenaga kesehatan | BR-013 | Must | — | Backlog |
+| US-301 | Tarif dan durasi konsultasi (menu portal klinik) | BR-018, BR-064 | Must | 2 | Backlog |
+| US-302 | Jadwal praktik online | BR-017 | Must | 2 | Backlog |
+| US-303 | Cari dan pilih tenaga kesehatan | BR-010, BR-011, BR-012, BR-014 | Must | 2 | Backlog |
+| US-304 | Pesan sesi konsultasi | BR-010, BR-011, BR-012, BR-040 | Must | 2 | Backlog |
+| US-305 | Sesi chat | BR-010, BR-016 | Must | 2 | Backlog |
+| US-306 | Sesi video | BR-010, BR-016 | Must | 2 | Backlog |
+| US-307 | Ketidakhadiran dan pembatalan oleh tenaga kesehatan | BR-045 | Must | 2 | Backlog |
+| US-308 | Catatan konsultasi | BR-013, BR-016, BR-114 | Must | 2 (draf di server, UP-72) | Backlog |
+| US-309 | Resep digital | BR-015, BR-114 | Must | 2 | Backlog |
+| US-310 | Riwayat konsultasi pasien | BR-016, BR-106 | Must | 2 | Backlog |
+| US-311 | Daftar sesi tenaga kesehatan | BR-013 | Must | 2 | Backlog |
 
 ### [EP-04] Pendaftaran klinik dan lab, check-in, dan antrean
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-401 | Cari klinik, lab, dan layanannya | BR-020, BR-021 | Must | — | Backlog |
-| US-402 | Pesan pendaftaran klinik atau lab | BR-020, BR-021, BR-024, BR-040 | Must | — | Backlog |
-| US-403 | Appointment dan kode check-in | BR-024 | Must | — | Backlog |
-| US-404 | Check-in lewat sistem rekanan | BR-024, BR-070 | Must | — | Backlog |
-| US-405 | Antrean real-time | BR-027 | Should | — | Backlog |
-| US-406 | Riwayat pendaftaran | BR-026 | Must | — | Backlog |
+| US-401 | Cari klinik, lab, dan layanannya | BR-020, BR-021 | Must | 3 | Backlog |
+| US-402 | Pesan pendaftaran klinik atau lab | BR-020, BR-021, BR-024, BR-040 | Must | 3 | Backlog |
+| US-403 | Appointment dan kode check-in | BR-024 | Must | 3 | Backlog |
+| US-404 | Check-in lewat sistem rekanan | BR-024, BR-070 | Must | 3 | Backlog |
+| US-405 | Antrean real-time | BR-027 | Should | 4 | Backlog |
+| US-406 | Riwayat pendaftaran | BR-026 | Must | 3 | Backlog |
 
 ### [EP-05] Home visit
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-501 | Cari dan pesan home visit | BR-022, BR-024, BR-040 | Must | — | Backlog |
-| US-502 | Penugasan tenaga kesehatan | BR-022, BR-070 | Must | — | Backlog |
-| US-503 | Status kunjungan oleh tenaga kesehatan | BR-022 | Must | — | Backlog |
-| US-504 | Pantau kunjungan dan laporkan tenaga kesehatan tidak datang | BR-022, BR-045 | Must | — | Backlog |
+| US-501 | Cari dan pesan home visit | BR-022, BR-024, BR-040 | Must | 4 | Backlog |
+| US-502 | Penugasan tenaga kesehatan | BR-022, BR-070 | Must | 4 | Backlog |
+| US-503 | Status kunjungan oleh tenaga kesehatan | BR-022 | Must | 4 | Backlog |
+| US-504 | Pantau kunjungan dan laporkan tenaga kesehatan tidak datang | BR-022, BR-045 | Must | 4 | Backlog |
 
 ### [EP-06] Informasi biaya MCU dan lab
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-601 | Cari dan bandingkan biaya MCU dan pemeriksaan lab | BR-023 | Must | — | Backlog |
-| US-602 | Lanjut mendaftar dari informasi biaya | BR-023, BR-020, BR-021 | Should | — | Backlog |
+| US-601 | Cari dan bandingkan biaya MCU dan pemeriksaan lab | BR-023 | Must | 3 | Backlog |
+| US-602 | Lanjut mendaftar dari informasi biaya | BR-023, BR-020, BR-021 | Should | 3 | Backlog |
 
 ### [EP-07] Pembelian produk
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-701 | Jelajah dan cari katalog | BR-030, BR-033 | Must | — | Backlog |
-| US-702 | Detail produk | BR-030, BR-031, BR-032, BR-116 | Must | — | Backlog |
-| US-703 | Keranjang dan checkout | BR-034, BR-040 | Must | — | Backlog |
-| US-704 | Status dan pelacakan pesanan | BR-033, BR-034 | Must | — | Backlog |
-| US-705 | Konfirmasi terima dan klaim barang | BR-045 | Must | — | Backlog |
-| US-706 | Riwayat pesanan | BR-035 | Must | — | Backlog |
+| US-701 | Jelajah dan cari katalog | BR-030, BR-033 | Must | 4 (gerbang PT-37) | Backlog |
+| US-702 | Detail produk | BR-030, BR-031, BR-032, BR-116 | Must | 4 | Backlog |
+| US-703 | Keranjang dan checkout | BR-034, BR-040 | Must | 4 (gerbang PT-37) | Backlog |
+| US-704 | Status dan pelacakan pesanan | BR-033, BR-034 | Must | 4 (gerbang PT-29, PT-37) | Backlog |
+| US-705 | Konfirmasi terima dan klaim barang | BR-045 | Must | 4 (gerbang PT-29, PT-30, PT-33) | Backlog |
+| US-706 | Riwayat pesanan | BR-035 | Must | 4 | Backlog |
 
 ### [EP-08] Pembayaran, harga, pembagian dana, dan refund (T1)
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-801 | Ringkasan harga sebelum membayar | BR-042, BR-044, BR-024 | Must | — | Backlog |
-| US-802 | Pembayaran lewat payment gateway | BR-040, BR-115 | Must | — | Backlog |
-| US-803 | Pembagian dana per transaksi | BR-041, BR-044 | Must | — | Backlog |
-| US-804 | Bukti pembayaran | BR-040 | Must | — | Backlog |
-| US-805 | Pembatalan layanan terjadwal oleh pasien | BR-045 | Must | — | Backlog |
-| US-806 | Refund otomatis | BR-045 | Must | — | Backlog |
-| US-807 | Klaim refund | BR-045 | Must | — | Backlog |
-| US-808 | Eksekusi dan status refund | BR-045 | Must | — | Backlog |
-| US-809 | Pengaturan markup per rekanan | BR-042, BR-063 | Must | — | Backlog |
-| US-810 | Pengaturan biaya rekanan | BR-043, BR-063 | Must | — | Backlog |
-| US-811 | Laporan transaksi dan rekonsiliasi pembagian dana | BR-046 | Must | — | Backlog |
-| US-812 | Pengaturan parameter bisnis | BR-045, BR-063 | Must | — | Backlog |
+| US-801 | Ringkasan harga sebelum membayar | BR-042, BR-044, BR-024 | Must | 2 (setelah EN-24; pajak menunggu sisa PT-28) | Backlog |
+| US-802 | Pembayaran lewat payment gateway | BR-040, BR-115 | Must | 2 (gerbang PT-36) | Backlog |
+| US-803 | Pembagian dana per transaksi | BR-041, BR-044 | Must | 2 (gerbang PT-36) | Backlog |
+| US-804 | Bukti pembayaran | BR-040 | Must | 2 | Backlog |
+| US-805 | Pembatalan layanan terjadwal oleh pasien | BR-045 | Must | 2 | Backlog |
+| US-806 | Refund otomatis | BR-045 | Must | 2 (kejadian produk RF-08/RF-09/RF-15 diverifikasi di Fase 4) | Backlog |
+| US-807 | Klaim refund | BR-045 | Must | 3 (klaim produk dan home visit diverifikasi di Fase 4) | Backlog |
+| US-808 | Eksekusi dan status refund | BR-045 | Must | 2 | Backlog |
+| US-809 | Pengaturan markup per rekanan | BR-042, BR-063 | Must | 2 | Backlog |
+| US-810 | Pengaturan biaya rekanan | BR-043, BR-063 | Must | 3 | Backlog |
+| US-811 | Laporan transaksi dan rekonsiliasi pembagian dana | BR-046 | Must | 3 | Backlog |
+| US-812 | Pengaturan parameter bisnis | BR-045, BR-063 | Must | 2 | Backlog |
 
 ### [EP-09] Hasil lab
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-901 | Penerimaan hasil lab | BR-025, BR-070 | Must | — | Backlog |
-| US-902 | Lihat dan unduh hasil lab | BR-025, BR-050 | Must | — | Backlog |
+| US-901 | Penerimaan hasil lab | BR-025, BR-070 | Must | 3 | Backlog |
+| US-902 | Lihat dan unduh hasil lab | BR-025, BR-050 | Must | 3 | Backlog |
 
 ### [EP-10] Notifikasi
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1001 | Notifikasi pasien per kejadian dan kanal | BR-050 | Must | — | Backlog |
-| US-1002 | Pengingat jadwal | BR-050 | Must | — | Backlog |
-| US-1003 | Notifikasi tenaga kesehatan dan admin | BR-013, BR-102 | Must | — | Backlog |
+| US-1001 | Notifikasi pasien per kejadian dan kanal | BR-050 | Must | 2 | Backlog |
+| US-1002 | Pengingat jadwal | BR-050 | Must | 2 | Backlog |
+| US-1003 | Notifikasi tenaga kesehatan dan admin | BR-013, BR-102 | Must | 2 | Backlog |
 
 ### [EP-11] Konten dan layanan pelanggan
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1101 | Pengelolaan konten (CMS) | BR-061 | Must | — | Backlog |
-| US-1102 | Konten di aplikasi pasien | BR-061 | Must | — | Backlog |
-| US-1103 | Ajukan keluhan | BR-062 | Must | — | Backlog |
-| US-1104 | Kelola keluhan | BR-062, BR-064, BR-065 | Must | — | Backlog |
+| US-1101 | Pengelolaan konten (CMS) | BR-061 | Must | 3 | Backlog |
+| US-1102 | Konten di aplikasi pasien | BR-061 | Must | 3 | Backlog |
+| US-1103 | Ajukan keluhan | BR-062 | Must | 3 | Backlog |
+| US-1104 | Kelola keluhan | BR-062, BR-064, BR-065 | Must | 3 | Backlog |
 
 ### [EP-12] Portal rekanan
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1201 | Laporan transaksi dan pembagian dana rekanan | BR-046, BR-064, BR-065 | Must | — | Backlog |
-| US-1202 | Lihat profil rekanan | BR-064, BR-065 | Must | — | Backlog |
-| US-1203 | Lihat keluhan terkait rekanan | BR-064, BR-065 | Must | — | Backlog |
+| US-1201 | Laporan transaksi dan pembagian dana rekanan | BR-046, BR-064, BR-065 | Must | 3 | Backlog |
+| US-1202 | Lihat profil rekanan | BR-064, BR-065 | Must | 3 | Backlog |
+| US-1203 | Lihat keluhan terkait rekanan | BR-064, BR-065 | Must | 3 | Backlog |
 
 ### [EP-13] Aplikasi RME minimalis (T1)
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1301 | Onboarding fasyankes ke RME minimalis | BR-120 | Must | — | Backlog |
-| US-1302 | Akun dan peran pengguna RME | BR-120 | Must | — | Backlog |
-| US-1303 | Jadwal, layanan, dan harga | BR-122 | Must | — | Backlog |
-| US-1304 | Appointment dan check-in | BR-125, BR-024 | Must | — | Backlog |
-| US-1305 | Antrean | BR-125, BR-027 | Should | — | Backlog |
-| US-1306 | Catatan rekam medis kunjungan | BR-123 | Must | — | Backlog |
-| US-1307 | Hasil lab | BR-124, BR-025 | Must | — | Backlog |
-| US-1308 | Home visit | BR-125, BR-022 | Must | — | Backlog |
-| US-1309 | Pengiriman data rekam medis ke SATUSEHAT | BR-123 | Must | — | Backlog |
-| US-1310 | Riwayat rekam medis pasien di fasyankes | BR-123, BR-126 | Must | — | Backlog |
+| US-1301 | Onboarding fasyankes ke RME minimalis | BR-120 | Must | 3 | Backlog |
+| US-1302 | Akun dan peran pengguna RME | BR-120 | Must | 3 | Backlog |
+| US-1303 | Jadwal, layanan, dan harga | BR-122 | Must | 3 | Backlog |
+| US-1304 | Appointment dan check-in | BR-125, BR-024 | Must | 3 | Backlog |
+| US-1305 | Antrean | BR-125, BR-027 | Should | 4 | Backlog |
+| US-1306 | Catatan rekam medis kunjungan | BR-123 | Must | 3 (AC6 home visit diverifikasi di Fase 4) | Backlog |
+| US-1307 | Hasil lab | BR-124, BR-025 | Must | 3 | Backlog |
+| US-1308 | Home visit | BR-125, BR-022 | Must | 4 | Backlog |
+| US-1309 | Pengiriman data rekam medis ke SATUSEHAT | BR-123 | Must | 3 (uji bergantung PT-32) | Backlog |
+| US-1310 | Riwayat rekam medis pasien di fasyankes | BR-123, BR-126 | Must | 3 | Backlog |
 
 ### [EP-14] Integrasi rekanan dan pihak ketiga
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1401 | Spesifikasi kontrak integrasi dan lingkungan uji | BR-070, BR-121 | Must | — | Backlog |
-| US-1402 | Sinkronisasi data rekanan | BR-070 | Must | — | Backlog |
-| US-1403 | Pengiriman pesanan dan pembatalan ke rekanan | BR-070 | Must | — | Backlog |
-| US-1404 | Penerimaan status dari rekanan | BR-070 | Must | — | Backlog |
-| US-1405 | Pemantauan dan status integrasi per rekanan | BR-070, BR-090 | Must | — | Backlog |
-| US-1406 | Integrasi pihak ketiga | BR-071 | Must | — | Backlog |
+| US-1401 | Spesifikasi kontrak integrasi dan lingkungan uji | BR-070, BR-121 | Must | 3 | Backlog |
+| US-1402 | Sinkronisasi data rekanan | BR-070 | Must | 3 | Backlog |
+| US-1403 | Pengiriman pesanan dan pembatalan ke rekanan | BR-070 | Must | 3 | Backlog |
+| US-1404 | Penerimaan status dari rekanan | BR-070 | Must | 3 | Backlog |
+| US-1405 | Pemantauan dan status integrasi per rekanan | BR-070, BR-090 | Must | 3 | Backlog |
+| US-1406 | Integrasi pihak ketiga | BR-071 | Must | 2 (pembayaran, video, email); 4 (kurir) | Backlog |
 
 ### [EP-15] Audit trail (fitur)
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | — | Backlog |
-| US-1502 | Halaman Audit Log | BR-080 | Must | — | Backlog |
-| US-1503 | Export audit log | BR-080 | Must | — | Backlog |
-| US-1504 | Perlindungan audit log | BR-080 | Must | — | Backlog |
+| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | 1 (event fase berikutnya ditambahkan per story; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-1502 | Halaman Audit Log | BR-080 | Must | 3 | Backlog |
+| US-1503 | Export audit log | BR-080 | Must | 3 | Backlog |
+| US-1504 | Perlindungan audit log | BR-080 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 
 ### [EP-16] Persetujuan dan hak subjek data (T1)
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1601 | Lihat dan tarik persetujuan | BR-103, BR-106 | Must | — | Backlog |
-| US-1602 | Ajukan permintaan hak subjek data | BR-106 | Must | — | Backlog |
-| US-1603 | Proses permintaan hak subjek data | BR-106, BR-111 | Must | — | Backlog |
-| US-1604 | Salinan data pribadi | BR-106 | Must | — | Backlog |
-| US-1605 | Penghapusan dan anonimisasi | BR-106, BR-112 | Must | — | Backlog |
-| US-1606 | Retensi dan pemusnahan otomatis | BR-112 | Must | — | Backlog |
+| US-1601 | Lihat dan tarik persetujuan | BR-103, BR-106 | Must | 3 | Backlog |
+| US-1602 | Ajukan permintaan hak subjek data | BR-106 | Must | 3 | Backlog |
+| US-1603 | Proses permintaan hak subjek data | BR-106, BR-111 | Must | 3 | Backlog |
+| US-1604 | Salinan data pribadi | BR-106 | Must | 3 | Backlog |
+| US-1605 | Penghapusan dan anonimisasi | BR-106, BR-112 | Must | 3 (terblokir PT-24, L-06) | Terblokir |
+| US-1606 | Retensi dan pemusnahan otomatis | BR-112 | Must | 3 (terblokir PT-24) | Terblokir |
 
 ### [EP-17] Pengukuran KPI
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1701 | Dasbor KPI | BR-090 | Must | — | Backlog |
+| US-1701 | Dasbor KPI | BR-090 | Must | 3 | Backlog |
+
+## Enabler (Tahap 4–5)
+
+Story teknis yang menjadi prasyarat story bisnis. Setiap enabler merujuk ADR atau KEPUTUSAN, ditambah BR yang dilayaninya (anti-halu §4). Prioritas enabler adalah usulan penyusun `[UP-65]`; semuanya Must karena menjadi prasyarat story Must atau NFR. Rincian task Fase 1: `docs/07-phase-plan.md` §7.3; perkiraan ukuran enabler Fase 2–4: §6.2.
+
+| ID | Judul | Induk (ADR/KEPUTUSAN; BR) | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| EN-01 | Repo dan kerangka monorepo | ADR-024, KEPUTUSAN-89 | Must | 1 | Backlog |
+| EN-02 | `scripts/verify.sh`, git hook, CI GitHub Actions | ADR-021, ADR-025, KEPUTUSAN-81, KEPUTUSAN-82; BR-108 | Must | 1 | Backlog |
+| EN-03 | Lingkungan lokal (Docker Compose) | ADR-019, KEPUTUSAN-88 | Must | 1 | Backlog |
+| EN-04 | Skema inti dan migrasi (bootstrap role, fungsi `util`, test katalog hak role, tabel Fase 1, CR-014 bagian DB aplikasi) | ADR-001–ADR-004, ADR-008, KEPUTUSAN-74, KEPUTUSAN-185; BR-080 | Must | 1 | Backlog |
+| EN-05 | Audit Trail Foundation (DB audit, crate `audit`, outbox, relay, rantai hash, verifikasi) | ADR-005, ADR-009, ADR-010; BR-080, BR-081, BR-107 | Must | 1 | Backlog |
+| EN-06 | Autentikasi dan sesi: realm `pasien` dan `admin`, validasi token, penolakan sesi, pengambil event Keycloak | ADR-011; BR-001, BR-060, BR-108 | Must | 1 | Backlog |
+| EN-07 | Otorisasi dan RBAC: crate `authz`, kebijakan wajib per endpoint, relasi | ADR-012, KEPUTUSAN-127, KEPUTUSAN-128; BR-060, BR-105, BR-108 | Must | 1 | Backlog |
+| EN-08 | Crate dasar, envelope, logging dan security log, OpenAPI, test arsitektur | ADR-010, ADR-022, ADR-023, KEPUTUSAN-110, KEPUTUSAN-113, KEPUTUSAN-121–KEPUTUSAN-124, KEPUTUSAN-132; BR-080 | Must | 1 | Backlog |
+| EN-09 | Kriptografi dan kunci data (crate `crypto`, Transit OpenBao, blind index NIK) | ADR-013, KEPUTUSAN-129, KEPUTUSAN-130; BR-105, BR-108 | Must | 1 | Backlog |
+| EN-10 | Berkas unggahan (upload slot, URL bertanda tangan, validasi isi) | ADR-018, KEPUTUSAN-184; BR-003 | Must | 1 | Backlog |
+| EN-11 | BFF Next.js (`bff-auth`) dan kerangka backoffice | ADR-011 butir 7, ADR-024, KEPUTUSAN-75, KEPUTUSAN-115; BR-060 | Must | 1 | Backlog |
+| EN-12 | Kerangka mobile, `rs_core`, `rs_api_client`, `rs_auth`, data di perangkat | ADR-021 butir 1, ADR-024, KEPUTUSAN-76, KEPUTUSAN-116; BR-007 | Must | 1 | Backlog |
+| EN-13 | Jalur email Keycloak dan notifikasi (spike, usulan ADR, adaptor SES API) | ADR-016, CR-012, KEPUTUSAN-183; BR-001, BR-050 | Must | 1 | Backlog |
+| EN-14 | Reference implementation (US-106 → US-201) dan pengukuran kecepatan | KEPUTUSAN-181, KEPUTUSAN-134; RT-24; BR-003, BR-004 | Must | 1 | Backlog |
+| EN-15 | Staging dan CD (runner JIT, OIDC GitHub → OpenBao staging, cosign, deploy bergulir) | ADR-021, ADR-025, KEPUTUSAN-81; BR-113 | Must | 2 (gerbang PT-39) | Backlog |
+| EN-16 | Observability (Prometheus, Alertmanager, Loki, Grafana, GlitchTip, peringatan) | ADR-010, ADR-025, KEPUTUSAN-80; BR-017 (NFR-OBS-01) | Must | 2 | Backlog |
+| EN-17 | Realm `nakes`, MFA, kunci aplikasi 15 menit (CR-009), kerangka aplikasi tenaga kesehatan | ADR-011, ADR-021 butir 1; BR-007, BR-013 | Must | 2 | Backlog |
+| EN-18 | Video LiveKit (token per peserta, Egress tidak terpasang) | ADR-016, KEPUTUSAN-87; BR-010, BR-016 | Must | 2 | Backlog |
+| EN-19 | Proses `realtime` WebSocket, Pub/Sub Valkey, AsyncAPI | ADR-016, ADR-022; BR-010 | Must | 2 | Backlog |
+| EN-20 | Kerangka portal rekanan (BFF), klien admin rekanan, `PartnerScope` | ADR-011, ADR-012, KEPUTUSAN-128; BR-064, BR-065 | Must | 2 | Backlog |
+| EN-21 | Gateway Partner Integration API (realm `integrasi`, HMAC webhook, idempotensi, outbox, pengaman SSRF, sandbox) | ADR-014, KEPUTUSAN-126; BR-070, BR-121 | Must | 3 (gerbang PT-05) | Backlog |
+| EN-22 | Fondasi RME (`rme-backend`, realm `rme`, RLS, migrasi C1–C6 termasuk CR-014 bagian DB RME, audit RME, web RME BFF) | ADR-006, ADR-012, ADR-020, KEPUTUSAN-185; BR-120 | Must | 3 | Backlog |
+| EN-23 | Pekerja privasi dan retensi (crypto-shredding; kebijakan kosong tidak memproses apa pun) | ADR-013; BR-112 | Must | 3 | Backlog |
+| EN-24 | Pajak CR-013: data dictionary A6/A8/A13 dan migrasi, review DBA, sebelum US-801 | CR-013, ADR-015, KEPUTUSAN-185; BR-042 | Must | 2 (awal) | Backlog |
+| EN-25 | Uji beban NFR-CAP-04 di staging berukuran production | ADR-019, KEPUTUSAN-78; BR-017 | Must | 3 (Januari 2027) | Backlog |
+| EN-26 | Production: host, Compose, Caddy, OpenBao Raft + unseal, pgBackRest + standby, bastion + skrip deploy | ADR-019, ADR-021, ADR-025, KEPUTUSAN-78, KEPUTUSAN-79, KEPUTUSAN-81; BR-113 | Must | Februari 2027 (gerbang PT-38) | Backlog |
+| EN-27 | Uji pemulihan NFR-DR-03 | ADR-019, KEPUTUSAN-14; BR-113 | Must | Februari 2027 | Backlog |
+
+## Story UI (Tahap 6)
+
+Turunan `docs/06-design-guideline.md` dan wireframe. Layar per alur dikerjakan di dalam story PRD masing-masing (peta alur di guideline §10.1); story di bawah adalah pekerjaan UI lintas story. Catatan non-blokir QA Tahap 6 N3–N5 dipetakan di `docs/07-phase-plan.md` §11.7.
+
+| ID | Judul | Induk (KEPUTUSAN; BR) | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| UI-01 | Token desain dan komponen dasar web (`web/packages/ui`), skrip kontras, galeri state (QA N4) | KEPUTUSAN-161, KEPUTUSAN-163, KEPUTUSAN-169, KEPUTUSAN-176; BR-060, BR-064 | Must | 1 | Backlog |
+| UI-02 | Token desain dan komponen dasar Flutter (`rs_design`), test guideline aksesibilitas | KEPUTUSAN-162, KEPUTUSAN-163, KEPUTUSAN-176; BR-007 | Must | 1 | Backlog |
+| UI-03 | Tema login Keycloak Ruang Sehat (pesan galat umum, PT-44) | ADR-011 butir 7, KEPUTUSAN-175; BR-001 | Must | 1 | Backlog |
+| UI-04 | Template email notifikasi (D-F02) | KEPUTUSAN-175; BR-050 | Must | 2 | Backlog |
+| UI-05 | Uji manual pembaca layar TalkBack/VoiceOver alur A01, A05, A07 sebelum UAT | KEPUTUSAN-160, KEPUTUSAN-176; BR-007 | Should | 3 | Backlog |
+
+Aset merek final (logo, ikon aplikasi, aset toko) bukan pekerjaan pengembangan; bergantung pada PT-40 dan PT-45 dan dibutuhkan sebelum pengajuan toko aplikasi (Tahap 12).
 
 ## Bug
 
@@ -305,6 +357,7 @@ Deskripsi: calon rekanan (klinik/lab) dapat mendaftar sendiri (formulir, unggah 
 Alasan: permintaan user agar calon rekanan dapat *self-service/self-onboard*.
 Dampak ke scope / waktu / arsitektur: kebutuhan bisnis baru (BR dan story baru bila diterima); modul pendaftaran mandiri, penagihan langganan, dan penangguhan RME; menambah risiko jadwal RT-10. Fakta bisnis belum diketahui (PT-34): apakah RME berbayar, model/harga/siklus, cara bayar, perlakuan telat bayar. Arsitektur menyiapkan titik perluasan (`docs/04-arsitektur.md` §13) tanpa membangunnya.
 Keputusan: Dicatat; penempatan (rilis 1 atau berikutnya) diputuskan di Tahap 7 bersama estimasi effort (T4-Q7)
+Tahap 7 (2026-11-18): estimasi ±108 jam-task (rentang ±90–150), bagian penagihan terblokir PT-34; opsi (a) rilis 1 penuh, (b) rilis 1 hanya pendaftaran mandiri tanpa penagihan (±45 jam-task), (c) rilis berikutnya. Usulan penyusun (c) `[UP-68]`, diputuskan user di Checkpoint 2 (`docs/07-phase-plan.md` §11.1)
 
 ### CR-012: Hosting VPS Biznet Gio dan Hostinger, stack Rust/Next.js/Flutter, penyedia pihak ketiga, dan persetujuan deploy di sisi VPS
 
@@ -334,6 +387,7 @@ Deskripsi: pajak dihitung dari (harga rekanan + markup) setelah markup diterapka
 Alasan: jawaban user atas PT-28 ("sama seperti layanan lainnya, karena markup dulu baru dibebakan pajaknya") dan pilihan "Di atas harga rekanan+markup".
 Dampak ke scope / waktu / arsitektur: rumus harga PRD AB-11/AB-12 dan tampilan rincian harga (US-801, US-812) bertambah komponen pajak; harga terkunci (ADR-015 butir 3) menyimpan tarif dan nominal pajak; jurnal berpasangan menambah akun pajak tanpa perubahan struktur (ADR-015 konsekuensi); data dictionary A6/A8/A13 bertambah kolom/parameter pajak lewat migrasi; laporan keuangan dan rekonsiliasi. Teks PRD dan data dictionary diperbarui lewat CR ini sebelum pengembangan EP-08, setelah sisa PT-28 dijawab.
 Keputusan: Disetujui user (T5-Q11a, 2026-11-18) untuk arah rumus; penerapan ke PRD dan data dictionary dijadwalkan di Tahap 7, sebelum EP-08. Disetujui di gate Tahap 5 (2026-11-18, T5-G4)
+Tahap 7 (2026-11-18): diterapkan ke PRD v1.2 (draf, menunggu Checkpoint 2): AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, definisi §3.5, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4. Data dictionary dan migrasi dijadwalkan sebagai EN-24 di awal Fase 2, sebelum US-801, dengan review DBA `[KEPUTUSAN-185]`. Sisa PT-28 menjadi gerbang G-10
 
 ### CR-014: Perbaikan teknis data dictionary dari review DBA Tahap 5
 
@@ -344,6 +398,7 @@ Deskripsi:
 Alasan: celah teknis yang ditemukan DBA. Memberi `UPDATE` ke role aplikasi atas `data_key` ditolak karena bertentangan dengan ADR-013 §5 dan KEPUTUSAN-66.
 Dampak ke scope / waktu / arsitektur: data dictionary A19 dan C (tabel baru dan hak role) diperbarui setelah gate; desain fisik di `docs/05-physical-schema.md`. Tanpa perubahan PRD atau BRD. Keputusan teknis penyusun, ditampilkan di gate.
 Keputusan: Disetujui di gate Tahap 5 (2026-11-18, T5-G2 e); data dictionary A19 dan C diperbarui saat migrasi terkait dibuat di Tahap 8
+Tahap 7 (2026-11-18): dijadwalkan di task F1-T17 (DB aplikasi, `data_key_retention_anchor`) dan EN-22 Fase 3 (DB RME, `rme_data_key_retention_anchor` dan hak pembersihan `rme_worker`), keduanya dengan review DBA dan keamanan `[KEPUTUSAN-185]`
 
 ### CR-015: Vaksinasi dan suntik/infus vitamin sebagai layanan lab rekanan
 
@@ -358,6 +413,7 @@ Dampak ke scope / waktu / arsitektur:
 - Tempat layanan: di lokasi lab, atau home visit sesuai regulasi `[USER] "di lab, atau home visit sesuai regulasi"` (2026-11-18). Varian home visit oleh lab memperluas BRD P-05 (saat ini home visit hanya disediakan klinik rekanan) dan bersinggungan dengan butir di luar scope BRD §4.2 "Pengantaran sampel lab atau pengambilan sampel di rumah" `[DOK] P3.6a`, sehingga perlu keputusan eksplisit: hanya vaksinasi/infus yang boleh di rumah, sedangkan pengambilan sampel tetap di luar scope, atau keduanya. Syarat regulasi home visit vaksinasi/infus oleh lab: `[TIDAK DIKETAHUI]`, masuk pertanyaan legal yang sama.
 - Fakta bisnis yang belum diketahui: apakah klinik rekanan juga boleh menawarkan vaksinasi/infus.
 Keputusan: Dicatat; dampak ke BRD/PRD dan penempatan (rilis 1 atau berikutnya) diputuskan di Checkpoint 2 / Tahap 7. Wireframe Tahap 6 boleh menampilkannya hanya sebagai butir katalog lab bertanda "menunggu CR-015"
+Tahap 7 (2026-11-18): estimasi ±50–60 jam-task untuk varian di lokasi lab saja, tambahan ±60–100 jam-task bila termasuk home visit oleh lab; pencatatan tindakan/vaksin di RME dan SATUSEHAT serta syarat regulasi tetap `[TIDAK DIKETAHUI]`. Opsi (a) rilis 1 di lokasi lab, (b) rilis 1 termasuk home visit, (c) rilis berikutnya. Usulan penyusun (c) `[UP-69]`, diputuskan user di Checkpoint 2 (`docs/07-phase-plan.md` §11.2)
 
 ### CR-016: Nama aplikasi menjadi "Ruang Sehat"
 
@@ -371,6 +427,7 @@ Dampak ke scope / waktu / arsitektur:
 - Di luar repositori dan tidak diubah tanpa persetujuan user: nama folder proyek lokal dan nama repositori GitHub `Rumah-Sehat`.
 - Pertanyaan baru: PT-45 (wordmark pamflet "RuangSehat" dan slogan dipakai atau "Ruang Sehat" dengan spasi), PT-46 (cek merek DJKI dan domain), di `docs/06-design-guideline.md` §12.
 Keputusan: Diterima user 2026-11-18; diterapkan di dokumen hidup pada tanggal yang sama
+Jawaban lanjutan 2026-11-18: PT-45 "dengan spasi" `[USER]` (nama selalu "Ruang Sehat" dengan spasi, wordmark pamflet "RuangSehat" tidak dipakai; slogan pamflet ditanyakan di Checkpoint 2); PT-46 "belum dicek" `[USER]` (cek merek DJKI dan domain masih terbuka, tenggat sebelum Tahap 12).
 
 ## Tech Debt
 

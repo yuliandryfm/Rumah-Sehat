@@ -33,7 +33,7 @@ Halaman resmi Material Design dan Apple HIG tidak dibuka; ukuran target platform
 
 1. Palet tertulis: #087F78, #DFF4ED, #FAFBF7, #FFFFFF. Lingkaran contoh warna kedua tampak lebih gelap dari #DFF4ED, dan lingkaran ketiga tampak kehijauan muda, bukan putih gading. Dokumen memakai nilai tertulis (PT-41).
 2. `#087F78` sebagai teks di atas mint #DFF4ED hanya 4,24:1 (di bawah 4,5:1). Karena itu diusulkan warna turunan `#065F59` untuk teks merek di atas mint (6,56:1) (KEPUTUSAN-161, KEPUTUSAN-163).
-3. Saat Tahap 6 disusun, wordmark dan slogan "RuangSehat" tidak dipakai (T5-Q12). Setelah Tahap 6, nama resmi diganti menjadi "Ruang Sehat" (CR-016); pemakaian wordmark dan slogan pamflet kini dibawa ke Checkpoint 2 (PT-45). Simbol rumah-daun dipakai sebagai arah; wireframe hanya memuat placeholder bertanda "draf logo" (UP-60).
+3. Saat Tahap 6 disusun, wordmark dan slogan "RuangSehat" tidak dipakai (T5-Q12). Setelah Tahap 6, nama resmi diganti menjadi "Ruang Sehat" (CR-016); nama ditulis "Ruang Sehat" dengan spasi dan wordmark pamflet tidak dipakai (PT-45 terjawab); slogan pamflet dibawa ke Checkpoint 2. Simbol rumah-daun dipakai sebagai arah; wireframe hanya memuat placeholder bertanda "draf logo" (UP-60).
 4. Layanan di pamflet dipetakan ke scope PRD: "Konsultasi Dokter" dan "Kesehatan Mental" → konsultasi online (EP-03); "Cek Lab"/"Pemeriksaan Kesehatan" → pendaftaran lab dan info biaya (EP-04, EP-06); "Layanan Rumah" → home visit (EP-05); "Edukasi Kesehatan" → konten (US-1102); "Buat Janji" → pemesanan layanan terjadwal. "Vaksinasi" dan "Suntik & Infus Vitamin" hanya tampil sebagai butir katalog lab bertanda "Menunggu CR-015" (`a08-klinik-lab.html` layar 2), tanpa alur. "Gaya Hidup Sehat" tidak punya padanan fitur di PRD dan tidak dipakai.
 5. Navigasi pamflet (Beranda, Jadwal, Riwayat, Profil) diganti usulan Beranda, Pesanan, Kesehatan, Profil agar produk dan hasil lab punya tempat (UP-62).
 
@@ -79,18 +79,23 @@ Rincian dan alternatif: `docs/06-design-guideline.md` §11.
 | PT-42 | Draf catatan konsultasi/rekam medis di server | Tech Lead + user |
 | PT-43 | Batas sesi web 12 jam dan PB-07 terhadap SC 2.2.1 | User + security reviewer |
 | PT-44 | Pesan saat akun terkunci (US-103 AC2 vs AC3) | Tech Lead + security reviewer, disetujui user |
-| PT-45 | Wordmark pamflet "RuangSehat" dan slogan dipakai, atau "Ruang Sehat" dengan spasi (CR-016) | User |
-| PT-46 | Cek merek (DJKI) dan domain "Ruang Sehat" | User, legal |
+| PT-45 | Terjawab: "Ruang Sehat" dengan spasi, wordmark pamflet tidak dipakai `[USER]` (2026-11-18). Slogan pamflet: Checkpoint 2 | User |
+| PT-46 | Cek merek (DJKI) dan domain "Ruang Sehat": belum dicek `[USER]` (2026-11-18); tenggat sebelum Tahap 12 | User, legal |
 
 ## Daftar pertanyaan untuk Checkpoint 2 (diajukan satu per giliran)
 
 1. Apakah arah visual UP-58 disetujui (palet pamflet + warna turunan, sudut membulat, nuansa terang)? Sertakan PT-41: nilai mint yang dimaksud.
 2. Font: font sistem saja, atau Plus Jakarta Sans sebagai font merek (UP-59)?
-3. Logo dan ikon aplikasi: siapa yang membuat, dan apakah simbol rumah-daun dipertahankan sebagai arah (UP-60, PT-40)? Sertakan PT-45: wordmark "RuangSehat" dan slogan pamflet dipakai atau tidak.
+3. Logo dan ikon aplikasi: siapa yang membuat, dan apakah simbol rumah-daun dipertahankan sebagai arah (UP-60, PT-40)? Sertakan sisa PT-45: slogan pamflet "Satu ruang untuk kesehatan Anda." dipakai atau tidak (nama sudah terjawab: "Ruang Sehat" dengan spasi).
 4. Struktur navigasi dan ubin beranda (UP-62, UP-63): setuju, atau memakai label pamflet?
 5. Mode gelap ditunda (UP-61) dan pengingat "buka aplikasi pada jadwal" (UP-64): setuju?
 6. Target WCAG 2.2 AA dan paket keputusan desain KEPUTUSAN-160–177: setuju sekaligus?
 7. PT-43: batas sesi web 12 jam dan PB-07 diterima sebagai pengecualian, atau perlu jalur perpanjangan?
+
+## Jawaban user setelah gate Tahap 6
+
+- PT-45 (2026-11-18): "dengan spasi" `[USER]` → nama selalu "Ruang Sehat" dengan spasi; wordmark pamflet "RuangSehat" tidak dipakai.
+- PT-46 (2026-11-18): "belum dicek" `[USER]` → pengecekan merek DJKI dan domain masih terbuka.
 
 ## Review sebelum gate
 

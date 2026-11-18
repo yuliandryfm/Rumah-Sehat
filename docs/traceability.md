@@ -6,82 +6,82 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 
 | BR | Kebutuhan bisnis | Sumber BR | Story | Test case | File kode / test | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` | US-101, US-103 (US-102 dihapus CR-007) |  |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-002 | Ruang Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email,… | `[DOK] P4.1` `[USER] T3-Q3` | US-105, US-108 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik da… | `[DOK] P4.6a` | US-106, US-107 |  |  | BRD v1.0 |
-| BR-004 | Admin Ruang Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan… | `[DOK] P4.6b` | US-106, US-107, US-201 |  |  | BRD v1.0 |
-| BR-005 | Akun dokter, psikolog, fisioterapis, dan tenaga medis diverifikasi dan dikelola admin Ruang Sehat. Setia… | `[DOK] P8.2a` `[USER] T2-Q2` | US-202, US-203 |  |  | BRD v1.0 |
-| BR-006 | Akun rekanan (klinik, lab, toko kecantikan, toko alat kesehatan, apotek) dan admin mitranya diverifikasi… | `[DOK] P8.2a` `[USER] T2-Q3, T2-Q3b` | US-205, US-206 |  |  | BRD v1.0 |
-| BR-007 | Aplikasi pasien tersedia di Android dan iOS; tenaga kesehatan memakai aplikasi mobile yang juga tersedia… | `[DOK] P6.1, P6.2` `[USER] T3-Q9` | NFR-COMP-01 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-008 | Pasien dapat memesan konsultasi online, pendaftaran klinik/lab, dan home visit untuk anggota keluarga ya… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201, US-310, US-902 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-010 | Pasien dapat berkonsultasi dengan dokter lewat chat teks dan panggilan video | `[DOK] P3.1, P3.2` | US-303, US-304, US-305, US-306 |  |  | BRD v1.0 |
-| BR-011 | Pasien dapat berkonsultasi kesehatan mental dengan psikolog lewat chat teks dan panggilan video | `[DOK] P2.1, P3.1, P3.2` | US-303, US-304 |  |  | BRD v1.0 |
-| BR-012 | Pasien dapat berkonsultasi dengan fisioterapis dan tenaga medis lewat chat teks dan panggilan video | `[USER] T2-Q5` | US-303, US-304 |  |  | BRD v1.0 |
-| BR-013 | Konsultasi berlangsung di Ruang Sehat. Tenaga kesehatan memakai aplikasi tenaga kesehatan untuk chat, vi… | `[DOK] PS6b` | US-308, US-311, US-1003 |  |  | BRD v1.0 |
-| BR-014 | Setiap konsultasi diberikan oleh tenaga kesehatan atas nama klinik rekanan yang menaunginya; PT. Arunika… | `[USER] T2-Q2` | US-303, US-804 |  |  | BRD v1.0 |
-| BR-015 | Dokter dapat menerbitkan resep digital setelah konsultasi. Pasien menebusnya sendiri di apotek mana pun;… | `[DOK] P3.4, PS1` | US-309 |  |  | BRD v1.0 |
-| BR-016 | Isi chat konsultasi (termasuk foto), catatan tenaga kesehatan, dan resep disimpan. Panggilan video tidak… | `[DOK] P4.1` | US-305, US-306, US-308, US-310 |  |  | BRD v1.0 |
-| BR-017 | Aplikasi tersedia 24 jam, 7 hari. Ketersediaan tenaga kesehatan mengikuti jadwal masing-masing. Target k… | `[DOK] P6.4` `[USER] T3-Q12` | US-302, NFR-AVL-01 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-018 | Tarif konsultasi berasal dari rekanan. Tarif dan durasi sesi diisi admin klinik di portal; jadwal prakti… | `[USER] T2-Q6, T3-Q4, T3-Q16` | US-301 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal, data klinik, dan harga layanan dari sistem… | `[DOK] P3.1, PS6a` `[USER] T2-Q13` | US-401, US-402, US-602 |  |  | BRD v1.1 (CR-005) |
-| BR-021 | Pasien dapat mendaftar pemeriksaan di lab rekanan berdasarkan jadwal dan harga dari sistem rekanan | `[DOK] P3.1, PS6a` | US-401, US-402, US-602 |  |  | BRD v1.0 |
-| BR-022 | Pasien dapat memesan home visit yang disediakan klinik rekanan, dilayani tenaga kesehatan klinik itu ter… | `[DOK] P1.2, PS6a` `[USER] T2-Q5` | US-501, US-502, US-503, US-504, US-1308 |  |  | BRD v1.0 |
-| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab sebelum mendaftar, berdasarkan harga dari s… | `[DOK] P1.2, PS6a` `[USER] T2-Q20` | US-601, US-602 |  |  | BRD v1.1 (CR-005) |
-| BR-024 | Pendaftaran klinik, pendaftaran lab, dan home visit yang dipesan di aplikasi dibayar di aplikasi. Saat d… | `[USER] T2-Q13, T2-Q14` | US-402, US-403, US-404, US-501, US-801, US-1304 |  |  | BRD v1.1 (CR-005) |
-| BR-025 | Hasil lab dari lab rekanan diterima lewat integrasi, disimpan, dan diberitahukan ke pasien | `[DOK] P4.1, P4.5, PS6a` | US-901, US-902, US-1307 |  |  | BRD v1.0 |
-| BR-026 | Riwayat pendaftaran klinik, lab, dan home visit pasien disimpan | `[DOK] P4.1` | US-406 |  |  | BRD v1.0 |
-| BR-027 | Pasien yang sudah check-in di klinik rekanan dapat melihat antrean secara real-time, dari data antrean s… | `[USER] T3-Q1a, T3-Q1b, T3-Q14` | US-405, US-1305 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-030 | Pasien dapat membeli obat bebas, produk kecantikan, dan produk kesehatan lain (vitamin, suplemen, alat k… | `[DOK] PS1` | US-701, US-702 |  |  | BRD v1.0 |
-| BR-031 | Outlet rekanan terdiri atas toko kecantikan, toko alat kesehatan, klinik rekanan, dan apotek rekanan. Ob… | `[DOK] PS2` `[USER] T2-Q3, T2-Q3b` | US-205, US-702 |  |  | BRD v1.0 |
-| BR-032 | Obat resep tidak dijual di Ruang Sehat | `[DOK] PS1` | US-702 |  |  | BRD v1.0 |
-| BR-033 | Katalog, stok, dan pesanan produk berasal dari sistem outlet rekanan lewat integrasi. Ruang Sehat tidak… | `[DOK] PS6, PS6a` | US-701, US-704, US-1402 |  |  | BRD v1.0 |
-| BR-034 | Produk dikirim kurir pihak ketiga yang terintegrasi. Ongkos kirim dibayar pasien dan ditambahkan ke tota… | `[DOK] PS5` `[USER] T2-Q7` | US-703, US-704 |  |  | BRD v1.0 |
-| BR-035 | Riwayat pesanan produk pasien disimpan | `[DOK] P4.1` | US-706 |  |  | BRD v1.0 |
-| BR-040 | Semua layanan yang dipesan di aplikasi (konsultasi online, pendaftaran klinik, pendaftaran lab, home vis… | `[DOK] P3.3, PS4` `[USER] T2-Q4, T2-Q13` `[SRC-19]` | US-304, US-402, US-501, US-703, US-802, US-804 |  |  | BRD v1.1 (CR-005) |
-| BR-041 | Payment gateway membagi dana setiap pembayaran langsung: bagian rekanan ke rekening rekanan, bagian Ruma… | `[USER] T2-Q4` | US-803 |  |  | BRD v1.1 (cakupan meluas, CR-005) |
-| BR-042 | Harga yang dibayar pasien untuk konsultasi, pendaftaran klinik, pendaftaran lab, home visit, dan produk… | `[USER] T2-Q1, T2-Q6, T2-Q6a, T2-Q15` | US-801, US-809 |  |  | BRD v1.1 (CR-005) |
-| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur… | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1, T2-Q16` | US-810 |  |  | BRD v1.1 (CR-005) |
-| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan k… | `[USER] T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` | US-801, US-803 |  |  | BRD v1.1 (CR-005) |
-| BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim… | `[USER] T2-Q9, T2-Q17, T2-Q18, T3-Q5, T3-Q6, T3-Q7, T3-Q8` | US-307, US-504, US-705, US-805, US-806, US-807, US-808, US-812, US-1403 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-046 | Admin Ruang Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagi… | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` | US-811, US-1201 |  |  | BRD v1.0 |
-| BR-050 | Ruang Sehat mengirim pemberitahuan ke pasien lewat email dan notifikasi di dalam aplikasi; push dan WhatsApp dihapus (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` | US-902, US-1001, US-1002 |  |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-060 | Backoffice admin Ruang Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 |  |  | BRD v1.0 |
-| BR-061 | Backoffice admin Ruang Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehata… | `[DOK] P8.2a` | US-1101, US-1102 |  |  | BRD v1.0 |
-| BR-062 | Backoffice admin Ruang Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` | US-1003, US-1103, US-1104 |  |  | BRD v1.0 |
-| BR-063 | Backoffice admin Ruang Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | US-809, US-810, US-812 |  |  | BRD v1.0 |
-| BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan.… | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16` | US-301, US-1104, US-1201, US-1202, US-1203 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | US-1104, US-1201, US-1202, US-1203 |  |  | BRD v1.0 |
-| BR-070 | Ruang Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` | US-404, US-502, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-071 | Ruang Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir, dan email; semua penyedia di Indonesia (CR-007) | `[DOK] P4.2` `[USER] T2-Q4, T4-Q1, T4-Q2` | US-1406 |  |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 |  |  | BRD v1.0 |
-| BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 |  |  | BRD v1.0 |
-| BR-090 | Ruang Sehat menyediakan data untuk mengukur KPI-01 sampai KPI-04 sesuai definisi di bagian 1.2: MAU bert… | `[USER] T2-Q10, T2-Q11` `[DOK: 01-business-case.md]` | US-1405, US-1701 |  |  | BRD v1.0 |
-| BR-100 | Ruang Sehat terdaftar sebagai Penyelenggara Sistem Elektronik Lingkup Privat sebelum aplikasi digunakan… | `[SRC-12]` `[SRC-13]` `[SRC-27]` | PRD §10 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-101 | Konsultasi online berjalan dalam skema telemedisin yang sesuai ketentuan Kemenkes: klinik rekanan (fasya… | `[SRC-02]` `[SRC-03]` `[USER] T2-Q2` | PRD §10 |  |  | BRD v1.0 |
-| BR-102 | Hanya tenaga kesehatan dengan STR dan SIP yang masih berlaku yang dapat diaktifkan melayani. Masa berlak… | `[SRC-02]` `[SRC-03]` `[SRC-21]` | US-202, US-203, US-204, US-1003 |  |  | BRD v1.0 |
-| BR-103 | Pasien memberikan persetujuan eksplisit, tertulis atau terekam, sebelum datanya diproses, dengan informa… | `[SRC-15]` | US-101, US-104, US-1601 |  |  | BRD v1.0 |
-| BR-104 | Data anggota keluarga yang masih anak hanya diproses dengan persetujuan orang tua atau wali | `[SRC-15]` | US-104, US-108 |  |  | BRD v1.0 |
-| BR-105 | Data kesehatan (catatan tenaga kesehatan, isi chat konsultasi, resep, hasil lab), data anak, dan data ke… | `[SRC-15]` | NFR-SEC-05, NFR-PRIV-03 |  |  | BRD v1.0 |
-| BR-106 | Pasien dapat menjalankan hak subjek data: informasi, akses dan salinan, perbaikan, penarikan persetujuan… | `[SRC-15]` `[DOK] P5.4` | US-109, US-310, US-1601, US-1602, US-1603, US-1604, US-1605 |  |  | BRD v1.0 |
-| BR-107 | Seluruh kegiatan pemrosesan data pribadi direkam, selaras dengan audit trail BR-080 | `[SRC-15]` | US-104, US-1501, PRD §7 |  |  | BRD v1.0 |
-| BR-108 | Ruang Sehat menjaga keamanan dan kerahasiaan data pribadi yang diprosesnya | `[SRC-15]` `[SRC-13]` | NFR-SEC-05, NFR-SEC-06 |  |  | BRD v1.0 |
-| BR-109 | Tersedia prosedur pemberitahuan kegagalan pelindungan data pribadi secara tertulis paling lambat 3 x 24… | `[SRC-15]` `[SRC-13]` | PRD §10 |  |  | BRD v1.0 |
-| BR-110 | Penilaian dampak pelindungan data pribadi (DPIA) dilakukan sebelum go-live | `[SRC-15]` | PRD §10 |  |  | BRD v1.0 |
-| BR-111 | Ruang Sehat menunjuk pejabat/petugas pelindungan data pribadi | `[SRC-15]` `[SRC-16]` | US-1603, PRD §10 |  |  | BRD v1.0 |
-| BR-112 | Setiap jenis data memiliki masa retensi; setelah masa retensi berakhir, data diakhiri pemrosesannya, dih… | `[SRC-15]` `[SRC-25]` | US-1605, US-1606, NFR-RET-01 |  |  | BRD v1.0 |
-| BR-113 | Data disimpan di Indonesia; penyedia pihak ketiga juga memproses dan menyimpan data pribadi di Indonesia, tanpa kecuali | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` `[USER] T4-Q1` | US-1406, NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 |  |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-114 | Catatan konsultasi dan resep digital memenuhi ketentuan rekam medis elektronik dan resep elektronik yang… | `[SRC-18]` `[SRC-06]` `[SRC-07]` `[USER] T2-Q2` | US-308, US-309, PRD §10 |  |  | BRD v1.0 |
-| BR-115 | Pembayaran hanya diproses lewat penyedia jasa pembayaran berizin BI. Model pembagian dana langsung (BR-0… | `[SRC-19]` `[SRC-20]` `[USER] T2-Q4` | US-802, US-1406, NFR-INT-04 |  |  | BRD v1.0 |
-| BR-116 | Obat bebas, produk kecantikan, dan produk kesehatan yang dijual lewat Ruang Sehat memenuhi ketentuan per… | `[SRC-08]` `[SRC-10]` `[SRC-11]` `[USER] T2-Q3` | US-702, PRD §10 |  |  | BRD v1.0 |
-| BR-117 | PT. Arunika memiliki perizinan berusaha yang sesuai untuk kegiatan Ruang Sehat sebelum go-live. Jenis iz… | `[SRC-09]` `[SRC-23]` | PRD §10 |  |  | BRD v1.0 |
-| BR-118 | Perkembangan regulasi kesehatan digital dipantau sampai go-live, karena Kemenkes menyatakan akan mengatu… | `[SRC-06]` | PRD §10 |  |  | BRD v1.0 |
-| BR-120 | PT. Arunika menyediakan aplikasi RME minimalis, terpisah dari aplikasi dan portal Ruang Sehat, untuk kli… | `[USER] T3-Q1a, T3-Q14, T3-Q15` | US-1301, US-1302 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-121 | RME minimalis terhubung ke Ruang Sehat lewat integrasi yang sama dengan sistem rekanan lain (BR-070). Ru… | `[USER] T3-Q14` | US-1301, US-1401 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-122 | RME minimalis menyediakan pengelolaan jadwal, daftar layanan, dan harga klinik/lab, termasuk layanan hom… | `[USER] T3-Q1b` | US-1303 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-123 | RME minimalis menyediakan pencatatan rekam medis kunjungan. Data rekam medis sesuai ketentuan SATUSEHAT… | `[USER] T3-Q1b` `[SRC-18]` `[SRC-26]` `[SRC-27]` | US-1306, US-1309, US-1310, PRD §10 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-125 | RME minimalis menyediakan penerimaan appointment dari Ruang Sehat, check-in pasien, antrean real-time kl… | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 |  |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Ruang Sehat | `[USER] T3-Q1c` | US-1306, US-1310 |  |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` | US-101, US-103 (US-102 dihapus CR-007) | TC-US-101-1–5, 7–15; TC-US-103-1–19 |  | BRD v1.3 (CR-007/Tahap 4) |
+| BR-002 | Ruang Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email,… | `[DOK] P4.1` `[USER] T3-Q3` | US-105, US-108 | TC-US-105-1–14; TC-US-108-1–7 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik da… | `[DOK] P4.6a` | US-106, US-107 | TC-US-106-1–22; TC-US-107-1–5 |  | BRD v1.0 |
+| BR-004 | Admin Ruang Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan… | `[DOK] P4.6b` | US-106, US-107, US-201 | TC-US-106-1–22; TC-US-107-1–5; TC-US-201-1–19 |  | BRD v1.0 |
+| BR-005 | Akun dokter, psikolog, fisioterapis, dan tenaga medis diverifikasi dan dikelola admin Ruang Sehat. Setia… | `[DOK] P8.2a` `[USER] T2-Q2` | US-202, US-203 | TC-US-202-1–6; TC-US-203-1–5 |  | BRD v1.0 |
+| BR-006 | Akun rekanan (klinik, lab, toko kecantikan, toko alat kesehatan, apotek) dan admin mitranya diverifikasi… | `[DOK] P8.2a` `[USER] T2-Q3, T2-Q3b` | US-205, US-206 | TC-US-205-1–7; TC-US-206-1–5 |  | BRD v1.0 |
+| BR-007 | Aplikasi pasien tersedia di Android dan iOS; tenaga kesehatan memakai aplikasi mobile yang juga tersedia… | `[DOK] P6.1, P6.2` `[USER] T3-Q9` | NFR-COMP-01 | TC-NFR-COMP-1; TC-NFR-COMP-3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-008 | Pasien dapat memesan konsultasi online, pendaftaran klinik/lab, dan home visit untuk anggota keluarga ya… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201, US-310, US-902 | TC-US-107-1–5; TC-US-108-1–7; TC-US-109-1–4; TC-US-201-1–19; TC-US-310-1–5; TC-US-902-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-010 | Pasien dapat berkonsultasi dengan dokter lewat chat teks dan panggilan video | `[DOK] P3.1, P3.2` | US-303, US-304, US-305, US-306 | TC-US-303-1–4; TC-US-304-1–8; TC-US-305-1–10; TC-US-306-1–6 |  | BRD v1.0 |
+| BR-011 | Pasien dapat berkonsultasi kesehatan mental dengan psikolog lewat chat teks dan panggilan video | `[DOK] P2.1, P3.1, P3.2` | US-303, US-304 | TC-US-303-1–4; TC-US-304-1–8 |  | BRD v1.0 |
+| BR-012 | Pasien dapat berkonsultasi dengan fisioterapis dan tenaga medis lewat chat teks dan panggilan video | `[USER] T2-Q5` | US-303, US-304 | TC-US-303-1–4; TC-US-304-1–8 |  | BRD v1.0 |
+| BR-013 | Konsultasi berlangsung di Ruang Sehat. Tenaga kesehatan memakai aplikasi tenaga kesehatan untuk chat, vi… | `[DOK] PS6b` | US-308, US-311, US-1003 | TC-US-308-1–6; TC-US-311-1–5; TC-US-1003-1–4 |  | BRD v1.0 |
+| BR-014 | Setiap konsultasi diberikan oleh tenaga kesehatan atas nama klinik rekanan yang menaunginya; PT. Arunika… | `[USER] T2-Q2` | US-303, US-804 | TC-US-303-1–4; TC-US-804-1–3 |  | BRD v1.0 |
+| BR-015 | Dokter dapat menerbitkan resep digital setelah konsultasi. Pasien menebusnya sendiri di apotek mana pun;… | `[DOK] P3.4, PS1` | US-309 | TC-US-309-1–12 |  | BRD v1.0 |
+| BR-016 | Isi chat konsultasi (termasuk foto), catatan tenaga kesehatan, dan resep disimpan. Panggilan video tidak… | `[DOK] P4.1` | US-305, US-306, US-308, US-310 | TC-US-305-1–10; TC-US-306-1–6; TC-US-308-1–6; TC-US-310-1–5 |  | BRD v1.0 |
+| BR-017 | Aplikasi tersedia 24 jam, 7 hari. Ketersediaan tenaga kesehatan mengikuti jadwal masing-masing. Target k… | `[DOK] P6.4` `[USER] T3-Q12` | US-302, NFR-AVL-01 | TC-US-302-1–7; TC-NFR-AVL-1 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-018 | Tarif konsultasi berasal dari rekanan. Tarif dan durasi sesi diisi admin klinik di portal; jadwal prakti… | `[USER] T2-Q6, T3-Q4, T3-Q16` | US-301 | TC-US-301-1–6 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-020 | Pasien dapat mendaftar ke klinik rekanan berdasarkan jadwal, data klinik, dan harga layanan dari sistem… | `[DOK] P3.1, PS6a` `[USER] T2-Q13` | US-401, US-402, US-602 | TC-US-401-1–4; TC-US-402-1–7; TC-US-602-1–2 |  | BRD v1.1 (CR-005) |
+| BR-021 | Pasien dapat mendaftar pemeriksaan di lab rekanan berdasarkan jadwal dan harga dari sistem rekanan | `[DOK] P3.1, PS6a` | US-401, US-402, US-602 | TC-US-401-1–4; TC-US-402-1–7; TC-US-602-1–2 |  | BRD v1.0 |
+| BR-022 | Pasien dapat memesan home visit yang disediakan klinik rekanan, dilayani tenaga kesehatan klinik itu ter… | `[DOK] P1.2, PS6a` `[USER] T2-Q5` | US-501, US-502, US-503, US-504, US-1308 | TC-US-501-1–4; TC-US-502-1–3; TC-US-503-1–5; TC-US-504-1–3; TC-US-1308-1–3 |  | BRD v1.0 |
+| BR-023 | Pasien dapat melihat informasi biaya MCU dan pemeriksaan lab sebelum mendaftar, berdasarkan harga dari s… | `[DOK] P1.2, PS6a` `[USER] T2-Q20` | US-601, US-602 | TC-US-601-1–3; TC-US-602-1–2 |  | BRD v1.1 (CR-005) |
+| BR-024 | Pendaftaran klinik, pendaftaran lab, dan home visit yang dipesan di aplikasi dibayar di aplikasi. Saat d… | `[USER] T2-Q13, T2-Q14` | US-402, US-403, US-404, US-501, US-801, US-1304 | TC-US-402-1–7; TC-US-403-1–4; TC-US-404-1–6; TC-US-501-1–4; TC-US-801-1–9; TC-US-1304-1–4 |  | BRD v1.1 (CR-005) |
+| BR-025 | Hasil lab dari lab rekanan diterima lewat integrasi, disimpan, dan diberitahukan ke pasien | `[DOK] P4.1, P4.5, PS6a` | US-901, US-902, US-1307 | TC-US-901-1–5; TC-US-902-1–3; TC-US-1307-1–4 |  | BRD v1.0 |
+| BR-026 | Riwayat pendaftaran klinik, lab, dan home visit pasien disimpan | `[DOK] P4.1` | US-406 | TC-US-406-1–2 |  | BRD v1.0 |
+| BR-027 | Pasien yang sudah check-in di klinik rekanan dapat melihat antrean secara real-time, dari data antrean s… | `[USER] T3-Q1a, T3-Q1b, T3-Q14` | US-405, US-1305 | TC-US-405-1–3; TC-US-1305-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-030 | Pasien dapat membeli obat bebas, produk kecantikan, dan produk kesehatan lain (vitamin, suplemen, alat k… | `[DOK] PS1` | US-701, US-702 | TC-US-701-1–3; TC-US-702-1–3 |  | BRD v1.0 |
+| BR-031 | Outlet rekanan terdiri atas toko kecantikan, toko alat kesehatan, klinik rekanan, dan apotek rekanan. Ob… | `[DOK] PS2` `[USER] T2-Q3, T2-Q3b` | US-205, US-702 | TC-US-205-1–7; TC-US-702-1–3 |  | BRD v1.0 |
+| BR-032 | Obat resep tidak dijual di Ruang Sehat | `[DOK] PS1` | US-702 | TC-US-702-1–3 |  | BRD v1.0 |
+| BR-033 | Katalog, stok, dan pesanan produk berasal dari sistem outlet rekanan lewat integrasi. Ruang Sehat tidak… | `[DOK] PS6, PS6a` | US-701, US-704, US-1402 | TC-US-701-1–3; TC-US-704-1–7; TC-US-1402-1–7 |  | BRD v1.0 |
+| BR-034 | Produk dikirim kurir pihak ketiga yang terintegrasi. Ongkos kirim dibayar pasien dan ditambahkan ke tota… | `[DOK] PS5` `[USER] T2-Q7` | US-703, US-704 | TC-US-703-1–7; TC-US-704-1–7 |  | BRD v1.0 |
+| BR-035 | Riwayat pesanan produk pasien disimpan | `[DOK] P4.1` | US-706 | TC-US-706-1–2 |  | BRD v1.0 |
+| BR-040 | Semua layanan yang dipesan di aplikasi (konsultasi online, pendaftaran klinik, pendaftaran lab, home vis… | `[DOK] P3.3, PS4` `[USER] T2-Q4, T2-Q13` `[SRC-19]` | US-304, US-402, US-501, US-703, US-802, US-804 | TC-US-304-1–8; TC-US-402-1–7; TC-US-501-1–4; TC-US-703-1–7; TC-US-802-1–15; TC-US-804-1–3 |  | BRD v1.1 (CR-005) |
+| BR-041 | Payment gateway membagi dana setiap pembayaran langsung: bagian rekanan ke rekening rekanan, bagian Ruma… | `[USER] T2-Q4` | US-803 | TC-US-803-1–7 |  | BRD v1.1 (cakupan meluas, CR-005) |
+| BR-042 | Harga yang dibayar pasien untuk konsultasi, pendaftaran klinik, pendaftaran lab, home visit, dan produk… | `[USER] T2-Q1, T2-Q6, T2-Q6a, T2-Q15` | US-801, US-809 | TC-US-801-1–9; TC-US-809-1–6 |  | BRD v1.1 (CR-005) |
+| BR-043 | Biaya dari rekanan (langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab) dapat diatur… | `[DOK: 01-business-case.md]` `[USER] T1-Q1, T2-Q1, T2-Q16` | US-810 | TC-US-810-1–3 |  | BRD v1.1 (CR-005) |
+| BR-044 | Biaya MDR untuk pembayaran QRIS ditanggung rekanan (dipotong dari bagian rekanan) dan tidak dibebankan k… | `[USER] T2-Q8, T2-Q12, T2-Q19` `[SRC-24]` | US-801, US-803 | TC-US-801-1–9; TC-US-803-1–7 |  | BRD v1.1 (CR-005) |
+| BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim… | `[USER] T2-Q9, T2-Q17, T2-Q18, T3-Q5, T3-Q6, T3-Q7, T3-Q8` | US-307, US-504, US-705, US-805, US-806, US-807, US-808, US-812, US-1403 | TC-US-307-1–9; TC-US-504-1–3; TC-US-705-1–4; TC-US-805-1–7; TC-US-806-1–10; TC-US-807-1–10; TC-US-808-1–11; TC-US-812-1–7; TC-US-1403-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-046 | Admin Ruang Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagi… | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` | US-811, US-1201 | TC-US-811-1–5; TC-US-1201-1–5 |  | BRD v1.0 |
+| BR-050 | Ruang Sehat mengirim pemberitahuan ke pasien lewat email dan notifikasi di dalam aplikasi; push dan WhatsApp dihapus (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` | US-902, US-1001, US-1002 | TC-US-902-1–3; TC-US-1001-1–8; TC-US-1002-1–4 |  | BRD v1.3 (CR-007/Tahap 4) |
+| BR-060 | Backoffice admin Ruang Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 | TC-US-207-1–8; TC-US-208-1–14 |  | BRD v1.0 |
+| BR-061 | Backoffice admin Ruang Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehata… | `[DOK] P8.2a` | US-1101, US-1102 | TC-US-1101-1–6; TC-US-1102-1–2 |  | BRD v1.0 |
+| BR-062 | Backoffice admin Ruang Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` | US-1003, US-1103, US-1104 | TC-US-1003-1–4; TC-US-1103-1–4; TC-US-1104-1–4 |  | BRD v1.0 |
+| BR-063 | Backoffice admin Ruang Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | US-809, US-810, US-812 | TC-US-809-1–6; TC-US-810-1–3; TC-US-812-1–7 |  | BRD v1.0 |
+| BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan.… | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16` | US-301, US-1104, US-1201, US-1202, US-1203 | TC-US-301-1–6; TC-US-1104-1–4; TC-US-1201-1–5; TC-US-1202-1–3; TC-US-1203-1–2 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | US-1104, US-1201, US-1202, US-1203 | TC-US-1104-1–4; TC-US-1201-1–5; TC-US-1202-1–3; TC-US-1203-1–2 |  | BRD v1.0 |
+| BR-070 | Ruang Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` | US-404, US-502, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 | TC-US-404-1–6; TC-US-502-1–3; TC-US-901-1–5; TC-US-1304-1–4; TC-US-1401-1–3; TC-US-1402-1–7; TC-US-1403-1–4; TC-US-1404-1–5; TC-US-1405-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-071 | Ruang Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir, dan email; semua penyedia di Indonesia (CR-007) | `[DOK] P4.2` `[USER] T2-Q4, T4-Q1, T4-Q2` | US-1406 | TC-US-1406-1–4 |  | BRD v1.3 (CR-007/Tahap 4) |
+| BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 | TC-US-208-1–14; TC-US-1501-1–16; TC-US-1502-1–5; TC-US-1503-1–3; TC-US-1504-1–9; TC-AUD-1–4; TC-DB-1–5 |  | BRD v1.0 |
+| BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 | TC-US-1501-1–16; TC-AUD-1–4 |  | BRD v1.0 |
+| BR-090 | Ruang Sehat menyediakan data untuk mengukur KPI-01 sampai KPI-04 sesuai definisi di bagian 1.2: MAU bert… | `[USER] T2-Q10, T2-Q11` `[DOK: 01-business-case.md]` | US-1405, US-1701 | TC-US-1405-1–4; TC-US-1701-1–5 |  | BRD v1.0 |
+| BR-100 | Ruang Sehat terdaftar sebagai Penyelenggara Sistem Elektronik Lingkup Privat sebelum aplikasi digunakan… | `[SRC-12]` `[SRC-13]` `[SRC-27]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-101 | Konsultasi online berjalan dalam skema telemedisin yang sesuai ketentuan Kemenkes: klinik rekanan (fasya… | `[SRC-02]` `[SRC-03]` `[USER] T2-Q2` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
+| BR-102 | Hanya tenaga kesehatan dengan STR dan SIP yang masih berlaku yang dapat diaktifkan melayani. Masa berlak… | `[SRC-02]` `[SRC-03]` `[SRC-21]` | US-202, US-203, US-204, US-1003 | TC-US-202-1–6; TC-US-203-1–5; TC-US-204-1–6; TC-US-1003-1–4 |  | BRD v1.0 |
+| BR-103 | Pasien memberikan persetujuan eksplisit, tertulis atau terekam, sebelum datanya diproses, dengan informa… | `[SRC-15]` | US-101, US-104, US-1601 | TC-US-101-1–5, 7–15; TC-US-104-1–11; TC-US-1601-1–6 |  | BRD v1.0 |
+| BR-104 | Data anggota keluarga yang masih anak hanya diproses dengan persetujuan orang tua atau wali | `[SRC-15]` | US-104, US-108 | TC-US-104-1–11; TC-US-108-1–7 |  | BRD v1.0 |
+| BR-105 | Data kesehatan (catatan tenaga kesehatan, isi chat konsultasi, resep, hasil lab), data anak, dan data ke… | `[SRC-15]` | NFR-SEC-05, NFR-PRIV-03 | TC-NFR-SEC-05-1; TC-NFR-SEC-05-2; TC-NFR-SEC-05-3; TC-NFR-PRIV-03-1; TC-SEC-1–9; TC-DB-1–5 |  | BRD v1.0 |
+| BR-106 | Pasien dapat menjalankan hak subjek data: informasi, akses dan salinan, perbaikan, penarikan persetujuan… | `[SRC-15]` `[DOK] P5.4` | US-109, US-310, US-1601, US-1602, US-1603, US-1604, US-1605 | TC-US-109-1–4; TC-US-310-1–5; TC-US-1601-1–6; TC-US-1602-1–4; TC-US-1603-1–8; TC-US-1604-1–3; TC-US-1605-1–3 |  | BRD v1.0 |
+| BR-107 | Seluruh kegiatan pemrosesan data pribadi direkam, selaras dengan audit trail BR-080 | `[SRC-15]` | US-104, US-1501, PRD §7 | TC-US-104-1–11; TC-US-1501-1–16; TC-AUD-1–4 |  | BRD v1.0 |
+| BR-108 | Ruang Sehat menjaga keamanan dan kerahasiaan data pribadi yang diprosesnya | `[SRC-15]` `[SRC-13]` | NFR-SEC-05, NFR-SEC-06 | TC-NFR-SEC-05-1; TC-NFR-SEC-05-2; TC-NFR-SEC-05-3; TC-NFR-SEC-06-1; TC-SEC-1–9; TC-DB-1–5 |  | BRD v1.0 |
+| BR-109 | Tersedia prosedur pemberitahuan kegagalan pelindungan data pribadi secara tertulis paling lambat 3 x 24… | `[SRC-15]` `[SRC-13]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
+| BR-110 | Penilaian dampak pelindungan data pribadi (DPIA) dilakukan sebelum go-live | `[SRC-15]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
+| BR-111 | Ruang Sehat menunjuk pejabat/petugas pelindungan data pribadi | `[SRC-15]` `[SRC-16]` | US-1603, PRD §10 | TC-US-1603-1–8 |  | BRD v1.0 |
+| BR-112 | Setiap jenis data memiliki masa retensi; setelah masa retensi berakhir, data diakhiri pemrosesannya, dih… | `[SRC-15]` `[SRC-25]` | US-1605, US-1606, NFR-RET-01 | TC-US-1605-1–3; TC-US-1606-1–3; TC-NFR-RET-01-1 |  | BRD v1.0 |
+| BR-113 | Data disimpan di Indonesia; penyedia pihak ketiga juga memproses dan menyimpan data pribadi di Indonesia, tanpa kecuali | `[DOK] P5.5` `[SRC-15]` `[SRC-13]` `[USER] T4-Q1` | US-1406, NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 | TC-US-1406-1–4; TC-NFR-PRIV-01-1; TC-NFR-DR-1 |  | BRD v1.3 (CR-007/Tahap 4) |
+| BR-114 | Catatan konsultasi dan resep digital memenuhi ketentuan rekam medis elektronik dan resep elektronik yang… | `[SRC-18]` `[SRC-06]` `[SRC-07]` `[USER] T2-Q2` | US-308, US-309, PRD §10 | TC-US-308-1–6; TC-US-309-1–12 |  | BRD v1.0 |
+| BR-115 | Pembayaran hanya diproses lewat penyedia jasa pembayaran berizin BI. Model pembagian dana langsung (BR-0… | `[SRC-19]` `[SRC-20]` `[USER] T2-Q4` | US-802, US-1406, NFR-INT-04 | TC-US-802-1–15; TC-US-1406-1–4; TC-NFR-INT-1; TC-NFR-INT-2 |  | BRD v1.0 |
+| BR-116 | Obat bebas, produk kecantikan, dan produk kesehatan yang dijual lewat Ruang Sehat memenuhi ketentuan per… | `[SRC-08]` `[SRC-10]` `[SRC-11]` `[USER] T2-Q3` | US-702, PRD §10 | TC-US-702-1–3 |  | BRD v1.0 |
+| BR-117 | PT. Arunika memiliki perizinan berusaha yang sesuai untuk kegiatan Ruang Sehat sebelum go-live. Jenis iz… | `[SRC-09]` `[SRC-23]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
+| BR-118 | Perkembangan regulasi kesehatan digital dipantau sampai go-live, karena Kemenkes menyatakan akan mengatu… | `[SRC-06]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
+| BR-120 | PT. Arunika menyediakan aplikasi RME minimalis, terpisah dari aplikasi dan portal Ruang Sehat, untuk kli… | `[USER] T3-Q1a, T3-Q14, T3-Q15` | US-1301, US-1302 | TC-US-1301-1–6; TC-US-1302-1–6 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-121 | RME minimalis terhubung ke Ruang Sehat lewat integrasi yang sama dengan sistem rekanan lain (BR-070). Ru… | `[USER] T3-Q14` | US-1301, US-1401 | TC-US-1301-1–6; TC-US-1401-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-122 | RME minimalis menyediakan pengelolaan jadwal, daftar layanan, dan harga klinik/lab, termasuk layanan hom… | `[USER] T3-Q1b` | US-1303 | TC-US-1303-1–5 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-123 | RME minimalis menyediakan pencatatan rekam medis kunjungan. Data rekam medis sesuai ketentuan SATUSEHAT… | `[USER] T3-Q1b` `[SRC-18]` `[SRC-26]` `[SRC-27]` | US-1306, US-1309, US-1310, PRD §10 | TC-US-1306-1–9; TC-US-1309-1–9; TC-US-1310-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 | TC-US-1307-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-125 | RME minimalis menyediakan penerimaan appointment dari Ruang Sehat, check-in pasien, antrean real-time kl… | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 | TC-US-1304-1–4; TC-US-1305-1–3; TC-US-1308-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Ruang Sehat | `[USER] T3-Q1c` | US-1306, US-1310 | TC-US-1306-1–9; TC-US-1310-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
 
 ## NFR → arsitektur (Tahap 4)
 
@@ -144,3 +144,201 @@ Peta alur lengkap dan deskripsi terstruktur: `docs/06-design-guideline.md` §10.
 | EP-16 | US-1601 A13; US-1602 A13; US-1603 D-C11; US-1604 A13; US-1605 D-C11 (terblokir L-06/PT-24); US-1606 — |
 | EP-17 | US-1701 D-C12 |
 | NFR | NFR-SEC-02 C01, B01; NFR-SEC-04 C01; NFR-SEC-08 A03, A04, B01; NFR-SEC-10 B01; PRD §6.11 aksesibilitas → 06-design-guideline.md §7 (KEPUTUSAN-160) |
+
+## BR → story → fase (Tahap 7)
+
+Usulan pembagian fase `[UP-65]` `[UP-66]`, menunggu Checkpoint 2. Rincian: `docs/07-phase-plan.md`. "F1"–"F4" = Fase 1–4 Tahap 8; Fase 4 bersyarat (gerbang re-plan 2026-12-11). Story dengan AC yang diverifikasi di fase lain ditandai di `docs/backlog.md` kolom Fase. Butir kepatuhan non-perangkat lunak (PRD §10) tidak masuk fase Tahap 8 dan dipantau sebagai gerbang (`docs/07-phase-plan.md` §9).
+
+| BR | Story (fase) | Enabler / UI terkait (fase) |
+| --- | --- | --- |
+| BR-001 | US-101 (F1), US-103 (F1) | EN-06, EN-13, UI-03 (F1) |
+| BR-002 | US-105 (F1), US-108 (F4) | — |
+| BR-003 | US-106 (F1), US-107 (F2) | EN-10, EN-14 (F1) |
+| BR-004 | US-106 (F1), US-201 (F1), US-107 (F2) | EN-14 (F1) |
+| BR-005 | US-202, US-203 (F2) | — |
+| BR-006 | US-205, US-206 (F2) | — |
+| BR-007 | NFR-COMP-01 | EN-12, UI-02 (F1); EN-17 (F2); UI-05 (F3) |
+| BR-008 | US-201 (F1), US-107, US-310 (F2), US-902 (F3), US-108, US-109 (F4) | — |
+| BR-010 | US-303, US-304, US-305, US-306 (F2) | EN-18, EN-19 (F2) |
+| BR-011 | US-303, US-304 (F2) | — |
+| BR-012 | US-303, US-304 (F2; nomor 4 urutan pengurangan) | — |
+| BR-013 | US-308, US-311, US-1003 (F2) | EN-17 (F2) |
+| BR-014 | US-303, US-804 (F2) | — |
+| BR-015 | US-309 (F2) | — |
+| BR-016 | US-305, US-306, US-308, US-310 (F2) | EN-18 (F2) |
+| BR-017 | US-302 (F2), NFR-AVL-01 | EN-16 (F2), EN-25 (F3) |
+| BR-018 | US-301 (F2) | — |
+| BR-020 | US-401, US-402, US-602 (F3) | — |
+| BR-021 | US-401, US-402, US-602 (F3) | — |
+| BR-022 | US-501, US-502, US-503, US-504, US-1308 (F4) | — |
+| BR-023 | US-601, US-602 (F3) | — |
+| BR-024 | US-801 (F2), US-402, US-403, US-404, US-1304 (F3), US-501 (F4) | — |
+| BR-025 | US-901, US-902, US-1307 (F3) | — |
+| BR-026 | US-406 (F3) | — |
+| BR-027 | US-405, US-1305 (F4) | — |
+| BR-030 | US-701, US-702 (F4) | — |
+| BR-031 | US-205 (F2), US-702 (F4) | — |
+| BR-032 | US-702 (F4) | — |
+| BR-033 | US-1402 (F3), US-701, US-704 (F4) | — |
+| BR-034 | US-703, US-704 (F4) | — |
+| BR-035 | US-706 (F4) | — |
+| BR-040 | US-304, US-802, US-804 (F2), US-402 (F3), US-501, US-703 (F4) | — |
+| BR-041 | US-803 (F2) | — |
+| BR-042 | US-801, US-809 (F2) | EN-24 pajak CR-013 (F2) |
+| BR-043 | US-810 (F3) | — |
+| BR-044 | US-801, US-803 (F2) | — |
+| BR-045 | US-307, US-805, US-806, US-808, US-812 (F2), US-807, US-1403 (F3), US-504, US-705 (F4) | — |
+| BR-046 | US-811, US-1201 (F3) | — |
+| BR-050 | US-1001, US-1002 (F2), US-902 (F3) | EN-13 (F1), UI-04 (F2) |
+| BR-060 | US-208 (F1), US-207 (F2) | EN-06, EN-07, EN-11, UI-01 (F1) |
+| BR-061 | US-1101, US-1102 (F3) | — |
+| BR-062 | US-1003 (F2), US-1103, US-1104 (F3) | — |
+| BR-063 | US-809, US-812 (F2), US-810 (F3) | — |
+| BR-064 | US-301 (F2), US-1104, US-1201, US-1202, US-1203 (F3) | EN-20 (F2) |
+| BR-065 | US-1104, US-1201, US-1202, US-1203 (F3) | EN-20 (F2) |
+| BR-070 | US-404, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 (F3), US-502 (F4) | EN-21 (F3) |
+| BR-071 | US-1406 (F2 pembayaran, video, email; F4 kurir) | — |
+| BR-080 | US-208, US-1501, US-1504 (F1), US-1502, US-1503 (F3), PRD §7 | EN-04, EN-05, EN-08 (F1) |
+| BR-081 | US-1501 (F1), PRD §7 | EN-05 (F1) |
+| BR-090 | US-1405, US-1701 (F3) | — |
+| BR-100, BR-101, BR-109, BR-110, BR-117, BR-118 | PRD §10 (non-perangkat lunak) | Gerbang G-14 dan pemantauan di setiap gate |
+| BR-102 | US-202, US-203, US-204, US-1003 (F2) | — |
+| BR-103 | US-101, US-104 (F1), US-1601 (F3) | — |
+| BR-104 | US-104 (F1), US-108 (F4) | — |
+| BR-105 | NFR-SEC-05, NFR-PRIV-03 | EN-07, EN-09 (F1) |
+| BR-106 | US-310 (F2), US-1601–US-1605 (F3; US-1605 terblokir PT-24), US-109 (F4) | — |
+| BR-107 | US-104, US-1501 (F1), PRD §7 | EN-05 (F1) |
+| BR-108 | NFR-SEC-05, NFR-SEC-06 | EN-02, EN-06, EN-07, EN-09 (F1) |
+| BR-111 | US-1603 (F3), PRD §10 | — |
+| BR-112 | US-1605, US-1606 (F3, terblokir PT-24), NFR-RET-01 | EN-23 (F3) |
+| BR-113 | US-1406 (F2), NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 | EN-15 (F2), EN-26, EN-27 (Februari 2027) |
+| BR-114 | US-308, US-309 (F2), PRD §10 | — |
+| BR-115 | US-802, US-1406 (F2), NFR-INT-04 | — |
+| BR-116 | US-702 (F4), PRD §10 | — |
+| BR-120 | US-1301, US-1302 (F3) | EN-22 (F3) |
+| BR-121 | US-1301, US-1401 (F3) | EN-21 (F3) |
+| BR-122 | US-1303 (F3) | — |
+| BR-123 | US-1306, US-1309, US-1310 (F3), PRD §10 | EN-22 (F3) |
+| BR-124 | US-1307 (F3) | — |
+| BR-125 | US-1304 (F3), US-1305, US-1308 (F4) | — |
+| BR-126 | US-1306, US-1310 (F3) | — |
+
+Hitungan story per fase: F1 9, F2 31, F3 41, F4 15 (total 96 story aktif; US-102 dihapus CR-007). Enabler EN-01–EN-27 dan story UI UI-01–UI-05 beserta induk ADR/KEPUTUSAN ada di `docs/backlog.md`.
+
+## Story → test case (Tahap 7)
+
+Sumber: `docs/test-plan.md` (draf 0.1, dari PRD v1.2 draf; belum dieksekusi). ID test case berbentuk `TC-<story>-<n>`. "Fase" = fase pengembangan tempat test case dijalankan (sebagian AC story ditunda ke fase lain, lihat test-plan §9 T-29). "T1" = jumlah test case bertanda modul kritis T1; "Neg." = jumlah test case bertipe negatif. Setiap story memiliki minimal satu test case per AC yang dapat diuji; AC berisi `[TIDAK DIKETAHUI]` dicatat di test-plan §9 T-28.
+
+| Story | Fase | Test case | Jumlah | T1 | Neg. |
+| --- | --- | --- | --- | --- | --- |
+| US-101 | F1 | TC-US-101-1–5, 7–15 | 14 | 14 | 11 |
+| US-103 | F1 | TC-US-103-1–19 | 19 | 19 | 13 |
+| US-104 | F1, F2, Tahap 12 | TC-US-104-1–11 | 11 | 11 | 6 |
+| US-105 | F1, F2 | TC-US-105-1–14 | 14 | 11 | 7 |
+| US-106 | F1 | TC-US-106-1–22 | 22 | 22 | 14 |
+| US-107 | F2, F4 | TC-US-107-1–5 | 5 | 3 | 3 |
+| US-108 | F4 | TC-US-108-1–7 | 7 | 6 | 3 |
+| US-109 | F4 | TC-US-109-1–4 | 4 | 4 | 1 |
+| US-201 | F1, F2, F4 | TC-US-201-1–19 | 19 | 18 | 12 |
+| US-202 | F2 | TC-US-202-1–6 | 6 | 5 | 4 |
+| US-203 | F2 | TC-US-203-1–5 | 5 | 5 | 4 |
+| US-204 | F2 | TC-US-204-1–6 | 6 | 5 | 1 |
+| US-205 | F2, F4 | TC-US-205-1–7 | 7 | 5 | 5 |
+| US-206 | F2 | TC-US-206-1–5 | 5 | 5 | 4 |
+| US-207 | F2, F4 | TC-US-207-1–8 | 8 | 8 | 4 |
+| US-208 | F1 | TC-US-208-1–14 | 14 | 14 | 11 |
+| US-301 | F2 | TC-US-301-1–6 | 6 | 3 | 2 |
+| US-302 | F2 | TC-US-302-1–7 | 7 | 4 | 4 |
+| US-303 | F2 | TC-US-303-1–4 | 4 | 0 | 3 |
+| US-304 | F2 | TC-US-304-1–8 | 8 | 7 | 3 |
+| US-305 | F2 | TC-US-305-1–10 | 10 | 5 | 5 |
+| US-306 | F2 | TC-US-306-1–6 | 6 | 2 | 3 |
+| US-307 | F2 | TC-US-307-1–9 | 9 | 9 | 3 |
+| US-308 | F2 | TC-US-308-1–6 | 6 | 6 | 4 |
+| US-309 | F2 | TC-US-309-1–12 | 12 | 11 | 6 |
+| US-310 | F2, F4 | TC-US-310-1–5 | 5 | 3 | 1 |
+| US-311 | F2 | TC-US-311-1–5 | 5 | 2 | 1 |
+| US-401 | F3 | TC-US-401-1–4 | 4 | 1 | 3 |
+| US-402 | F3 | TC-US-402-1–7 | 7 | 7 | 5 |
+| US-403 | F3 | TC-US-403-1–4 | 4 | 1 | 3 |
+| US-404 | F3 | TC-US-404-1–6 | 6 | 6 | 4 |
+| US-405 | F4 | TC-US-405-1–3 | 3 | 0 | 1 |
+| US-406 | F3 | TC-US-406-1–2 | 2 | 0 | 0 |
+| US-501 | F4 | TC-US-501-1–4 | 4 | 2 | 2 |
+| US-502 | F4 | TC-US-502-1–3 | 3 | 3 | 1 |
+| US-503 | F4 | TC-US-503-1–5 | 5 | 5 | 3 |
+| US-504 | F4 | TC-US-504-1–3 | 3 | 1 | 1 |
+| US-601 | F3 | TC-US-601-1–3 | 3 | 0 | 1 |
+| US-602 | F3 | TC-US-602-1–2 | 2 | 0 | 1 |
+| US-701 | F4 | TC-US-701-1–3 | 3 | 1 | 1 |
+| US-702 | F4 | TC-US-702-1–3 | 3 | 2 | 2 |
+| US-703 | F4 | TC-US-703-1–7 | 7 | 5 | 3 |
+| US-704 | F4 | TC-US-704-1–7 | 7 | 7 | 2 |
+| US-705 | F4 | TC-US-705-1–4 | 4 | 4 | 3 |
+| US-706 | F4 | TC-US-706-1–2 | 2 | 0 | 0 |
+| US-801 | F2, F4 | TC-US-801-1–9 | 9 | 7 | 3 |
+| US-802 | F2 | TC-US-802-1–15 | 15 | 15 | 9 |
+| US-803 | F2 | TC-US-803-1–7 | 7 | 7 | 4 |
+| US-804 | F2 | TC-US-804-1–3 | 3 | 1 | 1 |
+| US-805 | F2 | TC-US-805-1–7 | 7 | 7 | 3 |
+| US-806 | F2, F3, F4 | TC-US-806-1–10 | 10 | 10 | 3 |
+| US-807 | F3, F4 | TC-US-807-1–10 | 10 | 10 | 6 |
+| US-808 | F2, F3 | TC-US-808-1–11 | 11 | 11 | 6 |
+| US-809 | F2 | TC-US-809-1–6 | 6 | 6 | 3 |
+| US-810 | F3 | TC-US-810-1–3 | 3 | 3 | 1 |
+| US-811 | F3 | TC-US-811-1–5 | 5 | 5 | 4 |
+| US-812 | F2 | TC-US-812-1–7 | 7 | 7 | 3 |
+| US-901 | F3 | TC-US-901-1–5 | 5 | 5 | 3 |
+| US-902 | F3, F4 | TC-US-902-1–3 | 3 | 3 | 1 |
+| US-1001 | F2 | TC-US-1001-1–8 | 8 | 3 | 5 |
+| US-1002 | F2 | TC-US-1002-1–4 | 4 | 1 | 2 |
+| US-1003 | F2 | TC-US-1003-1–4 | 4 | 1 | 1 |
+| US-1101 | F3 | TC-US-1101-1–6 | 6 | 2 | 3 |
+| US-1102 | F3 | TC-US-1102-1–2 | 2 | 0 | 1 |
+| US-1103 | F3 | TC-US-1103-1–4 | 4 | 1 | 1 |
+| US-1104 | F3 | TC-US-1104-1–4 | 4 | 2 | 2 |
+| US-1201 | F3 | TC-US-1201-1–5 | 5 | 4 | 3 |
+| US-1202 | F3 | TC-US-1202-1–3 | 3 | 3 | 2 |
+| US-1203 | F3 | TC-US-1203-1–2 | 2 | 2 | 1 |
+| US-1301 | F3 | TC-US-1301-1–6 | 6 | 6 | 4 |
+| US-1302 | F3 | TC-US-1302-1–6 | 6 | 6 | 4 |
+| US-1303 | F3 | TC-US-1303-1–5 | 5 | 4 | 3 |
+| US-1304 | F3 | TC-US-1304-1–4 | 4 | 4 | 1 |
+| US-1305 | F4 | TC-US-1305-1–3 | 3 | 0 | 0 |
+| US-1306 | F3, F4 | TC-US-1306-1–9 | 9 | 9 | 6 |
+| US-1307 | F3 | TC-US-1307-1–4 | 4 | 4 | 3 |
+| US-1308 | F4 | TC-US-1308-1–3 | 3 | 2 | 1 |
+| US-1309 | F3 | TC-US-1309-1–9 | 9 | 9 | 5 |
+| US-1310 | F3 | TC-US-1310-1–4 | 4 | 4 | 2 |
+| US-1401 | F3 | TC-US-1401-1–3 | 3 | 3 | 1 |
+| US-1402 | F3 | TC-US-1402-1–7 | 7 | 7 | 6 |
+| US-1403 | F3 | TC-US-1403-1–4 | 4 | 4 | 2 |
+| US-1404 | F3 | TC-US-1404-1–5 | 5 | 5 | 3 |
+| US-1405 | F3 | TC-US-1405-1–4 | 4 | 1 | 1 |
+| US-1406 | F2, F4 | TC-US-1406-1–4 | 4 | 4 | 2 |
+| US-1501 | F1 | TC-US-1501-1–16 | 16 | 16 | 10 |
+| US-1502 | F3 | TC-US-1502-1–5 | 5 | 4 | 2 |
+| US-1503 | F3 | TC-US-1503-1–3 | 3 | 3 | 2 |
+| US-1504 | F1 | TC-US-1504-1–9 | 9 | 9 | 8 |
+| US-1601 | F3 | TC-US-1601-1–6 | 6 | 6 | 3 |
+| US-1602 | F3 | TC-US-1602-1–4 | 4 | 4 | 2 |
+| US-1603 | F3 | TC-US-1603-1–8 | 8 | 8 | 3 |
+| US-1604 | F3 | TC-US-1604-1–3 | 3 | 3 | 1 |
+| US-1605 | F3 | TC-US-1605-1–3 | 3 | 3 | 1 |
+| US-1606 | F3 | TC-US-1606-1–3 | 3 | 3 | 2 |
+| US-1701 | F3 | TC-US-1701-1–5 | 5 | 1 | 1 |
+
+Test case lintas story dan NFR:
+
+| Kelompok | Test case | Jumlah |
+| --- | --- | --- |
+| Kriteria umum KU-01–KU-10 | TC-KU-01-1 … TC-KU-10-1 | 14 |
+| Skenario wajib endpoint dan isolasi | TC-SEC-1 … TC-SEC-9 | 9 |
+| Kebutuhan non-fungsional (NFR) | TC-NFR-SEC-02-1 … TC-NFR-A11Y-2 | 36 |
+| Audit trail (PRD §7) | TC-AUD-1 … TC-AUD-4 | 4 |
+| Fondasi database dan hak role | TC-DB-1 … TC-DB-5 | 5 |
+| MVP end-to-end Fase 1 | TC-MVP-1 … TC-MVP-2 | 2 |
+
+Hitungan total ada di `docs/test-plan.md` §2.9. Kolom "File kode / test" diisi di Tahap 8 lewat penanda `trace:` (coding standards §7.4).
+
+Klarifikasi AC Fase 1 (temuan test-plan §9 T-01–T-22; US-101, US-103–US-106, US-201, US-208, US-1501, US-1504, KU-02, KU-10, NFR-SEC-03, NFR-SEC-08) ada di `docs/07-klarifikasi-ac-fase-1.md`. Pemetaan T-23–T-35 ke fase ada di §4 dokumen itu. Setelah Checkpoint 2 menyetujuinya, teks AC PRD dan test case story terdampak diperbarui, lalu baris di atas disesuaikan.
