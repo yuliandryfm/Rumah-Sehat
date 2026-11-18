@@ -19,3 +19,14 @@ Ringkasan ini disimpan orkestrator (`mode-otomatis.md`: laporan reviewer tanpa a
 | DBA-S01–S10 | Composite FK tenant RME dan wadah DEK; dua wadah konsultasi; akun jurnal platform; salinan data yang dapat tidak sinkron; tabel acuan transisi status; index; ukuran kolom audit; pembersihan job; sub-kelas Master snapshot; inkonsistensi kolom `note` | Diterima (KEPUTUSAN-68, -69; ADR-008, ADR-011, ADR-013); S08 tanpa partisi tabel aplikasi di rilis 1 (KEPUTUSAN-63 tetap) |
 
 Catatan verifikasi (bukan blokir): perilaku FK terhadap RLS, FK pada kolom terhitung, dan BRIN diverifikasi ke dokumentasi PostgreSQL di Tahap 5.
+
+## Putaran 2 (cek ulang terbatas): TIDAK LULUS (2 blokir baru)
+
+DBA-B01–B08 tertutup (B05 menunggu konfirmasi user di gate). Blokir baru:
+
+| ID | Masalah | Tindak lanjut |
+| --- | --- | --- |
+| DBA-B09 | Kalimat ADR-007 butir 3 ("payload outbox hanya rujukan") bertentangan dengan isi outbox audit (ADR-009) dan outbox notifikasi | ADR-007 dibatasi ke outbox integrasi keluar, dengan pengecualian eksplisit untuk outbox audit dan notifikasi |
+| DBA-B10 | Database RME tanpa tabel kebijakan dan laporan retensi yang dirujuk trigger Log dan wadah DEK | `rme_retention_policy` dan `rme_retention_run` ditambahkan |
+
+Webhook diproses `rme_app` dinilai benar menurut desain, dengan tiga syarat yang dicatat di ADR-014 §4 dan data dictionary C6.8. Saran S-N1–S-N5 (index, hak `rme_worker`, trigger DEK, FK wadah, konsistensi kecil) diterima.

@@ -30,6 +30,7 @@ Dokumen terkait: ADR-006–ADR-020 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 | ADR-018 | Object storage privat dengan URL bertanda tangan | KEPUTUSAN-34 |
 | ADR-019 | Tiga lingkungan di cloud Indonesia, PITR, standby, uji pemulihan | KEPUTUSAN-35 |
 | ADR-020 | SATUSEHAT dikirim dari RME atas nama fasyankes, secara asinkron | KEPUTUSAN-36 |
+| ADR-021 | Keamanan aplikasi mobile (data di perangkat, kendali SDK), akses administratif production (tanpa hak tetap, akses darurat), dan pipeline CI/CD | KEPUTUSAN-71 |
 
 Keputusan user di tahap ini:
 
@@ -133,7 +134,7 @@ Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]
 | Rekanan | Onboarding, rekening, dokumen izin, status integrasi | EP-02 (US-205), EP-14 (US-1405) |
 | Katalog salinan | Salinan layanan, harga, jadwal, slot, katalog, dan stok dari rekanan, serta pencarian | EP-04, EP-05, EP-06, EP-07 |
 | Pemesanan | Pesanan semua jenis, penahanan slot/stok, harga terkunci, status, pembatalan | EP-03–EP-07, US-805 |
-| Konsultasi | Sesi, kehadiran, chat, video, catatan, resep | EP-03 |
+| Konsultasi | Sesi, kehadiran, chat, video, catatan, resep, halaman verifikasi resep publik (CR-008) | EP-03 |
 | Pembayaran | Adaptor PG, notifikasi PG, jurnal, refund, klaim, kewajiban, rekonsiliasi, pengaturan markup dan biaya | EP-08 |
 | Hasil lab | Penerimaan dan penyajian hasil lab berversi | EP-09 |
 | Notifikasi | Matriks kanal, templat, email, kotak notifikasi di dalam aplikasi | EP-10 |
@@ -290,7 +291,11 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
   7. aplikasi ke server media video;
   8. proses aplikasi ke KMS, secret manager, object storage, Redis, dan Admin REST API Keycloak;
   9. browser sistem dan aplikasi ke Keycloak (login OIDC);
-  10. pipeline CI/CD ke lingkungan cloud.
+  10. pipeline CI/CD ke lingkungan cloud;
+  11. backend ke penyedia pihak ketiga (payment gateway, kurir, email, server media);
+  12. perangkat pengguna (aplikasi mobile dan penyimpanan lokalnya);
+  13. akses administratif manusia ke infrastruktur production (ADR-021 butir 3).
+- Keycloak dipakai bersama Rumah Sehat dan RME dengan realm terpisah. Redis memakai instans terpisah per sistem (ADR-007).
 - **Kontrol utama**:
   - Autentikasi dan sesi (ADR-011): Keycloak dengan realm per populasi, Argon2, MFA TOTP untuk semua peran non-pasien, Authorization Code + PKCE lewat browser sistem, BFF untuk web, penolakan seketika lewat status akun dan daftar pencabutan di Redis/DB.
   - Otorisasi (ADR-012): default deny, relasi, 404 untuk objek terlarang, RLS di RME.
@@ -343,7 +348,7 @@ Setiap NFR PRD §6 dan spesifikasi audit §7 dijawab arsitektur. Kolom "Bukti" m
 | NFR-SEC-08 (berkas) | Validasi jenis/ukuran/isi; URL bertanda tangan | ADR-018 | Test |
 | NFR-SEC-09 (lulus audit keamanan) | Seluruh kontrol di atas; threat model Tahap 4 | Semua | Tahap 10 |
 | NFR-PRIV-01 (data dan backup di Indonesia) | Semua penyimpanan di region Indonesia | ADR-019 | Konfigurasi |
-| NFR-PRIV-02 (penyedia pihak ketiga di Indonesia) | Syarat pemilihan penyedia; tidak ada SDK yang mengirim data ke luar | ADR-010, ADR-016, ADR-019 | Evaluasi penyedia Tahap 5 |
+| NFR-PRIV-02 (penyedia pihak ketiga di Indonesia) | Syarat pemilihan penyedia; inventaris dependensi mobile dan daftar izin host tujuan | ADR-010, ADR-016, ADR-019, ADR-021 | Evaluasi penyedia Tahap 5; uji lalu lintas jaringan build rilis (ADR-021 butir 2) |
 | NFR-PRIV-03 (data keluar minimal) | Minimisasi per tujuan; E-17 | ADR-013, ADR-014 | Review kontrak integrasi |
 | NFR-PRIV-04 (video tidak direkam) | Rekaman tidak dikonfigurasi + test konfigurasi | ADR-016 | Test |
 | NFR-PRIV-05 (bukti persetujuan per versi) | Tabel versi teks + rekaman persetujuan (Log) | ADR-008 | Data dictionary |
@@ -375,7 +380,9 @@ Pemilihan berikut wajib diverifikasi ke dokumentasi resmi dan dibawa ke user. Sy
 | Keycloak | Versi, pengaturan parameter Argon2, tema login, konfigurasi realm sebagai kode, mekanisme autentikasi ulang, rotasi token penyegar, pemetaan jenis event (ADR-011) |
 | Redis | Distribusi dan lisensi `[SRC-76]`, layanan terkelola atau dijalankan sendiri di Indonesia (ADR-007) |
 | Log, metrik, crash report | Di Indonesia atau dijalankan sendiri (ADR-010) |
-| Checklist ASVS L2 | Pemetaan kontrol per bab (ADR-011) |
+| Checklist ASVS L2 | Pemetaan kontrol per bab (ADR-011), ditambah mitigasi Sedang/Rendah dan penguatan threat model (`docs/04-threat-model.md` §6.2–§6.3) |
+| Keamanan pipeline dan akses admin | Identitas pipeline jangka pendek, proteksi branch, persetujuan deploy, IAM/KMS/log audit penyedia (ADR-021) |
+| Penetralan PDF | Pustaka CDR atau render ulang yang berjalan di Indonesia (ADR-018 butir 6) |
 | Biaya | Baseline biaya pihak ketiga dan infrastruktur (Business Case §9) |
 
 ## 12. Modul kritis (T1)

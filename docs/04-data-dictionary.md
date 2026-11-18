@@ -42,7 +42,7 @@ Dokumen ini memfinalkan klasifikasi awal PRD §8 (`[KEPUTUSAN-10]`) dengan lima 
 | Identitas pengguna | Kredensial dan autentikasi di Keycloak. Tabel akun aplikasi menyimpan `idp_realm` + `idp_subject` (unik per realm); email hanya salinan untuk notifikasi, tanpa constraint unik di aplikasi | `[USER] T4-Q4`, `[KEPUTUSAN-45]`, `[KEPUTUSAN-46]` |
 | Unique di Master | Partial unique index `WHERE deleted_at IS NULL` `[SRC-33]` | ADR-003, ADR-008 |
 | Pencarian teks | Index trigram `pg_trgm` pada nama layanan, produk, rekanan, tenaga kesehatan, dan tampilan terminologi `[SRC-42]`, dibuat sebagai partial index `WHERE deleted_at IS NULL` `[SRC-33]` | ADR-007, review DBA S06 |
-| FK komposit | (1) Relasi antar-tabel tenant RME memakai FK `(fasyankes_id, <induk>_id)` ke `UQ (fasyankes_id, id)` di induk, termasuk ke `rme_data_key` (review DBA S01). (2) Kesesuaian wadah DEK: tabel yang menyimpan `data_key_id` untuk wadah entitas lain memakai FK `(data_key_id, <wadah>_id)` ke `UQ (id, container_id)` di `data_key`/`rme_data_key`, sehingga DEK tidak dapat dipasangkan ke wadah lain; `container_type` diperiksa pustaka enkripsi (review DBA S02). (3) Rantai pembayaran dan transisi status pesanan (A8, A12). Perilaku FK terhadap RLS dan FK pada kolom terhitung diverifikasi ke dokumentasi PostgreSQL di Tahap 5 | `[KEPUTUSAN-68]`, review DBA S01, S02, S04, S05 |
+| FK komposit | (1) Relasi antar-tabel tenant RME memakai FK `(fasyankes_id, <induk>_id)` ke `UQ (fasyankes_id, id)` di induk, termasuk ke `rme_data_key` (review DBA S01). (2) Kesesuaian wadah DEK: tabel yang menyimpan `data_key_id` untuk wadah entitas lain memakai FK `(data_key_id, <wadah>_id)` ke `UQ (id, container_id)` di `data_key`/`rme_data_key`, sehingga DEK tidak dapat dipasangkan ke wadah lain; `container_type` diperiksa pustaka enkripsi (review DBA S02). Tabel anak dalam wadah yang sama memakai FK komposit ke induknya, misalnya `prescription_item (prescription_id, data_key_id)` → `prescription (id, data_key_id)` dan versi rekam medis RME → `rme_visit (fasyankes_id, id, data_key_id)` (review DBA S-N4). Pembeda `consultation_chat` dan `consultation_clinical`, yang punya `container_id` sama (ID sesi), tidak ditegakkan FK; pustaka enkripsi memeriksa `container_type` dan pemeriksaan ini wajib dicakup test. (3) Rantai pembayaran dan transisi status pesanan (A8, A12). Perilaku FK terhadap RLS dan FK pada kolom terhitung diverifikasi ke dokumentasi PostgreSQL di Tahap 5 | `[KEPUTUSAN-68]`, review DBA S01, S02, S04, S05 |
 | Nomor yang dibaca manusia | `order_number`, `prescription_number`, `ticket_number`, `request_number`, `check_in_code`: `text` unik; format dan pembangkitnya ditetapkan Tahap 5 | `[KEPUTUSAN-57]` |
 
 Penulisan kolom di tabel per entitas:
@@ -50,7 +50,7 @@ Penulisan kolom di tabel per entitas:
 - **Null**: `tidak` = `NOT NULL`; `ya` = boleh `NULL`.
 - **Kunci**: `PK`, `FK→tabel`, `UQ` (unik penuh), `UQp` (partial unique, kondisinya di bagian index).
 - Nama constraint (`ck_`, `uq_`, `ix_`, `fk_`) ditetapkan di Tahap 5; di sini cukup isinya.
-- Kolom bertanda "Anonimkan" ditimpa pekerja privasi saat anonimisasi data master (ADR-013 §5) dan menjadi daftar hak `UPDATE` per kolom role `privacy_worker` `[SRC-35]`.
+- Kolom bertanda "Anonimkan" ditimpa pekerja privasi saat anonimisasi data master (ADR-013 §5). Hak `UPDATE` per kolom role `privacy_worker` `[SRC-35]` di setiap tabel Master dan Master snapshot = kolom bertanda "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by` (untuk `account_owner_nik_registry` juga kolom soft delete), di database A maupun C.
 
 ### 0.3 Legenda kelas (ADR-008)
 
@@ -134,7 +134,7 @@ Hak per tabel diberikan dengan `GRANT`; hak per kolom dipakai untuk pekerja priv
 | --- | --- | --- | --- | --- | --- |
 | Master | S, I, U | — | S; U per kolom: kolom bertanda "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by`. Untuk `account_owner_nik_registry` juga `deleted_at`, `deleted_by`, `delete_reason` | — | Pemilik skema |
 | Master snapshot (`order_personal_snapshot`) | S, I | — | S; U per kolom seperti Master | — | Pemilik skema |
-| Master khusus `data_key` | S, I | — | S; U hanya `wrapped_dek`, `shredded_at`, `shred_reason` | U hanya `wrapped_dek`, `kek_ref`, dan hanya baris `shredded_at IS NULL` (trigger) | Pemilik skema |
+| Master khusus `data_key` | S, I | — | S; U hanya `wrapped_dek` (menjadi `NULL` bersama pengisian `shredded_at`, S-N3), `shredded_at`, `shred_reason` | U hanya `wrapped_dek`, `kek_ref`, dan hanya baris `shredded_at IS NULL` (trigger) | Pemilik skema |
 | Transaksi | S, I | — | S kolom ID, FK subjek, `created_at`, dan `data_key_id` (untuk menemukan wadah) | — | Pemilik skema |
 | Riwayat status | S, I | — | S kolom ID dan `note_data_key_id` | — | Pemilik skema |
 | Proyeksi | S, I, U | — | — | — | Pemilik skema |
@@ -145,7 +145,7 @@ Hak per tabel diberikan dengan `GRANT`; hak per kolom dipakai untuk pekerja priv
 
 Ketentuan hak `privacy_worker` (ADR-013 §5, temuan F-03, review DBA B02):
 - **DELETE di tabel Log**: trigger penolak kelas L hanya mengizinkan `DELETE` bila role pelaksana adalah `privacy_worker` **dan** baris sudah melewati masa retensi kategori tabel itu menurut `retention_policy`. Selama nilai retensi masih `NULL` (PT-24), tidak ada baris Log yang dapat dihapus. Setiap penghapusan dicatat E-16 lewat `audit_outbox` dan dirangkum di `retention_run`.
-- **Trigger satu arah** di `data_key`: setelah `shredded_at` terisi, baris tidak dapat diubah lagi oleh role mana pun, sehingga DEK yang sudah dimusnahkan tidak dapat dihidupkan kembali `[KEPUTUSAN-66]`.
+- **Trigger satu arah** di `data_key` dan `rme_data_key`: (1) `privacy_worker` hanya boleh mengubah `wrapped_dek` menjadi `NULL` dalam statement yang sama dengan pengisian `shredded_at` dan `shred_reason`; perubahan lain oleh role ini ditolak (review DBA S-N3); (2) setelah `shredded_at` terisi, baris tidak dapat diubah lagi oleh role mana pun, sehingga DEK yang sudah dimusnahkan tidak dapat dihidupkan kembali `[KEPUTUSAN-66]`.
 - Daftar kolom U per tabel = kolom bertanda "Anonimkan" di tabel entitas (GRANT per kolom `[SRC-35]`).
 
 **(B) Database audit** (berlaku sama untuk database audit Rumah Sehat dan database audit RME)
@@ -163,18 +163,22 @@ Role `audit_verifier` menambah daftar ADR-009 butir 4, karena job verifikasi har
 
 **(C) Database aplikasi RME minimalis** (semua tabel milik tenant memakai RLS dengan `FORCE ROW LEVEL SECURITY`; role di bawah bukan pemilik tabel dan tanpa `BYPASSRLS` `[SRC-34]`, ADR-012 butir 5)
 
-| Kelas / tabel | `rme_app` | `rme_auth` (pemetaan subjek IdP) | `rme_worker` (job, outbox, SATUSEHAT) | `rme_operator` (onboarding) | `audit_relay` | `privacy_worker` | `rme_migration` |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Master tenant | S, I, U (kebijakan tenant) | — | Per tabel (lihat rincian di bawah) | S, I, U hanya `fasyankes`, `fasyankes_location`, `rs_integration_credential`, `rme_user`, `rme_user_role` | — | S; U per kolom "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by` | Pemilik |
-| Master snapshot (`rme_visit_personal_snapshot`) | S, I | — | — | — | — | S; U per kolom seperti Master | Pemilik |
-| `rme_user` | S, I, U (kebijakan tenant; Admin Fasyankes mengelola akun fasyankesnya, US-1302) | S kolom `id`, `idp_subject`, `fasyankes_id`, `status` lintas tenant (kebijakan khusus) | — | S, I, U (akun operator dan Admin Fasyankes pertama) | — | S; U per kolom "Anonimkan" | Pemilik |
-| `rme_data_key` (Master khusus) | S, I | — | S, I | S, I (DEK kredensial saat onboarding) | — | S; U hanya `wrapped_dek`, `shredded_at`, `shred_reason`, dengan kebijakan RLS khusus role ini | Pemilik; `key_rotation` (cadangan) U `wrapped_dek`, `kek_ref` hanya `shredded_at IS NULL` |
-| Transaksi, Riwayat status | S, I | — | Per tabel (lihat rincian di bawah) | **Tanpa** S atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` (ADR-012 butir 5) | — | S kolom ID, FK subjek, `created_at`, `data_key_id`, `note_data_key_id` | Pemilik |
-| Log | S, I | — | Per tabel | — | — | S kolom ID, `created_at`, FK subjek; D hanya baris yang retensinya habis (trigger, seperti A) | Pemilik |
-| Proyeksi | S, I, U | — | Per tabel | — | — | — | Pemilik |
-| Operasional | S, I, U, D | — | Per tabel | — | — | S, D saat retensi | Pemilik |
-| `rme_audit_outbox` | I saja | — | I saja | I saja | S, D | I saja (E-16) | Pemilik |
-| `terminology_code` (acuan global, tanpa RLS) | S | — | S | — | — | — | Pemilik, I/U saat pemuatan |
+| Kelas / tabel | `rme_app` | `rme_auth` (pemetaan subjek IdP) | `rme_worker` (job, outbox, SATUSEHAT) | `rme_operator` (onboarding) | `audit_relay` | `privacy_worker` | `key_rotation` (cadangan, A19.7) | `rme_migration` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Master tenant | S, I, U (kebijakan tenant) | — | Per tabel (lihat rincian di bawah) | S, I, U hanya `fasyankes`, `fasyankes_location`, `rs_integration_credential`, `rme_user`, `rme_user_role` | — | S; U per kolom: kolom "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by` | — | Pemilik |
+| Master snapshot (`rme_visit_personal_snapshot`) | S, I | — | — | — | — | S; U per kolom: kolom "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by` | — | Pemilik |
+| `rme_user` | S, I, U (kebijakan tenant; Admin Fasyankes mengelola akun fasyankesnya, US-1302) | S kolom `id`, `idp_subject`, `fasyankes_id`, `status` lintas tenant (kebijakan khusus) | S kolom `id`, `fasyankes_id`, `full_name` (penulis untuk resource SATUSEHAT) | S, I, U (akun operator dan Admin Fasyankes pertama) | — | S; U per kolom: kolom "Anonimkan" + `anonymized_at`, `updated_at`, `updated_by` | — | Pemilik |
+| `rme_data_key` (Master khusus) | S, I | — | S, I | S, I (DEK kredensial saat onboarding) | — | S; U hanya `wrapped_dek` (menjadi `NULL` bersama pengisian `shredded_at`, S-N3), `shredded_at`, `shred_reason`, dengan kebijakan RLS khusus role ini | U hanya `wrapped_dek`, `kek_ref`, hanya baris `shredded_at IS NULL` | Pemilik |
+| `rme_retention_policy` (acuan global, tanpa RLS) | S | — | — | — | — | S | — | Pemilik, I/U (perubahan nilai lewat migrasi setelah PT-24) |
+| `rme_retention_run` (Log, RLS per fasyankes) | S (kebijakan tenant; Admin Fasyankes melihat laporan fasyankesnya) | — | — | — | — | S, I (kebijakan RLS khusus lintas tenant) | — | Pemilik |
+| Transaksi, Riwayat status | S, I | — | Per tabel (lihat rincian di bawah) | **Tanpa** S atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` (ADR-012 butir 5) | — | S kolom ID, FK subjek, `created_at`, `data_key_id`, `note_data_key_id` | — | Pemilik |
+| Log | S, I | — | Per tabel | — | — | S kolom ID, `created_at`, FK subjek; D hanya baris yang masa retensinya habis menurut `rme_retention_policy` (trigger, seperti A) | — | Pemilik |
+| Proyeksi | S, I, U | — | Per tabel | — | — | — | — | Pemilik |
+| Operasional | S, I, U, D | — | Per tabel | — | — | S, D saat retensi | — | Pemilik |
+| `rme_audit_outbox` | I saja | — | I saja | I saja | S, D | I saja (E-16) | — | Pemilik |
+| `terminology_code` (acuan global, tanpa RLS) | S | — | S | — | — | — | — | Pemilik, I/U saat pemuatan |
+
+Trigger penolak kelas L di database RME membaca masa retensi dari `rme_retention_policy` (C6.9); selama nilainya `NULL` (PT-24), tidak ada baris Log RME yang dapat dihapus (review DBA B10).
 
 **Rincian hak `rme_worker`** (review DBA B03b). Worker mengambil job dari antrean semua tenant, lalu memasang konteks tenant per job; di luar antrean, semua hak tunduk pada kebijakan tenant.
 
@@ -187,12 +191,14 @@ Role `audit_verifier` menambah daftar ADR-009 butir 4, karena job verifikasi har
 | `satusehat_submission`, `satusehat_submission_status_event`, `satusehat_submission_attempt`, `satusehat_resource_ref` | S, I | Pengiriman SATUSEHAT (ADR-020 butir 6) |
 | `satusehat_submission_state` | S, I, U | Sama |
 | `satusehat_credential`, `rs_integration_credential`, `fasyankes`, `fasyankes_location` | S | Autentikasi ke SATUSEHAT dan Rumah Sehat |
+| `rs_health_worker_roster`, `rme_health_worker_profile`, `rme_health_worker_link` | S | Penugasan home visit dan nomor IHS praktisi untuk resource SATUSEHAT (review DBA S-N2) |
+| `rme_user` | S kolom `id`, `fasyankes_id`, `full_name` | Penulis rekam medis untuk resource SATUSEHAT |
 | `external_access_token` | S, I, U, D | Cache token |
 | `rme_data_key` | S, I | Dekripsi isi saat menyusun pesan dan resource; wadah `status_note` baru untuk keterangan galat pengiriman SATUSEHAT |
 | `rme_stored_file` | S | Unggah PDF hasil lab ke Rumah Sehat |
 | `terminology_code` | S, I, U | Pemuatan terminologi (job tanpa tenant) |
 
-Tabel yang tidak tercantum tidak dapat diakses `rme_worker`. Webhook dari Rumah Sehat (pesanan terbayar, pembatalan, status home visit, daftar tenaga kesehatan aktif, jawaban penugasan) diproses sinkron oleh proses API RME dengan role `rme_app`, sehingga `rme_worker` tidak perlu hak `INSERT` atas tabel kunjungan dan pasien.
+Tabel yang tidak tercantum tidak dapat diakses `rme_worker`. Pencarian nomor IHS praktisi dan pasien ke SATUSEHAT serta penyimpanannya ke `rme_health_worker_profile` dan `rme_patient` dilakukan `rme_app` (saat Admin Fasyankes melengkapi data, ADR-020 butir 3), sehingga `rme_worker` tidak perlu `UPDATE` atas tabel itu (review DBA S-N2). Webhook dari Rumah Sehat (pesanan terbayar, pembatalan, status home visit, daftar tenaga kesehatan aktif, jawaban penugasan) diproses sinkron oleh proses API RME dengan role `rme_app`, sehingga `rme_worker` tidak perlu hak `INSERT` atas tabel kunjungan dan pasien.
 
 Role `rme_auth` dan `rme_worker` menambah daftar role ADR-012 butir 7 `[KEPUTUSAN-55]`: `rme_auth` memetakan subjek token Keycloak realm `rme` ke pengguna dan fasyankesnya **sebelum** konteks tenant dipasang; `rme_worker` mengambil job dari antrean semua tenant lalu memasang konteks tenant per job. `privacy_worker` di RME memakai kebijakan RLS khusus role itu (lintas tenant untuk job retensi dan anonimisasi). Bentuk kebijakan RLS per role diverifikasi ke dokumentasi Row Security Policies di Tahap 5; SRC-34 baru memverifikasi perilaku `BYPASSRLS` dan `FORCE ROW LEVEL SECURITY`.
 
@@ -202,7 +208,10 @@ Role `rme_auth` dan `rme_worker` menambah daftar role ADR-012 butir 7 `[KEPUTUSA
 
 1. Tabel kelas T, R, dan L **tidak menyimpan PII dalam teks terbuka**. Mereka merujuk orang lewat ID, menyimpan PII di tabel Master yang dapat dianonimkan (misalnya `order_personal_snapshot`), atau menyimpannya terenkripsi dengan DEK wadah sehingga dapat dimusnahkan lewat crypto-shredding.
 2. Notifikasi di dalam aplikasi dan log email menyimpan kode templat dan parameter ID, bukan teks jadi yang memuat nama (AB-73, NFR-PRIV-03).
-3. Outbox integrasi (`integration_outbox`, `rme_integration_outbox`) hanya menyimpan **rujukan**: jenis pesan dan ID entitas. Isi pesan disusun, dan bila perlu didekripsi, saat pengiriman (review DBA B04). Bila suatu pesan harus disimpan isinya (misalnya pembatalan yang entitasnya sudah berubah), disimpan sebagai `payload_enc` + `data_key_id` dengan wadah entitas terkait. Outbox notifikasi boleh memuat alamat email tujuan dan dihapus setelah terkirim.
+3. Outbox per jenis, selaras dengan ADR-007 yang direvisi (B09):
+   - **Outbox integrasi keluar** (`integration_outbox`, `rme_integration_outbox`) hanya menyimpan **rujukan**: jenis pesan dan ID entitas. Isi pesan disusun, dan bila perlu didekripsi, saat pengiriman (review DBA B04). Bila suatu pesan harus disimpan isinya (misalnya pembatalan yang entitasnya sudah berubah), disimpan sebagai `payload_enc` + `data_key_id` dengan wadah entitas terkait.
+   - **Outbox audit** (`audit_outbox`, `rme_audit_outbox`) mengikuti ADR-009: event sudah dimasking pustaka audit, role aplikasi hanya `INSERT`, dan relay menghapus baris setelah terkirim.
+   - **Outbox notifikasi** (`notification_outbox`) boleh memuat alamat email tujuan, lalu dihapus setelah terkirim.
 
 **Wadah data dan DEK** (ADR-013 §3; nilai `data_key.container_type`):
 
@@ -998,7 +1007,7 @@ Constraint:
 
 #### A8.3 `order_state` (P)
 
-*STD-P* dengan `patient_order_id`. Index `ix (status, updated_at)`. Job batas waktu membaca proyeksi bersama detail jadwal.
+*STD-P* dengan `patient_order_id`. Index `ix (status, updated_at)`; partial index `ix (status, updated_at) WHERE status NOT IN ('expired','cancelled_by_patient','cancelled_by_partner','cancelled_by_system','completed','health_worker_no_show','patient_no_show','closed_unconfirmed','claim_rejected','rejected_by_outlet','not_handed_over','delivery_failed','claim_approved')` untuk pesanan yang belum berstatus akhir (review DBA S-N1). Batas waktu dijalankan sebagai job per entitas (§D.7); proyeksi dipindai hanya sebagai jaring pengaman harian.
 
 #### A8.4 `order_personal_snapshot` (M-snapshot)
 
@@ -1182,7 +1191,7 @@ Detail pesanan konsultasi, dibuat saat checkout. Satu sesi punya dua wadah data:
 | chat_data_key_id | uuid | tidak | FK→data_key, UQ | — | Wadah `consultation_chat` (keluhan awal, chat, lampiran). FK komposit `(chat_data_key_id, id)` → `data_key (id, container_id)` |
 | clinical_data_key_id | uuid | tidak | FK→data_key, UQ | — | Wadah `consultation_clinical` (catatan dan resep). FK komposit `(clinical_data_key_id, id)` → `data_key (id, container_id)` |
 
-Index: `ix (health_worker_id, scheduled_start_at)` (daftar sesi, US-311 AC1).
+Index: `ix (health_worker_id, scheduled_start_at)` (daftar sesi, US-311 AC1); `ix (scheduled_start_at)` (jaring pengaman harian batas ketidakhadiran PB-02/PB-03, review DBA S-N1).
 
 #### A9.2 `consultation_attendance_event` (T)
 
@@ -1283,9 +1292,11 @@ Resep digital bernomor unik; tidak dapat diubah, dikoreksi dengan membatalkan la
 | prescriber_health_worker_id | uuid | tidak | FK→health_worker | — | Berprofesi `doctor` (AB-53, diperiksa aplikasi) |
 | header_enc | bytea | tidak | | PII, Spesifik, Enc | Isi kepala resep (US-309 AC1) |
 | replaces_prescription_id | uuid | ya | FK→prescription | — | Resep yang dibatalkan dan digantikan (US-309 AC3) |
+| verification_code_enc | bytea | tidak | | Enc | Kode verifikasi acak yang dicetak di PDF dan QR (US-309 AC6, CR-008 `[USER] T4-Q5`); terenkripsi dengan DEK wadah `consultation_clinical` |
+| verification_code_bidx | bytea | tidak | UQ | — | Blind index HMAC kode verifikasi untuk pencarian dari halaman verifikasi publik tanpa mendekripsi (ADR-013 butir 4 pola sama) |
 | data_key_id | uuid | tidak | FK→data_key | — | Wadah `consultation_clinical`; FK komposit `(data_key_id, consultation_session_id)` → `data_key (id, container_id)` |
 
-Index: `ix (consultation_session_id)`. PDF resep dibuat setelah baris resep tersimpan, sehingga dicatat di tabel anak `prescription_document` (A9.12), bukan kolom yang diisi belakangan (review DBA B07). Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05, US-309 AC5).
+Index: `ix (consultation_session_id)`; `UQ (id, data_key_id)` (sasaran FK wadah dari `prescription_item`). PDF resep dibuat setelah baris resep tersimpan, sehingga dicatat di tabel anak `prescription_document` (A9.12), bukan kolom yang diisi belakangan (review DBA B07). Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05, US-309 AC5).
 
 #### A9.9 `prescription_item` (T)
 
@@ -1297,7 +1308,7 @@ Item resep. Sumber: US-309 AC1.
 | prescription_id | uuid | tidak | FK→prescription | — | |
 | line_no | smallint | tidak | | — | |
 | item_enc | bytea | tidak | | Spesifik, Enc | Nama obat, kekuatan/dosis, jumlah, aturan pakai; kode obat KFA `[TIDAK DIKETAHUI]` (ADR-020 butir 7) |
-| data_key_id | uuid | tidak | FK→data_key | — | Sama dengan `prescription.data_key_id` (diperiksa pustaka enkripsi) |
+| data_key_id | uuid | tidak | FK→data_key | — | FK komposit `(prescription_id, data_key_id)` → `prescription (id, data_key_id)` (review DBA S-N4) |
 
 Index: `UQ (prescription_id, line_no)`.
 
@@ -1383,6 +1394,8 @@ Detail pesanan home visit. Alamat dan nomor HP ada di `order_personal_snapshot`.
 | scheduled_start_at | timestamptz | tidak | | — | |
 | scheduled_end_at | timestamptz | tidak | | — | |
 | time_zone | text | tidak | | — | Zona klinik (AB-40) |
+
+Index: `ix (scheduled_start_at)` (jaring pengaman RF-18 dan PB-03); `ix (scheduled_end_at)` (jaring pengaman PB-15 dan penutupan akhir hari) (review DBA S-N1).
 
 #### A10.5 `home_visit_assignment` (T)
 
@@ -1496,7 +1509,7 @@ Satu percobaan pembayaran di payment gateway, dengan harga terkunci sendiri (`[K
 | idempotency_key | uuid | tidak | UQ | — | Dikirim ke penyedia |
 | expires_at | timestamptz | tidak | | — | PB-07 terkunci |
 
-Index: `ix (patient_order_id)`; `UQ (id, patient_order_id)` (sasaran FK komposit dari `payment_receipt`).
+Index: `ix (patient_order_id)`; `ix (expires_at)` (jaring pengaman kedaluwarsa PB-07, review DBA S-N1); `UQ (id, patient_order_id)` (sasaran FK komposit dari `payment_receipt`).
 
 #### A12.1a `payment_attempt_gateway_ref` (T)
 
@@ -1541,12 +1554,12 @@ Setiap dana yang diterima dari penyedia, beserta hasil penilaiannya `[KEPUTUSAN-
 | payment_attempt_id | uuid | tidak | FK→payment_attempt | — | FK komposit `(payment_attempt_id, patient_order_id)` → `payment_attempt (id, patient_order_id)` |
 | gateway_transaction_ref | text | tidak | UQ | — | ID transaksi penyedia; notifikasi atau rekonsiliasi yang sama tidak membuat penerimaan kedua |
 | patient_order_id | uuid | tidak | FK→patient_order | — | |
-| payment_gateway_notification_id | uuid | ya | FK→payment_gateway_notification | — | `NULL` bila terdeteksi di rekonsiliasi (RF-12) |
+| payment_gateway_notification_id | uuid | ya | FK→payment_gateway_notification, UQp | — | `NULL` bila terdeteksi di rekonsiliasi (RF-12) |
 | amount_received_idr | bigint | tidak | | Keu | CHECK `> 0` |
 | received_at | timestamptz | tidak | | — | Waktu menurut penyedia |
 | outcome | text | tidak | | — | CHECK (`captured`, `duplicate`, `amount_mismatch`, `late_unavailable`): dikonfirmasi; pembayaran ganda RF-12; nominal berbeda RF-14; berhasil setelah kedaluwarsa tanpa slot/stok RF-13 |
 
-Index: `ix (payment_attempt_id)`; `ix (patient_order_id)`; `ix (outcome) WHERE outcome <> 'captured'` (antrean Keuangan, US-802 AC3); `UQ (id, payment_attempt_id)` dan `UQ (id, patient_order_id)` (sasaran FK komposit dari `payment_capture`).
+Index: `ix (payment_attempt_id)`; `ix (patient_order_id)`; `UQp (payment_gateway_notification_id) WHERE payment_gateway_notification_id IS NOT NULL` (satu notifikasi paling banyak satu penerimaan, review DBA S-N5); `ix (received_at)` (rekonsiliasi harian, review DBA S-N1); `ix (outcome) WHERE outcome <> 'captured'` (antrean Keuangan, US-802 AC3); `UQ (id, payment_attempt_id)` dan `UQ (id, patient_order_id)` (sasaran FK komposit dari `payment_capture`).
 
 #### A12.6 `payment_capture` (T)
 
@@ -1560,7 +1573,7 @@ Penerimaan dana yang mengonfirmasi pesanan. Constraint unik per pesanan membuat 
 | payment_attempt_id | uuid | tidak | FK→payment_attempt | — | FK komposit `(payment_receipt_id, payment_attempt_id)` → `payment_receipt (id, payment_attempt_id)` |
 | amount_idr | bigint | tidak | | Keu | CHECK `> 0` |
 
-Rantai FK komposit `payment_capture` → `payment_receipt` → `payment_attempt` → `order_price_lock` menjamin tangkapan, penerimaan, percobaan, dan harga terkunci semuanya milik pesanan yang sama (review DBA S04).
+Rantai FK komposit `payment_capture` → `payment_receipt` → `payment_attempt` → `order_price_lock` menjamin tangkapan, penerimaan, percobaan, dan harga terkunci semuanya milik pesanan yang sama (review DBA S04). Index: `ix (created_at)` (laporan periode dan rekonsiliasi, review DBA S-N1).
 
 #### A12.7 `fund_split_instruction_line` (T)
 
@@ -1592,7 +1605,7 @@ Hasil pembagian dana dan biaya aktual yang dilaporkan penyedia. Sumber: US-803 A
 | gateway_report_ref | text | tidak | | — | |
 | reported_at | timestamptz | tidak | | — | |
 
-Index: `ix (payment_capture_id)`; `UQ (gateway_report_ref, payment_capture_id, recipient_type)` supaya laporan yang diimpor ulang tidak tercatat dua kali.
+Index: `ix (payment_capture_id)`; `ix (reported_at)` (rekonsiliasi, review DBA S-N1); `UQ (gateway_report_ref, payment_capture_id, recipient_type)` supaya laporan yang diimpor ulang tidak tercatat dua kali.
 
 ### A13. Jurnal berpasangan
 
@@ -1645,8 +1658,9 @@ Baris debit dan kredit. Sumber: ADR-015 butir 4.
 | journal_account_id | uuid | tidak | FK→journal_account | — | |
 | side | text | tidak | | — | CHECK (`debit`, `credit`) |
 | amount_idr | bigint | tidak | | Keu | CHECK `> 0` |
+| occurred_at | timestamptz | tidak | | — | Salinan `journal_entry.occurred_at`, supaya laporan periode per akun tidak perlu join; FK komposit `(journal_entry_id, occurred_at)` → `journal_entry (id, occurred_at)` menjamin nilainya sama (review DBA S-N1) |
 
-Index: `UQ (journal_entry_id, line_no)`; `ix (journal_account_id, created_at)` (laporan rekanan dan keuangan).
+Index: `UQ (journal_entry_id, line_no)`; `ix (journal_account_id, occurred_at)` (laporan rekanan dan keuangan per periode kejadian, US-811, US-1201). Di `journal_entry` ditambahkan `UQ (id, occurred_at)` sebagai sasaran FK komposit.
 
 **Constraint keseimbangan jurnal.** Tiga lapis: (1) CHECK di kepala `total_debit_idr = total_credit_idr`; (2) jumlah baris per sisi harus sama dengan total kepala, diperiksa di database saat commit transaksi; (3) job harian membandingkan semua jurnal. Mekanisme lapis 2 (trigger yang dijalankan saat commit) diverifikasi ke dokumentasi PostgreSQL di Tahap 5 sebelum dipakai; SRC-40 baru memverifikasi perilaku trigger umum. Sampai terverifikasi, lapis 2 ditegakkan pustaka jurnal yang menulis kepala dan baris dalam satu transaksi.
 
@@ -1669,6 +1683,7 @@ Refund ke pasien. Sumber: BR-045, §3.5 (RF-01–RF-18), AB-30–AB-36, US-806, 
 Index dan constraint:
 - `UQp (patient_order_id) WHERE refund_case NOT IN ('rf_12','rf_13','rf_14')` `[SRC-33]`: satu refund per pesanan untuk refund atas pembayaran pesanan (AB-36, ADR-015 butir 6). RF-13 dan RF-14 dikecualikan karena keduanya refund atas dana yang tidak menjadi pembayaran pesanan, sehingga refund wajib sesudahnya (misalnya RF-01 setelah pesanan dikonfirmasi oleh pembayaran berikutnya) tidak terblokir `[KEPUTUSAN-67]`. Tafsiran AB-36 ini menunggu konfirmasi user di gate Tahap 4.
 - `UQ (payment_receipt_id)` tetap: satu refund per penerimaan dana.
+- `ix (patient_order_id)` penuh (bukan partial), untuk semua refund termasuk RF-12–RF-14 di laporan dan halaman pesanan (review DBA S-N1).
 - `UQp (claim_id) WHERE claim_id IS NOT NULL`.
 - Klaim sebagian barang `[TIDAK DIKETAHUI]` (PT-33): bila refund sebanding diputuskan, `amount_idr` sudah menampungnya tanpa ubah struktur.
 
@@ -2268,7 +2283,7 @@ Kunci data (DEK) terbungkus KEK di KMS, satu per wadah (ADR-013 §3). Aturan khu
 Index dan constraint: `UQ (container_type, container_id)`; `UQ (id, container_id)` (sasaran FK komposit kesesuaian wadah, §0.2); `ix (retention_category, retention_anchor_at) WHERE shredded_at IS NULL`.
 
 Perlindungan dan rotasi `[KEPUTUSAN-66]` (review DBA B01):
-- **Trigger satu arah**: setelah `shredded_at` terisi, `UPDATE` atas baris itu ditolak untuk semua role, sehingga DEK yang sudah dimusnahkan tidak dapat dihidupkan kembali. Role aplikasi hanya S dan I.
+- **Trigger satu arah**: `privacy_worker` hanya boleh mengisi `wrapped_dek = NULL` bersamaan dengan pengisian `shredded_at` dan `shred_reason` (review DBA S-N3); setelah `shredded_at` terisi, `UPDATE` atas baris itu ditolak untuk semua role, sehingga DEK yang sudah dimusnahkan tidak dapat dihidupkan kembali. Role aplikasi hanya S dan I.
 - **Rotasi KEK, cara utama**: memakai versi kunci di KMS yang tetap dapat membuka DEK yang dibungkus versi lama, sehingga baris tidak perlu dibungkus ulang dan `kek_ref` cukup mencatat versi saat dibungkus. Kemampuan ini diverifikasi ke dokumentasi KMS penyedia terpilih di Tahap 5.
 - **Rotasi KEK, cadangan** (bila KMS tidak menyediakan cara utama): role terpisah `key_rotation` dengan U hanya pada `wrapped_dek` dan `kek_ref`, dan hanya untuk baris `shredded_at IS NULL` (ditegakkan trigger yang sama). Setiap pembungkusan ulang dicatat di security log.
 
@@ -2599,6 +2614,8 @@ Layanan klinik, pemeriksaan lab, paket MCU, dan home visit beserta harga rekanan
 | code_system, code, code_display | text | ya | | — | LOINC untuk pemeriksaan lab (ADR-020 butir 5) |
 | is_active | boolean | tidak | | — | |
 
+Index: `UQ (fasyankes_id, id)`; `ix (fasyankes_id, service_kind) WHERE deleted_at IS NULL` (review DBA S-N1).
+
 #### C2.2 `rme_mcu_package_item` (M, RLS: ya)
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
@@ -2609,6 +2626,8 @@ Layanan klinik, pemeriksaan lab, paket MCU, dan home visit beserta harga rekanan
 | lab_test_service_id | uuid | ya | FK→rme_service | — | |
 | item_name | text | tidak | | — | |
 | sort_order | smallint | tidak | | — | |
+
+Index: `ix (fasyankes_id, package_service_id) WHERE deleted_at IS NULL` (review DBA S-N1).
 
 #### C2.3 `rme_home_visit_area` (M, RLS: ya)
 
@@ -2640,6 +2659,8 @@ Jadwal mingguan per layanan: hari, jam, panjang slot, dan kuota per slot (US-130
 | time_zone | text | tidak | | — | |
 | valid_from | date | tidak | | — | |
 | valid_until | date | ya | | — | |
+
+Index: `UQ (fasyankes_id, id)`; `ix (fasyankes_id, service_id) WHERE deleted_at IS NULL` (review DBA S-N1).
 
 #### C2.5 `rme_schedule_exception` (M, RLS: ya)
 
@@ -2681,6 +2702,8 @@ Penahanan slot yang diminta Rumah Sehat lewat pemeriksaan sinkron sebelum bayar 
 | slot_id | uuid | tidak | FK→rme_slot | — | |
 | quantity | integer | tidak | | — | CHECK `> 0` |
 | rumah_sehat_order_id | uuid | ya | | — | |
+
+Index: `ix (slot_id, expires_at)` (perhitungan kuota tersisa dan pembersihan, review DBA S-N1).
 
 ### C3. Pasien, kunjungan, dan antrean
 
@@ -2725,7 +2748,7 @@ Kunjungan; tepat satu per pesanan Rumah Sehat (PRD §8.3, BR-126). Satu kunjunga
 | check_in_code | text | ya | | — | Kode dari Rumah Sehat; `NULL` untuk home visit |
 | data_key_id | uuid | tidak | FK→rme_data_key, UQ | — | Wadah `rme_visit`; FK komposit `(fasyankes_id, data_key_id, id)` → `rme_data_key (fasyankes_id, id, container_id)` |
 
-Index: `UQ (fasyankes_id, id)` (induk FK komposit); `UQ (rumah_sehat_order_id)`; `UQp (fasyankes_id, check_in_code) WHERE check_in_code IS NOT NULL` (US-1304 AC3); `ix (fasyankes_id, scheduled_start_at)` (daftar harian, US-1304 AC1); `ix (rme_patient_id, scheduled_start_at)` (riwayat, US-1310).
+Index: `UQ (fasyankes_id, id)` (induk FK komposit); `UQ (rumah_sehat_order_id)`; `UQp (fasyankes_id, check_in_code) WHERE check_in_code IS NOT NULL` (US-1304 AC3); `ix (fasyankes_id, scheduled_start_at)` (daftar harian, US-1304 AC1); `ix (rme_patient_id, scheduled_start_at)` (riwayat, US-1310); `ix (slot_id) WHERE slot_id IS NOT NULL` (perhitungan kuota, review DBA S-N1); `UQ (fasyankes_id, id, data_key_id)` (sasaran FK wadah dari rekam medis dan hasil lab, review DBA S-N4).
 
 #### C3.3 `rme_visit_personal_snapshot` (M-snapshot, RLS: ya)
 
@@ -2819,7 +2842,7 @@ Draf rekam medis sebelum difinalkan (ADR-008 butir 5).
 | author_rme_user_id | uuid | tidak | FK→rme_user | — | |
 | payload_enc | bytea | tidak | | Spesifik, Enc | |
 | payload_schema_version | smallint | tidak | | — | |
-| data_key_id | uuid | tidak | FK→rme_data_key | — | |
+| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan; FK komposit `(fasyankes_id, rme_visit_id, data_key_id)` → `rme_visit (fasyankes_id, id, data_key_id)` (review DBA S-N4) |
 | updated_at | timestamptz | tidak | | — | |
 
 #### C4.2 `rme_medical_record_version` (T, RLS: ya)
@@ -2836,7 +2859,7 @@ Versi rekam medis kunjungan atas nama penulis dan fasyankes (US-1306 AC1, AC3). 
 | payload_enc | bytea | tidak | | Spesifik, Enc | Struktur di bawah |
 | payload_schema_version | smallint | tidak | | — | |
 | correction_reason_enc | bytea | ya | | Spesifik, Enc | CHECK `version = 1 OR correction_reason_enc IS NOT NULL` |
-| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan |
+| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan; FK komposit `(fasyankes_id, rme_visit_id, data_key_id)` → `rme_visit (fasyankes_id, id, data_key_id)` (review DBA S-N4) |
 
 Index: `UQ (rme_visit_id, version)`.
 
@@ -2865,6 +2888,8 @@ Pemeriksaan yang dipesan lewat pendaftaran lab Rumah Sehat (permintaan lab). Sum
 | service_id | uuid | tidak | FK→rme_service | — | |
 | code_system, code, code_display | text | ya | | — | LOINC |
 
+Index: `ix (fasyankes_id, rme_visit_id)` (review DBA S-N1).
+
 #### C4.4 `rme_lab_result` (T, RLS: ya)
 
 Satu hasil lab dalam satu kunjungan; satu kunjungan dapat punya beberapa hasil (misalnya hasil sebagian), masing-masing dengan rantai versinya sendiri, sejalan dengan `lab_result` di Rumah Sehat (PRD §8.3) (review DBA B08). `id` dikirim ke Rumah Sehat sebagai `external_result_id`. Sumber: BR-124, US-1307, US-901.
@@ -2874,8 +2899,9 @@ Satu hasil lab dalam satu kunjungan; satu kunjungan dapat punya beberapa hasil (
 | *STD-T* | | | | | |
 | fasyankes_id | uuid | tidak | FK→fasyankes | — | |
 | rme_visit_id | uuid | tidak | FK→rme_visit | — | Kunjungan berjenis `lab` |
+| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan; FK komposit `(fasyankes_id, rme_visit_id, data_key_id)` → `rme_visit (fasyankes_id, id, data_key_id)` (review DBA S-N4) |
 
-Index: `UQ (fasyankes_id, id)`; `ix (rme_visit_id)`.
+Index: `UQ (fasyankes_id, id)`; `UQ (id, data_key_id)` (sasaran FK wadah dari versi); `ix (rme_visit_id)`.
 
 #### C4.5 `rme_lab_result_version` (T, RLS: ya)
 
@@ -2892,7 +2918,7 @@ Versi hasil lab yang diisi atau diunggah Petugas Lab, lalu dikirim ke Rumah Seha
 | pdf_file_id | uuid | ya | FK→rme_stored_file | Spesifik | |
 | correction_reason_enc | bytea | ya | | Spesifik, Enc | CHECK `version = 1 OR correction_reason_enc IS NOT NULL` (US-1307 AC2) |
 | payload_schema_version | smallint | tidak | | — | |
-| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan induk (sama dengan `rme_visit.data_key_id`) |
+| data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah kunjungan induk; FK komposit `(rme_lab_result_id, data_key_id)` → `rme_lab_result (id, data_key_id)` (review DBA S-N4) |
 
 CHECK `payload_enc IS NOT NULL OR pdf_file_id IS NOT NULL`. Index: `UQ (rme_lab_result_id, version)`.
 
@@ -2988,7 +3014,7 @@ Struktur sama dengan `upload_slot` (A19.5) ditambah `fasyankes_id`.
 
 #### C6.4 `rme_data_key` (M khusus, RLS: ya)
 
-Struktur dan aturan sama dengan `data_key` (A19.7, `[KEPUTUSAN-44]`, `[KEPUTUSAN-66]`) ditambah `fasyankes_id`. `container_type` CHECK (`rme_visit`, `rme_patient_identity`, `rme_health_worker_identity`, `satusehat_credential`, `rs_integration_credential`, `external_access_token`, `status_note`). Constraint: `UQ (fasyankes_id, id)`, `UQ (fasyankes_id, id, container_id)` (sasaran FK komposit). Trigger satu arah setelah `shredded_at` terisi, dan rotasi KEK, sama dengan A19.7. Hak per role di §0.6 (C): `rme_app`, `rme_worker`, `rme_operator` S dan I; `privacy_worker` S dan U kolom `wrapped_dek`, `shredded_at`, `shred_reason` dengan kebijakan RLS khusus role itu (review DBA B01).
+Struktur dan aturan sama dengan `data_key` (A19.7, `[KEPUTUSAN-44]`, `[KEPUTUSAN-66]`) ditambah `fasyankes_id`; `retention_category` merujuk kategori di `rme_retention_policy` (C6.9), bukan `retention_policy` Rumah Sehat (review DBA B10). `container_type` CHECK (`rme_visit`, `rme_patient_identity`, `rme_health_worker_identity`, `satusehat_credential`, `rs_integration_credential`, `external_access_token`, `status_note`). Constraint: `UQ (fasyankes_id, id)`, `UQ (fasyankes_id, id, container_id)` (sasaran FK komposit). Trigger satu arah setelah `shredded_at` terisi, dan rotasi KEK, sama dengan A19.7. Hak per role di §0.6 (C): `rme_app`, `rme_worker`, `rme_operator` S dan I; `privacy_worker` S dan U kolom `wrapped_dek`, `shredded_at`, `shred_reason` dengan kebijakan RLS khusus role itu (review DBA B01).
 
 #### C6.5 `rme_audit_outbox` (O, hak khusus)
 
@@ -3013,16 +3039,58 @@ Penolak duplikat webhook dari Rumah Sehat berdasarkan `event_id` (US-1403 AC2).
 | event_id | uuid | tidak | UQ | — | |
 | message_type | text | tidak | | — | |
 
+Syarat pemrosesan webhook dari Rumah Sehat oleh `rme_app` (US-1403 AC2, ADR-014 §3–§4):
+1. Baris `rme_inbound_event` disisipkan **dalam transaksi yang sama** dengan perubahan bisnisnya (misalnya pembuatan `rme_visit`), sehingga event yang sudah diproses dan perubahannya selalu sama-sama tersimpan atau sama-sama batal.
+2. Konteks tenant (`fasyankes_id`) diambil dari tanda tangan HMAC yang **terverifikasi** dengan rahasia `rs_integration_credential` milik fasyankes itu, bukan dari isi pesan (ADR-012).
+3. Bila langkah apa pun gagal, seluruh transaksi dibatalkan dan endpoint membalas galat sementara, sehingga Rumah Sehat mengirim ulang pesan dari outbox-nya.
+
+#### C6.9 `rme_retention_policy` (M, berlaku-mulai, RLS: tidak, acuan global)
+
+Masa retensi dan tindakan akhir per kategori data RME. Database RME terpisah dari Rumah Sehat, sehingga punya tabel kebijakan sendiri untuk trigger DELETE Log dan `rme_data_key.retention_category` (review DBA B10). Acuan global tanpa RLS, seperti `terminology_code`, karena satu nilai berlaku untuk semua fasyankes; perbedaan per fasyankes `[TIDAK DIKETAHUI]` (L-05). Nilai kosong berarti data tidak diproses retensi sampai PT-24 terjawab (ADR-013 §6). Pola §0.8 `[KEPUTUSAN-40]`. Sumber: BR-112, NFR-RET-01, NFR-RET-02, US-1606.
+
+| Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
+| --- | --- | --- | --- | --- | --- |
+| *STD-M* | | | | | Diubah hanya lewat migrasi setelah PT-24 |
+| data_category | text | tidak | | — | Misalnya `rme_medical_record`, `rme_lab_result`, `rme_patient_identity`, `rme_visit_personal_snapshot`, `satusehat_log`. Daftar final ditetapkan bersama PT-24 dan L-05 |
+| retention_months | integer | ya | | — | CHECK `retention_months > 0` |
+| end_action | text | ya | | — | CHECK (`end_processing`, `anonymize`, `crypto_shred`); CHECK `(retention_months IS NULL) = (end_action IS NULL)` |
+| legal_basis_note | text | ya | | — | |
+| effective_from | timestamptz | tidak | | — | |
+
+Index: `UQp (data_category, effective_from) WHERE deleted_at IS NULL`.
+
+#### C6.10 `rme_retention_run` (L, RLS: ya, per fasyankes)
+
+Laporan hasil job retensi RME, satu baris per kategori per fasyankes per run (US-1606 AC1). Dipilih **per fasyankes dengan RLS** karena rekam medis milik fasyankes (UP-50) dan pengendali datanya menunggu L-05; Admin Fasyankes perlu dapat melihat laporan pemusnahan data fasyankesnya, sementara laporan lintas fasyankes tidak boleh terlihat. `privacy_worker` menulis dengan kebijakan RLS khusus lintas tenant (§0.6 C) (review DBA B10).
+
+| Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
+| --- | --- | --- | --- | --- | --- |
+| *STD-L* | | | | | |
+| fasyankes_id | uuid | tidak | FK→fasyankes | — | |
+| rme_retention_policy_id | uuid | tidak | FK→rme_retention_policy | — | FK tunggal (tabel acuan global) |
+| data_category | text | tidak | | — | |
+| end_action | text | tidak | | — | |
+| started_at | timestamptz | tidak | | — | |
+| finished_at | timestamptz | tidak | | — | |
+| items_evaluated | integer | tidak | | — | |
+| items_actioned | integer | tidak | | — | |
+| outcome | text | tidak | | — | CHECK (`completed`, `partial`, `failed`) |
+
+Index: `ix (fasyankes_id, created_at DESC)`.
+
 ---
 
 ## D. Strategi partisi dan catatan untuk Tahap 5
 
 1. **Partisi** `[KEPUTUSAN-63]`: rilis 1 hanya mempartisi `audit_event` dan `audit_event_subject` (bulanan) `[SRC-39]`. Kandidat yang dievaluasi setelah uji beban NFR-CAP-04 dan setelah PT-24 menetapkan retensi: `chat_message`, `in_app_notification`, `email_delivery`, `integration_error_log`, `outbound_delivery_attempt`, `payment_gateway_notification`, `shipment_tracking_event`. Volume target (30.000 pasien aktif bulanan, 100 sesi bersamaan, NFR-CAP) belum menuntut partisi tabel aplikasi (review DBA S08).
 2. **Pembersihan Operasional**: job membersihkan baris kedaluwarsa `inbound_idempotency_key`, `inventory_hold`, `upload_slot`, `external_access_token`, `rme_slot_hold`, dan `rme_inbound_event`, baris outbox yang selesai, serta baris `job` dan `rme_job` yang selesai. Penghapusan dilakukan bertahap dalam batch kecil supaya tidak mengunci tabel lama. Pengaturan `fillfactor` dan autovacuum per tabel untuk tabel kelas O yang sering di-update atau dihapus (`job`, outbox, `queue_board`, `inventory_hold`) ditetapkan di Tahap 5 setelah diverifikasi ke dokumentasi (review DBA S08).
-3. **Trigger penolak** untuk kelas T, R, L (dengan pengecualian DELETE retensi oleh `privacy_worker` di kelas L), trigger "baris yang sudah berlaku tidak boleh diubah" untuk pola §0.8, dan trigger satu arah `data_key`/`rme_data_key` dibuat sekali sebagai pustaka migrasi `[SRC-40]`.
+3. **Trigger penolak** untuk kelas T, R, L (dengan pengecualian DELETE retensi oleh `privacy_worker` di kelas L, membaca `retention_policy` di database A dan `rme_retention_policy` di database C), trigger "baris yang sudah berlaku tidak boleh diubah" untuk pola §0.8, dan trigger satu arah `data_key`/`rme_data_key` (termasuk syarat `wrapped_dek = NULL` hanya bersama `shredded_at`, S-N3) dibuat sekali sebagai pustaka migrasi `[SRC-40]`.
 4. **Hal yang diverifikasi ke dokumentasi PostgreSQL di Tahap 5** sebelum dipakai (belum ada SRC): (a) constraint yang diperiksa saat commit untuk keseimbangan jurnal (A13), jumlah instruksi pembagian dana terhadap total terkunci (A12.7), dan jumlah baris harga terkunci terhadap kepalanya (A8.7) (review DBA S03); (b) pencegahan tumpang tindih rentang slot (A4.8); (c) kebijakan RLS per role, termasuk RLS pada tabel audit terpartisi (§0.6 B dan C); (d) constraint unik di tabel terpartisi (B); (e) perilaku FK komposit dengan kolom `NULL`, FK terhadap RLS, dan FK pada kolom terhitung (§0.2, A8.2); (f) index BRIN untuk tabel audit (B1).
-6. **Index tambahan putaran perbaikan 1** (review DBA S06): FK yang dipakai job, laporan, atau penghapusan berantai diberi index, yaitu `payment_receipt (payment_attempt_id)`, `journal_entry (refund_id | payment_capture_id | partner_obligation_id)`, `order_price_lock_line (product_id)`, `appointment (partner_service_id, scheduled_start_at)`, `chat_attachment (chat_message_id)`, `claim_evidence (claim_id)`, `complaint_ticket_attachment (complaint_ticket_message_id)`, `prescription (consultation_session_id)`, `job (run_at) WHERE status = 'queued'`, `rme_lab_result (rme_visit_id)`; urutan harga katalog memakai `patient_price_idr`; index trigram dibuat partial; index `health_worker (profession)` dihapus. Ringkasan review DBA yang tersedia tidak merinci butir (a)–(e) usulan index, sehingga daftar ini disusun dari pola akses di dokumen ini dan perlu dicocokkan reviewer di putaran berikutnya.
 5. **Nama modul pemilik tabel** diselaraskan dengan `docs/04-arsitektur.md` §3 (temuan F-12).
+6. **Index tambahan**:
+   - Putaran perbaikan 1 (review DBA S06): `payment_receipt (payment_attempt_id)`, `journal_entry (refund_id | payment_capture_id | partner_obligation_id)`, `order_price_lock_line (product_id)`, `appointment (partner_service_id, scheduled_start_at)`, `chat_attachment (chat_message_id)`, `claim_evidence (claim_id)`, `complaint_ticket_attachment (complaint_ticket_message_id)`, `prescription (consultation_session_id)`, `job (run_at) WHERE status = 'queued'`, `rme_lab_result (rme_visit_id)`; urutan harga katalog memakai `patient_price_idr`; index trigram dibuat partial; index `health_worker (profession)` dihapus.
+   - Putaran perbaikan 2 (review DBA S-N1): `home_visit_detail (scheduled_start_at)` dan `(scheduled_end_at)`; `payment_attempt (expires_at)`; `consultation_session (scheduled_start_at)`; partial index `order_state` untuk status yang belum akhir; `payment_receipt (received_at)`; `payment_capture (created_at)`; `fund_split_report_line (reported_at)`; laporan periode jurnal lewat `journal_entry (occurred_at)` dan `journal_line (journal_account_id, occurred_at)` dengan `occurred_at` disalin ke `journal_line` (FK komposit menjamin nilainya sama); `refund (patient_order_id)` penuh; `rme_slot_hold (slot_id, expires_at)`; `rme_visit (slot_id)`; index berawalan `fasyankes_id` untuk `rme_service`, `rme_schedule_rule`, `rme_mcu_package_item`, `rme_lab_order_item`; `UQp payment_receipt (payment_gateway_notification_id)` (S-N5).
+7. **Batas waktu dijalankan sebagai job per entitas** (review DBA S-N1): setiap batas PB (PB-01–PB-07, PB-15–PB-20) dan akhir durasi sesi dijadwalkan sebagai satu baris `job` dengan `run_at` = instan batas, dibuat dalam transaksi yang sama dengan kejadian pemicunya (ADR-007, ADR-017 butir 4). Job memeriksa ulang status saat berjalan dan selesai tanpa efek bila tidak lagi relevan. Pemindaian tabel (`order_state`, kolom jadwal, `payment_attempt.expires_at`) hanya jaring pengaman harian untuk menemukan entitas yang job-nya hilang; index di butir 6 mendukung pemindaian itu.
 
 ---
 

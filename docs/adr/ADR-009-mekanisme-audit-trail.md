@@ -23,7 +23,7 @@ Tanggal: 2026-11-18
 - Aksi sistem dan integrasi: job tidak ditandai selesai sebelum event-nya tertulis. Pesan integrasi masuk dibalas galat sementara supaya dikirim ulang. Efek eksternal yang sudah terjadi (misalnya refund yang sudah dieksekusi payment gateway) dicatat dari job yang terus dicoba ulang.
 - Role database aplikasi hanya punya hak `INSERT` di `audit_outbox`, tanpa `SELECT`, `UPDATE`, atau `DELETE`.
 
-**3. Relay ke audit store.** Satu pekerja relay (role `audit_relay`, satu instans aktif pada satu waktu) membaca outbox berurutan, menulis event ke audit store, lalu menghapus baris outbox yang sudah terkirim. Target jeda outbox ke store di bawah 1 menit pada kondisi normal. Umur baris outbox tertua dipantau, dan jeda di atas 5 menit memicu peringatan keamanan `[KEPUTUSAN-22]`.
+**3. Relay ke audit store.** Relay berjalan sebagai deployment terpisah yang hanya memegang kredensial `audit_relay` dan `audit_writer`; worker bisnis tidak memegangnya (threat model M-23). Satu pekerja relay (satu instans aktif pada satu waktu) membaca outbox berurutan, menulis event ke audit store, lalu menghapus baris outbox yang sudah terkirim. Target jeda outbox ke store di bawah 1 menit pada kondisi normal. Umur baris outbox tertua dipantau, dan jeda di atas 5 menit memicu peringatan keamanan `[KEPUTUSAN-22]`.
 
 **4. Audit store terpisah** `[KEPUTUSAN-22]`:
 - Database PostgreSQL tersendiri, di instans database yang terpisah dari database aplikasi di production (ADR-019). Rumah Sehat dan RME minimalis masing-masing punya database audit sendiri.

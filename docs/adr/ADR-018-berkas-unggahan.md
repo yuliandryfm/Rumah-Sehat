@@ -20,7 +20,11 @@ Tanggal: 2026-11-18
 3. **Unduh** `[KEPUTUSAN-34]`: backend memeriksa kebijakan (ADR-012), menulis event audit bila berlaku (E-05 atau E-12), lalu menerbitkan URL unduh bertanda tangan berumur pendek (nilai awal 5 menit) dengan header unduhan sebagai lampiran. URL objek tidak pernah disimpan atau ditampilkan permanen. Ketersediaan unduhan di aplikasi (misalnya salinan data pribadi yang dapat diunduh selama 7 hari, US-1604 AC2) berbeda dari umur URL: selama masa ketersediaan, setiap unduhan menerbitkan URL baru berumur pendek setelah autentikasi ulang.
 4. **Metadata berkas** disimpan di tabel berkas: pemilik, kategori, wadah data untuk retensi (ADR-013), checksum, ukuran, jenis, dan status validasi.
 5. **Enkripsi dan pemusnahan**: enkripsi lapis penyedia dengan kunci KMS (ADR-013). Versi objek diaktifkan untuk pemulihan. Pemusnahan karena retensi atau permintaan menghapus objek beserta seluruh versinya, dan dicatat E-16 `[KEPUTUSAN-34]`.
-6. **Pemindaian malware** untuk PDF dari pengguna dan rekanan dievaluasi di Tahap 5, dengan syarat layanannya memproses data di Indonesia. Bila tidak tersedia, PDF hanya disajikan sebagai unduhan dan tidak pernah ditampilkan langsung di backoffice `[KEPUTUSAN-34]`.
+6. **Penetralan PDF** (threat model OS-03, M-07) `[KEPUTUSAN-34]`:
+   - PDF dari pengguna dan rekanan diproses *Content Disarm & Reconstruct* atau dirender ulang di server sendiri di Indonesia sebelum dapat dirujuk `[SRC-50]`.
+   - Bila mekanisme itu belum tersedia saat go-live, PDF yang memuat konten aktif ditolak. Cara deteksinya mengikuti pustaka yang dipilih di Tahap 5.
+   - Pemindaian antivirus atau sandbox dipakai bila tersedia layanan atau perangkat lunak yang berjalan di Indonesia `[SRC-50]`.
+   - Aplikasi dan web menampilkan PDF dengan penampil yang tidak menjalankan skrip, atau sebagai gambar hasil render server. Unduhan tetap sebagai lampiran.
 
 ## Alternatif yang ditolak
 

@@ -32,6 +32,9 @@ Tanggal: 2026-11-18
 - dijalankan sendiri di cloud Indonesia, minimal 2 instans terklaster `[SRC-66]`;
 - memakai database PostgreSQL tersendiri `[SRC-65]` di instans database aplikasi Rumah Sehat, ikut PITR (ADR-019);
 - versi yang dipakai ditetapkan di Tahap 5.
+- **Hanya endpoint OIDC realm pengguna yang publik** (login, token, logout, dan halaman yang diperlukan). Konsol admin, realm master, dan Admin REST API hanya dapat dicapai dari jaringan internal (proses backend dan jalur administrasi ber-MFA, ADR-021 butir 3). Cara pemisahan endpoint diverifikasi ke dokumentasi Keycloak di Tahap 5 (threat model KC-06, M-05).
+- Akun admin realm master seminimal mungkin dan ber-MFA. Backend Rumah Sehat dan backend RME memakai klien Admin REST API terpisah per realm, dengan peran admin minimum. Backend Rumah Sehat tidak punya hak di realm `rme`, dan sebaliknya.
+- Admin event yang mengubah konfigurasi realm memicu peringatan di security log.
 
 **3. Realm terpisah per populasi.** Realm terisolasi satu sama lain `[SRC-70]`. Pembagiannya `[KEPUTUSAN-24]`:
 
@@ -67,7 +70,7 @@ Tanggal: 2026-11-18
 
 **7. Alur login** `[KEPUTUSAN-24]`:
 - **Aplikasi mobile**: OIDC Authorization Code dengan PKCE lewat browser sistem, bukan webview di dalam aplikasi, sesuai RFC 8252 `[SRC-77]` `[SRC-71]`. Halaman login memakai tema Rumah Sehat; kemampuan tema diverifikasi di Tahap 5 dan desainnya di Tahap 6. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).
-- **Web** (backoffice, portal, RME): pola *backend-for-frontend* (BFF). Backend menjalankan Authorization Code sebagai klien rahasia, sehingga token tidak pernah sampai ke browser. Browser memegang cookie sesi `HttpOnly`, `Secure`, dan `SameSite`, dengan perlindungan CSRF. Data sesi BFF disimpan di Redis (ADR-007).
+- **Web** (backoffice, portal, RME): pola *backend-for-frontend* (BFF). Backend menjalankan Authorization Code sebagai klien rahasia, sehingga token tidak pernah sampai ke browser. Browser memegang cookie sesi `HttpOnly`, `Secure`, dan `SameSite`, dengan perlindungan CSRF. Data sesi BFF disimpan di Redis (ADR-007). Token di dalamnya dienkripsi dengan kunci dari secret manager dan diikat ke ID sesi, sehingga pembaca Redis tidak memperoleh token yang dapat dipakai (M-06).
 - **Batas sesi (nilai awal)**: diatur lewat SSO Session Idle/Max dan Access Token Lifespan per realm `[SRC-70]`.
   - Web: tidak aktif 30 menit (NFR-SEC-04), mutlak 12 jam.
   - Pasien mobile: 30 hari dan 90 hari.
@@ -76,13 +79,13 @@ Tanggal: 2026-11-18
   - Rotasi token penyegar mengikuti pengaturan Keycloak, diverifikasi di Tahap 5.
 
 **8. Penolakan seketika di aplikasi** (KU-10, US-1302 AC4, US-103 AC5) `[KEPUTUSAN-24]`:
-- Setiap permintaan ke backend memvalidasi tanda tangan, audience realm, dan masa berlaku token. Backend juga memeriksa status akun aplikasi dan daftar sesi yang dicabut.
+- Setiap permintaan ke backend memvalidasi tanda tangan, audience realm, dan masa berlaku token. Sesuai RFC 8725: hanya algoritma dalam daftar izin; kunci harus milik issuer realm yang diharapkan; token ditolak bila audience tidak ada atau bukan untuk API itu `[SRC-79]`. Test negatif disiapkan untuk setiap kombinasi realm dan klien. Backend juga memeriksa status akun aplikasi dan daftar sesi yang dicabut.
 - Pemeriksaan memakai cache Redis yang diperbarui saat status berubah. Sumber kebenarannya database aplikasi. Bila Redis tidak tersedia, backend membaca status langsung dari database.
 - **Penonaktifan akun atau perubahan peran**:
   - status di database aplikasi diubah dan dicatat (E-10, E-11);
   - cache Redis diperbarui seketika;
   - user di Keycloak dinonaktifkan (`enabled = false`) dan semua sesinya dihapus lewat Admin REST API `[SRC-72]`.
-  Akses ditolak sejak langkah kedua, walaupun token lama belum kedaluwarsa.
+  Akses ditolak sejak langkah kedua, walaupun token lama belum kedaluwarsa. Bila langkah Redis atau Keycloak gagal, langkah itu dicoba ulang lewat job dan memicu peringatan. Entri cache ber-TTL pendek. Aksi berisiko (ekspor, refund, perubahan peran, akses dokumen identitas) membaca status langsung dari database (M-13).
 - **Keluar**: aplikasi memanggil logout Keycloak atau endpoint revokasi `[SRC-71]`, dan backend menandai sesi itu dicabut di Redis sampai token kedaluwarsa.
 
 **9. Autentikasi ulang** untuk aksi berisiko (mengajukan hak subjek data, mengunduh salinan data, mengubah email atau password, reset MFA): backend meminta login ulang di Keycloak dan memeriksa waktu autentikasi terakhir di token. Mekanisme parameternya diverifikasi di Tahap 5 `[KEPUTUSAN-24]`.

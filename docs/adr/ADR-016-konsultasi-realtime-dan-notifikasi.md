@@ -14,7 +14,12 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-**1. Kanal real-time aplikasi.** Aplikasi yang sedang terbuka menjaga satu koneksi WebSocket (RFC 6455 `[SRC-44]`) ke proses `realtime` (ADR-006). Koneksi diautentikasi dengan token sesi (ADR-011) dan dipakai untuk: pesan chat, kehadiran di ruang sesi, pembaruan status pesanan, pembaruan antrean, dan notifikasi di dalam aplikasi `[KEPUTUSAN-32]`.
+**1. Kanal real-time aplikasi.** Aplikasi yang sedang terbuka menjaga satu koneksi WebSocket (RFC 6455 `[SRC-44]`) ke proses `realtime` (ADR-006). Koneksi diautentikasi dengan token sesi (ADR-011) dan dipakai untuk: pesan chat, kehadiran di ruang sesi, pembaruan status pesanan, pembaruan antrean, dan notifikasi di dalam aplikasi `[KEPUTUSAN-32]`. Pengaman koneksi (threat model API-06, M-03):
+- saat koneksi dibuka, token, status akun, dan daftar pencabutan diperiksa seperti ADR-011 butir 8;
+- setiap langganan kanal (sesi, pesanan, antrean, kotak notifikasi) diperiksa modul otorisasi ADR-012;
+- koneksi diputus saat token akses kedaluwarsa (klien menyambung ulang dengan token baru), dan seketika saat sinyal penonaktifan, perubahan peran, atau pencabutan sesi diterima;
+- karena Redis Pub/Sub bersifat at-most-once `[SRC-74]`, sinyal diputus dilengkapi cadangan `LISTEN/NOTIFY` dan pemeriksaan ulang status dari database setiap 60 detik;
+- test otomatis: akun yang dinonaktifkan saat terhubung tidak menerima pesan berikutnya dan koneksinya terputus (KU-10).
 
 **2. Alur pesan chat** `[KEPUTUSAN-32]`:
 - Klien membuat ID pesan (UUIDv7) sebelum mengirim, sehingga kiriman ulang setelah koneksi pulih tidak menggandakan pesan (KU-05).

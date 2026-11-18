@@ -28,8 +28,9 @@ Ketentuan tambahan:
 1. **Redaksi otomatis.** Logger memakai daftar tolak (password, token, header `Authorization`, cookie, NIK, nomor rekening, isi body permintaan) dan menolak menulis objek domain secara utuh. Test otomatis memeriksa contoh log terhadap pola data terlarang `[KEPUTUSAN-23]`.
 2. **Satu kejadian, beberapa log.** Login gagal tercatat di audit trail (E-02) untuk akuntabilitas dan di security log untuk deteksi. Isi masing-masing mengikuti aturan log-nya, dan keduanya dihubungkan dengan ID korelasi yang sama.
 3. **Pemantauan dan peringatan** (NFR-OBS-01): pemeriksaan ketersediaan berkala dari luar terhadap endpoint kesehatan layanan inti, metrik (laju galat, latensi p95 dibanding NFR-PERF, panjang antrean job, umur outbox, status integrasi per rekanan), dan peringatan ke tim teknis. Pemeriksa ketersediaan hanya memanggil endpoint kesehatan yang tidak memuat data pribadi.
-4. **Laporan crash aplikasi mobile** dikirim ke layanan di Indonesia atau yang dijalankan sendiri di cloud Indonesia, tanpa data pribadi. SDK analitik atau crash pihak ketiga yang mengirim data ke luar Indonesia tidak boleh dipasang `[USER] T4-Q1`.
-5. Retensi application log dan security log adalah keputusan bisnis, karena keduanya memuat data pribadi (alamat IP dan ID akun) (BR-112, PT-24). Nilai sementaranya dibawa ke user di gate Tahap 4. Sampai ada keputusan, kedua log tidak dihapus otomatis.
+4. **Laporan crash aplikasi mobile** dikirim ke layanan di Indonesia atau yang dijalankan sendiri di cloud Indonesia, tanpa data pribadi. SDK analitik atau crash pihak ketiga yang mengirim data ke luar Indonesia tidak boleh dipasang `[USER] T4-Q1`. Larangan ini diverifikasi lewat inventaris dependensi dan uji lalu lintas jaringan build rilis (ADR-021 butir 2).
+5. **Security log juga menerima** log audit penyedia cloud untuk KMS, secret manager, IAM, dan akses database administratif (ADR-021 butir 3). Daftar tolak logger mencakup nilai sesi, token akses, dan parameter tanda tangan URL bertanda tangan `[SRC-83]`.
+6. Retensi application log dan security log adalah keputusan bisnis, karena keduanya memuat data pribadi (alamat IP dan ID akun) (BR-112, PT-24). Nilai sementaranya dibawa ke user di gate Tahap 4. Sampai ada keputusan, kedua log tidak dihapus otomatis.
 
 ## Alternatif yang ditolak
 

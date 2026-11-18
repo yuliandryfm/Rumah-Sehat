@@ -1,7 +1,7 @@
 # PRD (Product Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`, teks revisi diperiksa di gate Tahap 4). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
+Versi: 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; teks revisi diperiksa di gate Tahap 4). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: BRD v1.3 `[DOK: 02-brd.md]` (v1.2 disetujui bersama PRD v1.0 di gate Tahap 3; v1.3 revisi CR-007).
@@ -719,13 +719,16 @@ Rujukan: BR-013, BR-016, BR-114, AB-72 `[UP-16]` · Audit: E-06
 #### US-309 Resep digital
 
 Sebagai dokter, saya ingin menerbitkan resep digital setelah konsultasi, agar pasien dapat menebus obat di apotek mana pun.
-Rujukan: BR-015, BR-114, AB-53 `[UP-42]` · Audit: E-06, E-12 (unduh)
+Rujukan: BR-015, BR-114, AB-53 `[UP-42]` `[USER] T4-Q5` (CR-008) · Audit: E-06, E-12 (unduh), E-05 (verifikasi resep)
 
 - AC1. Given pengguna berjenis dokter dan sesinya "Berlangsung" atau "Selesai", When ia mengisi daftar obat (nama, kekuatan/dosis, jumlah, aturan pakai) lalu menerbitkan, Then resep bernomor unik terbit memuat identitas pasien, nama dokter dan nomor SIP, klinik, dan tanggal.
 - AC2. Given pengguna bukan dokter, When ia mencari fitur resep, Then fitur tidak tersedia (AB-53).
 - AC3. Given resep sudah terbit, When dokter perlu mengoreksi, Then resep tidak dapat diubah. Dokter membatalkannya dengan alasan lalu menerbitkan resep baru, dan resep batal tetap tersimpan berstatus "Dibatalkan".
 - AC4. Given resep terbit, When pasien membukanya, Then ia dapat melihat dan mengunduhnya sebagai PDF untuk ditunjukkan di apotek.
-- AC5. Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05) `[SRC-07]`. Kanal apotek untuk memeriksa keaslian resep `[TIDAK DIKETAHUI]`.
+- AC5. Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05) `[SRC-07]`. Kanal apotek untuk memeriksa keaslian resep: AC6–AC8 (CR-008); tanda tangan elektronik dipertimbangkan setelah L-05 terjawab.
+- AC6. Given resep terbit, When PDF resep dibuat, Then PDF memuat kode verifikasi acak, QR yang mengarah ke halaman verifikasi di domain resmi Rumah Sehat, dan alamat halaman itu dalam teks agar dapat diketik manual `[USER] T4-Q5`.
+- AC7. Given seseorang membuka halaman verifikasi dengan kode yang valid, When halaman tampil, Then tampil status resep (Terbit atau Dibatalkan), tanggal terbit, nama dokter dan nomor SIP, klinik, daftar obat, dan nama pasien yang disamarkan; isi final mengikuti L-05/L-08. Given kode tidak valid, Then tampil "resep tidak ditemukan" `[USER] T4-Q5`.
+- AC8. Given percobaan verifikasi dari sumber yang sama melebihi batas laju, When dicoba lagi, Then ditolak sementara. Setiap verifikasi yang menampilkan data resep dicatat E-05 dengan aktor "pemeriksa anonim" dan alamat IP `[USER] T4-Q5`.
 
 #### US-310 Riwayat konsultasi pasien
 
@@ -1633,6 +1636,7 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | NFR-SEC-07 | Hak akses mengikuti prinsip hak minimum per peran dan sub-peran (§3.1) | BR-105 `[UP-17]` |
 | NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MB; dokumen PDF ≤ 10 MB) dan hanya dapat diakses pihak yang berhak | `[KEPUTUSAN-08]` |
 | NFR-SEC-09 | Lulus audit keamanan sebelum go-live | `[DOK] P8.2` (syarat go-live 6) |
+| NFR-SEC-10 | Aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biometrik atau PIN perangkat) saat dibuka kembali setelah 15 menit tidak aktif (CR-009) | `[USER] T4-Q6` |
 
 ### 6.5 Privasi dan lokasi data (T1)
 

@@ -515,7 +515,8 @@ erDiagram
   }
   prescription_item {
     uuid id PK "T"
-    uuid prescription_id FK
+    uuid prescription_id FK "FK komposit bersama data_key_id"
+    uuid data_key_id FK
     bytea item_enc "Enc"
   }
   prescription_status_event {
@@ -695,6 +696,7 @@ erDiagram
     uuid journal_entry_id FK
     uuid journal_account_id FK
     text side
+    timestamptz occurred_at "salinan entry, FK komposit"
   }
   refund {
     uuid id PK "T"
@@ -1270,6 +1272,17 @@ erDiagram
   rme_lab_result {
     uuid id PK "T, dikirim sebagai external_result_id"
     uuid rme_visit_id FK
+    uuid data_key_id FK "wadah kunjungan, FK komposit ke rme_visit"
+  }
+  rme_retention_policy {
+    uuid id PK "M berlaku-mulai, global tanpa RLS"
+    text data_category
+    int retention_months "kosong sampai PT-24"
+  }
+  rme_retention_run {
+    uuid id PK "L, RLS per fasyankes"
+    uuid fasyankes_id FK
+    uuid rme_retention_policy_id FK
   }
   rme_lab_result_version {
     uuid id PK "T"
@@ -1339,7 +1352,11 @@ erDiagram
   satusehat_submission ||--o{ satusehat_submission_attempt : "percobaan"
   rme_visit ||--o{ satusehat_resource_ref : "ID resource SATUSEHAT"
   fasyankes ||--o{ rme_record_export : "ekspor"
+  rme_retention_policy ||--o{ rme_retention_run : "dijalankan"
+  fasyankes ||--o{ rme_retention_run : "laporan retensi"
 ```
+
+Versi rekam medis, draf, dan hasil lab RME ber-FK komposit ke `rme_visit (fasyankes_id, id, data_key_id)` atau ke `rme_lab_result (id, data_key_id)`, sehingga DEK selalu milik kunjungan yang sama (review DBA S-N4). `rme_retention_policy` adalah acuan global; trigger DELETE Log RME dan `rme_data_key.retention_category` merujuk tabel ini (review DBA B10).
 
 Tabel operasional RME (`rme_stored_file`, `rme_upload_slot`, `rme_data_key`, `rme_audit_outbox`, `rme_integration_outbox`, `rme_job`, `rme_inbound_event`) mengikuti pola diagram 10 dan tidak digambar ulang.
 
@@ -1507,9 +1524,9 @@ Kolom `note_enc` (wadah induk atau `status_note`) ada di semua tabel riwayat sta
 | 5 | audit_chain_verification | L | — | — | — | |
 | 6 | audit_archive_manifest | L | — | — | — | |
 
-### 13.3 Database aplikasi RME minimalis (45 tabel)
+### 13.3 Database aplikasi RME minimalis (47 tabel)
 
-Perubahan putaran perbaikan 1: `rme_lab_result` ditambahkan (B08). Semua relasi antar-tabel tenant memakai FK komposit `(fasyankes_id, …)` (S01).
+Perubahan putaran perbaikan 1: `rme_lab_result` ditambahkan (B08). Putaran perbaikan 2: `rme_retention_policy` dan `rme_retention_run` ditambahkan (B10). Semua relasi antar-tabel tenant memakai FK komposit `(fasyankes_id, …)` (S01).
 
 | # | Tabel | Kelas | RLS | PII | Spesifik | Enc | Anon |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1558,6 +1575,8 @@ Perubahan putaran perbaikan 1: `rme_lab_result` ditambahkan (B08). Semua relasi 
 | 43 | rme_integration_outbox | O | Ya | ID (rujukan entitas); isi beku hanya terenkripsi | Mungkin (hanya di `payload_enc`) | Ya (`payload_enc`, opsional) | — |
 | 44 | rme_job | O | Ya | — | — | — | — |
 | 45 | rme_inbound_event | O | Ya | — | — | — | — |
+| 46 | rme_retention_policy | M (berlaku-mulai) | Tidak (acuan global) | — | — | — | — |
+| 47 | rme_retention_run | L | Ya | — | — | — | — |
 
 Catatan untuk threat model:
 - `rme_lab_order_item` dan `rme_visit` tidak dienkripsi, tetapi jenis pemeriksaan dan fakta kunjungan adalah data kesehatan; perlindungannya lewat RLS, otorisasi, dan audit E-05. Hal yang sama berlaku untuk jenis pesanan dan profesi tenaga kesehatan di database Rumah Sehat (temuan F-09).

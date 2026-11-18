@@ -45,6 +45,7 @@ Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di 
 - Berkas dokumen identitas dan klinis (ADR-018)
 - Rekam medis RME minimalis dan pengiriman SATUSEHAT (ADR-020)
 - File migrasi skema dan hak role database (ADR-008)
+- Konfigurasi akses administratif production dan pipeline CI/CD (ADR-021)
 
 ## Perintah
 

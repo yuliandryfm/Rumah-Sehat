@@ -27,11 +27,18 @@ Tanggal: 2026-11-18
 - Panggilan masuk: setiap rekanan, dan setiap fasyankes di RME minimalis, punya klien sendiri di realm Keycloak `integrasi` dengan OAuth 2.0 client credentials `[SRC-45]` `[SRC-71]` dan token akses berumur pendek (ADR-011, `[USER] T4-Q4`). Database aplikasi memetakan `client_id` ke rekanan. Lapisan mTLS dipertimbangkan di Tahap 5.
 - Webhook dan panggilan sinkron keluar: ditandatangani HMAC-SHA256 `[SRC-46]` atas stempel waktu dan isi pesan, dengan rahasia per rekanan. Rekanan menolak pesan yang lebih tua dari 5 menit.
 - Setiap rekanan hanya dapat menulis dan membaca data miliknya. ID rekanan diambil dari kredensial, bukan dari isi pesan (ADR-012).
-- Batas laju per rekanan (penghitung di Redis, ADR-007) dan batas ukuran pesan. Kredensial salah dan tanda tangan tidak valid dicatat di security log (ADR-010).
+- Batas laju per rekanan (penghitung di Redis, ADR-007) dan batas ukuran pesan.
+- **Pencegahan SSRF** pada URL endpoint rekanan, diperiksa saat disimpan dan saat dipanggil (threat model M-19) `[SRC-81]`:
+  - wajib HTTPS;
+  - semua alamat hasil resolve harus publik; rentang privat, loopback, link-local, dan alamat metadata cloud ditolak;
+  - koneksi diikat ke alamat yang sudah divalidasi;
+  - redirect tidak diikuti;
+  - egress jaringan proses worker dibatasi. Kredensial salah dan tanda tangan tidak valid dicatat di security log (ADR-010).
 
 **4. Keandalan** `[KEPUTUSAN-30]`:
 - Pesan masuk yang mengubah data wajib membawa kunci idempotensi. Kunci disimpan 7 hari (kelas Operasional), dan pesan ulang dengan kunci yang sama mendapat respons yang sama tanpa diproses ulang.
 - Pesan masuk divalidasi skema dan diterapkan dalam satu transaksi. Satu bagian tidak valid membuat seluruh pesan ditolak (US-1402 AC2).
+- Di sisi penerima webhook (misalnya RME minimalis), catatan pesan masuk disimpan dalam transaksi yang sama dengan perubahan bisnisnya. Identitas pengirim dan tenant diambil dari tanda tangan HMAC yang terverifikasi, bukan dari isi pesan. Bila pemrosesan gagal, seluruh transaksi batal dan penerima membalas galat sementara supaya pesan dikirim ulang.
 - Pesan keluar dikirim dari outbox (ADR-007) minimal sekali, dengan `event_id` unik yang dipakai rekanan untuk menolak duplikat (US-1403 AC2).
 - Percobaan ulang memakai jeda yang membesar (1, 2, 4, ... menit, maksimal 30 menit di antara percobaan). Untuk layanan terjadwal, percobaan berjalan sampai diterima atau sampai jadwal mulai; setelah itu berlaku RF-18 (US-402 AC3). Untuk produk, percobaan berjalan sampai diterima atau PB-06 habis; setelah itu berlaku RF-08.
 - Bila pengiriman satu pesanan gagal terus selama 30 menit, pesanan ditandai untuk tindak lanjut Layanan Pelanggan (US-402 AC3).

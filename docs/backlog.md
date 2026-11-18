@@ -17,6 +17,8 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 - Audit trail tercatat untuk aksi sensitif
 - File migrasi disertakan kalau ada perubahan skema
 - Acceptance criteria terverifikasi
+- Dependensi mobile baru sudah direview perilaku jaringannya; build rilis lulus uji lalu lintas jaringan terhadap daftar izin host (ADR-021 butir 2)
+- Migrasi yang menyentuh database audit, role, grant, trigger penolak, atau RLS sudah direview DBA dan keamanan (ADR-021 butir 4)
 
 ## Epic dan Story
 
@@ -267,6 +269,22 @@ Deskripsi: Keputusan "data wajib di Indonesia" (brief P5.5, BR-113) berlaku untu
 Alasan: keputusan user T4-Q1 ("Semua di Indonesia") dan persetujuan CR T4-Q2 ("Setujui CR-007 apa adanya").
 Dampak ke scope / waktu / arsitektur: BRD naik ke v1.3 (P-01, S-14, BR-001, BR-050, BR-071, BR-113, §7.3, PT-22); PRD naik ke v1.1 (§2.2, AB-73, US-101, US-102, US-306, US-311, US-405, matriks EP-10, US-1001, US-1003, US-1406, US-1602, NFR-PRIV-02, E-04). Scope berkurang (login sosial, push, WhatsApp), bertambah sedikit (kotak notifikasi di dalam aplikasi). Risiko produk: pasien atau tenaga kesehatan melewatkan jadwal karena tidak ada notifikasi di layar ponsel (dicatat di `docs/04-risk-register.md`). Arsitektur: penyedia video, email, pemantauan, dan pelaporan crash wajib di Indonesia; SDK pihak ketiga yang mengirim data ke luar Indonesia tidak boleh dipakai di aplikasi.
 Keputusan: Diterima user 2026-11-18 (T4-Q2). Teks revisi BRD v1.3 dan PRD v1.1 diperiksa di gate Tahap 4
+
+### CR-008: Verifikasi keaslian resep digital oleh apotek non-rekanan
+
+Diajukan: 2026-11-18 (Tahap 4, threat model API-13; `docs/04-catatan-arsitektur.md` T4-Q5)
+Deskripsi: PDF resep memuat kode verifikasi acak dan QR ke halaman verifikasi di domain resmi Rumah Sehat (alamat juga dicetak sebagai teks). Halaman publik menampilkan status resep (Terbit/Dibatalkan), tanggal, dokter dan nomor SIP, klinik, daftar obat, dan nama pasien disamarkan; isi final mengikuti L-05/L-08. Batas laju per sumber; setiap verifikasi dicatat E-05 (pemeriksa anonim). Tanda tangan elektronik dipertimbangkan setelah L-05.
+Alasan: apotek bukan rekanan, sehingga bukti keaslian harus dapat diperiksa tanpa akun; PDF saja dapat dipalsukan (threat model API-13, Tinggi).
+Dampak ke scope / waktu / arsitektur: PRD v1.1 US-309 AC5–AC8; satu halaman publik di backend Rumah Sehat; kolom kode verifikasi di data dictionary A9.8. Penandaan "sudah ditebus" tidak termasuk (tidak dipilih user).
+Keputusan: Diterima user 2026-11-18 (T4-Q5)
+
+### CR-009: Kunci aplikasi tenaga kesehatan setelah 15 menit tidak aktif
+
+Diajukan: 2026-11-18 (Tahap 4, threat model APP-02; `docs/04-catatan-arsitektur.md` T4-Q6)
+Deskripsi: aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biometrik atau PIN perangkat) saat dibuka kembali setelah 15 menit tidak aktif (NFR-SEC-10).
+Alasan: mengurangi dampak ponsel tenaga kesehatan yang hilang atau dipinjam saat sesi masih aktif (sesi tenaga kesehatan bertahan sampai 7 hari tanpa aktivitas, ADR-011).
+Dampak ke scope / waktu / arsitektur: PRD v1.1 NFR-SEC-10; ADR-021 butir 1; sedikit tambahan pekerjaan di aplikasi tenaga kesehatan.
+Keputusan: Diterima user 2026-11-18 (T4-Q6)
 
 ## Tech Debt
 
