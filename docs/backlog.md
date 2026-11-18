@@ -20,7 +20,7 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 
 ## Epic dan Story
 
-Sumber: `docs/03-prd.md` v1.0 (Tahap 3). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7.
+Sumber: `docs/03-prd.md` v1.1 (v1.0 Tahap 3, revisi CR-007 Tahap 4). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7.
 
 Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Story dengan ketergantungan legal yang dapat mengubah AC: US-104, US-108, US-203, US-308, US-309, US-805–US-808, US-1306, US-1309 (lihat PRD §12.3).
 
@@ -29,7 +29,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
 | US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | — | Backlog |
-| US-102 | Masuk dengan akun Google atau Apple | BR-001 | Must | — | Backlog |
+| US-102 | Dihapus oleh CR-007 (sebelumnya: masuk dengan akun Google atau Apple) | BR-001 | Won't | — | Dihapus |
 | US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | — | Backlog |
 | US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | — | Backlog |
 | US-105 | Profil data diri | BR-002 | Must | — | Backlog |
@@ -259,6 +259,14 @@ Deskripsi: Dari empat butir yang belum diputuskan (BRD §4.3, PT-13), RME **mini
 Alasan: keputusan user, agar rekanan tanpa sistem dapat bergabung ("stimulus").
 Dampak ke scope / waktu / arsitektur: BRD naik ke v1.2 (S-17, S-18, BR-027, BR-120–BR-126, perubahan BR-018, BR-064, BR-070, perluasan L-05). Komponen baru yang besar (aplikasi web RME minimalis dan integrasi SATUSEHAT) di dalam 104 hari dengan 1 mobile developer: risiko jadwal R-02 dan kapasitas R-04 naik; opsi penyesuaian ada di PRD §9 untuk diputuskan user. PT. Arunika berposisi sebagai penyedia sistem RME: registrasi SATUSEHAT memerlukan nomor PSE, nomor afiliasi SNOMED CT, dan survei keamanan `[SRC-27]` (PT-32). Klinik/lab pengguna RME minimalis terhitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/04. Business Case §6 dan R-02/R-04 ditinjau ulang di gate Tahap 4 dan Tahap 7.
 Keputusan: Diterima user (T3-Q1a, T3-Q1b, T3-Q1c, T3-Q15, T3-Q16). Berlaku sejak BRD v1.2 dan PRD disetujui di gate Tahap 3, 2026-11-17 (T3-Gate)
+
+### CR-007: Semua penyedia pihak ketiga memproses data di Indonesia; login Google/Apple, push, dan WhatsApp dihapus
+
+Diajukan: 2026-11-18 (Tahap 4, `docs/04-catatan-arsitektur.md` T4-Q1, T4-Q2)
+Deskripsi: Keputusan "data wajib di Indonesia" (brief P5.5, BR-113) berlaku untuk semua penyedia pihak ketiga tanpa kecuali (PT-22). Verifikasi sumber resmi menunjukkan lokasi pemrosesan login Google/Apple, push notification (APNs untuk iOS, FCM untuk Android), dan WhatsApp Cloud API tidak dapat dipastikan di Indonesia (`docs/sources.md`). Karena itu: login Google/Apple dihapus (BR-001, US-102); notifikasi push dan WhatsApp dihapus (BR-050); notifikasi pasien dan tenaga kesehatan lewat email dan notifikasi di dalam aplikasi (kotak notifikasi, tampil langsung saat aplikasi terbuka); pengingat jadwal lewat email; panggilan video hanya dapat diterima saat kedua pihak berada di ruang sesi.
+Alasan: keputusan user T4-Q1 ("Semua di Indonesia") dan persetujuan CR T4-Q2 ("Setujui CR-007 apa adanya").
+Dampak ke scope / waktu / arsitektur: BRD naik ke v1.3 (P-01, S-14, BR-001, BR-050, BR-071, BR-113, §7.3, PT-22); PRD naik ke v1.1 (§2.2, AB-73, US-101, US-102, US-306, US-311, US-405, matriks EP-10, US-1001, US-1003, US-1406, US-1602, NFR-PRIV-02, E-04). Scope berkurang (login sosial, push, WhatsApp), bertambah sedikit (kotak notifikasi di dalam aplikasi). Risiko produk: pasien atau tenaga kesehatan melewatkan jadwal karena tidak ada notifikasi di layar ponsel (dicatat di `docs/04-risk-register.md`). Arsitektur: penyedia video, email, pemantauan, dan pelaporan crash wajib di Indonesia; SDK pihak ketiga yang mengirim data ke luar Indonesia tidak boleh dipakai di aplikasi.
+Keputusan: Diterima user 2026-11-18 (T4-Q2). Teks revisi BRD v1.3 dan PRD v1.1 diperiksa di gate Tahap 4
 
 ## Tech Debt
 
