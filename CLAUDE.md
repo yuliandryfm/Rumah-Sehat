@@ -46,13 +46,31 @@ Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di 
 - Rekam medis RME minimalis dan pengiriman SATUSEHAT (ADR-020)
 - File migrasi skema dan hak role database (ADR-008)
 - Konfigurasi akses administratif production dan pipeline CI/CD (ADR-021)
+- Ditambah di Tahap 5 (CR-012, ADR-024/ADR-025): server Next.js sebagai BFF (sesi dan token web), konfigurasi dan policy OpenBao (pengganti KMS dan secret manager), bastion dan skrip deploy production, konfigurasi backup/replikasi PostgreSQL (pgBackRest)
+
+## Stack (Tahap 5, `docs/05-stack.md`, ADR-024, ADR-025)
+
+- Backend Rumah Sehat dan RME minimalis: Rust (axum, tokio, sqlx, utoipa), satu workspace Cargo. Web (backoffice, portal rekanan, web RME): Next.js dengan server Next.js sebagai BFF. Mobile (pasien, tenaga kesehatan): Flutter. Satu monorepo (struktur di `docs/coding-standards.md`).
+- Data: PostgreSQL 18 (tiga instans: aplikasi RS + keycloak, audit, RME), Valkey (pengganti "Redis", menunggu konfirmasi gate), Keycloak, OpenBao, object storage NEO (Biznet Gio).
+- Hosting: VPS Biznet Gio (utama) + Hostinger Jakarta (standby dan salinan backup), Docker Compose, Caddy. Penyedia: DOKU (kandidat utama PG), Amazon SES Jakarta (API), Lalamove, LiveKit self-hosted.
+- Versi persis dan sumbernya hanya di `docs/05-stack.md` dan `docs/sources.md`. Jangan menambah dependensi tanpa cek registry resmi dan catatan di `docs/sources.md`.
 
 ## Perintah
 
-<Diisi di Tahap 5: build, lint, test, migrasi, menjalankan aplikasi lokal.>
+Berlaku setelah repositori kode dibuat di Tahap 8 Fase 1 (rancangan: `docs/05-stack.md` §6, KEPUTUSAN-82). Sampai saat itu belum ada kode yang bisa dijalankan.
+
+- Verifikasi penuh (wajib sebelum commit dan sebelum menyatakan selesai): `bash scripts/verify.sh`
+- Backend Rust: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo sqlx prepare --check --workspace`
+- Migrasi (per database, SQL murni lewat sqlx-cli): `sqlx migrate run --source db/migrations/<app|audit|rme>`; migrasi production hanya lewat skrip deploy dengan kredensial dinamis OpenBao, tidak dari laptop
+- Web (per aplikasi di `web/`): `pnpm install --frozen-lockfile`, `pnpm tsc --noEmit`, `pnpm test`, `pnpm build`
+- Mobile (di `mobile/`): `dart format --set-exit-if-changed .`, `flutter analyze`, `flutter test`
+- Menjalankan lokal: `docker compose -f infra/local/compose.yaml up` (PostgreSQL, Valkey, Keycloak, OpenBao dev, LiveKit, Swagger UI)
+
+Nama perintah final dikunci di reference implementation Tahap 8 Fase 1. Kalau berbeda, bagian ini diperbarui di task yang sama.
 
 ## Rujukan
 
 - Coding standards: `docs/coding-standards.md` (dibuat di Tahap 5)
+- Stack, hosting, CI/CD, observability, secrets: `docs/05-stack.md`; model data fisik: `docs/05-physical-schema.md`; kode respons API: `docs/05-response-codes.md`; checklist ASVS L2: `docs/05-asvs-checklist.md`
 - Keputusan arsitektur: `docs/adr/`
 - Reference implementation: <lokasi modul, diisi di Tahap 8 Fase 1>

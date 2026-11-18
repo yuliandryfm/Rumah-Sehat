@@ -99,3 +99,23 @@ Pemetaan setiap NFR PRD §6 dan spesifikasi audit trail §7 ke jawaban arsitektu
 | NFR-INT-01–04 | ADR-014, ADR-015, ADR-007 |
 | Audit trail PRD §7 (BR-080, BR-081, BR-107) | ADR-009, ADR-010 |
 | Model data (semua BR) | `docs/04-erd.md`, `docs/04-data-dictionary.md`, ADR-008 |
+
+## NFR dan butir arsitektur → stack (Tahap 5)
+
+Rincian per butir ada di `docs/05-stack.md` §12 dan `docs/05-asvs-checklist.md`. Kolom kode/test diisi di Tahap 8.
+
+| NFR / butir | Komponen stack | Dokumen |
+| --- | --- | --- |
+| NFR-PERF-01–05, NFR-CAP-01–04 | Rust (axum, tokio), Valkey Pub/Sub, LiveKit self-hosted; ukuran VPS divalidasi uji beban | ADR-024, ADR-025, 05-stack.md §2 |
+| NFR-AVL-01–04, NFR-DR-01–04 | Dua host aplikasi, standby PostgreSQL di Hostinger, pgBackRest PITR (repo Biznet + Hostinger), pemeriksa ketersediaan dari Hostinger | ADR-025, 05-stack.md §2, §4 |
+| NFR-SEC-01 (ASVS L2) | Checklist per bab V1–V17 | 05-asvs-checklist.md |
+| NFR-SEC-02–04, NFR-SEC-10 | Keycloak 26.8.2 (konfigurasi realm sebagai kode), BFF Next.js, flutter_appauth, local_auth | 05-stack.md §7, ADR-024 |
+| NFR-SEC-05, NFR-RET-01 | OpenBao Transit (KEK), aws-lc-rs (AES-256-GCM), format ciphertext | ADR-025, 05-physical-schema.md, coding-standards.md |
+| NFR-SEC-06–07 | Repository ber-scope tenant (Rust), RLS RME, role database | 05-physical-schema.md, coding-standards.md |
+| NFR-SEC-08 | Object storage NEO, URL bertanda tangan, qpdf | 05-stack.md, KEPUTUSAN-86 |
+| NFR-PRIV-01–02 | Semua host dan penyedia di Indonesia; konfirmasi tertulis vendor (PT-36, PT-37, PT-39) | CR-012, 05-stack.md §10 |
+| NFR-PRIV-04 | LiveKit tanpa Egress | KEPUTUSAN-87 |
+| NFR-OBS-01–03 | Prometheus, Loki (tenant app/security), Grafana, GlitchTip, tracing JSON dengan redaksi | ADR-025, 05-stack.md §4, coding-standards.md |
+| NFR-INT-01–04 | Antrean job PostgreSQL (SKIP LOCKED, advisory lock), adaptor DOKU, Lalamove | 05-stack.md, KEPUTUSAN-74, CR-012 |
+| ADR-022, ADR-023 | utoipa OpenAPI 3.1, Swagger UI staging, AsyncAPI, registry `response_code`, contract test di skrip verifikasi | 05-stack.md §6, §8, 05-response-codes.md |
+| AB-11, AB-12, US-801, US-812 (CR-013 pajak) | Komponen pajak di harga terkunci dan jurnal; diterapkan sebelum EP-08 | backlog.md CR-013 |

@@ -20,6 +20,9 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 - Dependensi mobile baru sudah direview perilaku jaringannya; build rilis lulus uji lalu lintas jaringan terhadap daftar izin host (ADR-021 butir 2)
 - Migrasi yang menyentuh database audit, role, grant, trigger penolak, atau RLS sudah direview DBA dan keamanan (ADR-021 butir 4)
 - Spesifikasi OpenAPI diperbarui untuk setiap endpoint baru atau berubah, dan contract test lulus (ADR-022)
+- Setiap `response_code` baru didaftarkan di `docs/05-response-codes.md`, tiga digit pertamanya sama dengan kode HTTP, dan satu kode kasus tidak dipakai ulang untuk arti berbeda (ADR-023, KEPUTUSAN-84; usulan CR-012, berlaku setelah gate Tahap 5)
+- Dependensi baru sudah dicek di registry resmi dan dicatat di `docs/sources.md`; pemindaian dependensi dan image (cargo-deny, cargo-audit, osv-scanner, Trivy) tidak menyisakan advisory Critical atau High yang belum ditangani (ADR-024, ADR-025, KEPUTUSAN-81; usulan CR-012, berlaku setelah gate Tahap 5)
+- Perubahan di modul T1 baru dari Tahap 5 (BFF auth di server Next.js, konfigurasi OpenBao, bastion dan skrip deploy production) direview penuh termasuk security, dengan test negatif (ADR-024, ADR-025; usulan CR-012, berlaku setelah gate Tahap 5)
 
 ## Epic dan Story
 
@@ -302,6 +305,35 @@ Deskripsi: calon rekanan (klinik/lab) dapat mendaftar sendiri (formulir, unggah 
 Alasan: permintaan user agar calon rekanan dapat *self-service/self-onboard*.
 Dampak ke scope / waktu / arsitektur: kebutuhan bisnis baru (BR dan story baru bila diterima); modul pendaftaran mandiri, penagihan langganan, dan penangguhan RME; menambah risiko jadwal RT-10. Fakta bisnis belum diketahui (PT-34): apakah RME berbayar, model/harga/siklus, cara bayar, perlakuan telat bayar. Arsitektur menyiapkan titik perluasan (`docs/04-arsitektur.md` §13) tanpa membangunnya.
 Keputusan: Dicatat; penempatan (rilis 1 atau berikutnya) diputuskan di Tahap 7 bersama estimasi effort (T4-Q7)
+
+### CR-012: Hosting VPS Biznet Gio dan Hostinger, stack Rust/Next.js/Flutter, penyedia pihak ketiga, dan persetujuan deploy di sisi VPS
+
+Diajukan: 2026-11-18 (Tahap 5, `docs/05-catatan-stack.md` T5-Q1–T5-Q8)
+Deskripsi:
+- Hosting: VPS Biznet Gio sebagai lokasi utama (aplikasi, database utama, Keycloak, Valkey, OpenBao, object storage WORM dan backup) dan Hostinger Jakarta sebagai lokasi kedua (database standby, salinan backup terenkripsi, node ketiga OpenBao, pemeriksa ketersediaan). Layanan terkelola yang tidak tersedia dijalankan sendiri: PostgreSQL 18, OpenBao sebagai pengganti KMS dan secret manager, Loki/Prometheus/Grafana/GlitchTip sebagai observability. Komponen "Redis" diimplementasikan dengan Valkey. Rincian dan biaya di ADR-025.
+- Stack: backend Rumah Sehat dan RME minimalis memakai Rust; backoffice, portal rekanan, dan web RME memakai Next.js dengan server Next.js sebagai BFF; aplikasi mobile Flutter; satu monorepo (ADR-024).
+- Penyedia pihak ketiga: payment gateway DOKU sebagai kandidat utama dan Xendit sebagai cadangan; email lewat Amazon SES region Jakarta (ap-southeast-3) lewat API, karena endpoint SMTP tidak tersedia di Jakarta (SRC-84, SRC-209); kurir Lalamove saja.
+- CI/CD: GitHub untuk kode, CI, dan registry image (hanya kode dan data sintetis). Staging di-deploy otomatis; deploy production dipicu orang kedua yang berwenang lewat bastion dengan sertifikat SSH berumur pendek dari OpenBao (MFA), atas digest yang lulus staging, dan tercatat di log audit OpenBao.
+Alasan: pilihan user T5-Q1 (Rust + Next.js), masukan user di tengah T5-Q1 ("vpsnya hostinger dan biznet gio saja") dan T5-Q2 (Biznet utama + Hostinger), T5-Q3 (DOKU utama, Xendit cadangan), T5-Q4 (SES Jakarta), T5-Q5 (Lalamove saja), T5-Q6 (GitHub + agen deploy VPS), dan T5-Q8 (persetujuan di sisi VPS). Persetujuan di sisi VPS dipilih karena required reviewers GitHub hanya tersedia untuk repositori publik pada paket Free, Pro, dan Team (SRC-240).
+Dampak ke scope / waktu / arsitektur:
+- ADR baru: ADR-024 (stack) dan ADR-025 (hosting, OpenBao, Valkey, observability, CI/CD, rahasia), keduanya berstatus Diusulkan.
+- ADR yang diubah sebagian oleh ADR-025: ADR-019 (butir 1–4, alternatif "server virtual yang dikelola sendiri" kini dipilih), ADR-013 (butir 2, 3, 5, 8), ADR-021 (butir 3 dan 4), ADR-010 (penyimpanan log, butir 3–5), ADR-009 (butir 5, 6, 9), ADR-017 (butir 5), dan ADR-007 (Redis menjadi Valkey, menunggu konfirmasi user). ADR-011 butir 7 ditafsirkan oleh ADR-024: BFF dijalankan di server Next.js. Teks ADR lama tidak diubah; baris Status-nya diberi catatan rujukan. Rincian per butir ada di tabel "Butir ADR lama yang diubah" di ADR-025.
+- Modul kritis T1 bertambah: server Next.js (autentikasi dan sesi), konfigurasi OpenBao, bastion, dan skrip deploy production. Daftar modul kritis di `CLAUDE.md` diperbarui setelah gate Tahap 5.
+- Dokumen yang terdampak: `docs/04-risk-register.md` (RT-21–RT-30 dan catatan perubahan risiko lama), `docs/05-stack.md`, `docs/05-response-codes.md`, Definition of Done di berkas ini (tiga butir baru), dan Business Case §6 (biaya infrastruktur ±Rp8,26 juta/bulan dibandingkan baseline di gate).
+- Kewajiban operasional baru: patch keamanan Next.js berderajat Critical atau High dipasang paling lambat 7 hari (KEPUTUSAN-75); unseal OpenBao manual setelah restart oleh pemegang share; promosi standby database manual lintas penyedia.
+- Waktu: kecepatan pengembangan Rust lebih lambat dengan besaran `[TIDAK DIKETAHUI]`, diukur di reference implementation Tahap 8 Fase 1 (RT-24). Beban operasional VPS menaikkan Business Case R-04 (RT-21).
+- Pertanyaan terbuka baru: PT-35 (pemelihara setelah go-live), PT-36 (konfirmasi tertulis DOKU dan Xendit), PT-37 (konfirmasi tertulis Lalamove), PT-38 (pemegang share unseal OpenBao dan orang kedua), PT-39 (konfirmasi Biznet Gio: protokol load balancer, perutean Magic Transit, PPN).
+- **Catatan tafsiran US-703 AC3 (PRD tidak diubah):** dengan kurir Lalamove saja, "pilihan kurir" pada US-703 AC3 dibaca sebagai jenis layanan atau kendaraan Lalamove yang tersedia untuk alamat itu. Alamat di luar area layanan Lalamove membuat checkout tidak dapat dilanjutkan, sesuai kalimat kedua AC3 `[USER] T5-Q5`. Tafsiran ini ditampilkan di gate Tahap 5.
+- Syarat final penyedia: DOKU (atau Xendit) final setelah konfirmasi tertulis atas lokasi pemrosesan dan penyimpanan data, nomor izin BI, split settlement untuk markup dan bagian rekanan, refund dari dana yang sudah terbagi (PT-27), dan biaya (PT-36). Lalamove final setelah konfirmasi tertulis lokasi data (PT-37). Penyedia yang memproses data di luar Indonesia tidak dipilih (US-1406 AC2, `[USER] T4-Q1`).
+Keputusan: Disetujui user lewat T5-Q1–T5-Q8 (2026-11-18). Final di gate Tahap 5, termasuk konfirmasi Valkey sebagai pengganti "Redis" (T4-Q4) dan penilaian user atas perutean Magic Transit terhadap T4-Q1
+
+### CR-013: Pajak dikenakan atas harga rekanan + markup dan ditambahkan ke total
+
+Diajukan: 2026-11-18 (Tahap 5, jawaban PT-28; `docs/05-catatan-stack.md` T5-Q11, T5-Q11a)
+Deskripsi: pajak dihitung dari (harga rekanan + markup) setelah markup diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga `[USER] T5-Q11, T5-Q11a`. Tarif pajak menjadi parameter berlaku-mulai yang diatur Keuangan (pola docs/04-data-dictionary.md §0.8). Jenis pajak, tarif, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan isi bukti bayar `[TIDAK DIKETAHUI]` (sisa PT-28).
+Alasan: jawaban user atas PT-28 ("sama seperti layanan lainnya, karena markup dulu baru dibebakan pajaknya") dan pilihan "Di atas harga rekanan+markup".
+Dampak ke scope / waktu / arsitektur: rumus harga PRD AB-11/AB-12 dan tampilan rincian harga (US-801, US-812) bertambah komponen pajak; harga terkunci (ADR-015 butir 3) menyimpan tarif dan nominal pajak; jurnal berpasangan menambah akun pajak tanpa perubahan struktur (ADR-015 konsekuensi); data dictionary A6/A8/A13 bertambah kolom/parameter pajak lewat migrasi; laporan keuangan dan rekonsiliasi. Teks PRD dan data dictionary diperbarui lewat CR ini sebelum pengembangan EP-08, setelah sisa PT-28 dijawab.
+Keputusan: Disetujui user (T5-Q11a, 2026-11-18) untuk arah rumus; penerapan ke PRD dan data dictionary dijadwalkan di Tahap 7, sebelum EP-08. Final di gate Tahap 5
 
 ## Tech Debt
 
