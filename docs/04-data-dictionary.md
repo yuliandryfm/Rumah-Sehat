@@ -1,4 +1,4 @@
-# Data Dictionary: Rumah Sehat
+# Data Dictionary: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
@@ -99,13 +99,13 @@ CHECK: `(deleted_at IS NULL AND deleted_by IS NULL AND delete_reason IS NULL) OR
 | reason_code | text | ya | | Kode alasan atau kasus refund (misalnya `rf_05`, `pb_07_elapsed`) |
 | note_enc | bytea | ya | | Keterangan teks bebas (misalnya alasan pembatalan atau penolakan), terenkripsi dengan DEK wadah entitas induk. Entitas tanpa wadah sendiri memakai wadah `status_note` (§0.7). Keputusan orkestrator atas temuan F-10 |
 | note_data_key_id | uuid | ya | FK→data_key | CHECK `(note_enc IS NULL) = (note_data_key_id IS NULL)` |
-| actor_type | text | tidak | | CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`, `partner_system`, `payment_gateway`, `courier`, `system`); RME memakai (`facility_user`, `rumah_sehat_system`, `system`) |
+| actor_type | text | tidak | | CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`, `partner_system`, `payment_gateway`, `courier`, `system`); RME memakai (`facility_user`, `ruang_sehat_system`, `system`) |
 | actor_account_id | uuid | ya | FK→account | |
 | actor_partner_id | uuid | ya | FK→partner | Rekanan pengirim pesan integrasi |
 | correlation_id | uuid | tidak | | Sama dengan ID korelasi event audit E-09 (§7.2) |
 | created_at | timestamptz | tidak | | Jam server |
 
-**STD-R varian RME**: sama dengan STD-R, ditambah `fasyankes_id uuid NOT NULL` dengan FK komposit `(fasyankes_id, <entitas>_id)` ke induk; `actor_account_id` diganti `actor_rme_user_id uuid NULL FK→rme_user`; `actor_partner_id` dihapus; `note_data_key_id` FK→`rme_data_key` (wadah induk atau `status_note`); `actor_type` CHECK (`facility_user`, `rumah_sehat_system`, `system`) (review DBA S10).
+**STD-R varian RME**: sama dengan STD-R, ditambah `fasyankes_id uuid NOT NULL` dengan FK komposit `(fasyankes_id, <entitas>_id)` ke induk; `actor_account_id` diganti `actor_rme_user_id uuid NULL FK→rme_user`; `actor_partner_id` dihapus; `note_data_key_id` FK→`rme_data_key` (wadah induk atau `status_note`); `actor_type` CHECK (`facility_user`, `ruang_sehat_system`, `system`) (review DBA S10).
 
 **STD-P (Proyeksi)**: `<entitas>_id uuid PK FK→entitas`, `status text NOT NULL` (CHECK sama dengan `to_status`), `version integer NOT NULL CHECK (version >= 1)`, `updated_at timestamptz NOT NULL`. Ditulis dalam transaksi yang sama dengan riwayatnya, dengan syarat `version` lama (ADR-008 butir 2).
 
@@ -128,7 +128,7 @@ CHECK: `(deleted_at IS NULL AND deleted_by IS NULL AND delete_reason IS NULL) OR
 
 Hak per tabel diberikan dengan `GRANT`; hak per kolom dipakai untuk pekerja privasi `[SRC-35]` (ADR-012 butir 8). `TRUNCATE` tidak diberikan ke role mana pun selain pemilik skema.
 
-**(A) Database aplikasi Rumah Sehat**
+**(A) Database aplikasi Ruang Sehat**
 
 | Kelas / tabel | `rs_app` (proses api, realtime, worker) | `audit_relay` | `privacy_worker` (pekerja privasi) | `key_rotation` (cadangan, lihat A19.7) | `rs_migration` |
 | --- | --- | --- | --- | --- | --- |
@@ -148,7 +148,7 @@ Ketentuan hak `privacy_worker` (ADR-013 §5, temuan F-03, review DBA B02):
 - **Trigger satu arah** di `data_key` dan `rme_data_key`: (1) `privacy_worker` hanya boleh mengubah `wrapped_dek` menjadi `NULL` dalam statement yang sama dengan pengisian `shredded_at` dan `shred_reason`; perubahan lain oleh role ini ditolak (review DBA S-N3); (2) setelah `shredded_at` terisi, baris tidak dapat diubah lagi oleh role mana pun, sehingga DEK yang sudah dimusnahkan tidak dapat dihidupkan kembali `[KEPUTUSAN-66]`.
 - Daftar kolom U per tabel = kolom bertanda "Anonimkan" di tabel entitas (GRANT per kolom `[SRC-35]`).
 
-**(B) Database audit** (berlaku sama untuk database audit Rumah Sehat dan database audit RME)
+**(B) Database audit** (berlaku sama untuk database audit Ruang Sehat dan database audit RME)
 
 | Tabel | `audit_writer` (relay) | `audit_reader` (backoffice / RME) | `audit_verifier` (job verifikasi) | `audit_migration` |
 | --- | --- | --- | --- | --- |
@@ -187,18 +187,18 @@ Trigger penolak kelas L di database RME membaca masa retensi dari `rme_retention
 | `rme_job`, `rme_integration_outbox` | S, I, U, D (kebijakan antrean lintas tenant) | Semua |
 | `rme_audit_outbox` | I | Semua |
 | `rme_inbound_event` | D | Pembersihan baris kedaluwarsa |
-| `rme_visit`, `rme_patient`, `rme_lab_order_item`, `rme_queue_ticket`, `rme_visit_state`, `rme_medical_record_version`, `rme_lab_result`, `rme_lab_result_version`, `rme_home_visit_assignment`, `rme_queue_call_event`, `rme_service`, `rme_mcu_package_item`, `rme_home_visit_area`, `rme_schedule_rule`, `rme_schedule_exception`, `rme_slot` | S | Penyusunan pesan outbox ke Rumah Sehat dan resource SATUSEHAT |
+| `rme_visit`, `rme_patient`, `rme_lab_order_item`, `rme_queue_ticket`, `rme_visit_state`, `rme_medical_record_version`, `rme_lab_result`, `rme_lab_result_version`, `rme_home_visit_assignment`, `rme_queue_call_event`, `rme_service`, `rme_mcu_package_item`, `rme_home_visit_area`, `rme_schedule_rule`, `rme_schedule_exception`, `rme_slot` | S | Penyusunan pesan outbox ke Ruang Sehat dan resource SATUSEHAT |
 | `satusehat_submission`, `satusehat_submission_status_event`, `satusehat_submission_attempt`, `satusehat_resource_ref` | S, I | Pengiriman SATUSEHAT (ADR-020 butir 6) |
 | `satusehat_submission_state` | S, I, U | Sama |
-| `satusehat_credential`, `rs_integration_credential`, `fasyankes`, `fasyankes_location` | S | Autentikasi ke SATUSEHAT dan Rumah Sehat |
+| `satusehat_credential`, `rs_integration_credential`, `fasyankes`, `fasyankes_location` | S | Autentikasi ke SATUSEHAT dan Ruang Sehat |
 | `rs_health_worker_roster`, `rme_health_worker_profile`, `rme_health_worker_link` | S | Penugasan home visit dan nomor IHS praktisi untuk resource SATUSEHAT (review DBA S-N2) |
 | `rme_user` | S kolom `id`, `fasyankes_id`, `full_name` | Penulis rekam medis untuk resource SATUSEHAT |
 | `external_access_token` | S, I, U, D | Cache token |
 | `rme_data_key` | S, I | Dekripsi isi saat menyusun pesan dan resource; wadah `status_note` baru untuk keterangan galat pengiriman SATUSEHAT |
-| `rme_stored_file` | S | Unggah PDF hasil lab ke Rumah Sehat |
+| `rme_stored_file` | S | Unggah PDF hasil lab ke Ruang Sehat |
 | `terminology_code` | S, I, U | Pemuatan terminologi (job tanpa tenant) |
 
-Tabel yang tidak tercantum tidak dapat diakses `rme_worker`. Pencarian nomor IHS praktisi dan pasien ke SATUSEHAT serta penyimpanannya ke `rme_health_worker_profile` dan `rme_patient` dilakukan `rme_app` (saat Admin Fasyankes melengkapi data, ADR-020 butir 3), sehingga `rme_worker` tidak perlu `UPDATE` atas tabel itu (review DBA S-N2). Webhook dari Rumah Sehat (pesanan terbayar, pembatalan, status home visit, daftar tenaga kesehatan aktif, jawaban penugasan) diproses sinkron oleh proses API RME dengan role `rme_app`, sehingga `rme_worker` tidak perlu hak `INSERT` atas tabel kunjungan dan pasien.
+Tabel yang tidak tercantum tidak dapat diakses `rme_worker`. Pencarian nomor IHS praktisi dan pasien ke SATUSEHAT serta penyimpanannya ke `rme_health_worker_profile` dan `rme_patient` dilakukan `rme_app` (saat Admin Fasyankes melengkapi data, ADR-020 butir 3), sehingga `rme_worker` tidak perlu `UPDATE` atas tabel itu (review DBA S-N2). Webhook dari Ruang Sehat (pesanan terbayar, pembatalan, status home visit, daftar tenaga kesehatan aktif, jawaban penugasan) diproses sinkron oleh proses API RME dengan role `rme_app`, sehingga `rme_worker` tidak perlu hak `INSERT` atas tabel kunjungan dan pasien.
 
 Role `rme_auth` dan `rme_worker` menambah daftar role ADR-012 butir 8 `[KEPUTUSAN-55]`: `rme_auth` memetakan subjek token Keycloak realm `rme` ke pengguna dan fasyankesnya **sebelum** konteks tenant dipasang; `rme_worker` mengambil job dari antrean semua tenant lalu memasang konteks tenant per job. `privacy_worker` di RME memakai kebijakan RLS khusus role itu (lintas tenant untuk job retensi dan anonimisasi). Bentuk kebijakan RLS per role diverifikasi ke dokumentasi Row Security Policies di Tahap 5; SRC-34 baru memverifikasi perilaku `BYPASSRLS` dan `FORCE ROW LEVEL SECURITY`.
 
@@ -298,13 +298,13 @@ Tabel transisi per jenis pesanan (PRD §3.6) disimpan di tabel acuan `order_stat
 
 ### 0.10 Data di luar database aplikasi
 
-**Keycloak** `[USER] T4-Q4`: hash password, faktor MFA TOTP dan kode pemulihan, token verifikasi email dan atur ulang password, penghitung penguncian login (US-103 AC3), dan sesi IdP **dikelola Keycloak** di database PostgreSQL miliknya sendiri (`keycloak`), sehingga tidak menjadi tabel aplikasi dan tidak dirinci di dokumen ini. Realm yang direncanakan: `pasien`, `nakes`, `admin` (admin Rumah Sehat dan admin rekanan), `rme` (pengguna RME minimalis), dan `integrasi` (klien service-account per rekanan dan per fasyankes untuk client credentials ADR-014). Otorisasi (ADR-012) tetap di aplikasi: peran, sub-peran, dan keterkaitan tenant disimpan di tabel aplikasi, bukan sebagai role Keycloak. Database `keycloak` mengikuti aturan lokasi Indonesia `[USER] T4-Q1`, dan cakupan backup serta retensinya ditetapkan bersama revisi ADR-011 dan ADR-019 (temuan F-13).
+**Keycloak** `[USER] T4-Q4`: hash password, faktor MFA TOTP dan kode pemulihan, token verifikasi email dan atur ulang password, penghitung penguncian login (US-103 AC3), dan sesi IdP **dikelola Keycloak** di database PostgreSQL miliknya sendiri (`keycloak`), sehingga tidak menjadi tabel aplikasi dan tidak dirinci di dokumen ini. Realm yang direncanakan: `pasien`, `nakes`, `admin` (admin Ruang Sehat dan admin rekanan), `rme` (pengguna RME minimalis), dan `integrasi` (klien service-account per rekanan dan per fasyankes untuk client credentials ADR-014). Otorisasi (ADR-012) tetap di aplikasi: peran, sub-peran, dan keterkaitan tenant disimpan di tabel aplikasi, bukan sebagai role Keycloak. Database `keycloak` mengikuti aturan lokasi Indonesia `[USER] T4-Q1`, dan cakupan backup serta retensinya ditetapkan bersama revisi ADR-011 dan ADR-019 (temuan F-13).
 
 **Redis** `[USER] T4-Q4`: kelas Operasional, **bukan sumber kebenaran**, dan tidak berisi data pribadi selain ID. Isinya: cache status akun (untuk pemeriksaan KU-10 di setiap permintaan), daftar pencabutan sesi, penghitung batas laju, penyebaran pesan WebSocket antar-instans, dan sesi BFF aplikasi web. Kehilangan isi Redis tidak menghilangkan data bisnis: status akun dibaca ulang dari `account` dan `rme_user`, dan sesi yang hilang membuat pengguna masuk ulang. Antrean job dan outbox tetap di PostgreSQL (ADR-007). Satu-satunya tabel terkait sesi di database aplikasi adalah daftar pencabutan sesi (A1.4, RME C1.11), supaya pencabutan tetap berlaku walaupun isi Redis hilang (fact-check FC4-N2-2).
 
 ---
 
-## A. Database aplikasi Rumah Sehat
+## A. Database aplikasi Ruang Sehat
 
 Pengelompokan per domain mengikuti modul backend (ADR-006). Nama modul final diselaraskan dengan `docs/04-arsitektur.md` §3 (temuan F-12).
 
@@ -312,7 +312,7 @@ Pengelompokan per domain mengikuti modul backend (ADR-006). Nama modul final dis
 
 #### A1.1 `account` (M)
 
-Akun aplikasi untuk semua jenis pengguna Rumah Sehat, dipetakan ke pengguna Keycloak. Kredensial tidak disimpan di sini `[USER] T4-Q4`. Login Google/Apple dihapus (CR-007 `[USER] T4-Q2`). Sumber: BR-001, US-101, US-207, US-208, KU-10, ADR-011, `[KEPUTUSAN-24]` (direvisi), `[KEPUTUSAN-45]`.
+Akun aplikasi untuk semua jenis pengguna Ruang Sehat, dipetakan ke pengguna Keycloak. Kredensial tidak disimpan di sini `[USER] T4-Q4`. Login Google/Apple dihapus (CR-007 `[USER] T4-Q2`). Sumber: BR-001, US-101, US-207, US-208, KU-10, ADR-011, `[KEPUTUSAN-24]` (direvisi), `[KEPUTUSAN-45]`.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -335,7 +335,7 @@ Index dan constraint:
 
 #### A1.2 `rs_admin_role` (M)
 
-Sub-peran admin Rumah Sehat; satu akun dapat memegang beberapa sub-peran. Otorisasi memakai tabel ini, bukan role Keycloak `[USER] T4-Q4`. Sumber: US-208, UP-18, ADR-012 butir 1 dan 6.
+Sub-peran admin Ruang Sehat; satu akun dapat memegang beberapa sub-peran. Otorisasi memakai tabel ini, bukan role Keycloak `[USER] T4-Q4`. Sumber: US-208, UP-18, ADR-012 butir 1 dan 6.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -733,7 +733,7 @@ Rekening penerima bagian rekanan. Perubahan rekening baru berlaku setelah disetu
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
-| *STD-M* | | | | | `created_by` = admin Rumah Sehat yang memasukkan |
+| *STD-M* | | | | | `created_by` = admin Ruang Sehat yang memasukkan |
 | partner_id | uuid | tidak | FK→partner | — | |
 | bank_code | text | tidak | | — | |
 | account_holder_name | text | tidak | | PII | Dapat milik perorangan. Anonimkan |
@@ -1049,7 +1049,7 @@ Index: `UQp (patient_order_id) WHERE deleted_at IS NULL`.
 
 #### A8.5 `partner_recipient_alias` (M)
 
-ID pseudonim penerima layanan per rekanan. Dikirim ke rekanan sebagai pengenal pasien yang stabil antar-pesanan, sehingga RME dapat menampilkan riwayat pasien di fasyankes (US-1310 AC1) tanpa membuka ID internal Rumah Sehat, dan rekanan berbeda tidak dapat menghubungkan pasien yang sama `[KEPUTUSAN-61]`. Sumber: BR-126, NFR-PRIV-03.
+ID pseudonim penerima layanan per rekanan. Dikirim ke rekanan sebagai pengenal pasien yang stabil antar-pesanan, sehingga RME dapat menampilkan riwayat pasien di fasyankes (US-1310 AC1) tanpa membuka ID internal Ruang Sehat, dan rekanan berbeda tidak dapat menghubungkan pasien yang sama `[KEPUTUSAN-61]`. Sumber: BR-126, NFR-PRIV-03.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -1124,7 +1124,7 @@ Index: `UQ (order_price_lock_id, param_code, scope_key)`.
 
 #### A8.9 `inventory_hold` (O)
 
-Penahanan slot atau stok selama PB-07 (US-304 AC1, US-402 AC1). Slot konsultasi dikendalikan Rumah Sehat sehingga dijaga constraint unik; slot dan stok rekanan dikendalikan sistem rekanan, dan Rumah Sehat menyimpan ID penahanan dari rekanan `[KEPUTUSAN-47]` `[KEPUTUSAN-62]`. Sumber: KU-09, AB-15, ADR-014 §2.
+Penahanan slot atau stok selama PB-07 (US-304 AC1, US-402 AC1). Slot konsultasi dikendalikan Ruang Sehat sehingga dijaga constraint unik; slot dan stok rekanan dikendalikan sistem rekanan, dan Ruang Sehat menyimpan ID penahanan dari rekanan `[KEPUTUSAN-47]` `[KEPUTUSAN-62]`. Sumber: KU-09, AB-15, ADR-014 §2.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2332,7 +2332,7 @@ Index: `UQ (patient_id, activity_month)`.
 
 ## B. Database audit
 
-Skema yang sama dipakai dua database terpisah: database audit Rumah Sehat dan database audit RME, masing-masing dengan role sendiri (ADR-009 butir 4, ADR-019). Semua tabel kelas Log. Isi klinis, foto dokumen, dan nilai hasil lab tidak pernah disalin ke sini; yang disimpan hanya referensi objek dan versi (PRD §7.3). Password, token, OTP, dan rahasia MFA tidak pernah diterima pustaka audit (ADR-009 butir 7); dengan Keycloak, event autentikasi E-01–E-04 dibentuk aplikasi dari hasil autentikasi tanpa nilai kredensial `[USER] T4-Q4`.
+Skema yang sama dipakai dua database terpisah: database audit Ruang Sehat dan database audit RME, masing-masing dengan role sendiri (ADR-009 butir 4, ADR-019). Semua tabel kelas Log. Isi klinis, foto dokumen, dan nilai hasil lab tidak pernah disalin ke sini; yang disimpan hanya referensi objek dan versi (PRD §7.3). Password, token, OTP, dan rahasia MFA tidak pernah diterima pustaka audit (ADR-009 butir 7); dengan Keycloak, event autentikasi E-01–E-04 dibentuk aplikasi dari hasil autentikasi tanpa nilai kredensial `[USER] T4-Q4`.
 
 Desain tabel audit `[KEPUTUSAN-56]`: `audit_event` dipartisi per bulan berdasarkan `recorded_at` `[SRC-39]`, supaya rentang `seq` setiap partisi berurutan dan batas arsip sejalan dengan rantai hash. PK berupa komposit `(event_id, recorded_at)` yang memuat kunci partisi; keunikan global `event_id` dan `seq` dijamin tabel tak terpartisi `audit_event_key`. Keharusan memuat kunci partisi pada constraint unik tabel terpartisi diverifikasi ke halaman dokumentasi partisi (SRC-39) di Tahap 5. Nuansa PK komposit terhadap ADR-002 dicatat di temuan F-01.
 
@@ -2348,17 +2348,17 @@ Event audit E-01–E-17 dengan field PRD §7.2. Sumber: ADR-005, ADR-009, PRD §
 | occurred_at | timestamptz | tidak | | — | Jam server aplikasi saat aksi; ditampilkan WIB (AB-42) |
 | event_code | text | tidak | | — | CHECK (`e_01` … `e_17`) |
 | action_name | text | tidak | | — | |
-| actor_type | text | tidak | | — | CHECK (`account`, `system`, `partner_system`, `rumah_sehat_system`) |
-| actor_account_id | uuid | ya | | PII | ID akun (Rumah Sehat) atau `rme_user` (RME) |
+| actor_type | text | tidak | | — | CHECK (`account`, `system`, `partner_system`, `ruang_sehat_system`) |
+| actor_account_id | uuid | ya | | PII | ID akun (Ruang Sehat) atau `rme_user` (RME) |
 | actor_account_type | text | ya | | — | |
 | actor_roles | text[] | ya | | — | Peran dan sub-peran saat aksi |
 | actor_partner_id | uuid | ya | | — | Rekanan atau fasyankes pengirim integrasi |
 | object_type | text | tidak | | — | |
 | object_id | text | ya | | — | Teks, karena objek dapat berupa export atau filter |
 | object_version | integer | ya | | — | Versi konten klinis atau dokumen |
-| subject_id | uuid | ya | | PII | Subjek data utama: `care_recipient.id` (Rumah Sehat) atau `rme_patient.id` (RME) (§7.2) |
+| subject_id | uuid | ya | | PII | Subjek data utama: `care_recipient.id` (Ruang Sehat) atau `rme_patient.id` (RME) (§7.2) |
 | subject_count | integer | tidak | | — | CHECK `>= 0`; lebih dari 1 → semua subjek di `audit_event_subject`. `integer` karena export laporan dapat memuat lebih dari 32.767 subjek (review DBA S07) |
-| tenant_id | uuid | ya | | — | `fasyankes_id` di audit RME (filter log akses Admin Fasyankes, §7.5); `partner_id` bila relevan di audit Rumah Sehat |
+| tenant_id | uuid | ya | | — | `fasyankes_id` di audit RME (filter log akses Admin Fasyankes, §7.5); `partner_id` bila relevan di audit Ruang Sehat |
 | source_component | text | tidak | | — | Aplikasi pasien, aplikasi nakes, backoffice, portal, RME, worker, integrasi |
 | source_ip | inet | ya | | PII | Wajib untuk aksi pengguna dan integrasi (§7.2) |
 | user_agent | text | ya | | PII | Perangkat atau user agent |
@@ -2452,9 +2452,9 @@ Catatan partisi yang diekspor ke WORM lalu di-*detach* (ADR-009 butir 9).
 
 ## C. Database aplikasi RME minimalis
 
-Database terpisah dari Rumah Sehat (ADR-006 butir 2). Hanya pasien yang datang lewat Rumah Sehat yang tercatat (BR-126, US-1306 AC4). Semua tabel milik tenant punya `fasyankes_id uuid NOT NULL FK→fasyankes` (kecuali disebut lain) dan **RLS: ya** dengan `FORCE ROW LEVEL SECURITY` `[SRC-34]` (ADR-012 butir 6, `[KEPUTUSAN-27]`). Baris *STD-M* dan *STD-T* di bagian ini memakai FK aktor ke `rme_user`. Autentikasi pengguna RME memakai Keycloak realm `rme`; password, MFA, dan sesi tidak disimpan di database ini `[USER] T4-Q4`.
+Database terpisah dari Ruang Sehat (ADR-006 butir 2). Hanya pasien yang datang lewat Ruang Sehat yang tercatat (BR-126, US-1306 AC4). Semua tabel milik tenant punya `fasyankes_id uuid NOT NULL FK→fasyankes` (kecuali disebut lain) dan **RLS: ya** dengan `FORCE ROW LEVEL SECURITY` `[SRC-34]` (ADR-012 butir 6, `[KEPUTUSAN-27]`). Baris *STD-M* dan *STD-T* di bagian ini memakai FK aktor ke `rme_user`. Autentikasi pengguna RME memakai Keycloak realm `rme`; password, MFA, dan sesi tidak disimpan di database ini `[USER] T4-Q4`.
 
-Rumah Sehat dan RME tidak berbagi database, sehingga kolom yang menunjuk entitas Rumah Sehat (`rumah_sehat_partner_id`, `rumah_sehat_order_id`, `rumah_sehat_health_worker_id`, `rs_recipient_alias`) **tanpa FK deklaratif**; konsistensinya dari kontrak integrasi (ADR-014).
+Ruang Sehat dan RME tidak berbagi database, sehingga kolom yang menunjuk entitas Ruang Sehat (`ruang_sehat_partner_id`, `ruang_sehat_order_id`, `ruang_sehat_health_worker_id`, `rs_recipient_alias`) **tanpa FK deklaratif**; konsistensinya dari kontrak integrasi (ADR-014).
 
 **FK komposit tenant** (review DBA S01). Setiap tabel tenant yang menjadi induk punya `UQ (fasyankes_id, id)`. Setiap FK antar-tabel tenant ditulis sebagai `(fasyankes_id, <induk>_id)` → `<induk> (fasyankes_id, id)`, termasuk ke `rme_data_key`, ke `rme_stored_file`, dan ke `rme_user` untuk kolom penulis. Dengan begitu baris tidak pernah dapat merujuk baris milik fasyankes lain, walaupun RLS salah konfigurasi. Di tabel-tabel bagian C, kolom bertanda "FK→x" berarti FK komposit ini; FK ke `fasyankes` sendiri tetap tunggal. FK aktor STD-M/STD-T (`created_by` dan kawan-kawan) tetap tunggal karena operator RME tidak punya `fasyankes_id`. Wadah DEK RME juga diperiksa dengan FK komposit `(fasyankes_id, data_key_id, <wadah>_id)` → `rme_data_key (fasyankes_id, id, container_id)`. Perilaku FK terhadap RLS diverifikasi di Tahap 5.
 
@@ -2467,7 +2467,7 @@ Klinik atau lab rekanan pengguna RME; tepat satu per rekanan bersumber sistem RM
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | Dibuat Operator RME |
-| rumah_sehat_partner_id | uuid | tidak | UQp | — | ID rekanan di Rumah Sehat |
+| ruang_sehat_partner_id | uuid | tidak | UQp | — | ID rekanan di Ruang Sehat |
 | name | text | tidak | | — | |
 | facility_kind | text | tidak | | — | CHECK (`clinic`, `lab`) |
 | facility_registration_code | text | ya | | — | Kode registrasi fasyankes (US-1301 AC1). Rincian dan maknanya `[TIDAK DIKETAHUI]` (PT-32) |
@@ -2479,7 +2479,7 @@ Klinik atau lab rekanan pengguna RME; tepat satu per rekanan bersumber sistem RM
 | lifecycle_status | text | tidak | | — | CHECK (`onboarding`, `active`, `offboarding`, `closed`) (US-1301 AC4) |
 | activated_at | timestamptz | ya | | — | |
 
-Index: `UQp (rumah_sehat_partner_id) WHERE deleted_at IS NULL`.
+Index: `UQp (ruang_sehat_partner_id) WHERE deleted_at IS NULL`.
 
 #### C1.2 `fasyankes_location` (M, RLS: ya)
 
@@ -2494,7 +2494,7 @@ Lokasi pelayanan dan ID Location SATUSEHAT (ADR-020 butir 3).
 
 #### C1.3 `rs_integration_credential` (M, RLS: ya)
 
-Kredensial RME sebagai klien Partner Integration API untuk satu fasyankes: rahasia klien service-account di Keycloak realm `integrasi` dan rahasia verifikasi webhook dari Rumah Sehat (ADR-006 butir 2, ADR-014 §3, `[USER] T4-Q4`).
+Kredensial RME sebagai klien Partner Integration API untuk satu fasyankes: rahasia klien service-account di Keycloak realm `integrasi` dan rahasia verifikasi webhook dari Ruang Sehat (ADR-006 butir 2, ADR-014 §3, `[USER] T4-Q4`).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2502,7 +2502,7 @@ Kredensial RME sebagai klien Partner Integration API untuk satu fasyankes: rahas
 | fasyankes_id | uuid | tidak | FK→fasyankes, UQp | — | |
 | idp_client_id | text | tidak | | — | |
 | client_secret_enc | bytea | tidak | | Rahasia, Enc | |
-| webhook_secret_enc | bytea | tidak | | Rahasia, Enc | Memverifikasi tanda tangan HMAC webhook Rumah Sehat |
+| webhook_secret_enc | bytea | tidak | | Rahasia, Enc | Memverifikasi tanda tangan HMAC webhook Ruang Sehat |
 | data_key_id | uuid | tidak | FK→rme_data_key | — | Wadah `rs_integration_credential` |
 | rotated_at | timestamptz | tidak | | — | |
 
@@ -2522,13 +2522,13 @@ Kode akses SATUSEHAT per fasyankes (Organization ID, Client ID, Client Secret) `
 
 #### C1.5 `external_access_token` (O, RLS: ya)
 
-Token akses berumur pendek ke Rumah Sehat (dari Keycloak realm `integrasi`) dan ke SATUSEHAT, disimpan sampai kedaluwarsa (ADR-020 butir 1).
+Token akses berumur pendek ke Ruang Sehat (dari Keycloak realm `integrasi`) dan ke SATUSEHAT, disimpan sampai kedaluwarsa (ADR-020 butir 1).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-O* | | | | | `expires_at` dari penerbit |
 | fasyankes_id | uuid | tidak | FK→fasyankes | — | |
-| target | text | tidak | | — | CHECK (`rumah_sehat`, `satusehat`) |
+| target | text | tidak | | — | CHECK (`ruang_sehat`, `satusehat`) |
 | access_token_enc | bytea | tidak | | Rahasia, Enc | |
 | data_key_id | uuid | tidak | FK→rme_data_key | — | |
 
@@ -2583,23 +2583,23 @@ Identitas profesi Tenaga Kesehatan Fasyankes untuk pencarian praktisi SATUSEHAT 
 
 #### C1.9 `rs_health_worker_roster` (M, RLS: ya)
 
-Salinan daftar tenaga kesehatan aktif klinik dari webhook Rumah Sehat (EP-14, ADR-014 §2). Dipakai untuk penugasan home visit (US-1308 AC2) dan tautan akun (US-1302 AC6).
+Salinan daftar tenaga kesehatan aktif klinik dari webhook Ruang Sehat (EP-14, ADR-014 §2). Dipakai untuk penugasan home visit (US-1308 AC2) dan tautan akun (US-1302 AC6).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | |
 | fasyankes_id | uuid | tidak | FK→fasyankes | — | |
-| rumah_sehat_health_worker_id | uuid | tidak | | — | |
+| ruang_sehat_health_worker_id | uuid | tidak | | — | |
 | full_name | text | tidak | | PII | Anonimkan |
 | profession | text | tidak | | — | |
 | is_active | boolean | tidak | | — | |
 | synced_at | timestamptz | tidak | | — | |
 
-Index: `UQp (fasyankes_id, rumah_sehat_health_worker_id) WHERE deleted_at IS NULL`.
+Index: `UQp (fasyankes_id, ruang_sehat_health_worker_id) WHERE deleted_at IS NULL`.
 
 #### C1.10 `rme_health_worker_link` (M, RLS: ya)
 
-Tautan akun Tenaga Kesehatan Fasyankes ↔ tenaga kesehatan Rumah Sehat, sehingga ia dapat menulis rekam medis home visit yang ditugaskan kepadanya (US-1302 AC6, US-1306 AC6).
+Tautan akun Tenaga Kesehatan Fasyankes ↔ tenaga kesehatan Ruang Sehat, sehingga ia dapat menulis rekam medis home visit yang ditugaskan kepadanya (US-1302 AC6, US-1306 AC6).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2616,7 +2616,7 @@ Sama dengan A1.4 untuk pengguna RME (`rme_user_id` FK→`rme_user`, `fasyankes_i
 
 ### C2. Layanan, jadwal, dan ketersediaan
 
-RME berperan sebagai sistem rekanan: datanya dikirim ke Rumah Sehat lewat kontrak yang sama (AB-61) dan tampil paling lambat 15 menit (US-1303 AC1). ID baris RME menjadi `external_id` di Rumah Sehat.
+RME berperan sebagai sistem rekanan: datanya dikirim ke Ruang Sehat lewat kontrak yang sama (AB-61) dan tampil paling lambat 15 menit (US-1303 AC1). ID baris RME menjadi `external_id` di Ruang Sehat.
 
 #### C2.1 `rme_service` (M, RLS: ya)
 
@@ -2713,7 +2713,7 @@ Index: `UQp (service_id, start_at) WHERE deleted_at IS NULL`.
 
 #### C2.7 `rme_slot_hold` (O, RLS: ya)
 
-Penahanan slot yang diminta Rumah Sehat lewat pemeriksaan sinkron sebelum bayar (ADR-014 §2). ID baris dikembalikan sebagai ID penahanan. Kuota tersisa = `quota` − kunjungan aktif − penahanan berlaku, dihitung dalam transaksi dengan penguncian baris slot.
+Penahanan slot yang diminta Ruang Sehat lewat pemeriksaan sinkron sebelum bayar (ADR-014 §2). ID baris dikembalikan sebagai ID penahanan. Kuota tersisa = `quota` − kunjungan aktif − penahanan berlaku, dihitung dalam transaksi dengan penguncian baris slot.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2721,7 +2721,7 @@ Penahanan slot yang diminta Rumah Sehat lewat pemeriksaan sinkron sebelum bayar 
 | fasyankes_id | uuid | tidak | FK→fasyankes | — | |
 | slot_id | uuid | tidak | FK→rme_slot | — | |
 | quantity | integer | tidak | | — | CHECK `> 0` |
-| rumah_sehat_order_id | uuid | ya | | — | |
+| ruang_sehat_order_id | uuid | ya | | — | |
 
 Index: `ix (slot_id, expires_at)` (perhitungan kuota tersisa dan pembersihan, review DBA S-N1).
 
@@ -2729,7 +2729,7 @@ Index: `ix (slot_id, expires_at)` (perhitungan kuota tersisa dan pembersihan, re
 
 #### C3.1 `rme_patient` (M, RLS: ya)
 
-Pasien fasyankes; hanya pasien Rumah Sehat (BR-126). Dikenali lewat alias penerima per rekanan dari Rumah Sehat (`[KEPUTUSAN-61]`). NIK hanya diisi bila field NIK di kontrak sudah diaktifkan setelah L-05 dan L-08 (ADR-020 butir 4). Sumber: US-1304, US-1310, ADR-020 butir 3–4.
+Pasien fasyankes; hanya pasien Ruang Sehat (BR-126). Dikenali lewat alias penerima per rekanan dari Ruang Sehat (`[KEPUTUSAN-61]`). NIK hanya diisi bila field NIK di kontrak sudah diaktifkan setelah L-05 dan L-08 (ADR-020 butir 4). Sumber: US-1304, US-1310, ADR-020 butir 3–4.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2751,24 +2751,24 @@ Index: `UQp (fasyankes_id, rs_recipient_alias) WHERE deleted_at IS NULL`.
 
 #### C3.2 `rme_visit` (T, RLS: ya)
 
-Kunjungan; tepat satu per pesanan Rumah Sehat (PRD §8.3, BR-126). Satu kunjungan = satu wadah `rme_visit`. Sumber: BR-123, BR-125, US-1304, US-1308.
+Kunjungan; tepat satu per pesanan Ruang Sehat (PRD §8.3, BR-126). Satu kunjungan = satu wadah `rme_visit`. Sumber: BR-123, BR-125, US-1304, US-1308.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-T* | | | | | |
 | fasyankes_id | uuid | tidak | FK→fasyankes | — | |
 | rme_patient_id | uuid | tidak | FK→rme_patient | — | |
-| rumah_sehat_order_id | uuid | tidak | UQ | — | |
+| ruang_sehat_order_id | uuid | tidak | UQ | — | |
 | visit_kind | text | tidak | | — | CHECK (`clinic`, `lab`, `home_visit`) |
 | service_id | uuid | tidak | FK→rme_service | — | |
 | slot_id | uuid | ya | FK→rme_slot | — | |
 | location_id | uuid | ya | FK→fasyankes_location | — | |
 | scheduled_start_at | timestamptz | tidak | | — | |
 | scheduled_end_at | timestamptz | tidak | | — | |
-| check_in_code | text | ya | | — | Kode dari Rumah Sehat; `NULL` untuk home visit |
+| check_in_code | text | ya | | — | Kode dari Ruang Sehat; `NULL` untuk home visit |
 | data_key_id | uuid | tidak | FK→rme_data_key, UQ | — | Wadah `rme_visit`; FK komposit `(fasyankes_id, data_key_id, id)` → `rme_data_key (fasyankes_id, id, container_id)` |
 
-Index: `UQ (fasyankes_id, id)` (induk FK komposit); `UQ (rumah_sehat_order_id)`; `UQp (fasyankes_id, check_in_code) WHERE check_in_code IS NOT NULL` (US-1304 AC3); `ix (fasyankes_id, scheduled_start_at)` (daftar harian, US-1304 AC1); `ix (rme_patient_id, scheduled_start_at)` (riwayat, US-1310); `ix (slot_id) WHERE slot_id IS NOT NULL` (perhitungan kuota, review DBA S-N1); `UQ (fasyankes_id, id, data_key_id)` (sasaran FK wadah dari rekam medis dan hasil lab, review DBA S-N4).
+Index: `UQ (fasyankes_id, id)` (induk FK komposit); `UQ (ruang_sehat_order_id)`; `UQp (fasyankes_id, check_in_code) WHERE check_in_code IS NOT NULL` (US-1304 AC3); `ix (fasyankes_id, scheduled_start_at)` (daftar harian, US-1304 AC1); `ix (rme_patient_id, scheduled_start_at)` (riwayat, US-1310); `ix (slot_id) WHERE slot_id IS NOT NULL` (perhitungan kuota, review DBA S-N1); `UQ (fasyankes_id, id, data_key_id)` (sasaran FK wadah dari rekam medis dan hasil lab, review DBA S-N4).
 
 #### C3.3 `rme_visit_personal_snapshot` (M-snapshot, RLS: ya)
 
@@ -2789,7 +2789,7 @@ Alamat dan nomor HP untuk kunjungan home visit. Sub-kelas Master snapshot `[KEPU
 
 #### C3.4 `rme_visit_status_event` (R, RLS: ya)
 
-*STD-R varian RME* (§0.4) dengan `rme_visit_id`. `to_status` CHECK (`scheduled`, `checked_in`, `completed`, `cancelled`, `patient_no_show`, `assigned`, `departed`, `arrived`, `health_worker_no_show`, `closed_unconfirmed`). Status home visit dari aplikasi Rumah Sehat diterima sebagai event beraktor `rumah_sehat_system` (US-1308 AC3). Check-in yang ditolak (US-1304 AC3) tidak menghasilkan event.
+*STD-R varian RME* (§0.4) dengan `rme_visit_id`. `to_status` CHECK (`scheduled`, `checked_in`, `completed`, `cancelled`, `patient_no_show`, `assigned`, `departed`, `arrived`, `health_worker_no_show`, `closed_unconfirmed`). Status home visit dari aplikasi Ruang Sehat diterima sebagai event beraktor `ruang_sehat_system` (US-1308 AC3). Check-in yang ditolak (US-1304 AC3) tidak menghasilkan event.
 
 #### C3.5 `rme_visit_state` (P, RLS: ya)
 
@@ -2836,7 +2836,7 @@ Penugasan tenaga kesehatan dari daftar aktif klinik (US-1308 AC2). Penugasan ter
 
 #### C3.9 `rme_home_visit_assignment_result` (T, RLS: ya)
 
-Jawaban Rumah Sehat atas penugasan: diterima atau ditolak beserta alasannya (US-502 AC2).
+Jawaban Ruang Sehat atas penugasan: diterima atau ditolak beserta alasannya (US-502 AC2).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2848,7 +2848,7 @@ Jawaban Rumah Sehat atas penugasan: diterima atau ditolak beserta alasannya (US-
 
 ### C4. Rekam medis dan hasil lab
 
-Isi klinis disimpan sebagai dokumen JSON terenkripsi per versi dengan field berkode `{system, code, display}` `[KEPUTUSAN-52]`, dengan struktur yang sama seperti catatan konsultasi Rumah Sehat (AB-72). Daftar final kelompok data, variabel, dan terminologi `[TIDAK DIKETAHUI]` sampai L-05 (US-1306 AC2); pemetaan variabel final ditetapkan saat pengembangan US-1306 dari playbook SATUSEHAT (ADR-020 butir 5).
+Isi klinis disimpan sebagai dokumen JSON terenkripsi per versi dengan field berkode `{system, code, display}` `[KEPUTUSAN-52]`, dengan struktur yang sama seperti catatan konsultasi Ruang Sehat (AB-72). Daftar final kelompok data, variabel, dan terminologi `[TIDAK DIKETAHUI]` sampai L-05 (US-1306 AC2); pemetaan variabel final ditetapkan saat pengembangan US-1306 dari playbook SATUSEHAT (ADR-020 butir 5).
 
 #### C4.1 `rme_medical_record_draft` (O, RLS: ya)
 
@@ -2898,7 +2898,7 @@ Struktur `payload` per kelompok data UP-27 dan resource FHIR tujuannya (ADR-020 
 
 #### C4.3 `rme_lab_order_item` (T, RLS: ya)
 
-Pemeriksaan yang dipesan lewat pendaftaran lab Rumah Sehat (permintaan lab). Sumber: BR-124, PRD §8.2.
+Pemeriksaan yang dipesan lewat pendaftaran lab Ruang Sehat (permintaan lab). Sumber: BR-124, PRD §8.2.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2912,7 +2912,7 @@ Index: `ix (fasyankes_id, rme_visit_id)` (review DBA S-N1).
 
 #### C4.4 `rme_lab_result` (T, RLS: ya)
 
-Satu hasil lab dalam satu kunjungan; satu kunjungan dapat punya beberapa hasil (misalnya hasil sebagian), masing-masing dengan rantai versinya sendiri, sejalan dengan `lab_result` di Rumah Sehat (PRD §8.3) (review DBA B08). `id` dikirim ke Rumah Sehat sebagai `external_result_id`. Sumber: BR-124, US-1307, US-901.
+Satu hasil lab dalam satu kunjungan; satu kunjungan dapat punya beberapa hasil (misalnya hasil sebagian), masing-masing dengan rantai versinya sendiri, sejalan dengan `lab_result` di Ruang Sehat (PRD §8.3) (review DBA B08). `id` dikirim ke Ruang Sehat sebagai `external_result_id`. Sumber: BR-124, US-1307, US-901.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2925,7 +2925,7 @@ Index: `UQ (fasyankes_id, id)`; `UQ (id, data_key_id)` (sasaran FK wadah dari ve
 
 #### C4.5 `rme_lab_result_version` (T, RLS: ya)
 
-Versi hasil lab yang diisi atau diunggah Petugas Lab, lalu dikirim ke Rumah Sehat (US-1307, US-901). Apakah hasil wajib divalidasi penanggung jawab lab `[TIDAK DIKETAHUI]` (L-05, US-1307 AC3).
+Versi hasil lab yang diisi atau diunggah Petugas Lab, lalu dikirim ke Ruang Sehat (US-1307, US-901). Apakah hasil wajib divalidasi penanggung jawab lab `[TIDAK DIKETAHUI]` (L-05, US-1307 AC3).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -3034,7 +3034,7 @@ Struktur sama dengan `upload_slot` (A19.5) ditambah `fasyankes_id`.
 
 #### C6.4 `rme_data_key` (M khusus, RLS: ya)
 
-Struktur dan aturan sama dengan `data_key` (A19.7, `[KEPUTUSAN-44]`, `[KEPUTUSAN-66]`) ditambah `fasyankes_id`; `retention_category` merujuk kategori di `rme_retention_policy` (C6.9), bukan `retention_policy` Rumah Sehat (review DBA B10). `container_type` CHECK (`rme_visit`, `rme_patient_identity`, `rme_health_worker_identity`, `satusehat_credential`, `rs_integration_credential`, `external_access_token`, `status_note`). Constraint: `UQ (fasyankes_id, id)`, `UQ (fasyankes_id, id, container_id)` (sasaran FK komposit). Trigger satu arah setelah `shredded_at` terisi, dan rotasi KEK, sama dengan A19.7. Hak per role di §0.6 (C): `rme_app`, `rme_worker`, `rme_operator` S dan I; `privacy_worker` S dan U kolom `wrapped_dek`, `shredded_at`, `shred_reason` dengan kebijakan RLS khusus role itu (review DBA B01).
+Struktur dan aturan sama dengan `data_key` (A19.7, `[KEPUTUSAN-44]`, `[KEPUTUSAN-66]`) ditambah `fasyankes_id`; `retention_category` merujuk kategori di `rme_retention_policy` (C6.9), bukan `retention_policy` Ruang Sehat (review DBA B10). `container_type` CHECK (`rme_visit`, `rme_patient_identity`, `rme_health_worker_identity`, `satusehat_credential`, `rs_integration_credential`, `external_access_token`, `status_note`). Constraint: `UQ (fasyankes_id, id)`, `UQ (fasyankes_id, id, container_id)` (sasaran FK komposit). Trigger satu arah setelah `shredded_at` terisi, dan rotasi KEK, sama dengan A19.7. Hak per role di §0.6 (C): `rme_app`, `rme_worker`, `rme_operator` S dan I; `privacy_worker` S dan U kolom `wrapped_dek`, `shredded_at`, `shred_reason` dengan kebijakan RLS khusus role itu (review DBA B01).
 
 #### C6.5 `rme_audit_outbox` (O, hak khusus)
 
@@ -3042,7 +3042,7 @@ Struktur sama dengan `audit_outbox` (A19.1). Payload memuat `tenant_id` = `fasya
 
 #### C6.6 `rme_integration_outbox` (O, RLS: ya)
 
-Pesan keluar ke Rumah Sehat (layanan, jadwal, slot, check-in, antrean, penugasan, hasil lab). Struktur sama dengan `integration_outbox` (A19.2) dengan `fasyankes_id` menggantikan `partner_id`, dan kunci idempotensi pesan = `event_id` (ADR-014 §4). Seperti A19.2, outbox hanya menyimpan rujukan (`entity_type`, `entity_id`); nilai hasil lab dan data lain disusun dan didekripsi saat pengiriman, bukan disimpan sebagai teks terbuka (review DBA B04). `payload_enc` memakai FK komposit ke `rme_data_key`.
+Pesan keluar ke Ruang Sehat (layanan, jadwal, slot, check-in, antrean, penugasan, hasil lab). Struktur sama dengan `integration_outbox` (A19.2) dengan `fasyankes_id` menggantikan `partner_id`, dan kunci idempotensi pesan = `event_id` (ADR-014 §4). Seperti A19.2, outbox hanya menyimpan rujukan (`entity_type`, `entity_id`); nilai hasil lab dan data lain disusun dan didekripsi saat pengiriman, bukan disimpan sebagai teks terbuka (review DBA B04). `payload_enc` memakai FK komposit ke `rme_data_key`.
 
 #### C6.7 `rme_job` (O, RLS: ya)
 
@@ -3050,7 +3050,7 @@ Struktur sama dengan `job` (A19.4) ditambah `fasyankes_id NULL` (job lintas tena
 
 #### C6.8 `rme_inbound_event` (O, RLS: ya)
 
-Penolak duplikat webhook dari Rumah Sehat berdasarkan `event_id` (US-1403 AC2).
+Penolak duplikat webhook dari Ruang Sehat berdasarkan `event_id` (US-1403 AC2).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -3059,14 +3059,14 @@ Penolak duplikat webhook dari Rumah Sehat berdasarkan `event_id` (US-1403 AC2).
 | event_id | uuid | tidak | UQ | — | |
 | message_type | text | tidak | | — | |
 
-Syarat pemrosesan webhook dari Rumah Sehat oleh `rme_app` (US-1403 AC2, ADR-014 §3–§4):
+Syarat pemrosesan webhook dari Ruang Sehat oleh `rme_app` (US-1403 AC2, ADR-014 §3–§4):
 1. Baris `rme_inbound_event` disisipkan **dalam transaksi yang sama** dengan perubahan bisnisnya (misalnya pembuatan `rme_visit`), sehingga event yang sudah diproses dan perubahannya selalu sama-sama tersimpan atau sama-sama batal.
 2. Konteks tenant (`fasyankes_id`) diambil dari tanda tangan HMAC yang **terverifikasi** dengan rahasia `rs_integration_credential` milik fasyankes itu, bukan dari isi pesan (ADR-012).
-3. Bila langkah apa pun gagal, seluruh transaksi dibatalkan dan endpoint membalas galat sementara, sehingga Rumah Sehat mengirim ulang pesan dari outbox-nya.
+3. Bila langkah apa pun gagal, seluruh transaksi dibatalkan dan endpoint membalas galat sementara, sehingga Ruang Sehat mengirim ulang pesan dari outbox-nya.
 
 #### C6.9 `rme_retention_policy` (M, berlaku-mulai, RLS: tidak, acuan global)
 
-Masa retensi dan tindakan akhir per kategori data RME. Database RME terpisah dari Rumah Sehat, sehingga punya tabel kebijakan sendiri untuk trigger DELETE Log dan `rme_data_key.retention_category` (review DBA B10). Acuan global tanpa RLS, seperti `terminology_code`, karena satu nilai berlaku untuk semua fasyankes; perbedaan per fasyankes `[TIDAK DIKETAHUI]` (L-05). Nilai kosong berarti data tidak diproses retensi sampai PT-24 terjawab (ADR-013 §6). Pola §0.8 `[KEPUTUSAN-40]`. Sumber: BR-112, NFR-RET-01, NFR-RET-02, US-1606.
+Masa retensi dan tindakan akhir per kategori data RME. Database RME terpisah dari Ruang Sehat, sehingga punya tabel kebijakan sendiri untuk trigger DELETE Log dan `rme_data_key.retention_category` (review DBA B10). Acuan global tanpa RLS, seperti `terminology_code`, karena satu nilai berlaku untuk semua fasyankes; perbedaan per fasyankes `[TIDAK DIKETAHUI]` (L-05). Nilai kosong berarti data tidak diproses retensi sampai PT-24 terjawab (ADR-013 §6). Pola §0.8 `[KEPUTUSAN-40]`. Sumber: BR-112, NFR-RET-01, NFR-RET-02, US-1606.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -3144,7 +3144,7 @@ Index: `ix (fasyankes_id, created_at DESC)`.
 | KEPUTUSAN-59 | Persen disimpan sebagai basis poin `integer` | `numeric` | Perhitungan bilangan bulat dan pembulatan eksplisit (AB-11a) |
 | KEPUTUSAN-60 | Area home visit dan alamat memakai kode wilayah per level (provinsi, kota, kecamatan); sistem kode ditetapkan di spesifikasi kontrak | Poligon atau radius | Sederhana, cukup untuk UP-22; sistem kode `[TIDAK DIKETAHUI]` |
 | KEPUTUSAN-61 | ID pseudonim penerima per rekanan (`partner_recipient_alias`) dikirim ke rekanan | Mengirim ID internal `care_recipient` | Riwayat pasien di RME (US-1310) tanpa membuka ID internal; minimisasi (NFR-PRIV-03) |
-| KEPUTUSAN-62 | Penahanan slot dan stok rekanan hanya menyimpan ID penahanan dari rekanan; sumber kebenaran ketersediaan tetap di sistem rekanan | Rumah Sehat menghitung kuota rekanan sendiri | ADR-014 §2, AB-60 |
+| KEPUTUSAN-62 | Penahanan slot dan stok rekanan hanya menyimpan ID penahanan dari rekanan; sumber kebenaran ketersediaan tetap di sistem rekanan | Ruang Sehat menghitung kuota rekanan sendiri | ADR-014 §2, AB-60 |
 | KEPUTUSAN-63 | Rilis 1 hanya mempartisi tabel audit | Partisi tabel aplikasi besar sejak awal | Volume NFR-CAP belum menuntut; dievaluasi setelah uji beban |
 | KEPUTUSAN-64 | `terminology_code` sebagai acuan global tanpa RLS | Salinan per tenant | Kode terminologi bukan data tenant |
 | KEPUTUSAN-65 | Status pengiriman SATUSEHAT memakai riwayat + proyeksi, sementara catatan pengiriman tetap kelas Log | Kolom status di tabel Log | ADR-020 menyebut catatan pengiriman kelas Log "berstatus"; Log tidak boleh di-update (ADR-008) |

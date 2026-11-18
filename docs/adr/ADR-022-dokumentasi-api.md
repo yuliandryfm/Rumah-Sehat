@@ -7,7 +7,7 @@ Tanggal: 2026-11-18
 
 - User meminta dokumentasi API seperti Swagger atau yang serupa agar mudah untuk testing `[USER] T4-masukan` (`docs/04-catatan-arsitektur.md`).
 - ADR-014 sudah menetapkan spesifikasi OpenAPI untuk Partner Integration API (US-1401) `[KEPUTUSAN-30]`.
-- Backend Rumah Sehat melayani aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal rekanan, Partner Integration API, dan notifikasi payment gateway. Backend RME melayani web RME dan menerima webhook dari Rumah Sehat (ADR-006).
+- Backend Ruang Sehat melayani aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal rekanan, Partner Integration API, dan notifikasi payment gateway. Backend RME melayani web RME dan menerima webhook dari Ruang Sehat (ADR-006).
 - Pengujian dilakukan oleh tim, QA (Tahap 9), dan rekanan (US-1401 AC2).
 
 ## Keputusan

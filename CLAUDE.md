@@ -1,6 +1,6 @@
-# Rumah Sehat
+# Ruang Sehat
 
-Aplikasi mobile kesehatan (Flutter, Android dan iOS) untuk pasien yang kesulitan datang ke klinik atau apotek. Rilis pertama berisi tujuh layanan: konsultasi online dokter dan psikolog (chat dan video, berlangsung di Rumah Sehat), pendaftaran klinik dan lab rekanan, home visit tenaga medis, informasi biaya MCU dan lab, serta pembelian obat bebas, produk kecantikan, dan produk kesehatan dari outlet rekanan. Rumah Sehat berperan sebagai gateway: data klinik, lab, home visit, dan produk berasal dari integrasi dengan sistem rekanan. Tenaga kesehatan memakai aplikasi mobile, sedangkan admin klinik, lab, outlet, dan Rumah Sehat memakai portal web. Data wajib disimpan di Indonesia. Target go-live 1 Maret 2027. Rincian dan pertanyaan terbuka: `docs/00-project-brief.md`.
+Aplikasi mobile kesehatan (Flutter, Android dan iOS) untuk pasien yang kesulitan datang ke klinik atau apotek. Rilis pertama berisi tujuh layanan: konsultasi online dokter dan psikolog (chat dan video, berlangsung di Ruang Sehat), pendaftaran klinik dan lab rekanan, home visit tenaga medis, informasi biaya MCU dan lab, serta pembelian obat bebas, produk kecantikan, dan produk kesehatan dari outlet rekanan. Ruang Sehat berperan sebagai gateway: data klinik, lab, home visit, dan produk berasal dari integrasi dengan sistem rekanan. Tenaga kesehatan memakai aplikasi mobile, sedangkan admin klinik, lab, outlet, dan Ruang Sehat memakai portal web. Data wajib disimpan di Indonesia. Target go-live 1 Maret 2027. Rincian dan pertanyaan terbuka: `docs/00-project-brief.md`.
 
 ## Cara kerja proyek ini
 
@@ -50,7 +50,7 @@ Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di 
 
 ## Stack (Tahap 5, `docs/05-stack.md`, ADR-024, ADR-025)
 
-- Backend Rumah Sehat dan RME minimalis: Rust (axum, tokio, sqlx, utoipa), satu workspace Cargo. Web (backoffice, portal rekanan, web RME): Next.js dengan server Next.js sebagai BFF. Mobile (pasien, tenaga kesehatan): Flutter. Satu monorepo (struktur di `docs/coding-standards.md`).
+- Backend Ruang Sehat dan RME minimalis: Rust (axum, tokio, sqlx, utoipa), satu workspace Cargo. Web (backoffice, portal rekanan, web RME): Next.js dengan server Next.js sebagai BFF. Mobile (pasien, tenaga kesehatan): Flutter. Satu monorepo (struktur di `docs/coding-standards.md`).
 - Data: PostgreSQL 18 (tiga instans: aplikasi RS + keycloak, audit, RME), Valkey (pengganti "Redis", menunggu konfirmasi gate), Keycloak, OpenBao, object storage NEO (Biznet Gio).
 - Hosting: VPS Biznet Gio (utama) + Hostinger Jakarta (standby dan salinan backup), Docker Compose, Caddy. Penyedia: DOKU (kandidat utama PG), Amazon SES Jakarta (API), Lalamove, LiveKit self-hosted.
 - Versi persis dan sumbernya hanya di `docs/05-stack.md` dan `docs/sources.md`. Jangan menambah dependensi tanpa cek registry resmi dan catatan di `docs/sources.md`.

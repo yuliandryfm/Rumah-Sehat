@@ -1,4 +1,4 @@
-# ERD (Model Data Logikal): Rumah Sehat
+# ERD (Model Data Logikal): Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` ( sudah direview `dba-reviewer` dan `security-architect`). Tabel pencabutan sesi A1.4 dan C1.11 ditambahkan setelah fact-check; rinciannya di data dictionary
@@ -13,7 +13,7 @@ Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputus
 - Notasi Mermaid: `||` tepat satu, `o|` nol atau satu, `|{` satu atau banyak, `o{` nol atau banyak.
 - Kelas tabel ditulis di komentar atribut pertama: M Master, M-snapshot Master snapshot (`[KEPUTUSAN-69]`), T Transaksi, R Riwayat status, P Proyeksi, O Operasional, L Log.
 - Kredensial, MFA, token email, dan sesi IdP dikelola Keycloak; cache dan pencabutan sesi di Redis. Keduanya tidak digambar (data dictionary §0.10).
-- Tiga database terpisah: (A) aplikasi Rumah Sehat, (B) audit (skema sama untuk audit Rumah Sehat dan audit RME), (C) aplikasi RME minimalis. Tidak ada FK lintas database.
+- Tiga database terpisah: (A) aplikasi Ruang Sehat, (B) audit (skema sama untuk audit Ruang Sehat dan audit RME), (C) aplikasi RME minimalis. Tidak ada FK lintas database.
 
 ### 0.1 Kardinalitas terhadap PRD §8.3
 
@@ -28,8 +28,8 @@ Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputus
 | Pesanan – Refund – Klaim: nol atau satu refund; nol atau satu klaim aktif | Refund: 0..1 per pesanan untuk refund atas pembayaran pesanan; RF-12, RF-13, RF-14 dikecualikan karena atas dana yang tidak menjadi pembayaran pesanan (partial unique, `[KEPUTUSAN-67]`, menunggu konfirmasi user). Klaim: 0..1 per pesanan, apa pun statusnya | **Lebih ketat untuk klaim** `[KEPUTUSAN-50]`: setara dengan UP-36 (tidak ada klaim baru setelah ditolak) dan AB-36 |
 | Sesi – Catatan – Resep: nol atau satu catatan berversi; nol atau banyak resep | `consultation_session` 1 — 0..* `consultation_note_version` (satu catatan, banyak versi); 1 — 0..* `prescription` | Sesuai |
 | Pendaftaran lab – Hasil lab: nol atau banyak (berversi) | `patient_order` 1 — 0..* `lab_result` 1 — 1..* `lab_result_version`; di RME `rme_visit` 1 — 0..* `rme_lab_result` 1 — 1..* `rme_lab_result_version` (review DBA B08) | Sesuai |
-| Rekanan RME – Fasyankes: tepat satu | `fasyankes.rumah_sehat_partner_id` unik, tanpa FK lintas database | Sesuai |
-| Kunjungan RME – Pesanan Rumah Sehat: tepat satu | `rme_visit.rumah_sehat_order_id` unik, tanpa FK lintas database | Sesuai |
+| Rekanan RME – Fasyankes: tepat satu | `fasyankes.ruang_sehat_partner_id` unik, tanpa FK lintas database | Sesuai |
+| Kunjungan RME – Pesanan Ruang Sehat: tepat satu | `rme_visit.ruang_sehat_order_id` unik, tanpa FK lintas database | Sesuai |
 
 ---
 
@@ -1039,7 +1039,7 @@ erDiagram
 
 `audit_outbox`, `notification_outbox`, `job`, `upload_slot`, `stored_file`, `data_key`, dan `kpi_snapshot` dirujuk dari banyak tabel di diagram lain (misalnya `data_key_id` dan `file_id`); garisnya tidak digambar ulang.
 
-## 11. Database audit (database B; skema sama untuk audit Rumah Sehat dan audit RME)
+## 11. Database audit (database B; skema sama untuk audit Ruang Sehat dan audit RME)
 
 ```mermaid
 erDiagram
@@ -1099,7 +1099,7 @@ Semua tabel tenant punya `fasyankes_id` dan RLS (ADR-012 butir 6). Kolom `fasyan
 erDiagram
   fasyankes {
     uuid id PK "M, tenant"
-    uuid rumah_sehat_partner_id UK "tanpa FK lintas DB"
+    uuid ruang_sehat_partner_id UK "tanpa FK lintas DB"
     text facility_kind
   }
   fasyankes_location {
@@ -1141,7 +1141,7 @@ erDiagram
   }
   rs_health_worker_roster {
     uuid id PK "M"
-    uuid rumah_sehat_health_worker_id "tanpa FK lintas DB"
+    uuid ruang_sehat_health_worker_id "tanpa FK lintas DB"
   }
   rme_health_worker_link {
     uuid id PK "M"
@@ -1183,7 +1183,7 @@ erDiagram
     uuid slot_id FK
   }
   fasyankes ||--o{ fasyankes_location : "lokasi"
-  fasyankes ||--o| rs_integration_credential : "kredensial ke Rumah Sehat"
+  fasyankes ||--o| rs_integration_credential : "kredensial ke Ruang Sehat"
   fasyankes ||--o| satusehat_credential : "kredensial SATUSEHAT"
   fasyankes ||--o{ external_access_token : "token sementara"
   fasyankes |o--o{ rme_user : "pengguna"
@@ -1219,7 +1219,7 @@ erDiagram
   rme_visit {
     uuid id PK "T"
     uuid rme_patient_id FK
-    uuid rumah_sehat_order_id UK "tanpa FK lintas DB"
+    uuid ruang_sehat_order_id UK "tanpa FK lintas DB"
     uuid service_id FK
     uuid location_id FK
     uuid data_key_id FK, UK "wadah rme_visit"
@@ -1329,7 +1329,7 @@ erDiagram
   rs_health_worker_roster {
     uuid id PK "M"
   }
-  fasyankes ||--o{ rme_patient : "pasien Rumah Sehat"
+  fasyankes ||--o{ rme_patient : "pasien Ruang Sehat"
   rme_patient ||--o{ rme_visit : "berkunjung"
   rme_visit ||--o| rme_visit_personal_snapshot : "alamat home visit"
   rme_visit ||--|{ rme_visit_status_event : "transisi"
@@ -1338,7 +1338,7 @@ erDiagram
   rme_queue_ticket ||--o{ rme_queue_call_event : "dipanggil"
   rme_visit ||--o{ rme_home_visit_assignment : "ditugaskan"
   rs_health_worker_roster ||--o{ rme_home_visit_assignment : "nakes"
-  rme_home_visit_assignment ||--o| rme_home_visit_assignment_result : "jawaban Rumah Sehat"
+  rme_home_visit_assignment ||--o| rme_home_visit_assignment_result : "jawaban Ruang Sehat"
   rme_visit ||--o| rme_medical_record_draft : "draf"
   rme_visit ||--o{ rme_medical_record_version : "rekam medis berversi"
   rme_user ||--o{ rme_medical_record_version : "menulis"
@@ -1366,7 +1366,7 @@ Tabel operasional RME (`rme_stored_file`, `rme_upload_slot`, `rme_data_key`, `rm
 
 Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **PII** (memuat data pribadi), **Spesifik** (data pribadi spesifik AB-70 atau kolom Sensitif §3.1; `*` = bila penerima anak; `Keu` = keuangan pribadi bila dibuka per pasien), **Enc** (kolom dienkripsi aplikasi), **Anon** (punya kolom yang dianonimkan pekerja privasi). Tanda "—" berarti tidak. Tabel yang hanya memuat ID orang ditandai "ID" di kolom PII: tidak mengidentifikasi tanpa tabel master, tetapi termasuk dalam salinan data subjek.
 
-### 13.1 Database aplikasi Rumah Sehat (138 tabel)
+### 13.1 Database aplikasi Ruang Sehat (138 tabel)
 
 Perubahan putaran perbaikan 1: `product_order_item` dihapus (S04); `order_status_transition` (S05), `prescription_document` (B07), dan `payment_attempt_gateway_ref` (B07) ditambahkan.
 
@@ -1513,7 +1513,7 @@ Perubahan putaran perbaikan 1: `product_order_item` dihapus (S04); `order_status
 
 Kolom `note_enc` (wadah induk atau `status_note`) ada di semua tabel riwayat status; baris di atas menandainya hanya untuk entitas yang alasannya lazim berupa teks bebas.
 
-### 13.2 Database audit (6 tabel, skema sama di audit Rumah Sehat dan audit RME)
+### 13.2 Database audit (6 tabel, skema sama di audit Ruang Sehat dan audit RME)
 
 | # | Tabel | Kelas | PII | Spesifik | Enc | Catatan |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1579,5 +1579,5 @@ Perubahan putaran perbaikan 1: `rme_lab_result` ditambahkan (B08). Putaran perba
 | 47 | rme_retention_run | L | Ya | — | — | — | — |
 
 Catatan untuk threat model:
-- `rme_lab_order_item` dan `rme_visit` tidak dienkripsi, tetapi jenis pemeriksaan dan fakta kunjungan adalah data kesehatan; perlindungannya lewat RLS, otorisasi, dan audit E-05. Hal yang sama berlaku untuk jenis pesanan dan profesi tenaga kesehatan di database Rumah Sehat (temuan F-09).
-- Outbox integrasi (Rumah Sehat dan RME) hanya menyimpan rujukan entitas; nilai hasil lab dan data penerima disusun serta didekripsi saat pengiriman. Isi yang harus dibekukan disimpan terenkripsi (review DBA B04).
+- `rme_lab_order_item` dan `rme_visit` tidak dienkripsi, tetapi jenis pemeriksaan dan fakta kunjungan adalah data kesehatan; perlindungannya lewat RLS, otorisasi, dan audit E-05. Hal yang sama berlaku untuk jenis pesanan dan profesi tenaga kesehatan di database Ruang Sehat (temuan F-09).
+- Outbox integrasi (Ruang Sehat dan RME) hanya menyimpan rujukan entitas; nilai hasil lab dan data penerima disusun serta didekripsi saat pengiriman. Isi yang harus dibekukan disimpan terenkripsi (review DBA B04).

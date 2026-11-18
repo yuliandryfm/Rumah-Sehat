@@ -15,7 +15,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-**1. Backend Rumah Sehat dan backend RME minimalis memakai Rust** `[USER] T5-Q1` `[KEPUTUSAN-74]`:
+**1. Backend Ruang Sehat dan backend RME minimalis memakai Rust** `[USER] T5-Q1` `[KEPUTUSAN-74]`:
 - Rust stable 1.100.0 edisi 2024, dipin di `rust-toolchain.toml` `[SRC-161]`. Upgrade toolchain (siklus 6 minggu) dievaluasi, tidak otomatis.
 - HTTP dan async: tokio 1.54.1 `[SRC-162]`, axum 0.8.9 `[SRC-163]`, tower-http 0.7.1 `[SRC-164]`, serde `[SRC-167]`, reqwest 0.13.5 untuk panggilan keluar `[SRC-170]`.
 - Database: sqlx 0.9.1 untuk PostgreSQL, dengan query yang diperiksa saat compile. Metadata offline `.sqlx` di-commit, dan `cargo sqlx prepare --check` dijalankan di CI `[SRC-165]` `[SRC-166]`. Migrasi berupa SQL murni lewat sqlx-cli 0.9.1 `[SRC-182]`, hanya maju (forward-only), dengan pola *expand/contract* (ADR-019 butir 2).
@@ -27,7 +27,7 @@ Tanggal: 2026-11-18
 - Klien Valkey: crate `redis` 1.8.2 versi stabil, bukan 2.0.0-rc `[SRC-171]`.
 - **Antrean job** (ADR-007) dibangun tipis sendiri di modul Platform: tabel job dengan `SELECT ... FOR UPDATE SKIP LOCKED` `[SRC-36]`. Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi, yang langsung mengembalikan `false` bila kunci sedang dipegang dan dilepas saat sesi berakhir `[SRC-234]`. Ini menjawab "mekanisme penguncinya ditetapkan di Tahap 5" pada konsekuensi ADR-007.
 - **Workspace Cargo**: `rs-backend` adalah satu binary dengan subcommand `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, dan `privacy-worker`; `rme-backend` adalah satu binary dengan subcommand `api`, `worker`, `audit-relay`, `audit-verify`, dan `privacy-worker`. Setiap subcommand dijalankan sebagai deployment tersendiri dengan identitas OpenBao sendiri (review DBA Tahap 5 DBA5-B01, F-P09, F-P10; ADR-025). Pustaka bersama (`audit`, `crypto`, `authz`, `envelope`, `platform-jobs`, `integration-contract`) dipakai RME lewat workspace, tanpa ketergantungan runtime (ADR-006 butir 2).
-- **Batas modul** (konsekuensi ADR-006): setiap modul bisnis Rumah Sehat adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Aturan ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul.
+- **Batas modul** (konsekuensi ADR-006): setiap modul bisnis Ruang Sehat adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Aturan ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul.
 - Test dan rantai pasok: `cargo test` dengan testcontainers 0.28.0 untuk PostgreSQL 18, Valkey, dan Keycloak `[SRC-181]`; `cargo fmt --check`; `cargo clippy -- -D warnings`; cargo-deny 0.21.0 (lisensi, advisory, sumber) dan cargo-audit 0.23.0 `[SRC-183]` `[SRC-184]`.
 
 **2. Tiga web (backoffice, portal rekanan, web RME) memakai Next.js** `[USER] T5-Q1` `[KEPUTUSAN-75]`:
@@ -37,7 +37,7 @@ Tanggal: 2026-11-18
 - Klien API bertipe dibangkitkan dari OpenAPI dengan openapi-typescript 7.13.0 dan openapi-fetch 0.17.0 (masih 0.x, dipantau) `[SRC-131]` `[SRC-132]`. Pengambilan data dengan TanStack Query 5.108.0 `[SRC-130]`. Test end-to-end dengan Playwright 1.65.1 `[SRC-133]`.
 - Pustaka UI dan design token ditetapkan di Tahap 6. ESLint dan pustaka test unit web diverifikasi saat ditambahkan di Tahap 8.
 
-**3. BFF dijalankan di server Next.js (tafsiran ADR-011 butir 7)** `[USER] T5-Q1` `[KEPUTUSAN-75]`. Kata "Backend" pada ADR-011 butir 7 ditafsirkan sebagai **lapisan server milik Rumah Sehat yang berdiri di depan browser**, yaitu proses server Next.js setiap web, bukan backend Rust. Semua sifat keamanan butir 7 tetap berlaku:
+**3. BFF dijalankan di server Next.js (tafsiran ADR-011 butir 7)** `[USER] T5-Q1` `[KEPUTUSAN-75]`. Kata "Backend" pada ADR-011 butir 7 ditafsirkan sebagai **lapisan server milik Ruang Sehat yang berdiri di depan browser**, yaitu proses server Next.js setiap web, bukan backend Rust. Semua sifat keamanan butir 7 tetap berlaku:
 
 | Syarat ADR-011 butir 7 | Cara dipenuhi di server Next.js | Sumber |
 | --- | --- | --- |
@@ -66,7 +66,7 @@ Ketentuan tambahan:
 **5. Satu monorepo** `[KEPUTUSAN-89]`:
 
 ```
-apps/rs-backend/        crate binary Rumah Sehat (api, realtime, worker, audit-relay, audit-verify, privacy-worker)
+apps/rs-backend/        crate binary Ruang Sehat (api, realtime, worker, audit-relay, audit-verify, privacy-worker)
 apps/rme-backend/       crate binary RME (api, worker, audit-relay, audit-verify, privacy-worker)
 crates/                 pustaka Rust bersama (audit, crypto, authz, envelope, platform-jobs, integration-contract, test-support)
 web/backoffice/ web/portal/ web/rme/   tiga aplikasi Next.js; web/packages/ (klien API bertipe, BFF auth, komponen UI)
@@ -79,7 +79,7 @@ scripts/verify.sh       pintu verifikasi tunggal
 docs/
 ```
 
-Batas antara Rumah Sehat dan RME di monorepo hanya berupa kode bersama di `crates/` dan `web/packages/`. Tidak ada pemanggilan langsung antar-proses selain Partner Integration API (ADR-006 butir 2, ADR-014).
+Batas antara Ruang Sehat dan RME di monorepo hanya berupa kode bersama di `crates/` dan `web/packages/`. Tidak ada pemanggilan langsung antar-proses selain Partner Integration API (ADR-006 butir 2, ADR-014).
 
 ## Alternatif yang ditolak
 
@@ -93,7 +93,7 @@ Batas antara Rumah Sehat dan RME di monorepo hanya berupa kode bersama di `crate
 - **chrono**: berstatus tidak dipelihara menurut RUSTSEC-2026-0543 (catatan riset di `[SRC-177]`) `[KEPUTUSAN-74]`.
 - **aes-gcm atau ring di samping aws-lc-rs**: satu pustaka kripto memperkecil permukaan yang harus direview di modul T1 `[KEPUTUSAN-74]`.
 - **Alat migrasi di luar ekosistem sqlx (misalnya Flyway atau dbmate)**: sqlx-cli memakai format migrasi yang sama dengan pustaka yang memeriksa query saat compile, sehingga satu alat cukup `[KEPUTUSAN-74]`.
-- **Repositori terpisah per komponen**: pustaka bersama (audit, kripto, envelope) harus dipakai Rumah Sehat dan RME tanpa duplikasi (ADR-006 butir 2) `[KEPUTUSAN-89]`.
+- **Repositori terpisah per komponen**: pustaka bersama (audit, kripto, envelope) harus dipakai Ruang Sehat dan RME tanpa duplikasi (ADR-006 butir 2) `[KEPUTUSAN-89]`.
 
 ## Konsekuensi
 

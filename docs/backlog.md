@@ -55,7 +55,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 | US-205 | Onboarding rekanan | BR-006, BR-031 | Must | — | Backlog |
 | US-206 | Akun admin mitra | BR-006 | Must | — | Backlog |
 | US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | — | Backlog |
-| US-208 | Akun dan sub-peran admin Rumah Sehat | BR-060, BR-080 | Must | — | Backlog |
+| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | — | Backlog |
 
 ### [EP-03] Konsultasi online
 
@@ -221,7 +221,7 @@ _Belum ada._
 ### CR-001: Semua tenaga kesehatan berpraktik atas nama klinik rekanan
 
 Diajukan: 2026-11-17 (wawancara Tahap 2, `docs/02-catatan-brd.md` Q2)
-Deskripsi: Dokter, psikolog, fisioterapis, dan tenaga medis yang melayani di Rumah Sehat berpraktik atas nama klinik rekanan (fasyankes). PT. Arunika berperan sebagai platform (PSE). Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes ditiadakan. Mengubah brief PS6e.
+Deskripsi: Dokter, psikolog, fisioterapis, dan tenaga medis yang melayani di Ruang Sehat berpraktik atas nama klinik rekanan (fasyankes). PT. Arunika berperan sebagai platform (PSE). Tenaga kesehatan "mitra langsung" Ruang Sehat tanpa fasyankes ditiadakan. Mengubah brief PS6e.
 Alasan: riset kepatuhan Tahap 2 (`docs/compliance/tahap-02-riset.md` temuan 1.1, SRC-02, SRC-03) mengindikasikan telemedisin diselenggarakan fasyankes, sendiri atau bekerja sama dengan PSE terdaftar.
 Dampak ke scope / waktu / arsitektur: konsultasi online kini bergantung pada klinik rekanan (R-01 meluas). Model data menghubungkan setiap nakes ke klinik rekanan. Dikonfirmasi legal sebelum Tahap 4 (L-01).
 Keputusan: Diterima user (T2-Q2), berlaku sejak BRD v1.0
@@ -245,7 +245,7 @@ Keputusan: Diterima user (T2-Q4), berlaku sejak BRD v1.0
 ### CR-004: Pendapatan transaksi berupa markup, menggantikan komisi potongan
 
 Diajukan: 2026-11-17 (`docs/02-catatan-brd.md` Q6, Q6a)
-Deskripsi: Harga konsultasi dan produk diambil dari rekanan, lalu Rumah Sehat menambahkan markup berbentuk persen atau nominal yang dapat diatur per rekanan oleh admin Rumah Sehat. Model komisi potongan di Business Case §5.1 diganti. Biaya dari rekanan tetap.
+Deskripsi: Harga konsultasi dan produk diambil dari rekanan, lalu Ruang Sehat menambahkan markup berbentuk persen atau nominal yang dapat diatur per rekanan oleh admin Ruang Sehat. Model komisi potongan di Business Case §5.1 diganti. Biaya dari rekanan tetap.
 Alasan: keputusan user.
 Dampak ke scope / waktu / arsitektur: Business Case §5.1–5.2 diperbarui istilahnya (komisi → markup) setelah gate Tahap 2. Pengaturan markup per rekanan masuk backoffice (BR-063). Pencatatannya di audit trail (BR-080) adalah usulan penyusun berdasarkan ADR-005, disetujui user di gate Tahap 2.
 Keputusan: Diterima user (T2-Q6, T2-Q6a), berlaku sejak BRD v1.0
@@ -261,7 +261,7 @@ Keputusan: Diterima user (T2-Q13 sampai T2-Q20): tindakan tambahan yang tidak te
 ### CR-006: RME minimalis sebagai aplikasi terpisah dan antrean real-time klinik
 
 Diajukan: 2026-11-17 (wawancara Tahap 3, `docs/03-catatan-prd.md` T3-Q1, T3-Q1a, T3-Q1b, T3-Q1c, T3-Q14, T3-Q15, T3-Q16)
-Deskripsi: Dari empat butir yang belum diputuskan (BRD §4.3, PT-13), RME **minimalis** dan antrean real-time klinik masuk rilis 1; RME lengkap, loyalitas/poin/voucher, dan multi-bahasa tidak masuk. RME minimalis adalah aplikasi web terpisah dari aplikasi dan portal Rumah Sehat, dibangun di proyek ini untuk rilis 1, menjadi "sistem rekanan" bagi klinik dan lab yang belum punya sistem, dan terhubung ke Rumah Sehat lewat integrasi yang sama dengan sistem rekanan lain. Isinya: jadwal, layanan, dan harga; appointment dan check-in; antrean; rekam medis kunjungan yang datanya sesuai ketentuan SATUSEHAT; hasil lab; penugasan home visit. Hanya mencatat pasien yang datang lewat Rumah Sehat. Portal Rumah Sehat untuk rekanan ditegaskan hanya untuk pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online (T3-Q4 tetap, T3-Q16).
+Deskripsi: Dari empat butir yang belum diputuskan (BRD §4.3, PT-13), RME **minimalis** dan antrean real-time klinik masuk rilis 1; RME lengkap, loyalitas/poin/voucher, dan multi-bahasa tidak masuk. RME minimalis adalah aplikasi web terpisah dari aplikasi dan portal Ruang Sehat, dibangun di proyek ini untuk rilis 1, menjadi "sistem rekanan" bagi klinik dan lab yang belum punya sistem, dan terhubung ke Ruang Sehat lewat integrasi yang sama dengan sistem rekanan lain. Isinya: jadwal, layanan, dan harga; appointment dan check-in; antrean; rekam medis kunjungan yang datanya sesuai ketentuan SATUSEHAT; hasil lab; penugasan home visit. Hanya mencatat pasien yang datang lewat Ruang Sehat. Portal Ruang Sehat untuk rekanan ditegaskan hanya untuk pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online (T3-Q4 tetap, T3-Q16).
 Alasan: keputusan user, agar rekanan tanpa sistem dapat bergabung ("stimulus").
 Dampak ke scope / waktu / arsitektur: BRD naik ke v1.2 (S-17, S-18, BR-027, BR-120–BR-126, perubahan BR-018, BR-064, BR-070, perluasan L-05). Komponen baru yang besar (aplikasi web RME minimalis dan integrasi SATUSEHAT) di dalam 104 hari dengan 1 mobile developer: risiko jadwal R-02 dan kapasitas R-04 naik; opsi penyesuaian ada di PRD §9 untuk diputuskan user. PT. Arunika berposisi sebagai penyedia sistem RME: registrasi SATUSEHAT memerlukan nomor PSE, nomor afiliasi SNOMED CT, dan survei keamanan `[SRC-27]` (PT-32). Klinik/lab pengguna RME minimalis terhitung "terintegrasi" untuk syarat go-live 1 dan KPI-03/04. Business Case §6 dan R-02/R-04 ditinjau ulang di gate Tahap 4 dan Tahap 7.
 Keputusan: Diterima user (T3-Q1a, T3-Q1b, T3-Q1c, T3-Q15, T3-Q16). Berlaku sejak BRD v1.2 dan PRD disetujui di gate Tahap 3, 2026-11-17 (T3-Gate)
@@ -277,9 +277,9 @@ Keputusan: Diterima user 2026-11-18 (T4-Q2). Teks revisi BRD v1.3 dan PRD v1.1 d
 ### CR-008: Verifikasi keaslian resep digital oleh apotek non-rekanan
 
 Diajukan: 2026-11-18 (Tahap 4, threat model API-13; `docs/04-catatan-arsitektur.md` T4-Q5)
-Deskripsi: PDF resep memuat kode verifikasi acak dan QR ke halaman verifikasi di domain resmi Rumah Sehat (alamat juga dicetak sebagai teks). Halaman publik menampilkan status resep (Terbit/Dibatalkan), tanggal, dokter dan nomor SIP, klinik, daftar obat, dan nama pasien disamarkan; isi final mengikuti L-05/L-08. Batas laju per sumber; setiap verifikasi dicatat E-05 (pemeriksa anonim). Tanda tangan elektronik dipertimbangkan setelah L-05.
+Deskripsi: PDF resep memuat kode verifikasi acak dan QR ke halaman verifikasi di domain resmi Ruang Sehat (alamat juga dicetak sebagai teks). Halaman publik menampilkan status resep (Terbit/Dibatalkan), tanggal, dokter dan nomor SIP, klinik, daftar obat, dan nama pasien disamarkan; isi final mengikuti L-05/L-08. Batas laju per sumber; setiap verifikasi dicatat E-05 (pemeriksa anonim). Tanda tangan elektronik dipertimbangkan setelah L-05.
 Alasan: apotek bukan rekanan, sehingga bukti keaslian harus dapat diperiksa tanpa akun; PDF saja dapat dipalsukan (threat model API-13, Tinggi).
-Dampak ke scope / waktu / arsitektur: PRD v1.1 US-309 AC5–AC8; satu halaman publik di backend Rumah Sehat; kolom kode verifikasi di data dictionary A9.8. Penandaan "sudah ditebus" tidak termasuk (tidak dipilih user).
+Dampak ke scope / waktu / arsitektur: PRD v1.1 US-309 AC5–AC8; satu halaman publik di backend Ruang Sehat; kolom kode verifikasi di data dictionary A9.8. Penandaan "sudah ditebus" tidak termasuk (tidak dipilih user).
 Keputusan: Diterima user 2026-11-18 (T4-Q5)
 
 ### CR-009: Kunci aplikasi tenaga kesehatan setelah 15 menit tidak aktif
@@ -311,7 +311,7 @@ Keputusan: Dicatat; penempatan (rilis 1 atau berikutnya) diputuskan di Tahap 7 b
 Diajukan: 2026-11-18 (Tahap 5, `docs/05-catatan-stack.md` T5-Q1–T5-Q8)
 Deskripsi:
 - Hosting: VPS Biznet Gio sebagai lokasi utama (aplikasi, database utama, Keycloak, Valkey, OpenBao, object storage WORM dan backup) dan Hostinger Jakarta sebagai lokasi kedua (database standby, salinan backup terenkripsi, node ketiga OpenBao, pemeriksa ketersediaan). Layanan terkelola yang tidak tersedia dijalankan sendiri: PostgreSQL 18, OpenBao sebagai pengganti KMS dan secret manager, Loki/Prometheus/Grafana/GlitchTip sebagai observability. Komponen "Redis" diimplementasikan dengan Valkey. Rincian dan biaya di ADR-025.
-- Stack: backend Rumah Sehat dan RME minimalis memakai Rust; backoffice, portal rekanan, dan web RME memakai Next.js dengan server Next.js sebagai BFF; aplikasi mobile Flutter; satu monorepo (ADR-024).
+- Stack: backend Ruang Sehat dan RME minimalis memakai Rust; backoffice, portal rekanan, dan web RME memakai Next.js dengan server Next.js sebagai BFF; aplikasi mobile Flutter; satu monorepo (ADR-024).
 - Penyedia pihak ketiga: payment gateway DOKU sebagai kandidat utama dan Xendit sebagai cadangan; email lewat Amazon SES region Jakarta (ap-southeast-3) lewat API, karena endpoint SMTP tidak tersedia di Jakarta (SRC-84, SRC-209); kurir Lalamove saja.
 - CI/CD: GitHub untuk kode, CI, dan registry image (hanya kode dan data sintetis). Staging di-deploy otomatis; deploy production dipicu orang kedua yang berwenang lewat bastion dengan sertifikat SSH berumur pendek dari OpenBao (MFA), atas digest yang lulus staging, dan tercatat di log audit OpenBao.
 Alasan: pilihan user T5-Q1 (Rust + Next.js), masukan user di tengah T5-Q1 ("vpsnya hostinger dan biznet gio saja") dan T5-Q2 (Biznet utama + Hostinger), T5-Q3 (DOKU utama, Xendit cadangan), T5-Q4 (SES Jakarta), T5-Q5 (Lalamove saja), T5-Q6 (GitHub + agen deploy VPS), dan T5-Q8 (persetujuan di sisi VPS). Persetujuan di sisi VPS dipilih karena required reviewers GitHub hanya tersedia untuk repositori publik pada paket Free, Pro, dan Team (SRC-240).
@@ -358,6 +358,19 @@ Dampak ke scope / waktu / arsitektur:
 - Tempat layanan: di lokasi lab, atau home visit sesuai regulasi `[USER] "di lab, atau home visit sesuai regulasi"` (2026-11-18). Varian home visit oleh lab memperluas BRD P-05 (saat ini home visit hanya disediakan klinik rekanan) dan bersinggungan dengan butir di luar scope BRD §4.2 "Pengantaran sampel lab atau pengambilan sampel di rumah" `[DOK] P3.6a`, sehingga perlu keputusan eksplisit: hanya vaksinasi/infus yang boleh di rumah, sedangkan pengambilan sampel tetap di luar scope, atau keduanya. Syarat regulasi home visit vaksinasi/infus oleh lab: `[TIDAK DIKETAHUI]`, masuk pertanyaan legal yang sama.
 - Fakta bisnis yang belum diketahui: apakah klinik rekanan juga boleh menawarkan vaksinasi/infus.
 Keputusan: Dicatat; dampak ke BRD/PRD dan penempatan (rilis 1 atau berikutnya) diputuskan di Checkpoint 2 / Tahap 7. Wireframe Tahap 6 boleh menampilkannya hanya sebagai butir katalog lab bertanda "menunggu CR-015"
+
+### CR-016: Nama aplikasi menjadi "Ruang Sehat"
+
+Diajukan: 2026-11-18 (setelah gate Tahap 6, sebelum Tahap 7)
+Deskripsi: nama aplikasi berubah dari "Rumah Sehat" menjadi "Ruang Sehat" `[USER] "nama aplikasinya berubah, bukan "Rumah Sehat", tetapi "Ruang Sehat" sesuaikan semuanya ya"`. Menggantikan jawaban T5-Q12 (`docs/05-catatan-stack.md`), yang menetapkan nama tetap "Rumah Sehat".
+Alasan: keputusan user (disebut user sebagai keputusan major).
+Dampak ke scope / waktu / arsitektur:
+- Tanpa perubahan fitur, alur, aturan bisnis, atau arsitektur. Nama diganti di semua dokumen hidup: `CLAUDE.md`, brief, Business Case, BRD, PRD, arsitektur, ERD, data dictionary, risk register, threat model, ADR, stack, skema fisik, response codes, checklist ASVS, coding standards, design guideline, catatan Tahap 6 (bagian yang masih menunggu Checkpoint 2), wireframe, backlog, decision log, traceability.
+- Identifier teknis ikut diganti selagi belum ada kode dan migrasi: database `rumah_sehat` → `ruang_sehat`, `rumah_sehat_audit` → `ruang_sehat_audit`, kolom `rumah_sehat_order_id`, `rumah_sehat_partner_id`, `rumah_sehat_health_worker_id`, dan nilai `rumah_sehat_system` → awalan `ruang_sehat`. Singkatan "RS" dan awalan paket `rs_` (KEPUTUSAN-116) tetap berlaku.
+- Tidak diubah karena merupakan rekam jejak: catatan wawancara Tahap 0–5 (`docs/0x-catatan-*.md`, termasuk kutipan jawaban user), laporan `docs/fact-check/`, `docs/qa/`, `docs/review/`, `docs/compliance/`, catatan status Tahap 5 di `docs/STATUS.md`, dan riwayat git. Nama berkas `docs/input/Rumah Sehat Apps.jpeg` serta PDF di `docs/ringkasan/` juga tetap; isi PDF masih memakai nama lama sampai dibuat ulang.
+- Di luar repositori dan tidak diubah tanpa persetujuan user: nama folder proyek lokal dan nama repositori GitHub `Rumah-Sehat`.
+- Pertanyaan baru: PT-45 (wordmark pamflet "RuangSehat" dan slogan dipakai atau "Ruang Sehat" dengan spasi), PT-46 (cek merek DJKI dan domain), di `docs/06-design-guideline.md` §12.
+Keputusan: Diterima user 2026-11-18; diterapkan di dokumen hidup pada tanggal yang sama
 
 ## Tech Debt
 

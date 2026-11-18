@@ -1,4 +1,4 @@
-# Registry `response_code`: Rumah Sehat dan RME minimalis
+# Registry `response_code`: Ruang Sehat dan RME minimalis
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
@@ -34,11 +34,11 @@ Contoh format dari ADR-023: `2000100` (sukses, modul 01, kasus 00) dan `4220101`
 
 Kode modul mengikuti pembagian modul di arsitektur §3 `[DOK: 04-arsitektur.md]` `[KEPUTUSAN-84]`.
 
-### 2.1 Umum dan Rumah Sehat
+### 2.1 Umum dan Ruang Sehat
 
 | Kode | Modul | Cakupan |
 | --- | --- | --- |
-| `00` | Umum / lintas modul | Kode kasus umum §3; dipakai Rumah Sehat dan RME |
+| `00` | Umum / lintas modul | Kode kasus umum §3; dipakai Ruang Sehat dan RME |
 | `01` | Identitas dan akses | Akun, registrasi, login, sesi, MFA, sub-peran, penonaktifan |
 | `02` | Profil dan verifikasi | Profil pasien, alamat, anggota keluarga, dokumen identitas, verifikasi KTP/KK |
 | `03` | Tenaga kesehatan | Pendaftaran, dokumen izin, verifikasi, SIP, tarif dan jadwal online |
@@ -56,7 +56,7 @@ Kode modul mengikuti pembagian modul di arsitektur §3 `[DOK: 04-arsitektur.md]`
 | `15` | Privasi | Persetujuan, hak subjek data, salinan data, anonimisasi, retensi, kunci data |
 | `16` | KPI | Dasbor KPI |
 | `17` | Platform | Berkas, job, outbox, kalender hari kerja, parameter bisnis |
-| `18`–`49` | Cadangan Rumah Sehat | Belum dipakai |
+| `18`–`49` | Cadangan Ruang Sehat | Belum dipakai |
 
 ### 2.2 RME minimalis
 
@@ -73,7 +73,7 @@ Rentang `50`–`69` dicadangkan untuk RME minimalis `[KEPUTUSAN-84]`. Modul RME 
 | `56` | Hasil lab RME |
 | `57` | Home visit RME |
 | `58` | SATUSEHAT |
-| `59` | Klien integrasi ke Rumah Sehat |
+| `59` | Klien integrasi ke Ruang Sehat |
 | `60` | Audit RME |
 | `61`–`69` | Cadangan RME |
 
@@ -102,7 +102,7 @@ Rentang `50`–`69` dicadangkan untuk RME minimalis `[KEPUTUSAN-84]`. Modul RME 
 | `4290001` | 429 | Terlalu banyak permintaan | Batas laju per pengguna, per klien rekanan, atau per IP terlampaui | — |
 | `5000001` | 500 | Terjadi kesalahan pada sistem | Galat tak terduga di server. Isi tidak memuat stack trace, query, data pribadi, atau rahasia (ADR-023 butir 5) | — |
 | `5020001` | 502 | Layanan pihak ketiga tidak merespons dengan benar | Rekanan atau penyedia mengembalikan respons tidak sah atau galat | — |
-| `5030001` | 503 | Layanan sedang tidak tersedia | Layanan Rumah Sehat/RME atau dependensinya sedang tidak tersedia atau dalam pemeliharaan | — |
+| `5030001` | 503 | Layanan sedang tidak tersedia | Layanan Ruang Sehat/RME atau dependensinya sedang tidak tersedia atau dalam pemeliharaan | — |
 | `5040001` | 504 | Layanan pihak ketiga melewati batas waktu | Panggilan sinkron ke rekanan atau penyedia habis waktu, misalnya cek ketersediaan sebelum bayar dengan batas 5 detik (ADR-014 butir 5, KU-08). Pembayaran tidak dibuat | — |
 
 Sumber kolom "Kapan dipakai": `[DOK: 03-prd.md]` (KU-01, KU-03, KU-08, AB-36), `[DOK: adr/ADR-012-otorisasi-dan-isolasi-data.md]`, `[DOK: adr/ADR-014-kontrak-integrasi-rekanan.md]`, `[DOK: adr/ADR-018-berkas-unggahan.md]`, `[DOK: adr/ADR-023-format-respons-api.md]`.

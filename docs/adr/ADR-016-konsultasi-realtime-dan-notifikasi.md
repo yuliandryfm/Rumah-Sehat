@@ -5,7 +5,7 @@ Tanggal: 2026-11-18
 
 ## Konteks
 
-- Konsultasi chat (teks dan foto) dan video berlangsung di Rumah Sehat (BR-010, BR-013). Isi chat disimpan, video tidak direkam dan tidak disimpan (BR-016, AB-74) `[DOK: 02-brd.md]` `[DOK: 03-prd.md]`.
+- Konsultasi chat (teks dan foto) dan video berlangsung di Ruang Sehat (BR-010, BR-013). Isi chat disimpan, video tidak direkam dan tidak disimpan (BR-016, AB-74) `[DOK: 02-brd.md]` `[DOK: 03-prd.md]`.
 - Pesan chat sampai ke penerima yang online dalam p95 2 detik (NFR-PERF-03). Pesan yang dikirim saat offline terkirim otomatis setelah koneksi pulih (US-305 AC3). Ada 100 sesi bersamaan (NFR-CAP-03). Waktu bergabung dicatat server (§3.5) `[DOK: 03-prd.md]`.
 - Fitur rekam penyedia video dinonaktifkan, dan cara memverifikasinya ditetapkan di Tahap 4 (US-306 AC4) `[DOK: 03-prd.md]`.
 - Semua penyedia pihak ketiga memproses data di Indonesia `[USER] T4-Q1`. Push dan WhatsApp dihapus. Notifikasi pasien dan tenaga kesehatan lewat email dan notifikasi di dalam aplikasi. Panggilan video hanya dapat diterima saat kedua pihak berada di ruang sesi (CR-007) `[USER] T4-Q2`.

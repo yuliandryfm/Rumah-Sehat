@@ -1,4 +1,4 @@
-# Project Brief: Rumah Sehat
+# Project Brief: Ruang Sehat
 
 Tanggal: 2026-11-17
 Jalur intake: B (wawancara)
@@ -8,7 +8,7 @@ Setiap butir diberi label sumber. `[USER]` merujuk ke jawaban wawancara di `docs
 
 ## Ringkasan
 
-Rumah Sehat adalah aplikasi mobile gaya hidup untuk kesehatan, sejenis Halodoc `[USER] P1.1`. Aplikasi ini menghubungkan pasien dengan konsultasi online dokter dan psikolog, pendaftaran ke klinik dan lab rekanan, home visit tenaga medis, informasi biaya MCU dan lab, serta pembelian obat bebas, produk kecantikan, dan produk kesehatan dari outlet rekanan `[USER] P1.1, P1.2, P2.1, PS1`. Rumah Sehat berperan sebagai gateway: data layanan klinik, lab, home visit, dan produk berasal dari integrasi dengan sistem rekanan, sedangkan konsultasi online berlangsung di Rumah Sehat sendiri `[USER] PS6, PS6a, PS6b`. Sasaran utamanya pasien yang kesulitan datang ke klinik atau apotek, sekaligus membuka pasar yang lebih luas bagi klinik dan lab rekanan `[USER] P1.2`.
+Ruang Sehat adalah aplikasi mobile gaya hidup untuk kesehatan, sejenis Halodoc `[USER] P1.1`. Aplikasi ini menghubungkan pasien dengan konsultasi online dokter dan psikolog, pendaftaran ke klinik dan lab rekanan, home visit tenaga medis, informasi biaya MCU dan lab, serta pembelian obat bebas, produk kecantikan, dan produk kesehatan dari outlet rekanan `[USER] P1.1, P1.2, P2.1, PS1`. Ruang Sehat berperan sebagai gateway: data layanan klinik, lab, home visit, dan produk berasal dari integrasi dengan sistem rekanan, sedangkan konsultasi online berlangsung di Ruang Sehat sendiri `[USER] PS6, PS6a, PS6b`. Sasaran utamanya pasien yang kesulitan datang ke klinik atau apotek, sekaligus membuka pasar yang lebih luas bagi klinik dan lab rekanan `[USER] P1.2`.
 
 ## Masalah dan tujuan
 
@@ -31,17 +31,17 @@ Sembilan peran di rilis pertama `[USER] P2.1, P3.5, PS3, PS6c, PS6d`:
 | Psikolog | Konsultasi kesehatan mental (chat dan video) | Aplikasi mobile tenaga kesehatan | `[USER] P2.1, PS6b, P6.2` |
 | Tenaga medis | Tugas rinci `[TIDAK DIKETAHUI]` (PT-07); home visit disebut sebagai layanan tenaga medis | Aplikasi mobile tenaga kesehatan | `[USER] P1.2, P6.2` |
 | Fisioterapis | Tugas rinci `[TIDAK DIKETAHUI]` (PT-07) | Aplikasi mobile tenaga kesehatan | `[USER] P2.1, P6.2` |
-| Admin klinik | Portal di Rumah Sehat (contoh: laporan transaksi dan penerusan dana, profil, keluhan); data layanan tetap lewat integrasi | Portal web | `[USER] PS6c, P6.2` |
+| Admin klinik | Portal di Ruang Sehat (contoh: laporan transaksi dan penerusan dana, profil, keluhan); data layanan tetap lewat integrasi | Portal web | `[USER] PS6c, P6.2` |
 | Admin lab | Sama seperti admin klinik, untuk lab rekanan | Portal web | `[USER] PS6c, P6.2` |
 | Admin outlet | Portal untuk toko kecantikan dan toko alat kesehatan (laporan, penerusan dana, profil, keluhan); katalog dan pesanan lewat integrasi | Portal web | `[USER] PS6d, P6.2` |
-| Admin Rumah Sehat | Backoffice: verifikasi dan kelola akun, verifikasi KTP manual, laporan dan penerusan dana, CMS konten, layanan pelanggan | Portal web | `[USER] P4.6b, P8.2, P8.2a, P6.2` |
+| Admin Ruang Sehat | Backoffice: verifikasi dan kelola akun, verifikasi KTP manual, laporan dan penerusan dana, CMS konten, layanan pelanggan | Portal web | `[USER] P4.6b, P8.2, P8.2a, P6.2` |
 
-Asal dokter dan psikolog: ada yang mitra langsung Rumah Sehat, ada yang tenaga klinik rekanan `[USER] PS6e`.
+Asal dokter dan psikolog: ada yang mitra langsung Ruang Sehat, ada yang tenaga klinik rekanan `[USER] PS6e`.
 Apoteker tidak dipakai di rilis pertama, menunggu rilis berikutnya `[USER] P3.5, PS3`.
 
 ## Stakeholder dan sign-off
 
-- **Pemilik dan pembiaya:** dibiayai sendiri `[USER] P2.2`. Rumah Sehat adalah produk milik perusahaan IT yang sudah berbadan hukum, bukan bagian grup klinik atau apotek `[USER] P2.2, P5.2a`. Nama perusahaan `[TIDAK DIKETAHUI]` (PT-01).
+- **Pemilik dan pembiaya:** dibiayai sendiri `[USER] P2.2`. Ruang Sehat adalah produk milik perusahaan IT yang sudah berbadan hukum, bukan bagian grup klinik atau apotek `[USER] P2.2, P5.2a`. Nama perusahaan `[TIDAK DIKETAHUI]` (PT-01).
 - **Penyetuju:** CEO, CTO, dan konsultan medis `[USER] P2.3, P2.3a`.
 - **Alur persetujuan:** user adalah project manager yang meneruskan dokumen gate ke CEO dan CTO. Persetujuan user di gate runbook dianggap persetujuan CEO dan CTO yang diteruskan `[USER] P2.4a, Konfirmasi P2`.
 - **Konsultan medis:** dilibatkan hanya saat UAT dan go-live `[USER] P2.4b`.
@@ -62,13 +62,13 @@ Tujuh layanan `[USER] P3.1, Perubahan scope 1, Konfirmasi PS`:
 
 Ketentuan pendukung:
 
-- **Resep:** dokter menerbitkan resep digital di aplikasi, lalu pasien menebusnya sendiri di apotek mana pun. Obat resep tidak dijual di Rumah Sehat `[USER] P3.4, PS1`.
+- **Resep:** dokter menerbitkan resep digital di aplikasi, lalu pasien menebusnya sendiri di apotek mana pun. Obat resep tidak dijual di Ruang Sehat `[USER] P3.4, PS1`.
 - **Outlet rekanan:** toko kecantikan, toko alat kesehatan, dan klinik rekanan. Obat bebas dijual oleh klinik rekanan. Apotek tidak termasuk outlet rekanan `[USER] PS2, PS2a`.
 - **Pembayaran:** konsultasi online dan pembelian produk dibayar di aplikasi, lalu dana produk diteruskan ke outlet. Klinik, lab, dan home visit dibayar langsung ke mitra `[USER] P3.3, PS4`.
 - **Pengiriman produk:** kurir pihak ketiga yang terintegrasi dengan aplikasi `[USER] PS5`.
-- **Prinsip gateway:** jadwal dan data klinik, jadwal dan harga lab, home visit, serta katalog, stok, dan pesanan produk diambil dari sistem rekanan lewat integrasi. Rumah Sehat tidak menyimpan katalog sendiri `[USER] PS6, PS6a`.
-- **Konsultasi online** berlangsung di Rumah Sehat (aplikasi tenaga kesehatan untuk chat, video, catatan, dan resep) `[USER] PS6b`.
-- **Backoffice admin Rumah Sehat:** verifikasi dan kelola akun (pasien, tenaga kesehatan, rekanan), laporan transaksi dan penerusan dana, CMS konten (banner, halaman info, artikel, promo), dan layanan pelanggan `[USER] P8.2, P8.2a`.
+- **Prinsip gateway:** jadwal dan data klinik, jadwal dan harga lab, home visit, serta katalog, stok, dan pesanan produk diambil dari sistem rekanan lewat integrasi. Ruang Sehat tidak menyimpan katalog sendiri `[USER] PS6, PS6a`.
+- **Konsultasi online** berlangsung di Ruang Sehat (aplikasi tenaga kesehatan untuk chat, video, catatan, dan resep) `[USER] PS6b`.
+- **Backoffice admin Ruang Sehat:** verifikasi dan kelola akun (pasien, tenaga kesehatan, rekanan), laporan transaksi dan penerusan dana, CMS konten (banner, halaman info, artikel, promo), dan layanan pelanggan `[USER] P8.2, P8.2a`.
 - **Konten edukasi kesehatan** masuk rilis pertama lewat CMS `[USER] P8.2a`.
 - **Integrasi otomatis ke sistem klinik dan lab rekanan** masuk rilis pertama `[USER] PS6a`.
 
@@ -101,7 +101,7 @@ Butir berikut tidak otomatis masuk scope `[USER] P3.6a`:
 
 - **Data pasien yang disimpan** `[USER] P4.1`: identitas dasar (nama, tanggal lahir, jenis kelamin, nomor HP, email, alamat), NIK dan foto KTP, riwayat dan isi chat konsultasi termasuk foto, catatan dokter dan psikolog, resep digital, hasil lab dari lab rekanan, riwayat pendaftaran klinik, lab, dan home visit, data anggota keluarga, serta riwayat pembayaran dan pesanan produk.
 - **Klasifikasi sensitivitas data:** `[TIDAK DIKETAHUI]`. User belum menyatakan data mana yang tergolong sensitif, dan kategori hukum serta kewajibannya diteliti oleh compliance reviewer di Tahap 2 (PT-03). Usulan penyusun untuk diperiksa di Tahap 2 (bukan fakta): NIK dan foto KTP, catatan dokter dan psikolog (termasuk kesehatan mental), resep, hasil lab, data anggota keluarga, dan data pembayaran.
-- **NIK/KTP:** wajib untuk konsultasi online, home visit, serta pendaftaran klinik dan lab. Tidak wajib untuk pembelian produk. Diverifikasi manual oleh admin Rumah Sehat sebelum layanan dipakai `[USER] P4.6a, P4.6b`.
+- **NIK/KTP:** wajib untuk konsultasi online, home visit, serta pendaftaran klinik dan lab. Tidak wajib untuk pembelian produk. Diverifikasi manual oleh admin Ruang Sehat sebelum layanan dipakai `[USER] P4.6a, P4.6b`.
 - **Login pasien:** email dan password, atau akun Google/Apple. Tanpa login nomor HP dan OTP `[USER] P4.4`.
 - **Notifikasi ke pasien:** push, email, WhatsApp. Tanpa SMS `[USER] P4.5`.
 - **Sistem yang harus terhubung** `[USER] PS4, PS5, PS6a, P3.2, P4.4, P4.5`:
@@ -117,7 +117,7 @@ Butir berikut tidak otomatis masuk scope `[USER] P3.6a`:
 ## Kepatuhan
 
 - **Regulasi atau standar:** `[TIDAK DIKETAHUI]`. Diteliti dari sumber resmi oleh compliance reviewer di Tahap 2 `[USER] P5.1` (PT-03).
-- **Badan usaha dan izin:** Rumah Sehat dimiliki perusahaan IT yang sudah berbadan hukum `[USER] P5.2a`. Apakah dibutuhkan badan usaha terpisah, serta izin apa saja yang diperlukan dan status kepemilikannya, `[TIDAK DIKETAHUI]` `[USER] P5.2` (PT-02).
+- **Badan usaha dan izin:** Ruang Sehat dimiliki perusahaan IT yang sudah berbadan hukum `[USER] P5.2a`. Apakah dibutuhkan badan usaha terpisah, serta izin apa saja yang diperlukan dan status kepemilikannya, `[TIDAK DIKETAHUI]` `[USER] P5.2` (PT-02).
 - **Kebolehan penjualan obat bebas oleh klinik rekanan secara online:** `[TIDAK DIKETAHUI]`, diteliti di Tahap 2 `[USER] PS2a` (PT-04).
 - **Kebutuhan audit trail:** kesepuluh aktivitas berikut ditambah setiap transaksi yang terjadi `[USER] P5.4, Konfirmasi P5`:
     1. Login, logout, dan percobaan login gagal
@@ -182,8 +182,8 @@ Kolom Pemilik dan Tenggat adalah usulan penyusun, disesuaikan dengan tahap yang 
 
 | # | Pertanyaan | Pemilik | Tenggat |
 | --- | --- | --- | --- |
-| PT-01 | Nama badan hukum perusahaan IT pemilik Rumah Sehat | User (PM), konfirmasi ke CEO | Sebelum gate Tahap 1 |
-| PT-02 | Apakah layanan Rumah Sehat harus dijalankan oleh badan usaha terpisah, atau boleh oleh perusahaan IT yang ada? Izin apa saja yang dibutuhkan, dan bagaimana statusnya? (prioritas tinggi) | Compliance reviewer (riset sumber resmi), keputusan oleh CEO | Tahap 2. Bisa dimajukan ke Tahap 1 kalau memengaruhi Business Case |
+| PT-01 | Nama badan hukum perusahaan IT pemilik Ruang Sehat | User (PM), konfirmasi ke CEO | Sebelum gate Tahap 1 |
+| PT-02 | Apakah layanan Ruang Sehat harus dijalankan oleh badan usaha terpisah, atau boleh oleh perusahaan IT yang ada? Izin apa saja yang dibutuhkan, dan bagaimana statusnya? (prioritas tinggi) | Compliance reviewer (riset sumber resmi), keputusan oleh CEO | Tahap 2. Bisa dimajukan ke Tahap 1 kalau memengaruhi Business Case |
 | PT-03 | Regulasi dan standar yang berlaku (layanan kesehatan digital, data pribadi dan kesehatan, lokasi data), beserta instansi pengawas dan auditornya | Compliance reviewer, disetujui user | Tahap 2 |
 | PT-04 | Apakah penjualan obat bebas oleh klinik rekanan lewat aplikasi diperbolehkan regulasi? | Compliance reviewer, keputusan oleh CEO | Tahap 2 |
 | PT-05 | Rekanan pertama (minimal 2 klinik, 1 lab, 3 outlet), sistem yang mereka pakai, dan kesiapan integrasinya | User (PM) dan CEO | Sebelum Tahap 4 (arsitektur integrasi) |
