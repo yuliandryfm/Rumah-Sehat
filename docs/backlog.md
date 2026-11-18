@@ -19,6 +19,7 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 - Acceptance criteria terverifikasi
 - Dependensi mobile baru sudah direview perilaku jaringannya; build rilis lulus uji lalu lintas jaringan terhadap daftar izin host (ADR-021 butir 2)
 - Migrasi yang menyentuh database audit, role, grant, trigger penolak, atau RLS sudah direview DBA dan keamanan (ADR-021 butir 4)
+- Spesifikasi OpenAPI diperbarui untuk setiap endpoint baru atau berubah, dan contract test lulus (ADR-022)
 
 ## Epic dan Story
 
@@ -285,6 +286,22 @@ Deskripsi: aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biome
 Alasan: mengurangi dampak ponsel tenaga kesehatan yang hilang atau dipinjam saat sesi masih aktif (sesi tenaga kesehatan bertahan sampai 7 hari tanpa aktivitas, ADR-011).
 Dampak ke scope / waktu / arsitektur: PRD v1.1 NFR-SEC-10; ADR-021 butir 1; sedikit tambahan pekerjaan di aplikasi tenaga kesehatan.
 Keputusan: Diterima user 2026-11-18 (T4-Q6)
+
+### CR-010: Penjelasan AB-36 (pengecualian RF-13 dan RF-14)
+
+Diajukan: 2026-11-18 (Tahap 4, review DBA B05; `docs/04-catatan-arsitektur.md` G3)
+Deskripsi: aturan "satu pesanan paling banyak satu refund, kecuali RF-12" juga mengecualikan RF-13 dan RF-14, karena keduanya refund atas dana yang tidak menjadi pembayaran pesanan. Tanpa pengecualian ini, refund wajib (misalnya RF-01 setelah ada RF-14 pada percobaan bayar lain) ditolak constraint.
+Alasan: temuan DBA B05 atas jalur sah di PRD §3.6.
+Dampak ke scope / waktu / arsitektur: PRD v1.1 AB-36; data dictionary A14.1 (partial unique index); ADR-015 butir 6; KEPUTUSAN-67.
+Keputusan: Diterima user 2026-11-18 (gate Tahap 4, G3)
+
+### CR-011: Onboarding mandiri calon rekanan dan langganan berbayar RME
+
+Diajukan: 2026-11-18 (Tahap 4, pertanyaan user; `docs/04-catatan-arsitektur.md` T4-Q7)
+Deskripsi: calon rekanan (klinik/lab) dapat mendaftar sendiri (formulir, unggah dokumen izin, persetujuan perjanjian penggunaan RME dan pemrosesan data) dan berlangganan RME minimalis dengan membayar ke PT. Arunika. Verifikasi dokumen izin tetap oleh Verifikator sebelum rekanan tampil (BR-006, US-205) dan perjanjian pemrosesan data tetap syarat aktivasi (UP-49, L-15).
+Alasan: permintaan user agar calon rekanan dapat *self-service/self-onboard*.
+Dampak ke scope / waktu / arsitektur: kebutuhan bisnis baru (BR dan story baru bila diterima); modul pendaftaran mandiri, penagihan langganan, dan penangguhan RME; menambah risiko jadwal RT-10. Fakta bisnis belum diketahui (PT-34): apakah RME berbayar, model/harga/siklus, cara bayar, perlakuan telat bayar. Arsitektur menyiapkan titik perluasan (`docs/04-arsitektur.md` §13) tanpa membangunnya.
+Keputusan: Dicatat; penempatan (rilis 1 atau berikutnya) diputuskan di Tahap 7 bersama estimasi effort (T4-Q7)
 
 ## Tech Debt
 

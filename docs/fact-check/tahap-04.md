@@ -238,3 +238,35 @@ Tidak ada.
 10. https://www.postgresql.org/docs/current/ddl-partitioning.html (SRC-39, kalimat batasan constraint unik)
 
 Tidak dibuka ulang (kutipan register hanya dicocokkan dengan klaim): SRC-64, 65, 66, 67, 68, 75, 76, 78, 80, 81, dan 83.
+
+---
+
+# Fact-check Tahap 04: Arsitektur (bagian 3, cek ulang gate)
+
+Tanggal: 2026-11-18
+Tingkat ketelitian: T1; cakupan terbatas (`aturan-kerja.md` §2, hanya baris yang berubah, hanya lima kategori blokir)
+Sumber kebenaran: `docs/04-catatan-arsitektur.md` "Gate Tahap 4" (G1–G4 dan masukan API, baris 63–83)
+Hasil: **LULUS**. Tidak ada blokir; 5 temuan non-blokir.
+
+Catatan metode: fact-checker tidak punya akses shell, jadi `git diff 6ff5816` tidak dijalankan. Lokasi diperiksa langsung sesuai daftar dari orkestrator. SRC-47 tidak dibuka ulang di bagian ini (kutipan register "Problem Details for HTTP APIs" dan "obsoletes RFC 7807" cocok dengan klaim ADR-022; URL tidak dibuka ulang).
+
+## Hasil per lokasi
+- **ADR-022 dan KEPUTUSAN-72: bersih.** `[USER] T4-masukan` cocok dengan catatan baris 78 ("harus ada API dokuemntasi seperti swagger atau yg lain agar mudah untuk testing"). Rujukan ADR-014 butir 8 (lingkungan uji di staging), US-1401 AC2, ADR-019 (data sintetis), ADR-016, dan ADR-006 cocok. SRC-47 (RFC 9457) terdaftar dan mendukung klaim Problem Details. KEPUTUSAN-72 terdaftar dan isinya sama dengan ADR-022.
+- **Retensi G2: bersih.** Nilai 30 hari, 1 tahun, dan 35 hari cocok dengan G2 ("30 hr / 1 th / 35 hr") dan berlabel `[USER] T4-G2` di ADR-010 (tabel baris 24, butir 6 baris 33), ADR-019 butir 4 (baris 42), arsitektur §10 NFR-RET-02 (baris 367), serta data dictionary (baris 2284, 3167). Tetap ditulis sebagai nilai sementara sampai PT-24, dan audit trail tidak dimusnahkan.
+- **CR-010: bersih.** AB-36 (PRD baris 235) dan header versi sesuai G3(a). Backlog CR-010 (baris 290–296) dan DoD OpenAPI (baris 22) benar. KEPUTUSAN-46, -54, dan -67 berstatus "dikonfirmasi user (G3, 2026-11-18)". RT-19 berstatus Diterima `[USER] T4-G3`.
+- **G4: bersih.** BRD §10 PT-18, PT-19, PT-25, dan PT-28 berlabel `[USER] T4-G4` dengan tenggat gate Tahap 5. PRD §12.2 PT-32 dan arsitektur §13 menulis "sedang diurus" `[USER] T4-G4`, sama dengan jawaban "Ke Tahap 5; PT-32 diurus".
+- **Arsitektur §1 dan §11: bersih.** Baris ADR-022 ada dan merujuk KEPUTUSAN-72; baris "Dokumentasi API" ada di §11. Tidak ada nomor rujukan yang tidak terdaftar.
+
+## Temuan blokir
+
+Tidak ada.
+
+## Temuan non-blokir
+
+| ID | Lokasi | Masalah | Usulan |
+| --- | --- | --- | --- |
+| FC4-N3-1 | `adr/ADR-022` butir 2 dan alternatif ke-2; `04-catatan-arsitektur.md` baris 79 | Batasan "UI interaktif tidak dibuka di production" adalah usulan keamanan penyusun, bukan ucapan user. Catatan menyebut batasan itu "disampaikan ke user sebagai usulan keamanan", tetapi persetujuan user belum tercatat. ADR berstatus Diusulkan, jadi aman | Catat persetujuan user (atau penolakannya) sebelum ADR-022 berstatus Diterima |
+| FC4-N3-2 | `adr/ADR-022` alternatif ke-3 | "mobile developer dan Claude" sebagai pembangun mobile dan web tidak berlabel | Beri label `[USER]` atau `[DOK: docs/00-project-brief.md]`, atau hapus rincian itu |
+| FC4-N3-3 | `decision-log.md` baris 39 dan 51 (KEPUTUSAN-23, -35) | Kalimat revisi menulis "ditetapkan user (G2)" tanpa label `[USER] T4-G2`. Kolom keputusan masih memuat "usulan ... diputuskan user di gate" bersama `[TIDAK DIKETAHUI]` (PT-24) | Seragamkan dengan ADR-010 dan ADR-019: `[USER] T4-G2`, nilai sementara sampai PT-24 |
+| FC4-N3-4 | `decision-log.md` baris 62 dan 83 (KEPUTUSAN-46, -67) | Kolom keputusan masih memuat "Perlu konfirmasi user" dan "menunggu konfirmasi user di gate Tahap 4", sedangkan kolom status sudah "dikonfirmasi user (G3)" | Ganti kalimat lama dengan "dikonfirmasi `[USER] T4-G3`" |
+| FC4-N3-5 | `04-arsitektur.md` §1 baris 36–43 | Daftar "Keputusan user di tahap ini" belum memuat G2, G3, G4, dan `T4-masukan`, dan urutannya T4-Q1, Q5, Q6, Q4, Q3, Q2 | Tambahkan keempatnya dan urutkan |

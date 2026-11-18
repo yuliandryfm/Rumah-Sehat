@@ -59,3 +59,34 @@ Catatan penyusun: diterapkan sebagai CR-009 (PRD NFR-SEC-10), ADR-021 butir 1, d
 - Review DBA putaran 3: LULUS DENGAN CATATAN (B09, B10 tertutup); catatan CR-008 diterapkan (versi kunci kode verifikasi; resep yang wadahnya dimusnahkan tampil "tidak ditemukan").
 - Threat model v0.2: LULUS (54 ancaman Tinggi tercermin). Ancaman baru halaman verifikasi resep: RX-01 (Sedang, mitigasi M-31 diterapkan di ADR-012 butir 3), RX-02 dan RX-03 (Tinggi, dijelaskan dan dipilih user di T4-Q5; dicatat RT-19, RT-20). Aturan metode tambahan di KEPUTUSAN-70.
 - Fact-check bagian 2: LULUS, FC4-B01 dan FC4-B02 tertutup. Non-blokir yang dirapikan: KEPUTUSAN-32 dan diagram arsitektur §4.2/§6 (Redis Pub/Sub, dua instans Redis, Keycloak admin internal); pencabutan sesi disimpan di tabel Operasional (A1.4, C1.11, ADR-011 butir 8); rujukan basi (35 hari, header, ADR-021, nomor butir ADR-012); ringkasan arsitektur §1/§14 dan KEPUTUSAN-27/-31; kutipan batasan partisi di SRC-39. Butir gate dari fact-checker (data di halaman verifikasi resep, tafsiran ADR-002/003, pengecualian KEPUTUSAN-15 untuk event login) ditampilkan di gate.
+
+## Gate Tahap 4
+
+2026-11-18. Ditampilkan: hasil kerja, hasil ketiga review (DBA, threat model, fact-check), rekap jawaban T4-Q1–T4-Q6, checklist gate dan gate anti-halu, serta eskalasi legal (PT-20). Pertanyaan diajukan satu per satu.
+
+**G1. Apakah rekap jawaban Tahap 4 (T4-Q1 sampai T4-Q6) sudah benar?** (pilihan: benar semua; ada yang salah)
+Jawaban: "Benar semua".
+
+**G2. Berapa masa simpan sementara application log / security log / backup sampai retensi resmi ditetapkan CEO? (PT-24, FC4-B01)** (konteks: ketiganya memuat data pribadi sehingga keputusan bisnis; tanpa nilai, tidak boleh dihapus otomatis; data aplikasi dan audit tetap tidak dimusnahkan sampai PT-24. Pilihan: 30 hari / 1 tahun / 35 hari (rekomendasi penyusun); 90 hari / 2 tahun / 90 hari; tidak dihapus sampai PT-24)
+Jawaban: "30 hr / 1 th / 35 hr (Recommended)".
+Catatan penyusun: diterapkan di ADR-010, ADR-019, KEPUTUSAN-23/35, arsitektur §10, dan data dictionary sebagai nilai sementara sampai PT-24.
+
+**G3. Apakah paket konfirmasi disetujui sekaligus?** ((a) tafsiran AB-36: RF-13 dan RF-14 juga dikecualikan dari "satu refund per pesanan", teks AB-36 diperjelas lewat CR-010; (b) email di aplikasi hanya salinan, keunikan per realm Keycloak, satu orang boleh punya akun pasien dan tenaga kesehatan (KEPUTUSAN-46); (c) tiket yang dibuka kembali berstatus "Diproses" dan permintaan hak subjek data punya tahap "Diproses" (KEPUTUSAN-54); (d) halaman verifikasi resep menampilkan status, tanggal, dokter dan nomor SIP, klinik, daftar obat, dan nama pasien disamarkan, isi final mengikuti L-05/L-08 (US-309 AC7); (e) risiko RT-19 resep ditebus berulang diterima untuk rilis 1; (f) risiko sisa F-09 jenis layanan/profesi tidak dienkripsi, masuk DPIA. Pilihan: setujui semua (rekomendasi penyusun); ada yang ingin diubah)
+Jawaban: "Setujui semua (Recommended)".
+Catatan penyusun: CR-010 diterapkan ke PRD AB-36 dan backlog; KEPUTUSAN-46, -54, -67 berstatus dikonfirmasi; RT-19 berstatus Diterima.
+
+**Masukan user (di tengah gate):** "harus ada API dokuemntasi seperti swagger atau yg lain agar mudah untuk testing"
+Catatan penyusun: dicatat sebagai `[USER] T4-masukan` dan diterapkan sebagai ADR-022 (KEPUTUSAN-72): spesifikasi OpenAPI untuk semua API HTTP, UI interaktif di lokal dan staging (tidak publik di production), contract test sebagai bagian skrip verifikasi proyek, dan butir Definition of Done. Batasan "tidak publik di production" disampaikan ke user sebagai usulan keamanan.
+
+**G4. PT-18, PT-19, PT-25, PT-28 (bertenggat gate Tahap 4) dipindah ke gate Tahap 5 bersama baseline biaya? Bagaimana status PT-32?** (konteks: baseline biaya pihak ketiga baru dapat dihitung setelah penyedia dipilih di Tahap 5; PT-32 diminta mulai diurus setelah gate Tahap 3. Pilihan: ke Tahap 5, PT-32 belum dimulai; ke Tahap 5, PT-32 sedang diurus; isi sendiri)
+Jawaban: "Ke Tahap 5; PT-32 diurus".
+Catatan penyusun: tenggat PT-18, PT-19, PT-25, PT-28 diperbarui di BRD §10 menjadi gate Tahap 5; status PT-32 "sedang diurus" dicatat di PRD §12.2 dan arsitektur §13.
+
+**Pertanyaan user (di tengah gate):** "cara berlanggaan untuk RME klinik dan pembayarannya ada dimna? agar calon rekanan bisa self service atau self onboard"
+Jawaban penyusun: belum ada di scope rilis 1. Pendaftaran rekanan manual oleh Verifikator (US-205), aktivasi RME manual oleh Operator RME (US-1301, UP-49); pengaturan biaya rekanan "langganan per bulan" dan perhitungan tagihannya ada (US-810), tetapi besaran serta cara penagihan dan penerimaan pembayaran `[TIDAK DIKETAHUI]` (AB-24, PT-17); harga khusus RME tidak diatur. Onboarding mandiri dan langganan berbayar RME adalah kebutuhan baru (CR-011); verifikasi dokumen izin (BR-006) dan perjanjian pemrosesan data (UP-49) tetap berlaku.
+
+**T4-Q7. Bagaimana CR-011 (onboarding mandiri calon rekanan dan langganan berbayar RME untuk klinik) ditempatkan?** (pilihan: (1) catat sekarang, putuskan penempatannya di Tahap 7 dengan estimasi effort; arsitektur menyiapkan titik perluasan tanpa membangunnya; model dan harga langganan jadi pertanyaan CEO (rekomendasi penyusun); (2) masuk rilis 1 sekarang; (3) rilis berikutnya)
+Jawaban: "Catat, putuskan di Tahap 7 (Recommended)".
+Catatan penyusun: CR-011 dicatat di `docs/backlog.md`; PT-34 baru (apakah RME berbayar, model/harga/siklus, cara bayar, telat bayar; pemilik CEO; tenggat Tahap 7) dan titik perluasan dicatat di arsitektur §13.
+
+**Fact-check bagian 3 (cek ulang perubahan gate):** LULUS tanpa blokir. Non-blokir dirapikan: label ADR-022 alternatif ke-3, label `[USER] T4-G2` di KEPUTUSAN-23/35, teks KEPUTUSAN-46/-54/-67, ringkasan arsitektur §1. Batasan ADR-022 butir 2 (UI interaktif tidak publik di production) dimintakan persetujuan eksplisit di G5.

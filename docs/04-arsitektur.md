@@ -7,7 +7,7 @@ Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, BRD v1.3 `[DOK: 02-brd.md]`, ADR-001–ADR-005 (diterima), wawancara Tahap 4 `[USER] T4-Qx` (`docs/04-catatan-arsitektur.md`)
 Tingkat ketelitian: **T1 Kritis** untuk seluruh dokumen (keputusan arsitektur, model data, audit trail, keamanan; `aturan-kerja.md` §1)
 
-Dokumen terkait: ADR-006–ADR-021 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
+Dokumen terkait: ADR-006–ADR-022 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
 
 **Label sumber.** `[DOK: ...]` adalah dokumen yang lulus gate. `[USER] T4-Qx` adalah jawaban user di Tahap 4. `[KEPUTUSAN-xx]` tercatat di `docs/decision-log.md` dan dirinci di ADR yang disebut. `[SRC-xx]` tercatat di `docs/sources.md`. Rujukan `US-`, `AB-`, `NFR-`, `PB-`, `E-` mengacu ke PRD; `BR-` mengacu ke BRD.
 
@@ -31,12 +31,16 @@ Dokumen terkait: ADR-006–ADR-021 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 | ADR-019 | Tiga lingkungan di cloud Indonesia, PITR, standby, uji pemulihan | KEPUTUSAN-35 |
 | ADR-020 | SATUSEHAT dikirim dari RME atas nama fasyankes, secara asinkron | KEPUTUSAN-36 |
 | ADR-021 | Keamanan aplikasi mobile (data di perangkat, kendali SDK), akses administratif production (tanpa hak tetap, akses darurat), dan pipeline CI/CD | KEPUTUSAN-71 |
+| ADR-022 | Semua API didokumentasikan dengan OpenAPI; UI interaktif di lokal/staging; contract test | KEPUTUSAN-72 |
 
 Keputusan user di tahap ini:
 
 - **T4-Q1**: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia, tanpa kecuali. Ini menjawab PT-22 `[USER] T4-Q1`.
 - **T4-Q5**: keaslian resep diperiksa apotek lewat QR/kode ke halaman verifikasi di domain resmi (CR-008) `[USER] T4-Q5`.
 - **T4-Q6**: aplikasi tenaga kesehatan dikunci (biometrik/PIN perangkat) setelah 15 menit tidak aktif (CR-009) `[USER] T4-Q6`.
+- **Gate**: retensi sementara application log 30 hari, security log 1 tahun, backup 35 hari sampai PT-24 `[USER] T4-G2`; tafsiran AB-36 (CR-010), email salinan, status tiket, isi halaman verifikasi resep, dan risiko RT-19/F-09 dikonfirmasi `[USER] T4-G3`; tenggat PT-18/19/25/28 dipindah ke gate Tahap 5 dan PT-32 sedang diurus `[USER] T4-G4`.
+- **Masukan**: dokumentasi API seperti Swagger untuk testing (ADR-022) `[USER] T4-masukan`.
+- **T4-Q7**: onboarding mandiri calon rekanan dan langganan berbayar RME dicatat sebagai CR-011, penempatannya diputuskan di Tahap 7 `[USER] T4-Q7`.
 - **T4-Q4**: Keycloak sebagai identity provider dan Redis sebagai komponen pendukung, tanpa message broker `[USER] T4-Q4`.
 - **T4-Q3**: aplikasi tenaga kesehatan tetap terpisah dari aplikasi pasien, dan RME minimalis tetap web khusus klinik/lab tanpa sistem `[USER] T4-Q3` (KEPUTUSAN-19).
 - **T4-Q2**: CR-007 disetujui. Login Google/Apple, push notification, dan WhatsApp dihapus. Notifikasi dikirim lewat email dan di dalam aplikasi `[USER] T4-Q2`. BRD naik ke v1.3 dan PRD ke v1.1.
@@ -363,7 +367,7 @@ Setiap NFR PRD §6 dan spesifikasi audit §7 dijawab arsitektur. Kolom "Bukti" m
 | NFR-PRIV-04 (video tidak direkam) | Rekaman tidak dikonfigurasi + test konfigurasi | ADR-016 | Test |
 | NFR-PRIV-05 (bukti persetujuan per versi) | Tabel versi teks + rekaman persetujuan (Log) | ADR-008 | Data dictionary |
 | NFR-RET-01 (retensi dapat diatur, otomatis) | Tabel kebijakan retensi + job + crypto-shredding | ADR-013 | Test job retensi |
-| NFR-RET-02 (angka retensi) | `[TIDAK DIKETAHUI]` (PT-24). Data aplikasi dan audit tidak dimusnahkan sebelum ditetapkan. Retensi application log, security log, dan backup juga keputusan bisnis: usulan nilai sementara diputuskan user di gate Tahap 4, dan sebelum itu tidak ada penghapusan otomatis | ADR-013, ADR-009, ADR-010, ADR-019 | — |
+| NFR-RET-02 (angka retensi) | `[TIDAK DIKETAHUI]` (PT-24). Data aplikasi dan audit tidak dimusnahkan sebelum ditetapkan. Retensi application log, security log, dan backup juga keputusan bisnis: nilai sementara 30 hari, 1 tahun, dan 35 hari sampai PT-24 `[USER] T4-G2` | ADR-013, ADR-009, ADR-010, ADR-019 | — |
 | NFR-COMP-01–03 | Flutter Android/iOS; web dua versi browser terakhir | ADR-006 | Uji kompatibilitas Tahap 9 |
 | NFR-LOC-01/02 | Bahasa Indonesia; Rupiah `bigint`; zona waktu AB-40–42 | ADR-015, ADR-017 | Test |
 | NFR-OBS-01 | Pemeriksa ketersediaan + metrik + peringatan | ADR-010 | Konfigurasi pemantauan |
@@ -391,6 +395,7 @@ Pemilihan berikut wajib diverifikasi ke dokumentasi resmi dan dibawa ke user. Sy
 | Redis | Distribusi dan lisensi `[SRC-76]`, layanan terkelola atau dijalankan sendiri di Indonesia (ADR-007) |
 | Log, metrik, crash report | Di Indonesia atau dijalankan sendiri (ADR-010) |
 | Checklist ASVS L2 | Pemetaan kontrol per bab (ADR-011), ditambah mitigasi Sedang/Rendah dan penguatan threat model (`docs/04-threat-model.md` §6.2–§6.3) |
+| Dokumentasi API | Versi OpenAPI, UI dokumentasi, validator contract test, format spesifikasi WebSocket (ADR-022) |
 | Keamanan pipeline dan akses admin | Identitas pipeline jangka pendek, proteksi branch, persetujuan deploy, IAM/KMS/log audit penyedia (ADR-021) |
 | Penetralan PDF | Pustaka CDR atau render ulang yang berjalan di Indonesia (ADR-018 butir 6) |
 | Biaya | Baseline biaya pihak ketiga dan infrastruktur (Business Case §9) |
@@ -407,10 +412,11 @@ Dicatat di `CLAUDE.md` `[KEPUTUSAN-37]`: autentikasi/sesi/MFA, termasuk konfigur
 | PT-24 | Masa retensi per jenis data | Kebijakan retensi kosong, tidak ada pemusnahan; US-1605/1606 terblokir | Terbuka |
 | PT-27, PT-31 | Penarikan dana rekanan; ongkir | Mekanisme ditetapkan di Tahap 5 sesuai penyedia; jurnal mencatat kewajiban apa pun mekanismenya | Terbuka |
 | PT-28 | Pajak | Jurnal dapat menampung akun pajak; kolom tidak ditambahkan sebelum jelas | Terbuka |
-| PT-32 | Registrasi SATUSEHAT | US-1309 dan terminologi SNOMED CT bergantung padanya | Status dilaporkan di gate |
-| PT-18, PT-19, PT-25 | Biaya tim, developer, legal | Baseline biaya | Tenggat gate Tahap 4 |
+| PT-32 | Registrasi SATUSEHAT | US-1309 dan terminologi SNOMED CT bergantung padanya | Sedang diurus `[USER] T4-G4` |
+| PT-18, PT-19, PT-25, PT-28 | Biaya tim, developer, legal, pajak | Baseline biaya | Tenggat dipindah ke gate Tahap 5 `[USER] T4-G4` |
 | L-05, L-06, L-08 | Rekam medis, hak hapus, data minimal | Field NIK ke rekanan/RME, isi kontrak data penerima, kecukupan crypto-shredding | Menunggu legal (PT-20) |
 | L-04, L-12 | Pembagian dana, refund, *merchant of record* | Mekanisme penarikan dana dan tampilan bukti bayar | Menunggu legal |
+| PT-34 (baru) | Apakah RME berbayar; model, harga, dan siklus langganan; cara bayar ke PT. Arunika; perlakuan bila klinik telat bayar (CR-011) | Titik perluasan yang disiapkan: modul Rekanan dapat menerima pendaftaran mandiri (formulir, unggah dokumen, persetujuan perjanjian) dengan verifikasi tetap oleh Verifikator; provisioning tenant RME oleh Operator RME dapat diotomasi; penagihan langganan memakai adaptor pembayaran terpisah dari pembagian dana pasien (ADR-015). Tidak dibangun sebelum CR-011 diputuskan di Tahap 7 | CEO; tenggat Tahap 7 `[USER] T4-Q7` |
 
 ## 14. Perubahan terhadap dokumen yang sudah lulus gate
 
