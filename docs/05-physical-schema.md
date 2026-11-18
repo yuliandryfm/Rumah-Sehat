@@ -1,7 +1,7 @@
 # Skema Fisik PostgreSQL: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf Tahap 5, menunggu review `dba-reviewer` + `security-architect` dan fact-check)
+Versi: 0.2 (perbaikan putaran 1 atas `docs/review/tahap-05-dba.md`: blokir DBA5-B01–B03 dan non-blokir N01–N10; menunggu cek ulang DBA, `security-architect`, dan fact-check)
 Penyusun: Claude (persona DBA senior + Principal Engineer)
 Tingkat ketelitian: **T1 Kritis** (model data, migrasi, hak role, RLS, audit, enkripsi)
 Target: PostgreSQL 18.7, dijalankan sendiri `[SRC-118]` `[KEPUTUSAN-77]`
@@ -18,7 +18,8 @@ Dokumen ini adalah **lapisan fisik yang melengkapi** `docs/04-data-dictionary.md
 | `[DOK: ADR-xxx]` | Keputusan arsitektur di `docs/adr/` |
 | `[USER] T5-Qx` | Jawaban user Tahap 5 (`docs/05-catatan-stack.md`) |
 | `[SRC-xx]` | Fakta eksternal terverifikasi di `docs/sources.md`. Dokumen ini tidak menambah SRC baru |
-| `[KEPUTUSAN-xx]` | Nomor 74–89 sudah terdaftar; nomor 90–113 baru dari dokumen ini (§15), dicatat orkestrator di `docs/decision-log.md` |
+| `[KEPUTUSAN-xx]` | Nomor 74–89 sudah terdaftar. Dari dokumen ini (§15): 90–109 dan 139–142 (versi 0.1; 139–142 adalah nomor ulang oleh orkestrator), serta 153–159 (perbaikan putaran 1). Dicatat orkestrator di `docs/decision-log.md` |
+| `CR-014` | Change request atas data dictionary yang dicatat orkestrator (tabel acuan retensi DEK, hak pembersihan `rme_worker`). Bagian bertanda "berlaku setelah CR-014" baru mengikat setelah CR-014 disetujui di gate Tahap 5 |
 | **(V8)** | Perilaku atau sintaks PostgreSQL/pustaka yang **belum terdaftar sebagai SRC**. Wajib diverifikasi ke dokumentasi resmi versi terpasang dan dibuktikan test migrasi di Tahap 8 Fase 1 sebelum diandalkan. Bila verifikasi menunjukkan perilaku berbeda, rancangan terkait kembali ke DBA, tidak diakali di kode |
 | `[TIDAK DIKETAHUI]` | Belum ada informasi; pemilik disebut di sampingnya |
 
@@ -45,6 +46,7 @@ Dasar: snake_case untuk semua nama, termasuk index dan constraint `[DOK: ADR-001
 | Exclusion constraint (bila dipakai, §13) | `ex_<tabel>_<kolom...>` | `ex_consultation_slot_health_worker_id_range` | `[KEPUTUSAN-90]` |
 | Trigger | `tg_<tabel>_<tujuan>` | `tg_journal_line_reject_ud`, `tg_journal_line_reject_truncate`, `tg_data_key_one_way` | `[KEPUTUSAN-90]` |
 | Fungsi | `fn_<tujuan>` di skema `util` (pustaka bersama) atau skema bisnis (fungsi khusus) | `util.fn_reject_modification`, `audit.fn_chain_head` | `[KEPUTUSAN-90]` |
+| Prosedur | `pr_<tujuan>` | `audit.pr_archive_detach` | `[KEPUTUSAN-157]` |
 | Kebijakan RLS | `pol_<tabel>_<role atau tujuan>` | `pol_rme_visit_tenant`, `pol_rme_job_worker_queue` | `[KEPUTUSAN-90]` |
 | Partisi bulanan | `<induk>_yYYYYmMM` | `audit_event_y2027m03` | Mengikuti contoh `measurement_y2006m02` di halaman partisi `[SRC-39]`; `[KEPUTUSAN-90]` |
 | Database, skema, role | §2 dan §3 | | |
@@ -86,7 +88,7 @@ Aturan organisasi `[KEPUTUSAN-91]`:
 2. **Skema `public` dihapus** di setiap database proyek saat bootstrap, sehingga tidak ada tempat objek liar. Test T-02 memastikan tidak ada objek di luar skema yang terdaftar.
 3. **Database dimiliki superuser bootstrap**, bukan role migrasi. Role migrasi memiliki skema dan objek, tetapi tidak dapat `DROP DATABASE`.
 4. **Hak `CONNECT` dan `TEMP` ke database dicabut dari `PUBLIC`** **(V8: hak bawaan PUBLIC atas database)**, lalu `CONNECT` diberikan per role grup. Akibatnya role `keycloak` tidak dapat masuk ke `rumah_sehat`, dan sebaliknya. Database `postgres` juga dicabut `CONNECT`-nya dari `PUBLIC`. Tanpa `TEMP`, role aplikasi tidak dapat membuat objek di `pg_temp` yang dapat membayangi nama di fungsi.
-5. **`search_path`** dipasang per database dan per role login: `app, ext` untuk database aplikasi, `audit` untuk database audit (`ALTER ROLE ... IN DATABASE ... SET search_path`, **(V8)**). Fungsi `SECURITY DEFINER` selalu memasang `SET search_path = pg_catalog, <skema>` sendiri dan merujuk tabel dengan nama berkualifikasi skema (praktik dokumentasi `CREATE FUNCTION` **(V8)**). Kode SQL di repository Rust memakai nama tabel tanpa skema dan bergantung pada `search_path` ini; pustaka bersama dan migrasi memakai nama berkualifikasi.
+5. **`search_path`** dipasang di tingkat database (`ALTER DATABASE ... SET search_path`) dan per role login (`ALTER ROLE ... IN DATABASE ... SET search_path`) **(V8)**: `app, ext` untuk database aplikasi, `audit` untuk database audit. Pengaturan tingkat database juga berlaku bagi role migrasi dinamis yang tidak dapat diberi pengaturan per role di bootstrap (§3.4). Fungsi `SECURITY DEFINER` selalu memasang `SET search_path = pg_catalog, <skema>` sendiri dan merujuk tabel dengan nama berkualifikasi skema (praktik dokumentasi `CREATE FUNCTION` **(V8)**). Kode SQL di repository Rust memakai nama tabel tanpa skema dan bergantung pada `search_path` ini; pustaka bersama dan migrasi memakai nama berkualifikasi.
 6. **Hak `EXECUTE` fungsi dicabut dari `PUBLIC`** lewat `ALTER DEFAULT PRIVILEGES FOR ROLE <pemilik> REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` dan `REVOKE` eksplisit per fungsi **(V8: bawaan EXECUTE untuk PUBLIC)**. Hak tabel **tidak** diberikan lewat default privileges, karena hak berbeda per kelas (§4).
 
 ### 2.2 Ekstensi
@@ -124,7 +126,7 @@ Ketentuan `[KEPUTUSAN-92]`:
 | --- | --- | --- | --- | --- |
 | `rs_app` | `rs_app` | `rs_api` (api), `rs_realtime` (realtime), `rs_worker` (worker) | Password statis di OpenBao KV `[KEPUTUSAN-79]` | `[DOK: DD §0.6 A]`, `[KEPUTUSAN-74]` |
 | `audit_relay` | `rs_audit_relay` | `rs_audit_relay_login` (audit-relay) | KV | `[DOK: ADR-009 butir 3]` |
-| `privacy_worker` | `rs_privacy_worker` | `rs_privacy_worker_login` (pekerja privasi; proses pemegangnya §14 F-P10) | KV | `[DOK: ADR-013 §5]` |
+| `privacy_worker` | `rs_privacy_worker` | `rs_privacy_worker_login` (deployment `rs-backend privacy-worker`, §3.3) | KV | `[DOK: ADR-013 §5]`, `[KEPUTUSAN-153]` |
 | `key_rotation` | `rs_key_rotation` | Tanpa role login tetap; anggota dinamis dari OpenBao saat prosedur bungkus ulang (§3.4) | Dinamis | `[DOK: DD A19.7]`, `[KEPUTUSAN-96]` |
 | `rs_migration` | `rs_migration` (pemilik skema `app`, `util`) | Tanpa role login tetap; anggota dinamis dari OpenBao saat migrasi | Dinamis `[SRC-224]` | `[DOK: ADR-021 butir 4]` |
 | — | `rs_ops_monitor` (anggota role pemantauan bawaan `pg_monitor` **(V8)**) | `rs_metrics` (agen metrik); manusia lewat kredensial dinamis | KV / dinamis | `[KEPUTUSAN-80]` |
@@ -134,9 +136,9 @@ Ketentuan `[KEPUTUSAN-92]`:
 
 | Nama logis DD §0.6 B | Rumah Sehat (grup / login) | RME (grup / login) | Proses pemegang |
 | --- | --- | --- | --- |
-| `audit_writer` | `rs_audit_writer` / `rs_audit_writer_login` | `rme_audit_writer` / `rme_audit_writer_login` | audit-relay sistem masing-masing |
-| `audit_reader` | `rs_audit_reader` / `rs_audit_reader_login` | `rme_audit_reader` / `rme_audit_reader_login` | api backoffice (RS); RME tidak memakainya untuk Admin Fasyankes `[DOK: DD §0.6 B]` |
-| `audit_verifier` | `rs_audit_verifier` / `rs_audit_verifier_login` | `rme_audit_verifier` / `rme_audit_verifier_login` | Job verifikasi harian, dijalankan di deployment audit-relay (§14 F-P09) `[KEPUTUSAN-141]` |
+| `audit_writer` | `rs_audit_writer` / `rs_audit_writer_login` | `rme_audit_writer` / `rme_audit_writer_login` | Deployment `audit-relay` sistem masing-masing |
+| `audit_reader` | `rs_audit_reader` / `rs_audit_reader_login` | `rme_audit_reader` / **tanpa role login** | api backoffice (RS). Di RME role grup dibuat sesuai DD, tetapi role login baru dibuat bila ada proses pemegangnya; RME tidak memakainya untuk Admin Fasyankes `[DOK: DD §0.6 B]` |
+| `audit_verifier` | `rs_audit_verifier` / `rs_audit_verifier_login` | `rme_audit_verifier` / `rme_audit_verifier_login` | Deployment `audit-verify` sistem masing-masing (verifikasi rantai harian dan ekspor arsip), **bukan** deployment relay `[KEPUTUSAN-141]` |
 | `audit_tenant_reader` | — | `rme_audit_tenant_reader` / `rme_audit_tenant_reader_login` | rme api |
 | `audit_migration` | `rs_audit_migration` (pemilik) | `rme_audit_migration` (pemilik) | Dinamis, pipeline migrasi dan prosedur arsip |
 
@@ -154,19 +156,29 @@ Ketentuan `[KEPUTUSAN-92]`:
 | `rme_migration` | `rme_migration` (pemilik) | dinamis | `[DOK: ADR-021]` |
 | — | `rme_ops_monitor` | `rme_metrics` | `[KEPUTUSAN-80]` |
 
-Test T-05 (§12) memastikan: tidak ada role proyek dengan `BYPASSRLS` atau `SUPERUSER`; role grup tidak dapat login; tidak ada role login yang menjadi anggota dua grup yang saling meniadakan (`*_privacy_worker` dan `*_key_rotation`, atau grup aplikasi dan grup migrasi).
+Test T-05 (§12) memastikan: tidak ada role proyek dengan `BYPASSRLS` atau `SUPERUSER`; `CREATEROLE` hanya pada `openbao_*_admin`; role grup tidak dapat login; tidak ada role login yang menjadi anggota dua grup yang saling meniadakan (`*_privacy_worker` dan `*_key_rotation`, grup aplikasi dan grup migrasi, atau `*_audit_writer` dan `*_audit_verifier`).
 
-### 3.3 Proses dan kredensial
+### 3.3 Deployment, identitas, dan kredensial
 
-| Proses `[KEPUTUSAN-74]` | Kredensial database yang dipegang |
-| --- | --- |
-| `rs-backend api` | `rs_api` (rumah_sehat), `rs_audit_reader_login` (rumah_sehat_audit) |
-| `rs-backend realtime` | `rs_realtime` |
-| `rs-backend worker` | `rs_worker` |
-| `rs-backend audit-relay` | `rs_audit_relay_login`, `rs_audit_writer_login`, `rs_audit_verifier_login`. Worker bisnis tidak memegangnya (threat model M-23) `[DOK: ADR-009 butir 3]` |
-| `rme-backend api` | `rme_api`, `rme_api_auth`, `rme_api_operator`, `rme_audit_tenant_reader_login` |
-| `rme-backend worker` | `rme_worker_login` |
-| relay audit RME (§14 F-P09) | `rme_audit_relay_login`, `rme_audit_writer_login`, `rme_audit_verifier_login` |
+Subcommand binary (keputusan orkestrator atas F-P09 dan F-P10): `rs-backend api|realtime|worker|audit-relay|audit-verify|privacy-worker` dan `rme-backend api|worker|audit-relay|audit-verify|privacy-worker`. Setiap subcommand adalah **deployment tersendiri dengan identitas OpenBao sendiri** dan policy minimum `[KEPUTUSAN-79]` `[KEPUTUSAN-141]` `[KEPUTUSAN-153]`.
+
+| Deployment | Kredensial database yang dipegang | Hak lain | Catatan |
+| --- | --- | --- | --- |
+| `rs-backend api` | `rs_api` (rumah_sehat), `rs_audit_reader_login` (rumah_sehat_audit) | Transit `datakey`/`decrypt` | |
+| `rs-backend realtime` | `rs_realtime` | sesuai kebutuhan baca chat | |
+| `rs-backend worker` | `rs_worker` | Transit `datakey`/`decrypt` | Tidak memegang kredensial audit, privasi, atau rotasi (M-23) |
+| `rs-backend audit-relay` | **hanya** `rs_audit_relay_login` + `rs_audit_writer_login` | — | ADR-009 butir 3 `[DOK: ADR-009]`; satu aktif lewat kunci 7001001 |
+| `rs-backend audit-verify` | **hanya** `rs_audit_verifier_login` | Baca bucket WORM kepala rantai dan tulis berkas arsip ke bucket WORM; kirim peringatan langsung ke security log | Verifikasi rantai harian dan ekspor arsip (§6.5); satu aktif lewat kunci 7001003 |
+| `rs-backend privacy-worker` | **hanya** `rs_privacy_worker_login` | Hapus objek di object storage (wadah yang dimusnahkan, ADR-018); **tanpa** Transit `decrypt`/`datakey` | Retensi, crypto-shredding, anonimisasi; penjadwalan internal; satu aktif lewat kunci 7001004 |
+| `rme-backend api` | `rme_api`, `rme_api_auth`, `rme_api_operator` (rme), `rme_audit_tenant_reader_login` (rme_audit) | Transit RME | |
+| `rme-backend worker` | `rme_worker_login` | Transit RME; hapus objek `rme_upload_slot` kedaluwarsa (§5.7) | |
+| `rme-backend audit-relay` | **hanya** `rme_audit_relay_login` + `rme_audit_writer_login` | — | Kunci 7002001 |
+| `rme-backend audit-verify` | **hanya** `rme_audit_verifier_login` | Seperti `rs-backend audit-verify` | Kunci 7002003 |
+| `rme-backend privacy-worker` | **hanya** `rme_privacy_worker_login` | Seperti `rs-backend privacy-worker` | Kunci 7002004 |
+
+Alasan pemisahan verifikasi dari relay (DBA5-B01): role verifier dapat membaca seluruh audit dan menulis hasil verifikasi. Bila keduanya di deployment relay, relay yang dibobol dapat menulis rantai palsu sekaligus mencatat hasil `match`, sehingga deteksi manipulasi ADR-009 butir 5 diperiksa oleh pihak yang diperiksa. `audit-verify` mencocokkan rantai dengan kepala rantai yang **dibaca langsung dari bucket WORM**, tidak hanya dari tabel `audit_chain_anchor`, dan mengirim peringatan ketidakcocokan ke security log secara mandiri `[DOK: ADR-009 butir 3, 5]` `[KEPUTUSAN-141]`.
+
+Masukan pekerja privasi untuk permintaan penghapusan (US-1605) kelak memerlukan kanal masukan lewat CR (misalnya tabel O `privacy_task`); di luar cakupan dokumen ini.
 
 ### 3.4 Kredensial dinamis OpenBao untuk pemilik skema
 
@@ -181,12 +193,14 @@ CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expirat
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
   IN ROLE rs_migration;
 ALTER ROLE "{{name}}" SET role = 'rs_migration';   -- sesi langsung berjalan sebagai rs_migration
+ALTER ROLE "{{name}}" SET search_path = app;        -- database audit: search_path = audit
 
 -- revocation_statements
-REASSIGN OWNED BY "{{name}}" TO rs_migration;
-DROP OWNED BY "{{name}}";
 DROP ROLE IF EXISTS "{{name}}";
 ```
+`search_path` dipasang di role dinamis (dan juga di tingkat database, §2.1 butir 5), karena skema `public` sudah dihapus: tanpa itu sqlx tidak menemukan tempat membuat tabel catatan migrasinya. Tabel catatan migrasi sqlx dengan demikian berada di skema `app` atau `audit` dan dimiliki role pemilik (T-02, T-04) **(V8: perilaku sqlx-cli 0.9.1)** (review N01).
+
+`revocation_statements` hanya `DROP ROLE`. `REASSIGN OWNED`/`DROP OWNED` tidak dipakai, karena kemungkinan gagal dengan hak `ADMIN` saja **(V8)**, dan karena role dinamis seharusnya tidak memiliki objek apa pun: bila `DROP ROLE` gagal, itu tanda ada objek yang salah pemilik, dan T-04 menangkapnya (review N02).
 
 | Role OpenBao | Grup sasaran | `default_ttl` / `max_ttl` (nilai awal) | Pemakai |
 | --- | --- | --- | --- |
@@ -198,19 +212,19 @@ DROP ROLE IF EXISTS "{{name}}";
 Pengaman berlapis:
 - **Penjaga di setiap berkas migrasi** memeriksa `current_user` = role pemilik (§11.2). Bila `ALTER ROLE ... SET role` ternyata tidak berlaku, migrasi gagal di baris pertama, tidak membuat objek dengan pemilik salah.
 - Test T-04: semua objek di skema proyek, termasuk tabel catatan migrasi sqlx, dimiliki role pemilik **(V8: nama dan lokasi tabel catatan migrasi sqlx-cli 0.9.1)**.
-- Koneksi OpenBao ke PostgreSQL memakai role `openbao_rs_admin` / `openbao_rme_admin` / `openbao_audit_admin` (LOGIN, `CREATEROLE`, opsi `ADMIN` hanya atas grup sasaran di tabel di atas, tanpa superuser). Kemampuan role `CREATEROLE` non-superuser untuk memberi keanggotaan di PostgreSQL 16 ke atas **(V8)**. Role ini setara kuatnya dengan pemilik skema, sehingga passwordnya hanya di OpenBao dan perubahannya tercatat di log audit OpenBao `[SRC-226]`.
-- Password role login aplikasi disimpan di OpenBao KV `[KEPUTUSAN-79]`. Rotasi: `ALTER ROLE ... PASSWORD` oleh admin bootstrap, perbarui KV, restart bergulir; prosedur tertulis sebelum go-live `[KEPUTUSAN-88]`. Fitur rotasi otomatis role statis di OpenBao dievaluasi Tahap 8 **(V8)**.
+- Koneksi OpenBao ke PostgreSQL memakai role `openbao_rs_admin` (instans a), `openbao_rme_admin` (instans c), dan **satu koneksi per database audit** di instans (b): `openbao_rs_audit_admin` dan `openbao_rme_audit_admin`. Atributnya LOGIN, `CREATEROLE`, opsi `ADMIN` hanya atas grup sasaran di tabel di atas, tanpa superuser. Kemampuan role `CREATEROLE` non-superuser untuk memberi keanggotaan di PostgreSQL 16 ke atas **(V8)**. Role ini setara kuatnya dengan pemilik skema, sehingga: passwordnya hanya di OpenBao; perubahannya tercatat di log audit OpenBao `[SRC-226]`; baris `pg_hba` untuk role ini hanya mengizinkan alamat host OpenBao (`bao-1`, `bao-2`, `bao-3`) `[KEPUTUSAN-78]` (review N02).
+- **Pencegahan password masuk log** (review N08): `ALTER ROLE openbao_*_admin SET log_min_error_statement = 'panic'` dan `SET log_statement = 'none'`, supaya statement `CREATE ROLE ... PASSWORD` yang gagal tidak tercatat beserta teksnya **(V8: parameter ini mungkin hanya dapat dipasang superuser; dipasang di bootstrap)**. Agen metrik tidak mengekspor teks query dari `pg_stat_activity`.
+- Password role login aplikasi disimpan di OpenBao KV `[KEPUTUSAN-79]`. Rotasi: admin bootstrap menjalankan `ALTER ROLE ... PASSWORD` dengan **verifier SCRAM yang sudah di-hash di sisi klien**, sehingga password terbuka tidak pernah dikirim ke server atau tercatat **(V8)**; lalu KV diperbarui dan proses di-restart bergulir. Prosedur tertulis sebelum go-live `[KEPUTUSAN-88]`. Fitur rotasi otomatis role statis di OpenBao dievaluasi Tahap 8 **(V8)**.
 
 ### 3.5 Bootstrap klaster (`db/roles/`)
 
-Pembuatan role berlaku untuk seluruh klaster dan memerlukan `CREATEROLE`, yang tidak dimiliki pemilik skema. Karena itu `db/roles/` dijalankan **sekali per lingkungan oleh admin bootstrap** (kredensial administratif dinamis atau akses darurat), bukan oleh pemilik skema seperti tertulis di KEPUTUSAN-89 (§14 F-P08) `[KEPUTUSAN-97]`. Isinya, berurutan dan idempoten:
-1. `CREATE ROLE` grup dan login (§3.2) dengan atribut §3.1, `GRANT <grup> TO <login>`.
-2. `CREATE DATABASE` (pemilik superuser bootstrap), `REVOKE CONNECT, TEMP ON DATABASE ... FROM PUBLIC`, `GRANT CONNECT` per grup.
-3. Per database: `DROP SCHEMA public`, `CREATE SCHEMA app|audit|util AUTHORIZATION <pemilik>`, `CREATE SCHEMA ext` + `CREATE EXTENSION pg_trgm SCHEMA ext`, `GRANT USAGE ON SCHEMA` ke grup yang berhak.
-4. `ALTER ROLE <login> IN DATABASE <db> SET` untuk `search_path` dan batas waktu (§10.2).
-5. `ALTER DATABASE <db> SET TimeZone = 'UTC'` (§10.1).
+Keputusan orkestrator atas F-P08: `db/roles/` adalah **bootstrap klaster yang dijalankan superuser**, bukan pemilik skema seperti tertulis di KEPUTUSAN-89 `[KEPUTUSAN-97]`. Pembuatan role berlaku untuk seluruh klaster dan memerlukan hak yang tidak dimiliki pemilik skema. Pelaksana: production dan staging lewat akses darurat (PT-38) `[KEPUTUSAN-79]`; `verify.sh` lewat superuser testcontainer, sebelum migrasi dijalankan. Skrip **idempoten** dan **tanpa password** (password diisi terpisah, §3.4). Isinya, berurutan:
+1. `CREATE ROLE` grup dan login (§3.2), termasuk `openbao_*_admin`, dengan atribut §3.1; keanggotaan `GRANT <grup> TO <login>` dengan opsi keanggotaan yang ditulis eksplisit **(V8)**.
+2. `CREATE DATABASE` (pemilik superuser bootstrap), `REVOKE CONNECT, TEMP ON DATABASE ... FROM PUBLIC`, `GRANT CONNECT` per grup; `REVOKE CONNECT ON DATABASE postgres FROM PUBLIC`.
+3. Per database: `DROP SCHEMA public`, `CREATE SCHEMA app|audit|util AUTHORIZATION <pemilik>`, `CREATE SCHEMA ext` + `CREATE EXTENSION pg_trgm SCHEMA ext`, `GRANT USAGE ON SCHEMA` ke grup yang berhak, dan `ALTER DEFAULT PRIVILEGES FOR ROLE <pemilik> REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`.
+4. `ALTER DATABASE <db> SET search_path` dan `TimeZone = 'UTC'` (§2.1, §10.1); `ALTER ROLE <login> IN DATABASE <db> SET` untuk `search_path` dan batas waktu (§10.2); pengaturan log `openbao_*_admin` (§3.4).
 
-**Hak per tabel tidak ada di `db/roles/`**, tetapi di berkas migrasi yang sama dengan `CREATE TABLE`-nya (§4), supaya tabel baru tidak pernah ada tanpa hak yang benar atau dengan hak berlebih.
+**Hak per tabel tidak ada di `db/roles/`**, tetapi di berkas migrasi yang sama dengan `CREATE TABLE`-nya (§4), supaya tabel baru tidak pernah ada tanpa hak yang benar atau dengan hak berlebih. T-03 dan T-05 juga dijalankan berkala terhadap staging dan production (dengan role pemantauan), untuk menangkap penyimpangan hak yang dibuat di luar skrip. Teks KEPUTUSAN-89 dan `docs/coding-standards.md` §5.3 perlu diselaraskan oleh orkestrator (§14 F-P08).
 
 ---
 
@@ -218,7 +232,7 @@ Pembuatan role berlaku untuk seluruh klaster dan memerlukan `CREATEROLE`, yang t
 
 ### 4.1 Ketentuan umum
 
-1. **Komentar tabel sebagai penanda kelas** `[KEPUTUSAN-94]`. Setiap tabel diberi `COMMENT ON TABLE ... IS 'class:<M|MS|MK|T|R|P|O|L|OH> module:<modul> [alias:<alias>] [log_category:<kategori>]'` (`MS` = Master snapshot, `MK` = Master khusus kunci data, `OH` = Operasional hak khusus seperti outbox audit). Kolom bertanda "Anonimkan" di DD diberi `COMMENT ON COLUMN ... IS 'anonymize'`. Test katalog (§12 T-06–T-09) membaca penanda ini dan membandingkan hak, trigger, dan hak per kolom `privacy_worker` dengan aturan DD §0.6. Dengan begitu kesesuaian kelas dan hak diperiksa mesin, bukan hanya checklist DBA `[DOK: ADR-008 konsekuensi]`.
+1. **Komentar tabel sebagai penanda kelas** `[KEPUTUSAN-94]`. Setiap tabel diberi `COMMENT ON TABLE ... IS 'class:<M|MS|MK|T|R|P|O|L|OH|A> module:<modul> [alias:<alias>] [log_category:<kategori>]'` (`MS` = Master snapshot, `MK` = Master khusus kunci data, `OH` = Operasional hak khusus seperti outbox audit, `A` = tabel database audit, yang haknya mengikuti DD §0.6 B, bukan aturan kelas L aplikasi). Kolom bertanda "Anonimkan" di DD diberi `COMMENT ON COLUMN ... IS 'anonymize'`. Test katalog (§12 T-06–T-09) membaca penanda ini dan membandingkan hak, trigger, dan hak per kolom `privacy_worker` dengan aturan DD §0.6. Dengan begitu kesesuaian kelas dan hak diperiksa mesin, bukan hanya checklist DBA `[DOK: ADR-008 konsekuensi]`.
 2. **Nilai bawaan kolom** `[KEPUTUSAN-93]`:
    - `id uuid NOT NULL` **tanpa** nilai bawaan. UUIDv7 dibuat aplikasi dengan `Uuid::now_v7` `[SRC-238]` `[DOK: ADR-002]`. Baris tanpa ID gagal di `NOT NULL`, sehingga bug terlihat.
    - `created_at timestamptz NOT NULL DEFAULT now()`; aplikasi tidak mengirim nilainya. `now()` adalah waktu awal transaksi **(V8)**, yang memenuhi "jam server" STD-R `[DOK: DD §0.4]`.
@@ -251,21 +265,24 @@ REVOKE ALL ON FUNCTION util.fn_reject_modification() FROM PUBLIC;
 
 ```sql
 -- (2) Penjaga DELETE kelas Log (database rumah_sehat). Argumen trigger:
---     TG_ARGV[0] = kategori retensi, TG_ARGV[1] = kolom acuan waktu (umumnya created_at)
+--     TG_ARGV[0] = kategori retensi, TG_ARGV[1] = kolom acuan waktu (umumnya created_at),
+--     TG_ARGV[2] = daftar end_action yang mengizinkan penghapusan baris, ditetapkan bersama PT-24,
+--     TG_ARGV[3] = nama role grup pekerja privasi database ini ('rs_privacy_worker' / 'rme_privacy_worker')
 CREATE FUNCTION util.fn_guard_log_delete()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = pg_catalog
 AS $$
 DECLARE
-  v_months integer;
-  v_anchor timestamptz;
+  v_months     integer;
+  v_end_action text;
+  v_anchor     timestamptz;
 BEGIN
-  IF NOT pg_has_role('rs_privacy_worker', 'MEMBER') THEN            -- (V8) semantik pg_has_role
+  IF TG_NARGS < 4 OR NOT pg_has_role(TG_ARGV[3], 'MEMBER') THEN     -- (V8) semantik pg_has_role
     RAISE EXCEPTION 'immutable_violation: DELETE on %.% rejected', TG_TABLE_SCHEMA, TG_TABLE_NAME
       USING ERRCODE = 'insufficient_privilege';
   END IF;
-  SELECT rp.retention_months INTO v_months
+  SELECT rp.retention_months, rp.end_action INTO v_months, v_end_action
     FROM app.retention_policy rp
    WHERE rp.data_category = TG_ARGV[0]
      AND rp.deleted_at IS NULL
@@ -274,6 +291,10 @@ BEGIN
    LIMIT 1;
   IF v_months IS NULL THEN                                            -- PT-24 belum terjawab: tidak ada yang terhapus
     RAISE EXCEPTION 'retention_not_set: % (%.%)', TG_ARGV[0], TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF TG_NARGS < 3 OR NOT (v_end_action = ANY (TG_ARGV[2]::text[])) THEN   -- end_action yang disepakati saja (review N05)
+    RAISE EXCEPTION 'retention_action_not_allowed: % % (%.%)', TG_ARGV[0], v_end_action, TG_TABLE_SCHEMA, TG_TABLE_NAME
       USING ERRCODE = 'insufficient_privilege';
   END IF;
   v_anchor := (to_jsonb(OLD) ->> TG_ARGV[1])::timestamptz;
@@ -285,7 +306,11 @@ BEGIN
 END;
 $$;
 ```
-Versi database `rme` identik, dengan `rme_privacy_worker` dan `app.rme_retention_policy` `[DOK: DD §0.6 C]` (review DBA B10). Nilai berlaku diambil dengan pola berlaku-mulai DD §0.8. Kategori per tabel Log baru final bersama PT-24; selama kategori tidak punya baris kebijakan, semua `DELETE` ditolak `[DOK: DD §0.6]` `[DOK: ADR-013 §5]`.
+Versi database `rme` identik kecuali membaca `app.rme_retention_policy`; nama role `rme_privacy_worker` datang dari argumen trigger `[DOK: DD §0.6 C]` (review DBA B10). Nama role di fungsi `util` selalu diteruskan lewat argumen trigger, tidak ditulis di badan fungsi, dan T-24 (§12) memastikan argumen dan badan fungsi di database `rme` hanya merujuk role `rme_*` (serta `rs_*` di `rumah_sehat`) (review putaran 2 catatan 4). Nilai berlaku diambil dengan pola berlaku-mulai DD §0.8. Kategori per tabel Log baru final bersama PT-24; selama kategori tidak punya baris kebijakan, semua `DELETE` ditolak `[DOK: DD §0.6]` `[DOK: ADR-013 §5]`.
+
+Catatan untuk PT-24 (review N05):
+- Nilai `end_action` di DD A6.6/C6.9 (`end_processing`, `anonymize`, `crypto_shred`) tidak memuat tindakan "hapus baris". Nilai yang mengizinkan penghapusan baris Log ditetapkan bersama PT-24; bila perlu nilai baru, itu perubahan CHECK DD lewat CR (§14 F-P14). Sampai itu, argumen ketiga trigger kosong dan semua `DELETE` ditolak.
+- Beberapa tabel L dirujuk FK dari tabel non-L (misalnya `payment_receipt` → `payment_gateway_notification`; riwayat dan proyeksi SATUSEHAT → `satusehat_submission`), dan pasangan L→L memerlukan urutan hapus anak dulu `[DOK: DD A12.5, C5]`. Baris yang masih dirujuk tidak dapat dihapus (FK `NO ACTION`). Job retensi mencatat pelanggaran FK sebagai "dilewati" di `retention_run`, tidak sebagai galat yang menghentikan job. Kategori retensi tabel semacam ini ditetapkan bersama PT-24, atau FK-nya dibawa ke CR. Test T-22 (§12) menjaga daftar tabel L yang punya FK masuk dari non-L.
 
 ```sql
 -- (3) Kunci baris berlaku-mulai (DD §0.8): baris yang sudah berlaku tidak boleh diubah atau di-soft delete
@@ -304,6 +329,86 @@ END;
 $$;
 ```
 Dipasang `BEFORE UPDATE ... FOR EACH ROW` di `markup_rule`, `partner_fee_rule`, `consultation_rate`, `business_parameter`, `payment_method_fee`, `retention_policy`, `consent_text_version`, dan `rme_retention_policy` `[DOK: DD §0.8, A3.1, C6.9]`.
+
+```sql
+-- (3b) Larangan menanggalmundurkan baris berlaku-mulai baru (review N07)
+CREATE FUNCTION util.fn_effective_row_no_backdate()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  IF NEW.effective_from < now() AND NOT pg_has_role(TG_ARGV[0], 'MEMBER') THEN   -- TG_ARGV[0] = role pemilik skema
+    RAISE EXCEPTION 'effective_row_backdated: %.% effective_from=%', TG_TABLE_SCHEMA, TG_TABLE_NAME, NEW.effective_from
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+```
+Dipasang `BEFORE INSERT ... FOR EACH ROW` di semua tabel pola §0.8 yang sama `[KEPUTUSAN-159]`. Tanpa ini, baris baru dengan `effective_from` di masa lalu dapat mengubah nilai yang "berlaku" untuk instan yang sudah lewat, padahal harga terkunci dan laporan merujuk instan itu (AB-17) `[DOK: DD §0.8]`.
+- Perubahan yang berlaku segera ditulis aplikasi dengan `effective_from = now()` di dalam SQL (jam server database), bukan nilai dari jam aplikasi, sehingga tidak perlu toleransi.
+- Pengecualian hanya untuk pemilik skema, yang namanya diteruskan sebagai argumen trigger (`'rs_migration'` atau `'rme_migration'`), yang mengisi nilai acuan awal lewat migrasi dengan tanggal literal (berkas migrasi direview). Saat migrasi, `current_user` = pemilik, sehingga `pg_has_role` bernilai benar **(V8)**.
+
+```sql
+-- (3c) Kunci versi teks persetujuan yang sudah terbit (DBA5-B03, DD A3.1)
+CREATE FUNCTION app.fn_consent_text_version_published_lock()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  IF OLD.published_at IS NOT NULL THEN
+    IF NEW.consent_type    IS DISTINCT FROM OLD.consent_type
+       OR NEW.version_label  IS DISTINCT FROM OLD.version_label
+       OR NEW.content        IS DISTINCT FROM OLD.content
+       OR NEW.effective_from IS DISTINCT FROM OLD.effective_from
+       OR NEW.published_at   IS DISTINCT FROM OLD.published_at THEN
+      RAISE EXCEPTION 'published_row_locked: consent_text_version id=%', OLD.id
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    IF OLD.change_notice_sent_at IS NOT NULL
+       AND NEW.change_notice_sent_at IS DISTINCT FROM OLD.change_notice_sent_at THEN   -- hanya boleh diisi sekali
+      RAISE EXCEPTION 'published_row_locked: change_notice_sent_at id=%', OLD.id
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION app.fn_consent_text_version_published_lock() FROM PUBLIC;
+
+CREATE TRIGGER tg_consent_text_version_published_lock
+  BEFORE UPDATE ON app.consent_text_version
+  FOR EACH ROW EXECUTE FUNCTION app.fn_consent_text_version_published_lock();
+```
+DD A3.1 menyatakan kolom isi tidak dapat diubah setelah `published_at` terisi `[DOK: DD A3.1]`. Tanpa trigger ini, teks yang sudah terbit dan sudah diberitahukan (US-104 AC4) masih dapat diubah sampai tanggal berlaku, dan `published_at` dapat dikosongkan, sehingga bukti persetujuan kehilangan integritasnya `[KEPUTUSAN-154]`. Aturan `fn_effective_row_lock` tetap berlaku di samping trigger ini. Pembatalan versi terbit yang belum berlaku dengan soft delete tetap mungkin sesuai DD §0.8 butir 2, dan tercatat E-16.
+
+```sql
+-- (3d) Kunci butir persetujuan milik versi terbit (DD A3.2; review putaran 2 catatan 3)
+CREATE FUNCTION app.fn_consent_item_published_lock()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM app.consent_text_version v
+              WHERE v.id IN (NEW.consent_text_version_id,
+                             CASE WHEN TG_OP = 'UPDATE' THEN OLD.consent_text_version_id END)
+                AND v.published_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'published_row_locked: consent_item (version published) id=%', NEW.id
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION app.fn_consent_item_published_lock() FROM PUBLIC;
+
+CREATE TRIGGER tg_consent_item_published_lock
+  BEFORE INSERT OR UPDATE ON app.consent_item
+  FOR EACH ROW EXECUTE FUNCTION app.fn_consent_item_published_lock();
+```
+Butir persetujuan milik versi yang sudah terbit tidak dapat ditambah, diubah, atau di-soft delete, karena soft delete juga berupa `UPDATE` `[DOK: DD A3.2]` `[KEPUTUSAN-154]`. Pemeriksaan memakai versi induk lama dan baru, sehingga butir juga tidak dapat dipindah keluar dari versi terbit. Akibatnya butir harus lengkap sebelum `published_at` diisi; perubahan butir setelah terbit dilakukan dengan menerbitkan versi teks baru. Hak `DELETE` tidak diberikan untuk kelas Master `[DOK: DD §0.3]`.
 
 Fungsi satu arah `data_key` di §4.10; penjaga migrasi di §11.2; konteks tenant RME di §5.2.
 
@@ -465,7 +570,7 @@ GRANT SELECT, INSERT, UPDATE ON app.refund_state TO rs_app;     -- tanpa DELETE 
 
 Jalur tulis (ADR-008 aturan status 2) `[DOK: ADR-008]`: `INSERT` event `version = n+1`, lalu `UPDATE app.refund_state SET status = $s, version = $n + 1, updated_at = now() WHERE refund_id = $id AND version = $n`. Nol baris ter-update berarti kalah balapan, sehingga transaksi dibatalkan dan dievaluasi ulang.
 
-**Usulan FK proyeksi ke riwayat** `[KEPUTUSAN-142]`: FK komposit `(<entitas>_id, version, status)` ke `UQ (<entitas>_id, version, to_status)` di tabel riwayat membuat proyeksi **tidak dapat menunjuk status yang tidak pernah tercatat di riwayat**. Pembandingan harian ADR-008 butir 4 tetap dibutuhkan untuk proyeksi yang tertinggal versi. Biayanya satu index unik tambahan per tabel riwayat. Ini penambahan constraint di luar DD, sehingga dibawa ke review DBA (§14 F-P12).
+**Usulan FK proyeksi ke riwayat** `[KEPUTUSAN-142]`: FK komposit `(<entitas>_id, version, status)` ke `UQ (<entitas>_id, version, to_status)` di tabel riwayat membuat proyeksi **tidak dapat menunjuk status yang tidak pernah tercatat di riwayat**. Pembandingan harian ADR-008 butir 4 tetap dibutuhkan untuk proyeksi yang tertinggal versi. Biayanya satu index unik tambahan per tabel riwayat. Ini penambahan constraint di luar DD; diterima review DBA putaran 1 (§14 F-P06).
 
 ### 4.8 Kelas O (Operasional)
 
@@ -534,7 +639,7 @@ CREATE TRIGGER tg_order_follow_up_flag_reject_truncate
   FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification();
 CREATE TRIGGER tg_order_follow_up_flag_guard_delete
   BEFORE DELETE ON app.order_follow_up_flag
-  FOR EACH ROW EXECUTE FUNCTION util.fn_guard_log_delete('<kategori PT-24>', 'created_at');
+  FOR EACH ROW EXECUTE FUNCTION util.fn_guard_log_delete('<kategori PT-24>', 'created_at', '{}', 'rs_privacy_worker');  -- end_action: PT-24
 ```
 Penjaga `DELETE` memakai trigger **tingkat baris**, karena masa retensi dinilai per baris `[DOK: DD §0.6 A]` `[DOK: ADR-013 §5]` `[KEPUTUSAN-95]`. Penghapusan dilakukan bertahap dalam batch kecil, dicatat E-16 lewat `audit_outbox`, dan dirangkum di `retention_run` `[DOK: DD §0.6, §D.2]`. `retention_run` sendiri: `rs_privacy_worker` S, I `[DOK: DD §0.6 A]`.
 
@@ -561,7 +666,7 @@ BEGIN
     RAISE EXCEPTION 'immutable_violation: data_key id=% column not updatable', OLD.id
       USING ERRCODE = 'insufficient_privilege';
   END IF;
-  IF pg_has_role('rs_privacy_worker', 'MEMBER') THEN            -- pemusnahan (S-N3)
+  IF pg_has_role(TG_ARGV[0], 'MEMBER') THEN                     -- TG_ARGV[0] = role pekerja privasi; pemusnahan (S-N3)
     IF NEW.wrapped_dek IS NOT NULL OR NEW.shred_reason IS NULL
        OR NEW.kek_ref IS DISTINCT FROM OLD.kek_ref THEN
       RAISE EXCEPTION 'immutable_violation: invalid shred on data_key id=%', OLD.id
@@ -569,7 +674,7 @@ BEGIN
     END IF;
     NEW.shredded_at := now();                                   -- waktu pemusnahan dari server
     RETURN NEW;
-  ELSIF pg_has_role('rs_key_rotation', 'MEMBER') THEN           -- bungkus ulang (cadangan)
+  ELSIF pg_has_role(TG_ARGV[1], 'MEMBER') THEN                  -- TG_ARGV[1] = role rotasi kunci; bungkus ulang (cadangan)
     IF NEW.wrapped_dek IS NULL OR NEW.shredded_at IS NOT NULL OR NEW.shred_reason IS NOT NULL THEN
       RAISE EXCEPTION 'immutable_violation: invalid rewrap on data_key id=%', OLD.id
         USING ERRCODE = 'insufficient_privilege';
@@ -581,7 +686,8 @@ END;
 $$;
 
 CREATE TRIGGER tg_data_key_one_way BEFORE UPDATE ON app.data_key
-  FOR EACH ROW EXECUTE FUNCTION util.fn_data_key_one_way();
+  FOR EACH ROW EXECUTE FUNCTION util.fn_data_key_one_way('rs_privacy_worker', 'rs_key_rotation');
+-- database rme: ... ON app.rme_data_key ... util.fn_data_key_one_way('rme_privacy_worker', 'rme_key_rotation')
 CREATE TRIGGER tg_data_key_reject_delete BEFORE DELETE ON app.data_key
   FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification();
 CREATE TRIGGER tg_data_key_reject_truncate BEFORE TRUNCATE ON app.data_key
@@ -596,7 +702,8 @@ GRANT UPDATE (wrapped_dek, kek_ref) ON app.data_key TO rs_key_rotation;
 ```
 - CHECK DD `(wrapped_dek IS NULL) = (shredded_at IS NOT NULL)` tetap berlaku; trigger mengisi `shredded_at` sehingga CHECK terpenuhi dalam statement yang sama dengan `wrapped_dek = NULL` `[DOK: DD A19.7]`.
 - `rs_key_rotation` tidak punya role login tetap; anggota dinamis hanya diterbitkan saat prosedur bungkus ulang (§7.3). Cara utama rotasi KEK adalah versi kunci OpenBao Transit yang tetap dapat membuka DEK lama selama versinya di atas `min_decryption_version` `[SRC-222]` `[KEPUTUSAN-79]`.
-- Celah DD soal `retention_anchor_at` yang boleh `NULL` tetapi tidak dapat diisi belakangan: §14 F-P04.
+- `retention_category` dan `retention_anchor_at` yang boleh `NULL` di DD tetapi tidak dapat diisi belakangan (F-P04): diisi sekali lewat tabel acuan terpisah (§4.12, berlaku setelah CR-014). Trigger satu arah di atas tetap menolak perubahan kedua kolom di `data_key`.
+- Versi RME (`rme_data_key`) memakai fungsi yang sama dengan `rme_privacy_worker` dan `rme_key_rotation`, ditambah kebijakan RLS per role (§5.3).
 
 ### 4.11 Ringkasan trigger per kelas
 
@@ -607,7 +714,66 @@ GRANT UPDATE (wrapped_dek, kek_ref) ON app.data_key TO rs_key_rotation;
 | L | `reject_update` (statement) + `reject_truncate` (statement) + `guard_delete` (baris) | `[DOK: DD §0.6]`, `[DOK: ADR-013 §5]` |
 | MK | `one_way` (baris) + `reject_delete` + `reject_truncate` | `[KEPUTUSAN-66]` |
 | O, OH | Tanpa trigger | `[DOK: DD §0.3]` |
-| Audit (`audit_event`, `audit_event_subject`, `audit_event_key`, `audit_chain_anchor`, `audit_chain_verification`, `audit_archive_manifest`) | `reject_ud` + `reject_truncate`, juga di setiap partisi (§6.2) | `[DOK: ADR-009 butir 4]` |
+| A (`audit_event`, `audit_event_subject`, `audit_event_key`, `audit_chain_anchor`, `audit_chain_verification`, `audit_archive_manifest`) | `reject_ud` + `reject_truncate` (statement), juga di setiap partisi (§6.2); di tabel induk terpartisi ditambah `reject_ud_row` tingkat baris (§6.1) | `[DOK: ADR-009 butir 4]` |
+| Pola berlaku-mulai (M) | `effective_lock` (baris, UPDATE) + `no_backdate` (baris, INSERT) | `[DOK: DD §0.8]`, `[KEPUTUSAN-159]` |
+| `consent_text_version` | Ditambah `published_lock` (baris, UPDATE) | `[KEPUTUSAN-154]` |
+| `consent_item` | `published_lock` (baris, INSERT dan UPDATE) | `[KEPUTUSAN-154]` |
+
+### 4.12 Tabel acuan retensi DEK sekali-isi (berlaku setelah CR-014)
+
+Keputusan orkestrator atas F-P04: opsi utama reviewer, yaitu tabel sekali-isi. Ini perubahan DD yang dicatat sebagai CR-014; desain fisik di bawah **baru berlaku setelah CR-014 disetujui di gate Tahap 5** `[KEPUTUSAN-155]`. Memberi `rs_app` hak `UPDATE` atas `data_key` ditolak, karena bertentangan dengan DD §0.6 A, A19.7, ADR-013 §5, dan KEPUTUSAN-66.
+
+```sql
+CREATE TABLE app.data_key_retention_anchor (
+  data_key_id         uuid        NOT NULL,
+  retention_category  text        NOT NULL,
+  retention_anchor_at timestamptz NOT NULL,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  created_by          uuid        NULL,
+  CONSTRAINT pk_data_key_retention_anchor PRIMARY KEY (data_key_id),          -- sekali per DEK
+  CONSTRAINT fk_data_key_retention_anchor_data_key_id FOREIGN KEY (data_key_id) REFERENCES app.data_key (id),
+  CONSTRAINT fk_data_key_retention_anchor_created_by FOREIGN KEY (created_by) REFERENCES app.account (id)
+);
+CREATE INDEX ix_data_key_retention_anchor_category_anchor
+  ON app.data_key_retention_anchor (retention_category, retention_anchor_at);
+COMMENT ON TABLE app.data_key_retention_anchor IS 'class:T module:platform alias:dk_ret_anchor';
+GRANT SELECT, INSERT ON app.data_key_retention_anchor TO rs_app;
+GRANT SELECT ON app.data_key_retention_anchor TO rs_privacy_worker;
+-- trigger tg_data_key_retention_anchor_reject_ud dan _reject_truncate seperti §4.5
+
+CREATE FUNCTION app.fn_data_key_retention_anchor_single_source()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+DECLARE
+  v_anchor   timestamptz;
+  v_category text;
+BEGIN
+  SELECT dk.retention_anchor_at, dk.retention_category INTO v_anchor, v_category
+    FROM app.data_key dk WHERE dk.id = NEW.data_key_id;
+  IF v_anchor IS NOT NULL THEN                                   -- acuan waktu sudah ada di data_key
+    RAISE EXCEPTION 'retention_anchor_already_set: data_key id=%', NEW.data_key_id
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF v_category IS NOT NULL AND v_category IS DISTINCT FROM NEW.retention_category THEN
+    RAISE EXCEPTION 'retention_category_mismatch: data_key id=%', NEW.data_key_id   -- kategori harus sama
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER tg_data_key_retention_anchor_single_source
+  BEFORE INSERT ON app.data_key_retention_anchor
+  FOR EACH ROW EXECUTE FUNCTION app.fn_data_key_retention_anchor_single_source();
+```
+
+Ketentuan:
+- **Satu sumber acuan waktu per DEK**: `retention_anchor_at` diisi di `data_key` saat `INSERT` bila sudah diketahui, atau sekali di tabel ini bila baru diketahui kemudian (misalnya akhir sesi konsultasi). Trigger menolak baris acuan bila `data_key.retention_anchor_at` sudah terisi. Kategori boleh sudah diisi di `data_key` saat wadah dibuat; dalam hal itu baris acuan wajib memakai kategori yang sama. PK menolak pengisian kedua (review putaran 2 catatan 1).
+- Acuan yang berlaku = `coalesce(data_key.retention_anchor_at, data_key_retention_anchor.retention_anchor_at)` (begitu pula kategori). **Acuan `NULL` berarti tidak memenuhi syarat retensi** (gagal-tertutup): job retensi tidak pernah memusnahkan DEK tanpa acuan.
+- Metrik "jumlah DEK tanpa acuan yang berumur lebih dari 30 hari" (nilai awal) dikirim ke Prometheus dan diberi peringatan `[KEPUTUSAN-80]`, supaya wadah yang terlupa diisi acuannya terlihat.
+- Kelas T: koreksi acuan yang salah tidak dapat dilakukan dengan `UPDATE`. Bila kelak diperlukan, polanya (misalnya baris koreksi) diusulkan lewat CR, bukan diakali.
+- **Padanan RME** `app.rme_data_key_retention_anchor`: kolom sama ditambah `fasyankes_id uuid NOT NULL`; FK komposit `(fasyankes_id, data_key_id)` → `rme_data_key (fasyankes_id, id)` `[DOK: DD C]`; `created_by` FK → `rme_user`; RLS `ENABLE` + `FORCE` dengan kebijakan tenant untuk `rme_app`, `USING (true)` untuk `rme_privacy_worker` dan `rme_migration` (§5.3). Hak: `rme_app` S, I; `rme_privacy_worker` S. **`rme_worker` tidak diberi hak** atas tabel ini: kejadian yang menjadi acuan retensi RME (kunjungan selesai, versi rekam medis atau hasil lab tersimpan) ditulis `rme_app` dalam konteks tenant, dan webhook dari Rumah Sehat juga diproses sinkron oleh `rme_app` `[DOK: DD §0.6 C]`, sehingga acuan diisi `rme_app` dalam transaksi yang sama dengan kejadiannya. Memberi `rme_worker` hak tulis tanpa job yang jelas membutuhkannya akan memperluas role lintas tenant (RME-03). Bila kelak ada job yang membutuhkannya, hak ditambah lewat CR dengan kebijakan tenant per job (review putaran 2 catatan 1).
 
 ---
 
@@ -677,8 +843,10 @@ Kebijakan per role `[KEPUTUSAN-98]`:
 | `rme_app` | Tenant (`fasyankes_id` = konteks). Di `fasyankes`: `id` = konteks | Semua tabel ber-RLS yang ia akses |
 | `rme_worker` | Tenant untuk tabel data; `USING (true) WITH CHECK (true)` hanya di `rme_job` dan `rme_integration_outbox` (antrean lintas tenant) | DD §0.6 C rincian `rme_worker` |
 | `rme_auth` | `FOR SELECT USING (true)` di `rme_user` saja, dengan `GRANT SELECT (id, idp_subject, fasyankes_id, status)` | `[DOK: DD C1.6]` `[KEPUTUSAN-55]` |
-| `rme_operator` | `USING (true)` di `fasyankes`, `fasyankes_location`, `rs_integration_credential`, `rme_user`, `rme_user_role`, `rme_data_key`; tanpa kebijakan dan tanpa hak di tabel klinis | `[DOK: ADR-012 butir 6]` |
+| `rme_operator` | `USING (true)` di `fasyankes`, `fasyankes_location`, `rs_integration_credential`, `rme_user`, `rme_user_role`. Di `rme_data_key` dipersempit: `USING (container_type = 'rs_integration_credential') WITH CHECK (container_type = 'rs_integration_credential')`, karena operator hanya membuat DEK kredensial saat onboarding (review N03 b). Tanpa kebijakan dan tanpa hak di tabel klinis | `[DOK: ADR-012 butir 6]`, `[DOK: DD §0.6 C]` |
 | `rme_privacy_worker` | `USING (true)` di tabel tempat ia punya hak; `rme_retention_run` S, I lintas tenant | `[DOK: DD §0.6 C, C6.10]` |
+| `rme_key_rotation` | Di `rme_data_key` saja: `FOR ALL USING (shredded_at IS NULL) WITH CHECK (shredded_at IS NULL)`, dengan hak per kolom seperti §4.10 (review N03 a) | `[DOK: DD C6.4]`, `[KEPUTUSAN-96]` |
+| `rme_worker` (pembersihan) | Kebijakan `FOR SELECT` dan `FOR DELETE` lintas tenant yang dibatasi `expires_at < now()` di tabel Operasional berumur (§5.7) | `[KEPUTUSAN-156]` |
 | `rme_migration` | `USING (true) WITH CHECK (true)` di semua tabel ber-RLS | `[KEPUTUSAN-98]` |
 | `rme_audit_relay` | — (`rme_audit_outbox` tanpa RLS) | `[DOK: DD C6.5]` |
 
@@ -701,7 +869,7 @@ FK komposit `(fasyankes_id, <induk>_id)` `[DOK: DD C]` tetap menjadi pertahanan 
 | T-12 | Isolasi per tabel: dua fasyankes sintetis; dengan konteks A, `SELECT` hanya baris A; `INSERT` dengan `fasyankes_id` B ditolak; `UPDATE`/`DELETE` baris B mengenai 0 baris | NFR-SEC-06 `[DOK: ADR-012 konsekuensi]` |
 | T-13 | Gagal-tertutup: tanpa konteks dan dengan konteks string kosong, 0 baris terlihat dan `INSERT` ditolak; konteks bukan UUID menghasilkan galat | H-12 |
 | T-14 | Kebocoran pool: pool berukuran 1; transaksi 1 memasang konteks A lalu commit; transaksi 2 di koneksi yang sama tanpa konteks melihat 0 baris | RME-02, H-12 |
-| T-15 | Role lintas tenant: `rme_auth` gagal membaca kolom selain empat kolom pemetaan; `rme_worker` melihat semua baris antrean tetapi hanya baris tenant di tabel data; `rme_operator` mendapat galat hak atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` | RME-03, RME-04, `[DOK: DD §0.6 C]` |
+| T-15 | Role lintas tenant: `rme_auth` gagal membaca kolom selain empat kolom pemetaan; `rme_worker` melihat semua baris antrean tetapi hanya baris tenant di tabel data; `rme_worker` dapat menghapus baris kedaluwarsa §5.7 lintas tenant tetapi tidak dapat menghapus baris yang belum kedaluwarsa atau membaca kolom selain `id` dan `expires_at`; `rme_operator` mendapat galat hak atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` dan tidak melihat `rme_data_key` selain wadah `rs_integration_credential`; `rme_key_rotation` tidak melihat baris yang sudah dimusnahkan | RME-03, RME-04, `[DOK: DD §0.6 C]` |
 | T-16 | FK komposit menolak rujukan lintas tenant walaupun dijalankan oleh `rme_migration` | `[DOK: DD C]` |
 | T-17 | Database `rme_audit`: `rme_audit_tenant_reader` lewat tabel induk hanya melihat E-05 fasyankesnya; akses langsung ke partisi ditolak | AUD-04, §5.6 |
 
@@ -734,12 +902,39 @@ CREATE POLICY pol_audit_event_subject_tenant_reader ON audit.audit_event_subject
 -- ditambah kebijakan writer/reader/verifier/migration seperti audit_event
 
 GRANT SELECT ON audit.audit_event, audit.audit_event_subject TO rme_audit_tenant_reader;  -- induk saja, tanpa hak atas partisi
+
+-- Fungsi konteks dibuat juga di database rme_audit (definisi sama dengan §5.2) (review N03 c)
+GRANT USAGE ON SCHEMA util TO rme_audit_tenant_reader;
+GRANT EXECUTE ON FUNCTION util.fn_current_fasyankes_id() TO rme_audit_tenant_reader;
 ```
+Aplikasi RME memasang `set_config('rme.fasyankes_id', $1, true)` di setiap transaksi baca log akses dengan `rme_audit_tenant_reader_login`, dengan pola yang sama seperti §5.1.
 - **Semua role yang menyentuh tabel ini perlu kebijakan**, bukan hanya `audit_tenant_reader`, karena RLS yang aktif berlaku untuk setiap role yang tidak melewatinya **(V8)**. DD §0.6 B hanya menyebut kebijakan untuk `audit_tenant_reader` (§14 F-P02).
 - Filter `event_code = 'e_05'` mengikuti ADR-009 butir 8 dan PRD §7.5 (Admin Fasyankes membaca E-05 fasyankesnya) `[DOK: ADR-009 butir 8]`.
 - Hak hanya diberikan pada tabel induk, sehingga partisi tidak dapat dibaca langsung. Apakah hak atas induk cukup untuk membaca baris partisi lewat induk **(V8)**.
 - **Cadangan** bila T-17 menunjukkan RLS pada tabel terpartisi tidak memadai: fungsi `audit.fn_tenant_access_log(p_fasyankes_id uuid, p_from timestamptz, p_to timestamptz)` `SECURITY DEFINER`, hanya mengembalikan event E-05 tenant itu, dan `rme_audit_tenant_reader` hanya punya `EXECUTE` atas fungsi tersebut `[DOK: ADR-012 butir 9]`.
 - Di `rumah_sehat_audit` RLS tidak diaktifkan; Auditor membaca lewat `rs_audit_reader` `[DOK: ADR-009 butir 8]`.
+
+### 5.7 Pembersihan Operasional lintas tenant oleh `rme_worker`
+
+DD §D.2 mewajibkan pembersihan baris kedaluwarsa `rme_inbound_event`, `rme_slot_hold`, dan `rme_upload_slot` `[DOK: DD §D]`. DD §0.6 C hanya memberi `rme_worker` hak `D` atas `rme_inbound_event`, dan tanpa hak `SELECT` atas kolom yang dipakai `WHERE` serta tanpa kebijakan RLS, hak itu pun tidak dapat dipakai. `[KEPUTUSAN-156]`:
+
+| Tabel | Hak `rme_worker` | Status |
+| --- | --- | --- |
+| `rme_inbound_event` | `GRANT SELECT (id, expires_at)` + `D` (DD) | Pelengkap fisik hak DD §0.6 C (review N03 d) |
+| `rme_slot_hold` | `GRANT SELECT (id, expires_at)` + `GRANT DELETE` | **Berlaku setelah CR-014** (review N04) |
+| `rme_upload_slot` | `GRANT SELECT (id, bucket, object_key, expires_at)` + `GRANT DELETE`; worker juga menghapus objek terkait di object storage (ADR-018 butir 2) | **Berlaku setelah CR-014** (review N04) |
+
+```sql
+-- Pola untuk setiap tabel di atas (contoh rme_slot_hold)
+CREATE POLICY pol_rme_slot_hold_worker_cleanup_select ON app.rme_slot_hold
+  FOR SELECT TO rme_worker USING (expires_at < now());
+CREATE POLICY pol_rme_slot_hold_worker_cleanup_delete ON app.rme_slot_hold
+  FOR DELETE TO rme_worker USING (expires_at < now());
+```
+- Kebijakan `FOR SELECT` dipasang bersama `FOR DELETE`, karena `DELETE` yang membaca kolom di `WHERE` juga tunduk pada kebijakan `SELECT` **(V8)**.
+- Kebijakan dibatasi `expires_at < now()`, sehingga `rme_worker` tidak dapat melihat atau menghapus penahanan dan slot unggah yang masih berlaku milik tenant mana pun; hak per kolom membatasi data yang terbaca ke ID dan waktu kedaluwarsa.
+- Penghapusan dilakukan bertahap dalam batch kecil `[DOK: DD §D.2]`. Alternatif yang ditolak: pembersihan oleh `rme_app` per tenant, karena perlu iterasi semua fasyankes dengan konteks masing-masing hanya untuk menghapus baris teknis.
+- Nama kebijakan terpanjang `pol_rme_upload_slot_worker_cleanup_select` = 41 byte.
 
 ---
 
@@ -765,7 +960,14 @@ CREATE TABLE audit.audit_event (
 
 CREATE INDEX ix_audit_event_recorded_at ON audit.audit_event (recorded_at DESC);
 -- ... index DD B1 lainnya didefinisikan di induk; partisi mewarisinya otomatis (V8)
-COMMENT ON TABLE audit.audit_event IS 'class:L module:audit';
+COMMENT ON TABLE audit.audit_event IS 'class:A module:audit';
+
+-- Trigger tingkat baris di induk ikut terpasang di setiap partisi, sehingga UPDATE/DELETE
+-- yang langsung menyasar partisi tetap tertolak walaupun trigger statement partisi hilang (V8) (review N09)
+CREATE TRIGGER tg_audit_event_reject_ud_row
+  BEFORE UPDATE OR DELETE ON audit.audit_event
+  FOR EACH ROW EXECUTE FUNCTION util.fn_reject_modification();
+-- padanan tg_audit_event_subject_reject_ud_row di audit.audit_event_subject
 
 CREATE TABLE audit.audit_event_key (
   event_id    uuid        NOT NULL,
@@ -794,7 +996,7 @@ GRANT INSERT ON audit.audit_chain_verification TO rs_audit_verifier;
 Instruksi tahap ini menyebut pembuatan partisi "oleh job". Membuat partisi memerlukan hak pemilik atas tabel induk **(V8)**, padahal kredensial pemilik skema hanya tersedia pada langkah migrasi `[DOK: ADR-021 butir 4]` dan DD §0.6 B tidak memberi hak DDL ke role runtime mana pun. Karena itu `[KEPUTUSAN-100]`:
 
 1. **Migrasi membuat partisi jauh ke depan**: migrasi awal database audit membuat partisi bulanan dari `2026-11` sampai `2029-12` untuk `audit_event` dan `audit_event_subject`. Tanggal mulai berupa literal tetap (bukan `now()`), sehingga migrasi deterministik di semua lingkungan.
-2. **Job hanya memantau**: job verifikasi harian mengirim metrik jumlah partisi masa depan; peringatan bila kurang dari 6 bulan `[KEPUTUSAN-80]`. Tim lalu menulis migrasi lanjutan untuk 36 bulan berikutnya.
+2. **Job hanya memantau**: deployment `audit-verify` mengirim metrik jumlah partisi masa depan; peringatan bila kurang dari 6 bulan `[KEPUTUSAN-80]`. Tim lalu menulis migrasi lanjutan untuk 36 bulan berikutnya. Pemeriksaan "≥ 6 partisi masa depan" adalah **pemantauan production, bukan test `verify.sh`**: test yang bergantung pada tanggal hari ini akan merah sekitar pertengahan 2029 dan memblokir commit, sehingga T-18 hanya memeriksa struktur (review N09).
 3. **Tanpa partisi `DEFAULT`**. Bila partisi bulan berjalan tidak ada, `INSERT` relay gagal, event tertahan di outbox tanpa hilang, dan peringatan jeda relay di atas 5 menit menyala `[DOK: ADR-009 butir 3]`. Partisi default ditolak karena menampung baris secara diam-diam dan menyulitkan penambahan partisi kemudian **(V8)**.
 4. Batas bulan dalam **UTC**, sesuai penyimpanan `timestamptz` `[SRC-41]`.
 5. Trigger penolak dibuat **di induk dan di setiap partisi**, karena statement yang langsung menyasar partisi tidak memicu trigger tingkat statement milik induk **(V8)**. Test T-18 memastikan setiap partisi punya kedua trigger dan semua index induk.
@@ -826,6 +1028,8 @@ Alternatif yang ditolak: fungsi `SECURITY DEFINER` milik pemilik yang dipanggil 
 
 Index BRIN untuk `recorded_at` tidak dipakai di rilis 1; tetap index B-tree DD B1. Kemampuan BRIN belum ber-SRC dan dievaluasi di Tahap 8 bila volume menuntut `[DOK: DD B1]`.
 
+**Estimasi kasar volume audit (estimasi penyusun, bukan pengukuran)** (review N10). Asumsi: 30.000 pasien aktif bulanan (NFR-CAP-01 `[DOK: 03-prd.md]`) × sekitar 20 event per pasien per bulan, dikali 2 untuk event admin, sistem, integrasi, dan E-05, ≈ 1,2 juta event per bulan di audit Rumah Sehat. Dengan 0,5–2 KB per event termasuk sembilan index DD B1, itu ≈ 0,6–2,4 GB per bulan, atau ≈ 15–58 GB untuk jendela daring 24 bulan, belum termasuk audit RME, WAL, dan ruang kerja vacuum. Batas atasnya melebihi disk `db-audit` 60 GB `[KEPUTUSAN-78]` (§14 F-P13). Ambang peringatan disk `db-audit`: 70% (peringatan) dan 85% (kritis). Angka per event dan jumlah event per pasien diukur di uji beban NFR-CAP-04.
+
 ### 6.3 Akses sempit kepala rantai (temuan F-02)
 
 `[KEPUTUSAN-102]` `[DOK: ADR-009 butir 4]`:
@@ -852,7 +1056,7 @@ Pemilik fungsi adalah role pemilik skema audit. Di `rme_audit`, kebijakan `pol_a
 
 `[KEPUTUSAN-102]` `[KEPUTUSAN-103]`:
 1. Relay memegang **kunci advisory tingkat sesi** di database aplikasi (`pg_try_advisory_lock`), yang dilepas saat sesi berakhir `[SRC-234]` `[KEPUTUSAN-74]`. Kunci dipegang di **koneksi khusus di luar pool**, dan batch outbox dibaca serta dihapus **lewat koneksi yang sama**. Bila koneksi putus, kunci lepas dan batch yang sedang berjalan ikut gagal, sehingga dua relay tidak memproses bersamaan.
-2. Per batch, di database audit dalam satu transaksi: panggil `audit.fn_chain_head()` (rantai kosong: `seq = 0`, `prev_hash` = 32 byte nol); untuk setiap event urut `created_at, id` dari outbox, sisipkan `audit_event_key` dengan `seq = head + 1`. Bila `event_id` sudah ada (kiriman ulang setelah relay gagal di tengah), event dilewati tanpa menaikkan `seq` `[DOK: DD B2]`. Lalu sisipkan `audit_event` dan `audit_event_subject`, dan commit.
+2. Per batch, di database audit dalam satu transaksi: panggil `audit.fn_chain_head()` (rantai kosong: `seq = 0`, `prev_hash` = 32 byte nol); untuk setiap event urut `created_at, id` dari outbox, jalankan `INSERT INTO audit.audit_event_key (event_id, seq, recorded_at) VALUES (...) ON CONFLICT (event_id) DO NOTHING` dengan `seq = head + 1` dan periksa jumlah baris yang tersisip (review N06 d). Nol baris berarti kiriman ulang setelah relay gagal di tengah: event dilewati tanpa menaikkan `seq` `[DOK: DD B2]`. Satu baris berarti sisipkan `audit_event` dan `audit_event_subject`. Setelah semua event, commit. Apakah `ON CONFLICT DO NOTHING` cukup dengan hak `INSERT` saja **(V8)**; T-19 membuktikannya dengan role `*_audit_writer` sungguhan.
 3. `recorded_at = greatest(now(), head.recorded_at)`. Dengan begitu `recorded_at` tidak pernah mundur terhadap `seq` walaupun jam server melangkah mundur, sehingga rentang `seq` per partisi tetap berurutan `[DOK: DD B]`. Selisih terhadap jam server tetap terpantau lewat `recorded_at − occurred_at` `[DOK: ADR-009 butir 6]`.
 4. Setelah commit di database audit, hapus baris outbox yang terkirim di database aplikasi.
 5. `UQ (seq)` di `audit_event_key` adalah pengaman terakhir: dua relay yang sempat berjalan bersamaan tidak dapat membuat cabang rantai, karena salah satunya gagal di constraint.
@@ -861,23 +1065,90 @@ Registri kunci advisory (konstanta di crate `platform-jobs`, tidak pernah dipaka
 
 | Kunci | Database | Pemegang |
 | --- | --- | --- |
-| 7001001 | `rumah_sehat` | relay audit Rumah Sehat |
-| 7001002 | `rumah_sehat` | pengambil event Keycloak `[DOK: ADR-009 butir 2]` |
-| 7001003 | `rumah_sehat_audit` | job verifikasi rantai Rumah Sehat |
-| 7002001 | `rme` | relay audit RME |
-| 7002003 | `rme_audit` | job verifikasi rantai RME |
+| 7001001 | `rumah_sehat` | `rs-backend audit-relay` |
+| 7001002 | `rumah_sehat` | pengambil event Keycloak (di `rs-backend worker`) `[DOK: ADR-009 butir 2]` |
+| 7001003 | `rumah_sehat_audit` | `rs-backend audit-verify` (verifikasi rantai dan ekspor arsip) |
+| 7001004 | `rumah_sehat` | `rs-backend privacy-worker` |
+| 7002001 | `rme` | `rme-backend audit-relay` |
+| 7002002 | `rme` | dicadangkan untuk pengambil event Keycloak realm `rme` (padanan 7001002); pemegangnya ditetapkan Tahap 8 |
+| 7002003 | `rme_audit` | `rme-backend audit-verify` |
+| 7002004 | `rme` | `rme-backend privacy-worker` |
 
 ### 6.5 Detach dan arsip (ADR-009 butir 9)
 
-Jendela daring awal 24 bulan; tidak ada pemusnahan sebelum PT-24 `[DOK: ADR-009 butir 9]`. Prosedur `[KEPUTUSAN-101]`:
+Jendela daring awal 24 bulan; tidak ada pemusnahan sebelum PT-24 `[DOK: ADR-009 butir 9]`. Prosedur `[KEPUTUSAN-101]` `[KEPUTUSAN-157]`:
 
 1. **Pemilihan**: partisi yang seluruh rentangnya lebih tua dari jendela daring.
-2. **Verifikasi**: hasil `audit_chain_verification` terakhir `match` sampai `seq` akhir partisi.
-3. **Ekspor** oleh alat arsip dengan role `*_audit_verifier` (hak baca seluruh rantai): baris partisi `audit_event` urut `seq`, partisi `audit_event_subject` bulan yang sama, dan baris `audit_event_key` rentang itu, ke berkas JSON Lines; hitung SHA-256 berkas; unggah ke bucket NOS dengan Object Lock mode Compliance `[KEPUTUSAN-78]`; lalu unduh ulang dan cocokkan hash.
-4. **Detach + manifest** oleh pemilik skema audit, lewat langkah terkendali yang sama dengan migrasi production (kredensial dinamis OpenBao, bastion, orang kedua, tercatat di log audit OpenBao) `[KEPUTUSAN-81]` `[USER] T5-Q8`. Dalam satu transaksi: periksa ulang `min(seq)`, `max(seq)`, dan jumlah baris partisi terhadap nilai hasil ekspor; `ALTER TABLE audit.audit_event DETACH PARTITION audit.audit_event_y2025m03` `[SRC-39]` (dan pasangan `audit_event_subject`); `INSERT` baris `audit_archive_manifest` dengan `detached_at = now()`; `ALTER TABLE ... SET SCHEMA audit_detached`.
-   Langkah ini **bukan berkas migrasi sqlx**, karena nilainya khusus production dan migrasi harus sama di semua lingkungan (§11). Penafsiran "langkah migrasi" ADR-021 ini dibawa ke §14 F-P07.
-5. **Tabel yang sudah dilepas** berada di skema `audit_detached` tanpa hak untuk role mana pun selain pemilik, dan trigger penolaknya tetap ada **(V8: trigger ikut terbawa setelah detach)**. Tabel di-`DROP` hanya setelah uji pemulihan berkas arsip berhasil **dan** disetujui DBA + keamanan; langkah ini tercatat dan bukan pemusnahan arsip (arsip WORM tetap ada).
-6. Baris `audit_event_key` untuk rentang yang diarsipkan tetap disimpan; pemangkasannya dievaluasi setelah PT-24 `[DOK: DD B2]`.
+2. **Verifikasi** oleh deployment `audit-verify` (§3.3): rantai sampai `seq` akhir partisi dihitung ulang dan dicocokkan dengan kepala rantai yang dibaca **langsung dari bucket WORM**; hasilnya ditulis ke `audit_chain_verification` dan harus `match` `[KEPUTUSAN-141]`.
+3. **Ekspor** oleh deployment `audit-verify` dengan `*_audit_verifier_login` (hak baca seluruh rantai), bukan oleh relay (DBA5-B01): baris partisi `audit_event` urut `seq`, partisi `audit_event_subject` bulan yang sama, dan baris `audit_event_key` rentang itu, ke berkas JSON Lines; hitung SHA-256 berkas; unggah ke bucket NOS dengan Object Lock mode Compliance `[KEPUTUSAN-78]`; unduh ulang dan cocokkan hash. Hasilnya (bulan partisi, rentang `seq`, jumlah baris `audit_event` dan `audit_event_subject`, `boundary_event_hash`, kunci objek, SHA-256, waktu ekspor) diserahkan ke langkah 4.
+4. **Detach + manifest** lewat **satu pemanggilan prosedur** `audit.pr_archive_detach(...)` yang kodenya ikut migrasi (keputusan orkestrator atas F-P07). Prosedur dimiliki pemilik skema audit dan `EXECUTE`-nya dicabut dari semua role, sehingga hanya pemilik yang dapat memanggilnya. Pemanggil: pemilik skema dengan kredensial dinamis OpenBao, lewat bastion dengan orang kedua, tercatat di log audit OpenBao `[KEPUTUSAN-81]` `[USER] T5-Q8`. Nilainya khusus production, sehingga pemanggilan ini **bukan berkas migrasi sqlx** (§11).
+5. **Tabel yang sudah dilepas** berada di skema `audit_detached` tanpa hak untuk role mana pun selain pemilik, dan trigger penolaknya tetap ada **(V8: trigger ikut terbawa setelah detach)**.
+6. **Penghapusan salinan daring** lewat prosedur `audit.pr_archive_drop_detached(...)`, hanya setelah uji pemulihan berkas arsip berhasil **dan** disetujui DBA + keamanan. Ini bukan pemusnahan arsip; arsip WORM tetap ada. DD B6 tidak punya kolom untuk mencatat penghapusan ini (tabel L tidak dapat di-update), sehingga pencatatannya ada di security log dan log audit OpenBao; kolom atau tabel pencatat di database dapat diusulkan lewat CR.
+7. Baris `audit_event_key` untuk rentang yang diarsipkan tetap disimpan; pemangkasannya dievaluasi setelah PT-24 `[DOK: DD B2]`.
+
+```sql
+CREATE PROCEDURE audit.pr_archive_detach(
+  p_manifest_id         uuid,          -- UUIDv7 dibuat alat pemanggil (ADR-002)
+  p_partition_month     date,          -- bulan partisi, misalnya date '2025-03-01'
+  p_from_seq            bigint,
+  p_to_seq              bigint,
+  p_row_count           bigint,        -- jumlah baris partisi audit_event
+  p_subject_row_count   bigint,        -- jumlah baris partisi audit_event_subject
+  p_boundary_event_hash bytea,
+  p_archive_object_key  text,
+  p_archive_sha256      bytea,
+  p_exported_at         timestamptz)
+LANGUAGE plpgsql
+SET search_path = pg_catalog, audit
+AS $$
+DECLARE
+  v_suffix text := to_char(p_partition_month, '"y"YYYY"m"MM');
+  v_part   text := 'audit_event_' || v_suffix;
+  v_end    timestamptz := (to_char(p_partition_month + interval '1 month', 'YYYY-MM-DD') || ' 00:00:00+00')::timestamptz;
+  v_min bigint; v_max bigint; v_cnt bigint; v_sub_cnt bigint; v_hash bytea;
+BEGIN
+  SET LOCAL lock_timeout = '5s';
+  IF p_partition_month IS DISTINCT FROM date_trunc('month', p_partition_month)::date THEN
+    RAISE EXCEPTION 'archive_not_month_start: %', p_partition_month;
+  END IF;
+  IF v_end > now() - interval '24 months' THEN
+    RAISE EXCEPTION 'archive_too_young: %', v_part;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM audit.audit_chain_verification v
+                  WHERE v.outcome = 'match' AND v.to_seq >= p_to_seq
+                    AND v.finished_at = (SELECT max(finished_at) FROM audit.audit_chain_verification)) THEN
+    RAISE EXCEPTION 'archive_chain_not_verified: %', v_part;
+  END IF;
+  EXECUTE format('SELECT min(seq), max(seq), count(*) FROM audit.%I', v_part) INTO v_min, v_max, v_cnt;
+  IF v_min IS DISTINCT FROM p_from_seq OR v_max IS DISTINCT FROM p_to_seq OR v_cnt IS DISTINCT FROM p_row_count THEN
+    RAISE EXCEPTION 'archive_mismatch: % (% % %)', v_part, v_min, v_max, v_cnt;
+  END IF;
+  EXECUTE format('SELECT count(*) FROM audit.%I', 'audit_event_subject_' || v_suffix) INTO v_sub_cnt;
+  IF v_sub_cnt IS DISTINCT FROM p_subject_row_count THEN
+    RAISE EXCEPTION 'archive_subject_mismatch: % (%)', v_suffix, v_sub_cnt;
+  END IF;
+  EXECUTE format('SELECT event_hash FROM audit.%I WHERE seq = $1', v_part) INTO v_hash USING p_to_seq;
+  IF v_hash IS DISTINCT FROM p_boundary_event_hash THEN
+    RAISE EXCEPTION 'archive_boundary_hash_mismatch: %', v_part;
+  END IF;
+  EXECUTE format('ALTER TABLE audit.audit_event DETACH PARTITION audit.%I', v_part);            -- [SRC-39], non-concurrent
+  EXECUTE format('ALTER TABLE audit.audit_event_subject DETACH PARTITION audit.%I', 'audit_event_subject_' || v_suffix);
+  INSERT INTO audit.audit_archive_manifest
+    (id, created_at, partition_name, range_start, range_end, from_seq, to_seq, boundary_event_hash,
+     archive_object_key, archive_sha256, exported_at, detached_at)
+  VALUES (p_manifest_id, now(), v_part,
+          (to_char(p_partition_month, 'YYYY-MM-DD') || ' 00:00:00+00')::timestamptz, v_end,
+          p_from_seq, p_to_seq, p_boundary_event_hash, p_archive_object_key, p_archive_sha256, p_exported_at, now());
+  EXECUTE format('ALTER TABLE audit.%I SET SCHEMA audit_detached', v_part);
+  EXECUTE format('ALTER TABLE audit.%I SET SCHEMA audit_detached', 'audit_event_subject_' || v_suffix);
+END;
+$$;
+REVOKE ALL ON PROCEDURE audit.pr_archive_detach(uuid, date, bigint, bigint, bigint, bigint, bytea, text, bytea, timestamptz) FROM PUBLIC;
+```
+- Batas 24 bulan ditulis sebagai konstanta di prosedur; perubahan jendela daring = migrasi baru yang mengganti prosedur.
+- `DETACH PARTITION` dijalankan non-concurrent di dalam transaksi pemanggilan; perilaku `DETACH` dan `SET LOCAL` di dalam prosedur **(V8)**.
+- `audit.pr_archive_drop_detached(p_partition_month date, p_restore_test_ref text)` dengan pola sama: memeriksa baris manifest ada, tabel berada di `audit_detached`, dan rujukan uji pemulihan tidak kosong, lalu `DROP TABLE` kedua partisi lepas.
+- Pemeriksaan tambahan yang dievaluasi Tahap 8: *event trigger* yang menolak `DROP TRIGGER` dan `DISABLE TRIGGER` di skema `audit` (pembuatan event trigger memerlukan superuser **(V8)**) `[KEPUTUSAN-158]`.
 
 ---
 
@@ -986,10 +1257,11 @@ UPDATE app.job j
 RETURNING j.id, j.job_type, j.payload, j.attempt_count, j.max_attempts;
 ```
 - Transaksi pengambilan di-commit segera; job dikerjakan di transaksi tersendiri, lalu `status` menjadi `succeeded`, atau kembali `queued` dengan `run_at` mundur bertahap, atau `failed` bila `attempt_count >= max_attempts`. Job idempoten `[DOK: ADR-007 konsekuensi]`.
-- Penyapu periodik mengembalikan job `running` yang `locked_until < now()` (pekerja mati) ke `queued`.
+- **Penyelesaian dipagari sewa** (review N06 a): `UPDATE app.job SET status = 'succeeded', finished_at = now() WHERE id = $1 AND status = 'running' AND locked_by = $2`. Nol baris berarti sewa sudah diambil alih pekerja lain; hasil pekerja lama dibuang (aman karena job idempoten).
+- **Penyapu** periodik (review N06 b): job `running` yang `locked_until < now()` (pekerja mati) dikembalikan ke `queued` bila `attempt_count < max_attempts`, atau menjadi `failed` bila sudah mencapai batas, sehingga job yang selalu membuat pekerja mati tidak berulang tanpa akhir.
 - **RME**: `rme_worker` mengambil dari `rme_job` dengan kebijakan antrean lintas tenant, lalu memasang `set_config('rme.fasyankes_id', <fasyankes_id job>, true)` di transaksi pengerjaan `[DOK: DD §0.6 C]` `[KEPUTUSAN-55]`. Job tanpa tenant (pemuatan terminologi) tidak memasang konteks dan hanya menyentuh `terminology_code`.
 
-Outbox (`integration_outbox`, `notification_outbox`, `rme_integration_outbox`) memakai pola sewa yang sama dengan `status` dan `available_at`. Outbox audit dibaca relay urut `created_at, id` **tanpa kursor**: baris yang terkirim dihapus, sehingga transaksi yang commit terlambat dengan `created_at` lebih awal tetap terambil di batch berikutnya, tidak terlewat `[KEPUTUSAN-108]`.
+Outbox (`integration_outbox`, `notification_outbox`, `rme_integration_outbox`) tidak punya status `running` `[DOK: DD A19.2, A19.3]`, sehingga **sewa outbox = memajukan `available_at`** (review N06 c): transaksi pengambilan memilih baris `status = 'pending' AND available_at <= now()` dengan `FOR UPDATE SKIP LOCKED`, lalu mengisi `available_at = now() + <masa sewa>` dan menaikkan `attempt_count`. Pengirim yang mati membuat baris muncul kembali setelah masa sewa; keberhasilan mengubah `status` menjadi `delivered`/`done` dengan pagar `attempt_count` yang sama. Outbox audit dibaca relay urut `created_at, id` **tanpa kursor**: baris yang terkirim dihapus, sehingga transaksi yang commit terlambat dengan `created_at` lebih awal tetap terambil di batch berikutnya, tidak terlewat `[KEPUTUSAN-108]`.
 
 ### 9.2 Index yang tidak ditambah
 
@@ -1026,7 +1298,8 @@ Semua nilai di bagian ini adalah **nilai awal penyusun** `[KEPUTUSAN-139]`, diva
 | TLS | `ssl = on`, versi minimum TLS 1.3 | sama | sama | Semua lalu lintas internal TLS `[DOK: ADR-013 butir 1]`; kedua ujung milik kita sehingga TLS 1.2 tidak perlu |
 | Autentikasi | `pg_hba`: hanya `hostssl` dengan `scram-sha-256`, per database dan per grup, dari subnet privat dan jaringan WireGuard; selain itu `reject` | sama | sama | `[KEPUTUSAN-78]` (firewall privat) |
 | `archive_mode`, `archive_timeout` | aktif, 60 detik, `archive_command` pgBackRest | sama | sama | `archive_timeout` sekitar satu menit `[SRC-38]`; pgBackRest `[SRC-235]` `[KEPUTUSAN-78]` |
-| Log | `log_connections`, `log_disconnections` aktif; `log_statement = none`; `log_min_duration_statement = 1s`; nilai parameter tidak dicatat (panjang log parameter = 0, juga saat galat) | sama | sama | Log PostgreSQL masuk security/application log tanpa data pribadi `[DOK: ADR-010]` |
+| Log | `log_connections`, `log_disconnections` aktif; `log_statement = none`; `log_min_duration_statement = 1s`; nilai parameter tidak dicatat (panjang log parameter = 0, juga saat galat); untuk `openbao_*_admin` pengaturan per role §3.4 supaya teks `CREATE ROLE ... PASSWORD` tidak tercatat | sama | sama | Log PostgreSQL masuk security/application log tanpa data pribadi dan tanpa rahasia `[DOK: ADR-010]` `[DOK: ADR-005]` |
+| Disk | Peringatan 70%, kritis 85% | sama; lihat estimasi volume audit §6.2 | sama | `[KEPUTUSAN-80]` |
 | `log_line_prefix` | memuat waktu, PID, `user`, `database`, `application_name` | sama | sama | Atribusi per role login (§3.1) |
 
 Standby streaming di Hostinger, role replikasi, dan role koneksi pgBackRest ditetapkan Tahap 8 Fase 1 **(V8)**; replikasi berjalan lewat WireGuard + TLS `[KEPUTUSAN-78]`. Tanpa PgBouncer di rilis 1: jumlah koneksi kecil, dan kunci advisory tingkat sesi tidak cocok dengan pooling per transaksi `[KEPUTUSAN-139]`.
@@ -1040,8 +1313,8 @@ Standby streaming di Hostinger, role replikasi, dan role koneksi pgBackRest dite
 | `rs_privacy_worker_login`, `rme_privacy_worker_login` | 300 s | 5 s | 60 s | Retensi dan anonimisasi per batch |
 | `*_audit_relay_login`, `*_audit_writer_login` | 30 s | 5 s | 30 s | Batch relay |
 | `rs_audit_reader_login`, `rme_audit_tenant_reader_login` | 30 s | 2 s | 30 s | Halaman Audit Log; export Auditor di job tersendiri |
-| `*_audit_verifier_login` | 0 (tanpa batas) | 5 s | 60 s | Verifikasi seluruh rantai harian |
-| Pemilik skema (migrasi) | 15 min (dipasang di penjaga migrasi §11.2) | 5 s | 60 s | Migrasi gagal cepat daripada mengantre di belakang kunci tabel |
+| `*_audit_verifier_login` | 0 (tanpa batas) | 5 s | 60 s | Verifikasi seluruh rantai harian dan ekspor arsip (`audit-verify`) |
+| Pemilik skema (migrasi, dinamis) | 15 min (dipasang di penjaga migrasi §11.2, karena role dinamis tidak dapat diberi `ALTER ROLE ... SET` di bootstrap) | 5 s | 60 s (pengaturan database) | Migrasi gagal cepat daripada mengantre di belakang kunci tabel |
 | `keycloak` | bawaan | bawaan | 60 s | Dikelola Keycloak |
 
 ### 10.3 Pool sqlx per proses
@@ -1051,16 +1324,20 @@ Standby streaming di Hostinger, role replikasi, dan role koneksi pgBackRest dite
 | api | `rs_api` | 2 | 20 | 40 |
 | realtime | `rs_realtime` | 2 | 10 | 20 |
 | worker | `rs_worker` | 2 | 10 | 20 |
-| pekerja privasi | `rs_privacy_worker_login` | 1 | 4 | 4 |
-| audit-relay (1 aktif) | `rs_audit_relay_login` | 2 | 3 (1 koneksi khusus kunci + 2) | 6 |
+| `privacy-worker` (1 aktif) | `rs_privacy_worker_login` | 2 | 4 (1 koneksi khusus kunci 7001004 + 3) | 8 |
+| `audit-relay` (1 aktif) | `rs_audit_relay_login` | 2 | 3 (1 koneksi khusus kunci 7001001 + 2) | 6 |
 | Keycloak | `keycloak` | 2 | 20 (opsi pool Keycloak **(V8)**) | 40 |
 | agen metrik | `rs_metrics` | 1 | 2 | 2 |
-| **Total (a)** | | | | **132** |
-| rme api | `rme_api` / `rme_api_auth` / `rme_api_operator` | 2 | 15 / 3 / 2 | 40 |
-| rme worker | `rme_worker_login` | 2 | 8 | 16 |
-| relay audit RME, pekerja privasi RME, metrik | | | | 12 |
-| **Total (c)** | | | | **68** |
-| Instans (b): writer, reader, tenant reader, verifier kedua sistem | | | | **±40** |
+| **Total (a)** | | | | **136** |
+| `rme-backend api` | `rme_api` / `rme_api_auth` / `rme_api_operator` | 2 | 15 / 3 / 2 | 40 |
+| `rme-backend worker` | `rme_worker_login` | 2 | 8 | 16 |
+| `rme-backend audit-relay` | `rme_audit_relay_login` | 2 | 3 | 6 |
+| `rme-backend privacy-worker` | `rme_privacy_worker_login` | 2 | 3 | 6 |
+| agen metrik | `rme_metrics` | 1 | 2 | 2 |
+| **Total (c)** | | | | **70** |
+| Instans (b): `*_audit_writer_login` (relay, 2 × 3 per sistem = 12), `rs_audit_reader_login` (api, 2 × 5 = 10), `rme_audit_tenant_reader_login` (rme api, 2 × 3 = 6), `*_audit_verifier_login` (`audit-verify`, 2 × 2 per sistem = 8), agen metrik 2 | | | | **38** |
+
+Deployment `audit-relay`, `audit-verify`, dan `privacy-worker` berjalan dua instans (app-1 dan app-2) supaya ada pengganti, tetapi hanya satu yang aktif lewat kunci advisory (§6.4); instans siaga hanya memegang koneksi kunci yang mencoba ulang berkala.
 
 Ketentuan koneksi `[KEPUTUSAN-139]`:
 - URL koneksi memakai `sslmode=verify-full` dengan sertifikat CA internal; perangkat CA internal ditetapkan Tahap 8 Fase 1 **(V8)**.
@@ -1080,6 +1357,7 @@ Ketentuan koneksi `[KEPUTUSAN-139]`:
 - Nama berkas: awalan versi sqlx + deskripsi snake_case `[DOK: ADR-001]` (bentuk awalan **(V8)**).
 - Berkas yang sudah diterapkan di lingkungan mana pun **tidak pernah diubah**; koreksi = berkas baru. Pemeriksaan checksum sqlx **(V8)**.
 - Setiap perubahan skema diikuti `cargo sqlx prepare` dan metadata `.sqlx` di-commit; CI menjalankan `cargo sqlx prepare --check` `[SRC-166]` `[KEPUTUSAN-74]`.
+- **`verify.sh` meniru jalur production** (review N01): superuser testcontainer menjalankan `db/roles/` (§3.5), lalu membuat role login sementara dengan pernyataan yang sama seperti `creation_statements` OpenBao (§3.4), dan migrasi dijalankan dengan role itu, bukan dengan superuser. Dengan begitu kesalahan `search_path`, kepemilikan, dan penjaga `current_user` tertangkap sebelum staging.
 
 ### 11.2 Penjaga di awal setiap berkas
 
@@ -1106,7 +1384,10 @@ SET LOCAL statement_timeout = '15min';
 ### 11.4 Tabel immutable dan migrasi
 
 - Tabel T, R, dan L **tidak dapat di-backfill** karena trigger penolak berlaku juga bagi pemilik (§4.5). Kolom baru di tabel ini harus `NULL` atau bernilai bawaan konstan, dan nilai lama dibiarkan `NULL` `[DOK: ADR-004]`.
-- Pengecualian (misalnya perbaikan data akibat bug yang disetujui) memerlukan `ALTER TABLE ... DISABLE TRIGGER` dalam transaksi migrasi yang sama lalu `ENABLE` kembali. Langkah ini adalah perubahan T1 dengan review DBA + keamanan, dicatat di decision-log, dan **dilarang di database audit** `[DOK: ADR-009 butir 4]` `[KEPUTUSAN-140]`.
+- **Tanpa pengecualian** (DBA5-B02). Koreksi data di tabel T dan R hanya lewat baris pembalik (*reversal entry*) atau versi baru `[DOK: ADR-004]` `[DOK: ADR-008]`. Baris tabel L hanya dihapus pekerja privasi setelah masa retensi habis (§4.2 (2)) `[DOK: ADR-008]` `[DOK: ADR-013 §5]`. Jalur `ALTER TABLE ... DISABLE TRIGGER` diikuti `UPDATE`/`DELETE` bertentangan dengan ADR-004, yang menolak "update langsung dengan audit log". Bila kelak ada kebutuhan koreksi fisik (misalnya putusan legal L-06), itu diajukan sebagai change request atas ADR-004/ADR-008, bukan dilakukan lewat migrasi `[KEPUTUSAN-140]`.
+- **Pemeriksaan teks di `verify.sh`** (langkah migrasi, `[KEPUTUSAN-82]`) menolak berkas di `db/migrations/` yang memuat `DISABLE TRIGGER` atau `DROP TRIGGER` dengan nama trigger berpola `tg_*_reject_*`, `tg_*_guard_delete`, `tg_*_one_way`, `tg_*_effective_lock`, `tg_*_no_backdate`, `tg_*_published_lock`, atau `tg_*_single_source` (tidak peka huruf besar-kecil). Pemeriksaan katalog T-08 juga memastikan trigger itu tetap ada dan aktif setelah semua migrasi diterapkan `[KEPUTUSAN-158]`.
+
+Penggantian trigger yang sah (misalnya memperbaiki fungsi penolak) dilakukan dengan `CREATE OR REPLACE FUNCTION` atas fungsi di `util`, tanpa melepas trigger; berkas semacam ini termasuk migrasi "trigger penolak" yang wajib direview DBA + keamanan (§11.5).
 
 ### 11.5 Review dan bukti
 
@@ -1123,18 +1404,23 @@ Ditambah test RLS T-10–T-17 (§5.5). Semua dijalankan dengan role sungguhan, b
 | ID | Pemeriksaan | Dasar |
 | --- | --- | --- |
 | T-01 | Nama objek: prefiks §1.1, panjang ≤ 60 byte, snake_case | `[KEPUTUSAN-90]`, `[DOK: ADR-001]` |
-| T-02 | Tidak ada objek di luar skema terdaftar (§2.1); skema `public` tidak ada | `[KEPUTUSAN-91]` |
-| T-03 | `PUBLIC` tidak punya `CONNECT`/`TEMP` di database proyek dan tidak punya `EXECUTE` atas fungsi proyek | `[KEPUTUSAN-91]` |
-| T-04 | Semua tabel, fungsi, dan tabel catatan migrasi dimiliki role pemilik skema | `[KEPUTUSAN-97]` |
-| T-05 | Atribut role (§3.1): tanpa `SUPERUSER`/`BYPASSRLS`; grup `NOLOGIN`; keanggotaan yang saling meniadakan tidak ada | `[DOK: ADR-012 butir 8]` |
+| T-02 | Tidak ada objek di luar skema terdaftar (§2.1); skema `public` tidak ada; tabel catatan migrasi sqlx berada di `app` atau `audit` | `[KEPUTUSAN-91]` |
+| T-03 | `PUBLIC` tidak punya `CONNECT`/`TEMP` di database proyek dan tidak punya `EXECUTE` atas fungsi dan prosedur proyek (`pr_archive_*` hanya pemilik) | `[KEPUTUSAN-91]`, `[KEPUTUSAN-157]` |
+| T-04 | Semua tabel, fungsi, prosedur, dan tabel catatan migrasi dimiliki role pemilik skema, setelah migrasi dijalankan dengan role dinamis tiruan (§11.1) | `[KEPUTUSAN-97]` |
+| T-05 | Atribut role (§3.1): tanpa `SUPERUSER`/`BYPASSRLS`; `CREATEROLE` hanya `openbao_*_admin`; grup `NOLOGIN`; keanggotaan yang saling meniadakan tidak ada; tidak ada role login tanpa proses pemegang (misalnya `rme_audit_reader_login` tidak ada) | `[DOK: ADR-012 butir 8]` |
 | T-06 | Setiap tabel punya komentar `class:`; hak tabel per grup sama persis dengan aturan kelas DD §0.6 (tidak kurang, tidak lebih) | `[KEPUTUSAN-94]` |
 | T-07 | Hak `UPDATE` per kolom `*_privacy_worker` = kolom bertanda `anonymize` + `anonymized_at`, `updated_at`, `updated_by` (+ kolom soft delete untuk `account_owner_nik_registry`) | `[DOK: DD §0.2, §0.6]` |
-| T-08 | Trigger sesuai §4.11 untuk setiap kelas; setiap tabel L punya argumen kategori | `[DOK: DD §0.3]` |
-| T-09 | Perilaku: `rs_app` gagal `UPDATE`/`DELETE`/`TRUNCATE` di T, R, L; pemilik pun gagal (trigger); `rs_privacy_worker` gagal `DELETE` Log selama `retention_policy` kosong dan berhasil setelah baris kebijakan uji dengan masa habis; `data_key` yang sudah dimusnahkan tidak dapat diubah siapa pun; `rs_app` gagal `SELECT` di `audit_outbox` | `[DOK: ADR-008]`, `[DOK: ADR-013 §5]`, `[KEPUTUSAN-66]` |
-| T-18 | Setiap partisi audit punya trigger penolak dan semua index induk; ada ≥ 6 partisi masa depan | `[KEPUTUSAN-100]` |
-| T-19 | `rs_audit_writer` hanya dapat `INSERT` dan memanggil `fn_chain_head`; `SELECT` langsung ditolak | `[DOK: ADR-009 butir 4]` |
+| T-08 | Trigger sesuai §4.11 untuk setiap kelas, ada dan aktif; setiap tabel L punya argumen kategori dan daftar `end_action` | `[DOK: DD §0.3]`, `[KEPUTUSAN-158]` |
+| T-09 | Perilaku: `rs_app` gagal `UPDATE`/`DELETE`/`TRUNCATE` di T, R, L; pemilik pun gagal (trigger); `rs_privacy_worker` gagal `DELETE` Log selama `retention_policy` kosong, gagal bila `end_action` tidak ada di daftar trigger, dan berhasil setelah baris kebijakan uji dengan masa habis dan `end_action` yang diizinkan; `data_key` yang sudah dimusnahkan tidak dapat diubah siapa pun; `rs_app` gagal `SELECT` di `audit_outbox`; `consent_text_version` yang `published_at`-nya terisi menolak perubahan `consent_type`, `version_label`, `content`, `effective_from`, `published_at`, dan pengisian ulang `change_notice_sent_at`; `consent_item` milik versi terbit menolak `INSERT`, `UPDATE`, soft delete, dan pemindahan ke versi lain; `INSERT` baris berlaku-mulai dengan `effective_from` lampau oleh `rs_app` ditolak; (setelah CR-014) acuan retensi DEK kedua ditolak | `[DOK: ADR-008]`, `[DOK: ADR-013 §5]`, `[KEPUTUSAN-66]`, `[KEPUTUSAN-154]`, `[KEPUTUSAN-155]`, `[KEPUTUSAN-159]` |
+| T-18 | Setiap partisi audit punya trigger penolak statement, trigger baris dari induk, dan semua index induk. Hanya struktur; jumlah partisi masa depan dipantau di production (§6.2) | `[KEPUTUSAN-100]` |
+| T-19 | `*_audit_writer` hanya dapat `INSERT` (termasuk `ON CONFLICT DO NOTHING`) dan memanggil `fn_chain_head`; `SELECT` langsung ditolak; `*_audit_verifier` tidak dapat `INSERT` ke `audit_event` | `[DOK: ADR-009 butir 4]` |
 | T-20 | Kolom `*_enc` menolak teks terbuka (CHECK format); kolom `*_bidx` menolak panjang selain 32 byte | `[KEPUTUSAN-104]`, `[KEPUTUSAN-105]` |
-| T-21 | Database `keycloak` tidak dapat dimasuki role aplikasi, dan `keycloak` tidak dapat memasuki `rumah_sehat` | `[KEPUTUSAN-91]` |
+| T-21 | Database `keycloak` tidak dapat dimasuki role aplikasi, dan `keycloak` tidak dapat memasuki `rumah_sehat`; role `rs_audit_*` tidak dapat memasuki `rme_audit` dan role `rme_audit_*` tidak dapat memasuki `rumah_sehat_audit` | `[KEPUTUSAN-91]` |
+| T-22 | Daftar tabel L yang punya FK masuk dari tabel non-L sama dengan daftar yang diharapkan di test (snapshot). Penambahan memaksa review dan keputusan bersama PT-24 | review N05 |
+| T-23 | Pemeriksaan teks berkas migrasi: tidak ada `DISABLE TRIGGER` atau `DROP TRIGGER` atas trigger penjaga (§11.4) | `[KEPUTUSAN-158]` |
+| T-24 | Badan fungsi dan prosedur proyek (`pg_proc`) serta argumen trigger (`pg_trigger`) di database `rme` dan `rme_audit` hanya menyebut nama role berawalan `rme_`, dan di `rumah_sehat`/`rumah_sehat_audit` hanya `rs_`; setiap nama role di argumen trigger ada di `pg_roles` **(V8: nama kolom katalog)** | review putaran 2 catatan 4 |
+
+T-03 dan T-05 juga dijalankan berkala terhadap staging dan production dengan role pemantauan (§3.5).
 
 ---
 
@@ -1151,7 +1437,7 @@ DD §D.4 menjadwalkan verifikasi butir berikut ke dokumentasi PostgreSQL di Taha
 | (e) FK komposit dengan kolom `NULL`, FK terhadap RLS, FK pada kolom terhitung (A8.2) | Untuk `order_status_event`: kolom terhitung tersimpan `coalesce(from_status, '_start')` sebagai bagian FK ke tabel transisi **(V8)** | Terbuka, sampai itu dijaga pustaka transisi `[DOK: DD A8.2]` |
 | (f) BRIN tabel audit | Tidak dipakai di rilis 1 (§6.2) | Ditunda |
 
-Juga belum ber-SRC dan dipakai rancangan ini: batas identifier 63 byte, `set_config`/`current_setting`, `CREATE POLICY`, `pg_has_role`, trigger pada tabel terpartisi, `ALTER ROLE ... SET role`, `ALTER DEFAULT PRIVILEGES`, `CREATE INDEX CONCURRENTLY`, parameter server §10, opsi pool sqlx, API aws-lc-rs, dan respons Transit `datakey`. Semua bertanda **(V8)** di tempatnya.
+Juga belum ber-SRC dan dipakai rancangan ini: batas identifier 63 byte, `set_config`/`current_setting`, `CREATE POLICY`, `pg_has_role`, trigger pada tabel terpartisi, `ALTER ROLE ... SET role`, `ALTER DEFAULT PRIVILEGES`, `CREATE INDEX CONCURRENTLY`, `CREATE PROCEDURE` dengan DDL di dalamnya, `ON CONFLICT DO NOTHING` dengan hak `INSERT` saja, kebijakan RLS `FOR DELETE`, parameter server §10, opsi pool sqlx, API aws-lc-rs, dan respons Transit `datakey`. Semua bertanda **(V8)** di tempatnya.
 
 ---
 
@@ -1164,15 +1450,18 @@ Tidak ada yang diperbaiki diam-diam di DD (DD terkunci).
 | F-P01 | DD §0.6 B memakai nama role yang sama untuk database audit Rumah Sehat dan RME, padahal keduanya berbagi instans (b) dan role berlaku untuk seluruh klaster **(V8)** | Nama logis DD tidak dapat dipakai apa adanya | Pemetaan nama fisik berawalan §3.2; DD tidak perlu diubah bila tabel pemetaan ini diterima |
 | F-P02 | Mengaktifkan RLS di `audit_event`/`audit_event_subject` RME berlaku untuk semua role, sedangkan DD §0.6 B hanya menyebut kebijakan `audit_tenant_reader` | Tanpa kebijakan tambahan, relay, pembaca, verifikasi, dan pemilik ditolak | Kebijakan semua role §5.6 |
 | F-P03 | `audit_event_subject` tidak punya `tenant_id` (DD B3), sehingga RLS tenant memerlukan subquery ke `audit_event` | Biaya query dan ketergantungan pada perilaku RLS bertingkat **(V8)** | Pakai subquery (§5.6); alternatif menambah `tenant_id` ke B3 lewat CR bila T-17 menunjukkan masalah |
-| F-P04 | `data_key.retention_anchor_at` (dan `retention_category`) boleh `NULL` di DD A19.7, tetapi tidak ada role yang boleh mengubahnya setelah `INSERT` (`rs_app` S, I) | Wadah yang tanggal acuannya baru diketahui kemudian (misalnya akhir sesi) tidak pernah dapat diproses retensi | Putuskan: (a) tanggal acuan dihitung dari entitas wadah saat job retensi, atau (b) hak `UPDATE` sekali-isi (`NULL`→nilai) untuk `rs_app` pada dua kolom itu, ditegakkan trigger satu arah. Trigger §4.10 saat ini menolak perubahan keduanya |
+| F-P04 | `data_key.retention_anchor_at` (dan `retention_category`) boleh `NULL` di DD A19.7, tetapi tidak ada role yang boleh mengubahnya setelah `INSERT` (`rs_app` S, I) | Wadah yang tanggal acuannya baru diketahui kemudian tidak pernah dapat diproses retensi | **Diputuskan orkestrator**: tabel sekali-isi `data_key_retention_anchor` / `rme_data_key_retention_anchor` (§4.12), dicatat sebagai **CR-014**, berlaku setelah disetujui di gate. Acuan `NULL` = tidak memenuhi syarat retensi; metrik DEK tanpa acuan `[KEPUTUSAN-155]` |
 | F-P05 | DD §D.4 menjadwalkan verifikasi PostgreSQL di Tahap 5, tetapi SRC-84–SRC-247 tidak memuat halaman itu | Butir (a), (b), (e) masih terbuka; (b) mungkin menambah ekstensi `btree_gist` | Pindah ke Tahap 8 Fase 1 (§13); orkestrator dapat menambah SRC bila ingin menutupnya di Tahap 5 |
-| F-P06 | FK proyeksi → riwayat (§4.7) dan CHECK format amplop/blind index (§4.1, §7) menambah constraint di luar DD | Perubahan skema logis kecil | Review DBA; bila diterima, cukup dicatat di sini tanpa mengubah DD |
-| F-P07 | ADR-021 butir 4: kredensial pemilik skema "hanya pada langkah migrasi". Detach arsip audit (DD §0.6 B: oleh `audit_migration`) tidak dapat menjadi berkas migrasi sqlx karena nilainya khusus production | Penafsiran ADR-021 | Detach berjalan di langkah terkendali yang sama dengan migrasi production (§6.5); konfirmasi penafsiran di gate |
-| F-P08 | KEPUTUSAN-89: `db/roles/` "dijalankan pemilik skema". `CREATE ROLE` memerlukan `CREATEROLE`, yang tidak dimiliki pemilik skema | Isi `db/roles/` tidak dapat dijalankan pemilik | `db/roles/` = bootstrap klaster oleh admin; hak per tabel di berkas migrasi (§3.5) |
-| F-P09 | KEPUTUSAN-74: binary `rme-backend` hanya `api|worker`, padahal ADR-009 butir 3 dan M-23 mewajibkan relay audit sebagai deployment terpisah yang hanya memegang kredensial audit; tempat job verifikasi rantai juga belum disebut | RME tanpa proses relay yang memenuhi ADR-009 | Tambah subcommand `audit-relay` di `rme-backend` (atau pakai crate `audit` bersama dalam binary relay terpisah); job verifikasi dijalankan di deployment relay masing-masing `[KEPUTUSAN-141]` |
-| F-P10 | KEPUTUSAN-79 menyebut identitas "pekerja privasi" tersendiri, tetapi daftar subcommand KEPUTUSAN-74 tidak memuatnya | Belum jelas proses mana yang memegang kredensial `*_privacy_worker` | Tetapkan di Tahap 8: subcommand tersendiri lebih sesuai prinsip satu deployment satu kredensial berhak khusus |
+| F-P06 | FK proyeksi → riwayat (§4.7) dan CHECK format amplop/blind index (§4.1, §7) menambah constraint di luar DD | Perubahan skema logis kecil | Diterima review DBA putaran 1; dicatat di sini tanpa mengubah DD |
+| F-P07 | ADR-021 butir 4: kredensial pemilik skema "hanya pada langkah migrasi". Detach arsip audit (DD §0.6 B: oleh `audit_migration`) tidak dapat menjadi berkas migrasi sqlx karena nilainya khusus production | Penafsiran ADR-021 | **Diputuskan orkestrator**: langkah manusia dipersempit menjadi satu pemanggilan `audit.pr_archive_detach(...)` (dan `pr_archive_drop_detached`) yang kodenya ikut migrasi, dipanggil pemilik dinamis lewat bastion dengan orang kedua (§6.5) `[KEPUTUSAN-157]`. Tafsiran "langkah migrasi" ditampilkan di gate |
+| F-P08 | KEPUTUSAN-89: `db/roles/` "dijalankan pemilik skema". `CREATE ROLE` memerlukan hak yang tidak dimiliki pemilik skema | Isi `db/roles/` tidak dapat dijalankan pemilik | **Diputuskan orkestrator**: bootstrap klaster oleh superuser, idempoten, tanpa password; hak per tabel di migrasi (§3.5). Orkestrator menyelaraskan teks KEPUTUSAN-89 dan `docs/coding-standards.md` §5.3 |
+| F-P09 | KEPUTUSAN-74: binary `rme-backend` hanya `api|worker`; ADR-009 butir 3 dan M-23 mewajibkan relay audit sebagai deployment terpisah; verifikasi rantai di relay melanggar ADR-009 butir 3 (DBA5-B01) | RME tanpa relay; verifikasi oleh pihak yang diperiksa | **Diputuskan orkestrator**: deployment `audit-relay` RME; `audit-verify` RS dan RME dengan identitas OpenBao sendiri (§3.3, §6.5) `[KEPUTUSAN-141]`. Orkestrator menyelaraskan KEPUTUSAN-74, `docs/coding-standards.md` §1.4, dan tabel host ADR-025 |
+| F-P10 | KEPUTUSAN-79 menyebut identitas "pekerja privasi" tersendiri, tetapi daftar subcommand KEPUTUSAN-74 tidak memuatnya | Belum jelas proses pemegang `*_privacy_worker` | **Diputuskan orkestrator**: deployment `privacy-worker` RS dan RME, kunci advisory 7001004 dan 7002004 (§3.3, §6.4) `[KEPUTUSAN-153]` |
 | F-P11 | DD A19.7 menyebut KEK "di KMS" dan rotasi "KMS penyedia"; kini OpenBao Transit (CR-012, ADR-025) | Rujukan istilah | Ditangani ADR-025; format `kek_ref` §7.3 |
-| F-P12 | M-24 (batas hak Operator RME di database) masih terbuka; kebijakan RLS yang membaca tabelnya sendiri berisiko rekursi **(V8)** | RME-04 tetap "Sebagian" | Rancang bersama M-24 di Tahap 8 (§5.3) |
+| F-P12 | M-24 (batas hak Operator RME di database) masih terbuka; kebijakan RLS yang membaca tabelnya sendiri berisiko rekursi **(V8)** | RME-04 tetap "Sebagian" | Rancang bersama M-24 di Tahap 8 (§5.3). Kebijakan operator di `rme_data_key` sudah dipersempit ke wadah `rs_integration_credential` |
+| F-P13 | Estimasi kasar volume audit Rumah Sehat untuk jendela daring 24 bulan (≈ 15–58 GB, estimasi penyusun §6.2) dapat melebihi disk `db-audit` 60 GB `[KEPUTUSAN-78]`, belum termasuk audit RME dan WAL | Risiko kapasitas audit store; bila disk penuh, relay berhenti dan event tertahan di outbox | Ukur di uji beban NFR-CAP-04; pilihan: disk/paket `db-audit` lebih besar (tambahan biaya, keputusan user) atau jendela daring lebih pendek (mengubah nilai awal ADR-009 butir 9). Tidak diputuskan di dokumen ini |
+| F-P14 | CHECK `end_action` di DD A6.6/C6.9 tidak memuat tindakan "hapus baris" untuk tabel Log | Penjaga Log (§4.2 (2)) tidak punya nilai yang sah untuk mengizinkan penghapusan | Ditetapkan bersama PT-24; bila perlu nilai baru, CR atas DD |
+| F-P15 | Hak pembersihan `rme_worker` atas `rme_slot_hold` dan `rme_upload_slot` tidak ada di DD §0.6 C, padahal DD §D.2 mewajibkan pembersihan (review N04) | Baris kedaluwarsa menumpuk | **Diputuskan orkestrator**: bagian CR-014 (§5.7) `[KEPUTUSAN-156]` |
 
 ---
 
@@ -1189,20 +1478,27 @@ Dicatat orkestrator di `docs/decision-log.md`. Semua bertanda (V8) di badan doku
 | KEPUTUSAN-94 | Kelas, modul, alias, kategori log di komentar tabel; kolom "Anonimkan" di komentar kolom; test katalog membandingkan hak/trigger dengan kelas | Berkas manifest terpisah; checklist manual | Aturan DD §0.6 diperiksa mesin; penanda ikut migrasi |
 | KEPUTUSAN-95 | Trigger penolak T/R tingkat statement (UPDATE OR DELETE dan TRUNCATE terpisah); L: tolak UPDATE/TRUNCATE + penjaga DELETE tingkat baris dengan argumen kategori dan kolom acuan; fungsi `SECURITY INVOKER`, `search_path` tetap, kode pesan tetap | Trigger tingkat baris; satu fungsi per tabel | Statement kosong pun tertolak dan terlihat; retensi dinilai per baris; satu pustaka |
 | KEPUTUSAN-96 | Trigger satu arah `data_key`: hanya kolom kunci yang boleh berubah, cabang per role, `shredded_at := now()`; `*_key_rotation` tanpa login tetap | Role rotasi berlogin tetap | DEK tidak hidup kembali; waktu pemusnahan dari server; hak rotasi hanya saat prosedur |
-| KEPUTUSAN-97 | Nama role fisik berawalan sistem; grup `NOLOGIN` + login per proses; atribut minimum; password app di KV; pemilik skema lewat kredensial dinamis OpenBao `IN ROLE` + `SET role`, penjaga `current_user`; bootstrap role oleh admin | Satu role login per kelas; pemilik berlogin tetap | Role berlaku per klaster; atribusi per proses; objek tidak dimiliki role dinamis; ADR-021 |
-| KEPUTUSAN-98 | RLS RME: `set_config('rme.fasyankes_id', $1, true)` per transaksi lewat `with_tenant_tx`; fungsi konteks `NULLIF` gagal-tertutup; kebijakan permisif per role; kebijakan eksplisit untuk pemilik; larangan konteks tingkat sesi diuji | `SET` tingkat sesi; `BYPASSRLS` untuk role lintas tenant | RME-02, H-12; pemilik tunduk `FORCE` [SRC-34] |
-| KEPUTUSAN-99 | RLS audit RME di tabel induk untuk semua role; pembaca tenant hanya E-05 fasyankesnya; hak hanya di induk; cadangan fungsi baca per tenant | RLS hanya untuk pembaca tenant | RLS aktif berlaku untuk semua role; ADR-009 butir 8, ADR-012 butir 9 |
-| KEPUTUSAN-100 | Partisi audit bulanan UTC dibuat migrasi sampai 36+ bulan ke depan dengan tanggal literal; job hanya memantau (peringatan < 6 bulan); tanpa partisi default; trigger di setiap partisi | Job membuat partisi lewat fungsi `SECURITY DEFINER`; partisi default | Tanpa DDL runtime (ADR-021, DD §0.6 B); kegagalan terlihat dan event tertahan di outbox |
-| KEPUTUSAN-101 | Arsip: ekspor oleh role verifikasi ke WORM dengan hash, lalu detach + manifest oleh pemilik di langkah terkendali production; tabel lepas ke `audit_detached` dan di-drop hanya setelah uji pulih + persetujuan | Detach dalam berkas migrasi; drop segera | Migrasi harus sama di semua lingkungan; jejak dan kemampuan pulih (AUD-03) |
+| KEPUTUSAN-97 | Nama role fisik berawalan sistem; grup `NOLOGIN` + login per proses; atribut minimum; password app di KV (rotasi dengan verifier SCRAM ter-hash di klien); pemilik skema lewat kredensial dinamis OpenBao `IN ROLE` + `SET role` + `SET search_path`, pencabutan hanya `DROP ROLE`, penjaga `current_user`; koneksi OpenBao per database audit, dibatasi `pg_hba` ke host OpenBao, tanpa pencatatan teks statement; `db/roles/` = bootstrap superuser idempoten tanpa password | Satu role login per kelas; pemilik berlogin tetap | Role berlaku per klaster; atribusi per proses; objek tidak dimiliki role dinamis; ADR-021; review N01, N02, N08 |
+| KEPUTUSAN-98 | RLS RME: `set_config('rme.fasyankes_id', $1, true)` per transaksi lewat `with_tenant_tx`; fungsi konteks `NULLIF` gagal-tertutup; kebijakan permisif per role (termasuk `rme_key_rotation` hanya baris belum dimusnahkan dan `rme_operator` di `rme_data_key` hanya wadah `rs_integration_credential`); kebijakan eksplisit untuk pemilik; larangan konteks tingkat sesi diuji | `SET` tingkat sesi; `BYPASSRLS` untuk role lintas tenant | RME-02, H-12; pemilik tunduk `FORCE` [SRC-34]; review N03 |
+| KEPUTUSAN-99 | RLS audit RME di tabel induk untuk semua role; pembaca tenant hanya E-05 fasyankesnya; hak hanya di induk; fungsi konteks juga di `rme_audit`; cadangan fungsi baca per tenant | RLS hanya untuk pembaca tenant | RLS aktif berlaku untuk semua role; ADR-009 butir 8, ADR-012 butir 9 |
+| KEPUTUSAN-100 | Partisi audit bulanan UTC dibuat migrasi sampai 36+ bulan ke depan dengan tanggal literal; `audit-verify` hanya memantau (peringatan < 6 bulan, pemantauan production, bukan test); tanpa partisi default; trigger statement di setiap partisi + trigger baris di induk; penanda kelas `A` | Job membuat partisi lewat fungsi `SECURITY DEFINER`; partisi default | Tanpa DDL runtime (ADR-021, DD §0.6 B); kegagalan terlihat dan event tertahan di outbox; review N09 |
+| KEPUTUSAN-101 | Arsip: verifikasi terhadap kepala rantai di WORM dan ekspor oleh `audit-verify` ke WORM dengan hash; detach + manifest lewat prosedur `pr_archive_detach` (KEPUTUSAN-157); tabel lepas ke `audit_detached` dan di-drop hanya setelah uji pulih + persetujuan | Detach dalam berkas migrasi; drop segera | Migrasi harus sama di semua lingkungan; jejak dan kemampuan pulih (AUD-03) |
 | KEPUTUSAN-102 | `audit.fn_chain_head()` `SECURITY DEFINER` untuk baca sempit kepala rantai; `seq` dihitung relay tanpa sequence; genesis `prev_hash` 32 byte nol; `recorded_at = greatest(now(), head.recorded_at)`; `UQ (seq)` sebagai penjaga cabang | View; sequence database | F-02; `seq` tanpa celah; rentang per partisi tetap urut |
-| KEPUTUSAN-103 | Registri kunci advisory (7001xxx RS, 7002xxx RME); kunci dipegang koneksi khusus yang juga memproses batch | Kunci dari pool; kunci tingkat transaksi | Koneksi putus = kunci lepas dan batch gagal bersamaan |
+| KEPUTUSAN-103 | Registri kunci advisory (7001001–7001004 RS, 7002001–7002004 RME, termasuk `audit-verify` dan `privacy-worker`); kunci dipegang koneksi khusus yang juga memproses batch; relay memakai `ON CONFLICT (event_id) DO NOTHING` + pemeriksaan jumlah baris | Kunci dari pool; kunci tingkat transaksi | Koneksi putus = kunci lepas dan batch gagal bersamaan; review N06 d |
 | KEPUTUSAN-104 | Amplop v1: versi 1 byte + nonce 12 + ciphertext + tag 16; AAD berpanjang-prefiks berisi label, konteks logis, sistem, ID baris, `data_key_id`; CHECK panjang ≥ 29 dan byte pertama `0x01` | Tanpa AAD; nama tabel fisik di AAD; tanpa CHECK | Mencegah pemindahan ciphertext; tahan ganti nama tabel; teks terbuka tertolak |
 | KEPUTUSAN-105 | Blind index HMAC-SHA256 32 byte utuh, label tujuan, kunci terpisah per tujuan dan per sistem, versi kunci eksplisit di KV | Dipotong; satu kunci bersama | Kebocoran satu kunci tidak menjalar; rotasi terukur |
 | KEPUTUSAN-106 | DEK 256 bit dari Transit `datakey`; `wrapped_dek` = ciphertext Transit apa adanya; `kek_ref` `openbao-transit:<mount>:<kunci>:v<versi>`; satu kunci Transit per sistem; bungkus ulang hanya lewat prosedur `*_key_rotation` | Mengurai format ciphertext; satu kunci untuk dua sistem | Tidak bergantung format internal; isolasi RS/RME |
 | KEPUTUSAN-107 | Nomor `RS-/RX-/TK-/DS-YYMMDD-XXXXXX` dan kode check-in 8 karakter, alfabet 32 karakter tanpa I/L/O/U, acak dari RNG aws-lc-rs, ulang saat bentrok, CHECK regex | Sequence; UUID dipendekkan | Tidak membocorkan volume; dapat diketik; RX-01 |
-| KEPUTUSAN-108 | Pengambilan job dengan sewa (`running` + `locked_until`, `SKIP LOCKED`), penyapu sewa kedaluwarsa; outbox audit dibaca tanpa kursor | Menahan kunci baris selama pengerjaan | Transaksi pendek; tahan pekerja mati; tidak ada event terlewat |
+| KEPUTUSAN-108 | Pengambilan job dengan sewa (`running` + `locked_until`, `SKIP LOCKED`); penyelesaian dipagari `status = 'running' AND locked_by`; penyapu mengembalikan atau menggagalkan (`max_attempts`); sewa outbox = memajukan `available_at`; outbox audit dibaca tanpa kursor | Menahan kunci baris selama pengerjaan | Transaksi pendek; tahan pekerja mati; tidak ada event terlewat; review N06 |
 | KEPUTUSAN-109 | Index usulan §9.3 dan pengaturan autovacuum tabel O; `fillfactor` tidak diturunkan | Tanpa index pembersihan | Pembersihan DD §D.2 tanpa pemindaian penuh; divalidasi uji beban |
-| KEPUTUSAN-139 | Nilai awal server, batas waktu per role, dan pool §10; TLS 1.3 `verify-full`; `scram-sha-256` `hostssl` saja; UTC; log tanpa nilai parameter; tanpa PgBouncer | TLS 1.2; PgBouncer transaksi | ADR-013 butir 1, ADR-010, NFR-PERF; kunci advisory sesi |
-| KEPUTUSAN-140 | Aturan migrasi §11: satu direktori per skema (audit bersama dengan pemetaan role), penjaga `current_user` + `lock_timeout`, DDL dan DML terpisah, T/R/L tanpa backfill kecuali `DISABLE TRIGGER` T1 (dilarang di audit) | Direktori audit terpisah per database | Skema audit tidak menyimpang; migrasi gagal cepat; ADR-004 |
-| KEPUTUSAN-141 | Job verifikasi rantai dijalankan di deployment relay audit masing-masing sistem; RME memerlukan proses relay tersendiri | Verifikasi di worker bisnis | M-23: kredensial audit hanya di deployment relay |
+| KEPUTUSAN-139 | Nilai awal server, batas waktu per role, dan pool §10 (termasuk deployment `audit-verify` dan `privacy-worker`); TLS 1.3 `verify-full`; `scram-sha-256` `hostssl` saja; UTC; log tanpa nilai parameter dan tanpa teks statement role admin OpenBao; agen metrik tanpa teks query; ambang disk 70%/85%; tanpa PgBouncer | TLS 1.2; PgBouncer transaksi | ADR-013 butir 1, ADR-010, ADR-005, NFR-PERF; kunci advisory sesi; review N08, N10 |
+| KEPUTUSAN-140 | Aturan migrasi §11: satu direktori per skema (audit bersama dengan pemetaan role), penjaga `current_user` + `lock_timeout`, DDL dan DML terpisah, `verify.sh` menjalankan migrasi dengan role dinamis tiruan; T/R/L tanpa backfill dan **tanpa pengecualian**: koreksi T/R hanya baris pembalik atau versi baru, L hanya penghapusan retensi; koreksi fisik kelak lewat CR atas ADR-004/ADR-008 | Direktori audit terpisah per database; jalur `DISABLE TRIGGER` (ditolak, DBA5-B02) | Skema audit tidak menyimpang; migrasi gagal cepat; ADR-004, ADR-008 |
+| KEPUTUSAN-141 | Relay audit per sistem (`rs-backend audit-relay`, `rme-backend audit-relay`) hanya memegang `*_audit_relay_login` + `*_audit_writer_login`. Verifikasi rantai harian dan ekspor arsip di deployment `audit-verify` per sistem dengan identitas OpenBao sendiri, hanya `*_audit_verifier_login`, mencocokkan rantai dengan kepala rantai yang dibaca langsung dari bucket WORM, dan mengirim peringatan ke security log secara mandiri | Verifikasi di deployment relay (ditolak, DBA5-B01); verifikasi di worker bisnis | ADR-009 butir 3 dan 5: pihak yang menulis rantai tidak boleh memverifikasinya sendiri; M-23 |
 | KEPUTUSAN-142 | FK komposit proyeksi `(<entitas>_id, version, status)` → riwayat `UQ (<entitas>_id, version, to_status)` (usulan, review DBA) | Hanya pembandingan harian | Proyeksi tidak dapat menunjuk status yang tidak pernah tercatat (memperkuat ADR-008 butir 4) |
+| KEPUTUSAN-153 | Deployment `privacy-worker` per sistem (`rs-backend`, `rme-backend`) dengan identitas OpenBao sendiri, hanya `*_privacy_worker_login` dan izin hapus object storage, tanpa Transit `decrypt`/`datakey`, penjadwalan internal, satu aktif lewat kunci 7001004/7002004 | Job privasi di worker bisnis | Satu deployment satu kredensial berhak khusus (KEPUTUSAN-79); worker bisnis tidak dapat memusnahkan DEK; F-P10 |
+| KEPUTUSAN-154 | Trigger `tg_consent_text_version_published_lock`: setelah `published_at` terisi, `consent_type`, `version_label`, `content`, `effective_from`, `published_at` tidak dapat diubah dan `change_notice_sent_at` hanya diisi sekali; trigger `tg_consent_item_published_lock` menolak `INSERT`/`UPDATE`/soft delete butir bila versi induk (lama atau baru) sudah terbit | Hanya `fn_effective_row_lock`; kunci `consent_item` sebagai usulan | DD A3.1; integritas bukti persetujuan setelah pemberitahuan (US-104 AC4); DBA5-B03 |
+| KEPUTUSAN-155 | Tabel sekali-isi `data_key_retention_anchor` dan `rme_data_key_retention_anchor` (kelas T, PK = `data_key_id`; ditolak bila `data_key.retention_anchor_at` sudah terisi, dan kategori wajib sama bila `data_key.retention_category` sudah terisi; RLS + FK komposit di RME; pengisian RME oleh `rme_app` saja, `rme_worker` tanpa hak); acuan `NULL` = tidak memenuhi syarat retensi; metrik DEK tanpa acuan > 30 hari. **Berlaku setelah CR-014 disetujui di gate** | `UPDATE` sekali-isi oleh `rs_app` (ditolak); acuan diturunkan saat job berjalan | DD §0.6 A, A19.7, ADR-013 §5, KEPUTUSAN-66 tetap utuh; gagal-tertutup; F-P04 |
+| KEPUTUSAN-156 | Pembersihan lintas tenant oleh `rme_worker`: S per kolom (`id`, `expires_at`, plus `bucket`, `object_key` untuk slot unggah) + D dengan kebijakan `FOR SELECT`/`FOR DELETE` `USING (expires_at < now())` di `rme_inbound_event` (pelengkap DD) serta `rme_slot_hold` dan `rme_upload_slot` (**berlaku setelah CR-014**) | Pembersihan oleh `rme_app` per tenant | DD §D.2 dapat dijalankan tanpa membuka baris yang masih berlaku; review N03 d, N04 |
+| KEPUTUSAN-157 | Prosedur `audit.pr_archive_detach(...)` dan `audit.pr_archive_drop_detached(...)` milik pemilik skema audit, `EXECUTE` dicabut dari semua role, kodenya ikut migrasi; memeriksa parameter bulan adalah awal bulan, umur partisi, verifikasi `match` terakhir, jumlah baris `audit_event` dan `audit_event_subject`, rentang `seq`, `boundary_event_hash`, lalu detach + manifest + pindah skema; dipanggil pemilik dinamis lewat bastion dengan orang kedua; prefiks nama `pr_` | Rangkaian SQL manual di bastion; detach di berkas migrasi | Langkah manusia sempit dan terperiksa; migrasi tetap sama di semua lingkungan; F-P07 |
+| KEPUTUSAN-158 | Pemeriksaan teks `verify.sh` menolak berkas migrasi yang memuat `DISABLE TRIGGER` atau `DROP TRIGGER` atas trigger penjaga (T-23), ditambah T-08 memastikan trigger ada dan aktif; event trigger di skema `audit` dievaluasi Tahap 8 | Hanya checklist review | Larangan DBA5-B02 ditegakkan mesin |
+| KEPUTUSAN-159 | Trigger `BEFORE INSERT` `fn_effective_row_no_backdate` di semua tabel pola berlaku-mulai: `effective_from >= now()` kecuali oleh pemilik skema (seed migrasi); perubahan segera memakai `now()` server | Tanpa larangan; toleransi waktu | Nilai yang berlaku pada instan lampau tidak dapat diubah lewat baris baru (AB-17, DD §0.8); review N07 |

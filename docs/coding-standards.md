@@ -43,8 +43,10 @@ Semua blok kode di dokumen ini adalah **ilustrasi pola**. Nama fungsi, tipe, dan
 Struktur puncak mengikuti `[KEPUTUSAN-89]`:
 
 ```
-apps/rs-backend/        crate binary Rumah Sehat: subcommand api | realtime | worker | audit-relay
-apps/rme-backend/       crate binary RME minimalis: subcommand api | worker
+apps/rs-backend/        crate binary Rumah Sehat: subcommand api | realtime | worker | audit-relay |
+                        audit-verify | privacy-worker
+apps/rme-backend/       crate binary RME minimalis: subcommand api | worker | audit-relay | audit-verify |
+                        privacy-worker
 crates/                 pustaka Rust bersama: audit, crypto, authz, envelope, platform-jobs,
                         integration-contract, test-support, foundation (lihat KEPUTUSAN-110)
 web/backoffice/         aplikasi Next.js backoffice
@@ -57,7 +59,8 @@ mobile/packages/        paket Dart/Flutter bersama (pub workspace)
 db/migrations/app/      migrasi SQL database aplikasi Rumah Sehat
 db/migrations/audit/    migrasi SQL database audit (Rumah Sehat dan RME)
 db/migrations/rme/      migrasi SQL database RME
-db/roles/               SQL role dan grant per database (dijalankan pemilik skema)
+db/roles/               bootstrap klaster idempoten oleh superuser: role, atribut, keanggotaan, skema,
+                        ekstensi, pencabutan PUBLIC; tanpa password (hak per tabel ada di migrasi, §5.3)
 openapi/                spesifikasi OpenAPI hasil generate (di-commit) + asyncapi/
 infra/                  Compose per lingkungan, Caddyfile, LiveKit, realm Keycloak,
                         policy OpenBao, pgBackRest, Prometheus/Loki/alert rules, skrip deploy
@@ -167,8 +170,9 @@ pub(crate) async fn record_payment_attempt(
 
 ### 1.4 Proses dan subcommand
 
-- Satu binary `rs-backend` dengan subcommand `api | realtime | worker | audit-relay`; `rme-backend` dengan `api | worker` `[KEPUTUSAN-74]`.
-- `audit-relay` hanya memegang kredensial `audit_relay` dan `audit_writer`; proses lain **dilarang** memuat kredensial itu (ADR-009 butir 3).
+- Binary `rs-backend` dengan subcommand `api | realtime | worker | audit-relay | audit-verify | privacy-worker`; `rme-backend` dengan `api | worker | audit-relay | audit-verify | privacy-worker` `[KEPUTUSAN-74]` `[DOK: review/tahap-05-dba.md]`.
+- Setiap subcommand dijalankan sebagai deployment sendiri dengan **identitas OpenBao sendiri** dan policy minimum; kredensial database hanya yang dibutuhkan deployment itu `[KEPUTUSAN-79]` (ADR-021 butir 3).
+- `audit-relay` hanya memegang kredensial `audit_relay` dan `audit_writer`; proses lain **dilarang** memuat kredensial itu (ADR-009 butir 3). Relay **tidak** memegang kredensial `audit_verifier`; kredensial itu hanya milik `audit-verify` (ADR-009 butir 4). Kredensial role pekerja privasi hanya milik `privacy-worker` (ADR-013 butir 5).
 - Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi `[SRC-234]` lewat `platform-jobs` `[KEPUTUSAN-74]`. Job biasa diambil dengan `SELECT ... FOR UPDATE SKIP LOCKED` `[SRC-36]` dan **wajib idempoten** (ADR-007 konsekuensi).
 
 ### 1.5 Web Next.js
@@ -224,7 +228,7 @@ mobile/
     rs_design/                  // komponen dan token desain (Tahap 6)
 ```
 
-Nama paket bersama memakai awalan `rs_` `[KEPUTUSAN-116]`. Pustaka mengikuti `[KEPUTUSAN-76]`: flutter_appauth `[SRC-135]`, flutter_secure_storage 11.2.0 `[SRC-136]`, local_auth `[SRC-137]`, livekit_client `[SRC-138]`, dio `[SRC-139]`, go_router `[SRC-140]`, flutter_riverpod `[SRC-141]`, web_socket_channel 3.0.3 `[SRC-142]`, sentry_flutter 10.5.0 dengan `sendDefaultPii` mati, dikirim ke GlitchTip `[SRC-143]` `[SRC-150]`. Mobile developer boleh mengusulkan pengganti pustaka state management lewat CR sebelum Tahap 8 `[KEPUTUSAN-76]`.
+Nama paket bersama memakai awalan `rs_` `[KEPUTUSAN-116]`. Pustaka mengikuti `[KEPUTUSAN-76]`: flutter_appauth `[SRC-135]`, flutter_secure_storage 11.2.0 `[SRC-136]`, local_auth `[SRC-137]`, livekit_client `[SRC-138]`, dio `[SRC-139]`, go_router `[SRC-140]`, flutter_riverpod `[SRC-141]`, web_socket_channel 3.0.3 `[SRC-142]`, sentry_flutter 10.5.0 dengan `sendDefaultPii` mati, dikirim ke GlitchTip `[SRC-143]` `[SRC-255]` `[SRC-150]`. Mobile developer boleh mengusulkan pengganti pustaka state management lewat CR sebelum Tahap 8 `[KEPUTUSAN-76]`.
 
 Aturan lapisan:
 
@@ -411,13 +415,13 @@ Tiga log terpisah (ADR-010): **audit trail** (fitur produk, DB audit), **applica
 ### 4.1 Application log
 
 - Rust memakai tracing 0.1.44 + tracing-subscriber 0.3.23 dengan format JSON (fitur `json`) `[SRC-174]` `[SRC-175]` `[SRC-238]` `[KEPUTUSAN-74]`.
-- Field standar setiap baris (ADR-010): waktu, level, `component` (`api`, `realtime`, `worker`, `audit-relay`, `rme-api`, `rme-worker`, `web-backoffice`, dan seterusnya), `correlation_id`, `route` berupa **pola** rute (misalnya `/patient/v1/orders/{order_id}`), status, `duration_ms`, jenis galat.
+- Field standar setiap baris (ADR-010): waktu, level, `component` (`api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`, `rme-api`, `rme-worker`, `web-backoffice`, dan seterusnya), `correlation_id`, `route` berupa **pola** rute (misalnya `/patient/v1/orders/{order_id}`), status, `duration_ms`, jenis galat.
 - Hanya ID internal yang boleh muncul. **Dilarang** mencatat: isi body permintaan atau respons, header `Authorization`, cookie, token apa pun, nilai sesi, parameter tanda tangan URL, password, PIN, OTP, rahasia MFA, NIK, nomor rekening/kartu, email, nama, nomor HP, alamat, isi klinis, kode verifikasi resep, dan nilai kolom `_enc` setelah didekripsi (ADR-005, ADR-010 butir 1 dan 5, ADR-012 butir 3, PRD §7.3).
 - **Dilarang** mencatat objek domain utuh (ADR-010 butir 1). Yang dicatat field ID satu per satu.
 - Nilai sensitif di kode dibungkus `Sensitive<T>` dari crate `foundation`. Implementasi `Debug`/`Display`-nya menulis `[REDACTED]`, dan tipe ini tidak mengimplementasikan serialisasi umum, sehingga tidak bisa ikut masuk log tanpa sengaja `[KEPUTUSAN-122]`. Tipe yang memuat field sensitif **dilarang** memakai `derive(Debug)` biasa.
 - Test otomatis memeriksa contoh keluaran log terhadap pola data terlarang (ADR-010 butir 1), dijalankan di `scripts/verify.sh` langkah test arsitektur `[KEPUTUSAN-82]`.
 - Next.js: logger server menulis JSON dengan field yang sama dan daftar tolak yang sama; pustakanya dipilih Tahap 8. `console.log` data permintaan dilarang.
-- Flutter: **dilarang** `print`/`debugPrint` data pengguna di build rilis; laporan crash lewat sentry_flutter ke GlitchTip dengan `sendDefaultPii` mati `[SRC-143]` `[SRC-150]` `[KEPUTUSAN-76]`.
+- Flutter: **dilarang** `print`/`debugPrint` data pengguna di build rilis; laporan crash lewat sentry_flutter ke GlitchTip dengan `sendDefaultPii` mati `[SRC-143]` `[SRC-255]` `[SRC-150]` `[KEPUTUSAN-76]`.
 
 ```rust
 // Ilustrasi, API final di reference implementation Tahap 8
@@ -537,7 +541,9 @@ Aturan khusus:
 - Hanya lewat berkas SQL murni di `db/migrations/<app|audit|rme>/` dengan sqlx-cli 0.9.1 `[SRC-182]`; maju saja (forward-only), pola expand/contract (ADR-019 butir 2) `[KEPUTUSAN-74]`. Perubahan manual di database dilarang `[DOK: CLAUDE.md]`.
 - Bagian deskripsi nama berkas snake_case (ADR-001); format awalan mengikuti sqlx-cli (diverifikasi Tahap 8).
 - **Dilarang** mengubah berkas migrasi yang sudah di-commit ke `main`; koreksi lewat migrasi baru.
-- Setiap tabel baru: kelasnya tercatat di data dictionary (ADR-008); hak role sesuai kelas di `db/roles/`; trigger penolak untuk kelas Transaksi, Riwayat status, dan Log; partial unique `WHERE deleted_at IS NULL` untuk Master (ADR-003); RLS `FORCE` untuk tabel tenant RME (ADR-012 butir 6).
+- **Hak per tabel** (`GRANT`/`REVOKE` sesuai kelas ADR-008) ditulis di berkas migrasi yang membuat atau mengubah tabelnya. `db/roles/` hanya berisi **bootstrap klaster** yang idempoten dan dijalankan superuser: role, atribut role, keanggotaan, skema, ekstensi, dan pencabutan hak `PUBLIC`; **tanpa password** (kredensial dari OpenBao, `[KEPUTUSAN-79]`) `[DOK: review/tahap-05-dba.md]` (N10, F-P08–F-P10).
+- **Dilarang** `DISABLE TRIGGER` atau `DROP TRIGGER tg_*_reject_*` di migrasi. Koreksi data kelas Transaksi dan Riwayat status hanya lewat baris pembalik atau versi baru (ADR-004), bukan dengan melepas trigger penolak. `scripts/verify.sh` menolak pola tersebut di berkas migrasi `[DOK: review/tahap-05-dba.md]`.
+- Setiap tabel baru: kelasnya tercatat di data dictionary (ADR-008); hak role sesuai kelas di migrasinya; trigger penolak untuk kelas Transaksi, Riwayat status, dan Log; partial unique `WHERE deleted_at IS NULL` untuk Master (ADR-003); RLS `FORCE` untuk tabel tenant RME (ADR-012 butir 6).
 - Migrasi yang menyentuh DB audit, role, grant, trigger penolak, atau RLS wajib direview DBA dan keamanan (ADR-021 butir 4, `[KEPUTUSAN-81]`).
 - `scripts/verify.sh` menerapkan semua migrasi ke PostgreSQL 18 kosong untuk ketiga database dan menguji hak role (role aplikasi tidak bisa `UPDATE`/`DELETE` tabel T/R/L; trigger penolak aktif; RLS `FORCE` di RME) `[KEPUTUSAN-82]`.
 
@@ -590,7 +596,7 @@ Mengikuti `[KEPUTUSAN-88]`, ADR-013 butir 8, ADR-021 butir 4:
 
 - **Dilarang** ada rahasia di kode, repositori, image, berkas Compose, variabel CI, atau log. Satu-satunya pengecualian adalah kunci privat cosign sebagai secret GitHub berakses minimum `[KEPUTUSAN-81]` `[KEPUTUSAN-88]`.
 - **Lokal**: berkas `.env.local` berisi nilai **sintetis**, tidak di-commit (masuk `.gitignore`); OpenBao mode dev di Compose lokal `[KEPUTUSAN-88]`. `.env.example` di-commit berisi nama variabel dan nilai contoh sintetis saja `[DOK: .claude/skills/runbook/references/tahap-08-development.md]`.
-- **Staging dan production**: semua rahasia di OpenBao 2.7.2 `[SRC-185]`; proses mengambil rahasia saat start dan saat rotasi. Setiap proses punya identitas OpenBao sendiri dengan policy minimum (`api`, `realtime`, `worker`, `audit-relay`, RME, pekerja privasi, rotasi kunci, BFF Next.js) `[KEPUTUSAN-79]`. Kredensial database dinamis berumur pendek `[SRC-224]`.
+- **Staging dan production**: semua rahasia di OpenBao 2.7.2 `[SRC-185]`; proses mengambil rahasia saat start dan saat rotasi. Setiap deployment punya identitas OpenBao sendiri dengan policy minimum (`api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker` untuk Rumah Sehat dan RME, rotasi kunci, BFF Next.js) `[KEPUTUSAN-79]` (§1.4). Kredensial database dinamis berumur pendek `[SRC-224]`.
 - **Konfigurasi non-rahasia** lewat variabel lingkungan di berkas Compose per lingkungan di `infra/` `[KEPUTUSAN-88]`.
 - **Konfigurasi bertipe dan gagal cepat**: setiap proses memuat konfigurasi ke satu struct bertipe saat start dan berhenti dengan galat yang jelas (tanpa mencetak nilai) bila ada yang hilang atau tidak valid; kode lain menerima konfigurasi lewat struct itu, tidak membaca variabel lingkungan langsung `[KEPUTUSAN-132]`. Field rahasia bertipe `Sensitive<T>`.
 - **Keycloak**: konfigurasi realm hanya sebagai kode di `infra/` lewat keycloak-config-cli 6.5.1 `[SRC-122]` `[KEPUTUSAN-85]`; perubahan manual lewat konsol admin dilarang. Perubahan ini termasuk modul kritis T1.
@@ -739,6 +745,7 @@ Dipakai `code-reviewer` bersama Definition of Done. Temuan wajib menyebut berkas
 - [ ] Perubahan skema lewat migrasi baru; migrasi lama tidak diubah (§5.3).
 - [ ] Tabel baru punya kelas ADR-008, hak role, trigger penolak (T/R/L), partial unique (Master), RLS `FORCE` (tenant RME).
 - [ ] Tidak ada `UPDATE`/`DELETE` atas tabel T/R/L; status lewat jalur tulis ADR-008 butir 2.
+- [ ] Hak per tabel ada di migrasi; tidak ada `DISABLE TRIGGER`/`DROP TRIGGER tg_*_reject_*`; `db/roles/` tanpa password (§5.3).
 - [ ] Query master memfilter `deleted_at IS NULL`; tidak ada `SELECT *`; tidak ada SQL dari penggabungan string.
 - [ ] Modul tidak menyentuh tabel modul lain; `module-tables.toml` diperbarui (§1.3).
 - [ ] Satu transaksi per use case; tidak ada panggilan HTTP pihak ketiga selama transaksi terbuka (§5.2).

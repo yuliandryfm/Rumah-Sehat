@@ -1,7 +1,7 @@
 # Stack Teknologi dan Platform: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1, draf menunggu gate Tahap 5
+Versi: 0.2, draf menunggu gate Tahap 5 (perbaikan setelah review keamanan dan DBA putaran 1–2 serta fact-check)
 Penyusun: Claude (persona Principal Engineer + DevOps/Platform Engineer)
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: Arsitektur v1.0 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-023 (diterima), jawaban user Tahap 5 `[USER] T5-Q1`–`T5-Q8` (`docs/05-catatan-stack.md`), KEPUTUSAN-74–KEPUTUSAN-89 (`docs/decision-log.md`), sumber SRC-84–SRC-247 (`docs/sources.md`)
@@ -44,8 +44,7 @@ Bahasa backend dipilih user: Rust untuk backend Rumah Sehat dan backend RME mini
 | Antrean job (ADR-007) | Implementasi tipis sendiri di modul Platform | — | — | Tabel job + `SELECT ... FOR UPDATE SKIP LOCKED`. Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi, sehingga hanya satu instans yang aktif. Ini menjawab "mekanisme penguncinya ditetapkan di Tahap 5" (ADR-007) | `[SRC-36]` `[SRC-234]` `[KEPUTUSAN-74]` |
 
 **Struktur workspace Cargo** `[KEPUTUSAN-74]` `[KEPUTUSAN-89]`:
-- `apps/rs-backend`: satu binary Rumah Sehat dengan subcommand `api`, `realtime`, `worker`, `audit-relay`.
-- `apps/rme-backend`: satu binary RME dengan subcommand `api`, `worker`.
+- `apps/rs-backend`: satu binary Rumah Sehat dengan subcommand `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`; `apps/rme-backend`: `api`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`. Setiap subcommand adalah deployment dengan identitas OpenBao sendiri (ADR-025, review DBA Tahap 5).
 - `crates/`: pustaka bersama `audit`, `crypto`, `authz`, `envelope` (format respons ADR-023), `platform-jobs`, `integration-contract`, `test-support`. RME memakai pustaka ini lewat workspace, tanpa ketergantungan runtime ke Rumah Sehat (ADR-006 butir 2).
 
 **Batas modul** (konsekuensi ADR-006) `[KEPUTUSAN-74]`: setiap modul bisnis Rumah Sehat (arsitektur §3) adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Batas ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul (§6).
@@ -75,6 +74,7 @@ Tiga aplikasi web memakai Next.js, dengan server Next.js berperan sebagai BFF `[
 - Image optimization dimatikan global dengan `images: { unoptimized: true }` `[SRC-159]`.
 - Tidak memakai `next/og`, Edge runtime, `use cache`/Cache Components, maupun middleware untuk keputusan otorisasi.
 - Versi dipin. Patch keamanan Next.js untuk advisory Critical/High dipasang paling lambat 7 hari.
+- Advisory GHSA-pc58-hwjq-p385 (kekacauan respons antar-klien pada aplikasi self-hosted yang meneruskan respons upstream di belakang reverse proxy HTTP/1.1 dengan pipelining) memengaruhi versi 16.0.0 sampai 16.4.4 dan ditambal sejak 16.4.5 `[SRC-248]`. Versi yang dipilih (16.4.6) sudah memuat tambalan itu.
 
 **BFF di server Next.js** (tafsiran ADR-011 butir 7, ditampilkan di gate; §14) `[KEPUTUSAN-75]`:
 - Server Next.js menjalankan OIDC Authorization Code sebagai klien rahasia. Token tidak pernah sampai ke browser.
@@ -97,7 +97,7 @@ Tiga aplikasi web memakai Next.js, dengan server Next.js berperan sebagai BFF `[
 | Navigasi | go_router | 18.1.4 | BSD-3-Clause | Flutter Favorite | `[SRC-140]` |
 | State management | flutter_riverpod | 3.5.0 | MIT | Mobile developer boleh mengusulkan pengganti lewat CR sebelum Tahap 8 | `[SRC-141]` `[KEPUTUSAN-76]` |
 | WebSocket (chat) | web_socket_channel | 3.0.3 | BSD-3-Clause | Rilis terakhir 2025-04-17 (sekitar 19 bulan), dipantau | `[SRC-142]` |
-| Laporan crash | sentry_flutter → GlitchTip | 10.5.0 | MIT | GlitchTip kompatibel dengan SDK klien Sentry. Pengiriman data pribadi bawaan SDK dimatikan; nama opsinya diverifikasi Tahap 8 Fase 1 | `[SRC-143]` `[SRC-150]` `[KEPUTUSAN-76]` |
+| Laporan crash | sentry_flutter → GlitchTip | 10.5.0 | MIT | GlitchTip kompatibel dengan SDK klien Sentry. Pengiriman data pribadi bawaan SDK dimatikan (`sendDefaultPii`, default `false` `[SRC-255]`) | `[SRC-143]` `[SRC-150]` `[SRC-255]` `[KEPUTUSAN-76]` |
 | Generator klien API Dart dari OpenAPI | `[TIDAK DIKETAHUI]` | — | — | Diverifikasi dan dipilih Tahap 8 Fase 1 | `[KEPUTUSAN-76]` |
 
 Pengecualian data aplikasi dari cadangan perangkat dan penyembunyian layar di latar belakang (ADR-021 butir 1): mekanisme platformnya `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1 `[KEPUTUSAN-76]`. Metode uji lalu lintas jaringan build rilis (ADR-021 butir 2) juga `[TIDAK DIKETAHUI]`, ditetapkan Tahap 8 Fase 1 (§13).
@@ -205,7 +205,12 @@ Rinciannya, termasuk syarat konfirmasi tertulis, ada di §10.
 
 Sumber: `[DOK: adr/ADR-019-lingkungan-backup-pemulihan.md]` (tiga lingkungan, data production tidak pernah disalin ke staging atau lokal), `[USER] T5-Q2`, `[USER] T5-Q8`, `[KEPUTUSAN-78]`, `[KEPUTUSAN-88]`.
 
-Akun Biznet Gio untuk staging dan production dipisah bila penyedia mendukung, mengikuti ADR-019 butir 1 ("akun/proyek terpisah"). Dukungan akun/proyek terpisah di Biznet Gio `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1.
+**Pemisahan staging dari production** (perbaikan B-01 review keamanan; ADR-025 (KEPUTUSAN-143 dst.)):
+- Staging ditempatkan di jaringan privat yang terpisah dari production, tanpa rute ke host production. Staging menjalankan kode CI (self-hosted runner, §3.2), jadi diperlakukan sebagai zona tidak tepercaya bagi production.
+- Akun atau proyek Biznet Gio untuk staging dan production juga dipisah bila penyedia mendukung, mengikuti ADR-019 butir 1. Dukungan jaringan privat dan akun/proyek terpisah di Biznet Gio `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1. Bila pemisahan itu tidak tersedia, security group production menolak semua alamat staging.
+- OpenBao staging hanya berisi rahasia sintetis.
+
+**Konsol panel penyedia** (Biznet Gio, Hostinger) dapat membuat snapshot dan membuka konsol VM, sehingga termasuk akses administratif production (ADR-021 butir 3). Ketentuannya: akun bernama per orang (bukan akun bersama), pemegang seminimal mungkin, MFA bila tersedia, aktivitas dicatat bila penyedia menyediakan log, dan tinjauan hak berkala. Ketersediaan MFA dan log aktivitas panel `[TIDAK DIKETAHUI]` (PT-39); bila tidak tersedia, dibawa ke user sebagai penerimaan risiko di gate. Rujukan: ADR-025 (KEPUTUSAN-143 dst.).
 
 ### 2.2 Topologi production
 
@@ -215,7 +220,7 @@ Ukuran host adalah estimasi awal penyusun dan divalidasi uji beban NFR-CAP-04. H
 
 | Host | Paket | Spesifikasi (vCPU / RAM / disk) | Harga per bulan | Isi | Sumber |
 | --- | --- | --- | --- | --- | --- |
-| app-1, app-2 | NEO Lite Pro MM.8.4 | 4 / 8 GB / 80 GB NVMe | Rp999.000 × 2 | Caddy, `api`, `realtime`, `worker`, `audit-relay` (satu aktif lewat advisory lock), 3 server Next.js, RME `api`/`worker`, Keycloak (1 node per host, klaster 2 node), agen metrik dan log | `[SRC-94]` |
+| app-1, app-2 | NEO Lite Pro MM.8.4 | 4 / 8 GB / 80 GB NVMe | Rp999.000 × 2 | Caddy, `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker` (masing-masing satu aktif lewat advisory lock), 3 server Next.js, RME `api`/`worker`/`audit-relay`/`audit-verify`/`privacy-worker`, Keycloak (1 node per host, klaster 2 node), agen metrik dan log | `[SRC-94]` |
 | db-app | NEO Lite Pro ML.16.8 | 8 / 16 GB / 90 GB | Rp1.799.000 | PostgreSQL instans (a): DB aplikasi Rumah Sehat + DB `keycloak`; pgBackRest | `[SRC-94]` |
 | db-rme | NEO Lite Pro MM.4.4 | 4 / 4 GB / 60 GB | Rp699.000 | PostgreSQL instans (c): RME; pgBackRest | `[SRC-94]` |
 | db-audit | NEO Lite Pro MS.4.2 | 2 / 4 GB / 60 GB | Rp559.000 | PostgreSQL instans (b): audit Rumah Sehat + audit RME; tanpa standby (ADR-019 butir 3); pgBackRest | `[SRC-94]` |
@@ -257,7 +262,7 @@ flowchart TB
     LB[Load balancer NEO<br/>listener TCP 443, protokol diverifikasi]
     V[video<br/>LiveKit + TURN, IP publik]
     subgraph PRIV[Jaringan privat Biznet Gio]
-      A1[app-1<br/>Caddy, api, realtime, worker, audit-relay,<br/>3 Next.js, RME api/worker, Keycloak]
+      A1[app-1<br/>Caddy, api, realtime, worker, audit-relay,<br/>audit-verify, privacy-worker, 3 Next.js,<br/>RME api/worker/audit-relay/audit-verify/privacy-worker, Keycloak]
       A2[app-2<br/>susunan sama dengan app-1]
       DBA[(db-app<br/>PG instans a: DB RS + DB keycloak)]
       DBR[(db-rme<br/>PG instans c)]
@@ -299,7 +304,20 @@ Sumber diagram: `[KEPUTUSAN-78]`, `[KEPUTUSAN-79]`, `[KEPUTUSAN-80]`, `[KEPUTUSA
   - Bastion, port 22, dibatasi ke alamat yang diizinkan.
   - Host `video` (LiveKit + TURN) menerima lalu lintas publik untuk WebRTC dan TURN: port TURN 3478 atau 443 menurut contoh konfigurasi resmi (`turn:` dengan TLS) `[SRC-126]` `[SRC-219]`, ditambah port sinyal dan rentang port media. Rentang port media dan port lain tidak ada di SRC-126, jadi ditetapkan dari konfigurasi LiveKit di Tahap 8 `[TIDAK DIKETAHUI]`. Lembar keputusan hanya menyebut LB dan bastion sebagai port publik; host video adalah koreksi yang wajib ada agar WebRTC berfungsi (§14.1).
   - WireGuard: satu port UDP yang hanya menerima alamat host pasangan di penyedia lain.
-- **Hanya jaringan privat**: PostgreSQL, Valkey, OpenBao, konsol admin Keycloak dan realm `master`, Prometheus, Loki, Grafana (diakses lewat bastion) `[KEPUTUSAN-78]` `[KEPUTUSAN-85]`.
+- **Jaringan privat bukan batas kepercayaan** (perbaikan B-01). Firewall dan security group production memakai **default deny**, dengan daftar izin per host sumber dan port (ADR-025 (KEPUTUSAN-143 dst.)):
+
+  | Tujuan | Sumber yang diizinkan |
+  | --- | --- |
+  | PostgreSQL di `db-app`, `db-rme` | app-1, app-2; node OpenBao (database secrets engine); bastion hanya pada jalur break-glass; `db-standby` untuk replikasi (lewat WireGuard) |
+  | PostgreSQL di `db-audit` | app-1, app-2 (relay audit RS dan RME); node OpenBao; bastion hanya pada jalur break-glass |
+  | Valkey di `cache` | app-1, app-2 |
+  | OpenBao di `bao-*` | Host yang punya identitas proses (app-1, app-2, host database untuk kunci cipher pgBackRest); bastion; node OpenBao lain untuk Raft |
+  | Konsol admin Keycloak dan realm `master` | Bastion (jalur admin ber-MFA) dan proses backend di app-1/app-2 untuk Admin REST |
+  | Loki dan Prometheus di `ops` | Agen di host production yang terautentikasi; kueri hanya dari host `ops` (Grafana) |
+  | Grafana dan GlitchTip (antarmuka admin) di `ops` | Lewat bastion, di belakang login SSO admin ber-MFA |
+  | SSH di semua host | Bastion saja |
+
+  Observability tidak diekspos ke publik, kecuali endpoint penerimaan laporan crash GlitchTip lewat LB. Grafana memakai login SSO admin ber-MFA; Loki dan Prometheus hanya menerima pengirim yang terautentikasi, karena pemisahan tenant Loki hanya lewat header `X-Scope-OrgID` `[SRC-236]`. Mekanisme SSO Grafana dan autentikasi push Loki/Prometheus diverifikasi Tahap 8 Fase 1 `[KEPUTUSAN-80]`. Port persis per komponen ditetapkan di `infra/` saat Tahap 8 `[KEPUTUSAN-78]` `[KEPUTUSAN-85]`.
 - Firewall dan security group tersedia di NEO Lite/Pro `[SRC-95]`. Hostinger menyediakan manajemen firewall di semua paket `[SRC-88]`.
 - **TLS internal** (ADR-013 butir 1: semua lalu lintas eksternal dan internal memakai TLS) `[DOK: adr/ADR-013-perlindungan-data-pribadi-spesifik.md]`:
   - Lalu lintas **antar-host** memakai TLS, termasuk di jaringan privat Biznet Gio: koneksi ke PostgreSQL, Valkey, OpenBao, dan Keycloak (Admin REST dan antar-node), serta replikasi dan backup lintas penyedia (TLS di atas WireGuard). Versi minimum dan cipher mengikuti checklist ASVS Level 2. Konfigurasi TLS tiap komponen diverifikasi Tahap 8 Fase 1.
@@ -308,8 +326,8 @@ Sumber diagram: `[KEPUTUSAN-78]`, `[KEPUTUSAN-79]`, `[KEPUTUSAN-80]`, `[KEPUTUSA
 ### 2.6 Load balancer, TLS, dan perlindungan aplikasi web
 
 - **Rencana utama**: load balancer NEO dengan listener TCP 443 yang meneruskan TLS ke Caddy di app-1 dan app-2. Caddy menerminasi TLS dan meneruskan HTTP dan WebSocket ke proses aplikasi `[SRC-102]` `[SRC-237]` `[KEPUTUSAN-78]`. Dokumentasi LB NEO hanya menyebut bahwa protokol listener dipilih; protokol yang tersedia, dukungan WebSocket, pemeriksaan kesehatan, dan harga `[TIDAK DIKETAHUI]` (PT-39).
-- **IP klien asli setelah LB NEO** `[TIDAK DIKETAHUI]`: dukungan PROXY protocol atau header `X-Forwarded-For` pada LB NEO belum terverifikasi. Bila IP asli tidak sampai ke Caddy, batas laju per IP (§2.6 butir WAF) dan isi security log (alamat IP, ADR-010) tidak dapat bekerja dengan benar. Diverifikasi bersama PT-39 di Tahap 8 Fase 1.
-- **Bila LB NEO tidak memenuhi**: Caddy di app-1 dan app-2 menerima lalu lintas langsung. Cara memindahkan alamat publik saat satu host mati (IP mengambang atau DNS) `[TIDAK DIKETAHUI]`, dipilih Tahap 8 Fase 1 setelah PT-39 terjawab. Opsi ini dicatat sebagai risiko terhadap NFR-AVL-01.
+- **IP klien asli setelah LB NEO: syarat keras sebelum go-live.** Dukungan PROXY protocol atau header `X-Forwarded-For` pada LB NEO `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1 bersama PT-39. Tanpa WAF terkelola, batas laju per IP (termasuk untuk login pasien) dan alamat IP di security log (ADR-010) bergantung pada IP asli sampai ke Caddy. Bila LB NEO tidak meneruskan IP asli, LB tidak dipakai dan alternatifnya dipakai: DNS langsung ke dua host app dengan Caddy di masing-masing (butir berikut). Pilihan akhirnya dibuktikan Tahap 8 Fase 1 `[KEPUTUSAN-78]`.
+- **Bila LB NEO tidak memenuhi** (protokol, WebSocket, atau IP klien asli): DNS langsung ke dua host app, dengan Caddy di app-1 dan app-2 menerima lalu lintas dan melihat IP klien asli. Cara mengeluarkan host yang mati dari DNS atau memakai IP mengambang `[TIDAK DIKETAHUI]`, dipilih Tahap 8 Fase 1 setelah PT-39 terjawab. Opsi ini dicatat sebagai risiko terhadap NFR-AVL-01.
 - **WAF terkelola tidak tersedia** di Biznet Gio maupun Hostinger menurut halaman yang dibuka (`docs/sources.md`, pencarian tanpa hasil). Perlindungan pengganti: Caddy sebagai reverse proxy, validasi input, batas laju aplikasi di Valkey, dan batas laju per IP di Caddy (modulnya diverifikasi Tahap 8). Perangkat lunak WAF (misalnya OWASP CRS) dievaluasi di Tahap 8 Fase 1; bila tidak dipakai, dicatat sebagai risiko `[KEPUTUSAN-78]`.
 
 ### 2.7 Failover database
@@ -399,8 +417,15 @@ Sumber: `[KEPUTUSAN-81]`, `[USER] T5-Q6`, `[USER] T5-Q8`.
    - push ke GHCR. Image dirujuk lewat digest SHA, bukan tag `[SRC-242]`;
    - tanda tangan cosign dengan pasangan kunci. Kunci privat disimpan sebagai secret GitHub berakses minimum; kunci publik dipasang di host untuk verifikasi `[SRC-154]`;
    - versi action dan alat dipin `[SRC-82]`.
-3. **Staging (otomatis)**: self-hosted runner di `stg-app`, yang aman dipakai karena repositori privat (peringatan GitHub berlaku untuk repositori publik `[SRC-241]`). Runner mengautentikasi ke OpenBao dengan token OIDC GitHub. Role OpenBao membatasi klaim `sub` ke repositori dan ref `main` lewat `bound_subject`/`bound_claims` `[SRC-239]` `[SRC-223]`. Langkahnya: tarik digest, verifikasi tanda tangan, migrasi dengan kredensial PostgreSQL dinamis `[SRC-224]`, `docker compose up` bergulir, lalu cek endpoint kesehatan `[KEPUTUSAN-81]`. Format persis klaim `sub` untuk ref branch diverifikasi Tahap 8 Fase 1; halaman SRC-239 mengutip format untuk environment.
-4. **Production (manual, orang kedua)**: tidak ada runner dan tidak ada kredensial production di GitHub. Orang kedua berwenang login ke OpenBao dengan MFA, menerima sertifikat SSH berumur pendek `[SRC-225]`, masuk lewat bastion, lalu menjalankan skrip deploy dengan digest yang sudah lulus staging. Skrip memverifikasi tanda tangan, menjalankan migrasi dengan kredensial pemilik skema dinamis, lalu deploy bergulir app-1 kemudian app-2. Semua langkah tercatat di log audit OpenBao dan security log `[USER] T5-Q8` `[KEPUTUSAN-81]`. Mekanisme MFA OpenBao `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1. Mekanisme pencatatan "digest lulus staging" ditetapkan Tahap 8 Fase 1.
+3. **Staging (otomatis)**: self-hosted runner di `stg-app`. GitHub meminta kehati-hatian untuk self-hosted runner juga di repositori privat: runner "can be persistently compromised by untrusted code in a workflow", dan "there is no way to guarantee that a self-hosted runner only runs one job" `[SRC-254]` `[SRC-241]`. Karena itu (perbaikan B-01, ADR-025 (KEPUTUSAN-143 dst.)):
+   - runner dijalankan sebagai runner JIT sekali pakai per job, yang "perform at most one job before being automatically removed" `[SRC-254]`;
+   - hanya workflow yang dipicu push ke `main` yang boleh memakai runner ini;
+   - runner hanya punya identitas OpenBao staging, yang hanya berisi rahasia sintetis, dan berada di jaringan staging tanpa rute ke production (§2.1).
+
+   Runner mengautentikasi ke OpenBao staging dengan token OIDC GitHub. Role OpenBao membatasi klaim `sub` ke repositori dan ref `main` lewat `bound_subject`/`bound_claims` `[SRC-239]` `[SRC-223]`. Langkahnya: tarik digest, verifikasi tanda tangan, migrasi dengan kredensial PostgreSQL dinamis `[SRC-224]`, `docker compose up` bergulir, lalu cek endpoint kesehatan `[KEPUTUSAN-81]`. Format persis klaim `sub` untuk ref branch diverifikasi Tahap 8 Fase 1; halaman SRC-239 mengutip format untuk environment.
+4. **Production (manual, orang kedua)**: tidak ada runner dan tidak ada kredensial production di GitHub. Orang kedua berwenang login ke OpenBao dengan Login MFA TOTP `[SRC-251]`, menerima sertifikat SSH berumur pendek dari peran SSH CA "deploy" (hanya app-1/app-2 dan bastion, principal non-root) `[SRC-225]`, masuk lewat bastion, lalu menjalankan skrip deploy dengan digest yang sudah lulus staging. Skrip memverifikasi tanda tangan, lalu deploy bergulir app-1 kemudian app-2. Semua langkah tercatat di log audit OpenBao dan security log `[USER] T5-Q8` `[KEPUTUSAN-81]`. Mekanisme pencatatan "digest lulus staging" ditetapkan Tahap 8 Fase 1.
+   - **Kredensial pemilik skema** (perbaikan B-02): skrip deploy meminta kredensial dari database secrets engine `[SRC-224]` di path yang dilindungi Control Group, sehingga permintaan baru terbit setelah disetujui orang lain `[SRC-253]`. TTL kredensial setara durasi migrasi. Kredensial dipakai langsung oleh skrip dan tidak ditampilkan ke operator. Migrasi yang dijalankan dicocokkan dengan daftar migrasi yang sudah direview (§3.2 butir 6). Rujukan: ADR-025 (KEPUTUSAN-143 dst.).
+   - OpenBao tidak memberi tahu approver tentang permintaan yang tertunda ("does not send any notification to the approvers") `[SRC-253]`, jadi permintaan Control Group dikirim sebagai peringatan Alertmanager (§4.3).
 5. **Kredensial baca registry di host**: host staging dan production menarik image dari GHCR. Kredensial baca paket disimpan di OpenBao, bukan di berkas host; jenis token GHCR yang dipakai `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1 `[KEPUTUSAN-88]`.
 6. **Migrasi berisiko**: migrasi yang menyentuh database audit, role, grant, trigger penolak, atau RLS wajib review DBA dan keamanan sebelum merge (ADR-021) `[KEPUTUSAN-81]`.
 7. **Proteksi branch `main`**: diatur user bila paket GitHub mendukung. Ini bukan pengaman utama; pengaman utamanya git hook commit hijau dan persetujuan production di sisi VPS `[KEPUTUSAN-81]`.
@@ -410,9 +435,9 @@ Sumber: `[KEPUTUSAN-81]`, `[USER] T5-Q6`, `[USER] T5-Q8`.
 
 | Syarat ADR-021 butir 4 | Jawaban Tahap 5 | Status |
 | --- | --- | --- |
-| Identitas pipeline per lingkungan, hak minimum, kredensial jangka pendek; rahasia dari secret manager, tidak di repositori atau konfigurasi CI `[SRC-82]` | Staging: token OIDC GitHub ke OpenBao, dibatasi repo dan `main` `[SRC-239]` `[SRC-223]`. Production: tanpa identitas pipeline; manusia memakai sertifikat SSH berumur pendek `[SRC-225]`. Runner GitHub-hosted tidak memegang kredensial lingkungan. Pengecualian: kunci privat cosign di secret GitHub `[KEPUTUSAN-81]` | Terpenuhi, dengan pengecualian kunci cosign yang ditampilkan di gate |
+| Identitas pipeline per lingkungan, hak minimum, kredensial jangka pendek; rahasia dari secret manager, tidak di repositori atau konfigurasi CI `[SRC-82]` | Staging: runner JIT sekali pakai per job `[SRC-254]`, token OIDC GitHub ke OpenBao staging, dibatasi repo dan `main` `[SRC-239]` `[SRC-223]`. Production: tanpa identitas pipeline; manusia memakai sertifikat SSH berumur pendek `[SRC-225]`. Runner GitHub-hosted tidak memegang kredensial lingkungan. Pengecualian: kunci privat cosign di secret GitHub `[KEPUTUSAN-81]` | Terpenuhi, dengan pengecualian kunci cosign yang ditampilkan di gate |
 | Deploy production hanya dari `main` yang dilindungi, dengan review yang tidak dapat dilewati dan persetujuan manual | Persetujuan manual oleh orang kedua di sisi VPS, hanya untuk digest dari `main` yang lulus staging `[USER] T5-Q8`. Required reviewers GitHub tidak tersedia untuk repositori privat pada Free/Pro/Team `[SRC-240]`, jadi "review yang tidak dapat dilewati" di sisi GitHub bergantung pada proteksi branch yang tersedia di paket user | Sebagian; penyesuaian dicatat di CR-012 |
-| Kredensial pemilik skema hanya pada langkah migrasi | Kredensial dinamis berumur pendek dari database secrets engine OpenBao (`default_ttl`/`max_ttl`) `[SRC-224]` | Terpenuhi (rancangan) |
+| Kredensial pemilik skema hanya pada langkah migrasi | Kredensial dinamis dari database secrets engine OpenBao `[SRC-224]`, diminta skrip deploy di path ber-Control Group `[SRC-253]`, dengan TTL setara durasi migrasi dan tidak ditampilkan ke operator (§3.2 butir 4) | Terpenuhi (rancangan) |
 | Migrasi audit, role, grant, trigger penolak, RLS direview DBA dan keamanan | Aturan review pada PR (§3.2 butir 6) | Terpenuhi (proses) |
 | Versi dependensi dipin, integritas diperiksa dengan hash `[SRC-82]` | Lockfile Cargo, pnpm, dan pub di-commit; `pnpm install --frozen-lockfile`; image lewat digest `[SRC-242]` | Terpenuhi (rancangan) |
 | Pemindaian rahasia, dependensi, dan image di CI | gitleaks, osv-scanner, cargo-deny, cargo-audit, Trivy | Terpenuhi (rancangan) |
@@ -459,6 +484,8 @@ Alertmanager mengirim peringatan ke email tim teknis lewat SES `[KEPUTUSAN-80]`.
 | Integrasi rekanan berstatus Terganggu | 30 menit | NFR-INT-03 `[DOK: 03-prd.md]` |
 | Endpoint kesehatan gagal dari pemeriksa luar | Gangguan memicu peringatan | NFR-OBS-01 `[DOK: 03-prd.md]` |
 | Akses darurat (break-glass) dipakai | Setiap kejadian | `[DOK: adr/ADR-021-keamanan-klien-akses-admin-pipeline.md]` butir 3 |
+| Permintaan Control Group OpenBao menunggu persetujuan | Setiap permintaan (OpenBao tidak memberi tahu approver) | `[SRC-253]` |
+| Root token OpenBao dibuat lewat `generate-root` | Setiap kejadian | `[SRC-252]` |
 | Perubahan konfigurasi realm Keycloak (admin event) | Setiap kejadian | `[DOK: adr/ADR-011-target-asvs-autentikasi-sesi-mfa.md]` butir 2 |
 
 Ambang lain (jeda relay, umur outbox, umur backup, jeda replikasi, disk, sertifikat, node OpenBao tersegel) ditetapkan Tahap 8 `[KEPUTUSAN-80]`.
@@ -479,7 +506,7 @@ OpenBao 2.7.2 menggantikan KMS dan secret manager penyedia cloud (CR-012) `[SRC-
 | Lingkungan | Tempat rahasia | Aturan | Sumber |
 | --- | --- | --- | --- |
 | Lokal | `.env.local` (di `.gitignore`, tidak di-commit) + OpenBao mode dev di Compose lokal | Nilai sintetis saja | `[KEPUTUSAN-88]` |
-| Staging | OpenBao satu node | Proses mengambil rahasia saat start dan saat rotasi. Runner staging masuk lewat token OIDC GitHub | `[KEPUTUSAN-88]` `[SRC-239]` `[SRC-223]` |
+| Staging | OpenBao satu node, terpisah dari production, hanya rahasia sintetis | Proses mengambil rahasia saat start dan saat rotasi. Runner staging (JIT sekali pakai) masuk lewat token OIDC GitHub dan tidak punya identitas di OpenBao production | `[KEPUTUSAN-88]` `[SRC-239]` `[SRC-223]` `[SRC-254]` |
 | Production | OpenBao Raft 3 node (bao-1, bao-2 di Biznet Gio; bao-3 di Hostinger) | Tidak ada rahasia di image, repositori, berkas Compose, atau variabel CI | `[KEPUTUSAN-79]` `[KEPUTUSAN-88]` `[SRC-227]` |
 | GitHub | Secret repositori | Hanya kunci privat cosign, berakses minimum | `[KEPUTUSAN-81]` `[KEPUTUSAN-88]` |
 
@@ -491,9 +518,12 @@ Konfigurasi non-rahasia ditaruh di variabel lingkungan dalam berkas Compose per 
 | --- | --- | --- |
 | KEK dan envelope encryption (ADR-013) | Transit engine: `datakey` membangkitkan DEK yang dibungkus KEK; rotasi menyimpan versi lama; `min_decryption_version` mengatur versi yang masih dapat dekripsi; `rewrap` membungkus ulang tanpa membuka data. Ini memenuhi "rotasi KEK tanpa membungkus ulang" ADR-013 butir 5 | `[SRC-222]` `[KEPUTUSAN-79]` |
 | Rahasia aplikasi | KV untuk password DB aplikasi, kunci blind index, kunci enkripsi sesi BFF, rahasia HMAC webhook bila tidak di DB, kredensial SES/DOKU/Lalamove, kunci cipher pgBackRest, kunci penandatangan mobile. Halaman dokumentasi KV belum terdaftar di SRC, diverifikasi Tahap 8 Fase 1 | `[KEPUTUSAN-79]` `[KEPUTUSAN-88]` |
-| Identitas proses | Setiap proses punya identitas dan policy minimum sendiri: `api`, `realtime`, `worker`, `audit-relay`, RME `api`/`worker`, pekerja privasi, rotasi kunci, tiga server Next.js. Metode auth (AppRole atau JWT) dipilih Tahap 8; JWT/OIDC dengan bound claims terverifikasi, AppRole belum terdaftar di SRC | `[SRC-223]` `[KEPUTUSAN-79]` |
+| Identitas proses | Setiap proses punya identitas dan policy minimum sendiri: `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`, RME `api`/`worker`/`audit-relay`/`audit-verify`/`privacy-worker`, rotasi kunci, tiga server Next.js. Metode auth (AppRole atau JWT) dipilih Tahap 8; JWT/OIDC dengan bound claims terverifikasi, AppRole belum terdaftar di SRC | `[SRC-223]` `[KEPUTUSAN-79]` |
 | Kredensial database tanpa hak tetap | Database secrets engine PostgreSQL: kredensial dinamis dengan `default_ttl`/`max_ttl` dan `VALID UNTIL` untuk role pemilik skema saat migrasi dan untuk akses administratif. Menjawab ADR-021 butir 3 dan butir 4 | `[SRC-224]` `[KEPUTUSAN-79]` |
-| Akses SSH manusia | SSH CA: sertifikat bertanda tangan dengan TTL pada role, untuk bastion dan host | `[SRC-225]` `[KEPUTUSAN-79]` |
+| Akses SSH manusia | SSH CA: sertifikat bertanda tangan dengan TTL pada role. Peran dipisah per kelas host (§5.3) | `[SRC-225]` `[KEPUTUSAN-79]` |
+| MFA manusia | Login MFA (TOTP), dibangun di atas sistem Identity OpenBao | `[SRC-251]` |
+| Persetujuan orang kedua | Control Groups: "second-party authorization" lewat *factor* policy pada path | `[SRC-253]` |
+| Root token | Dibuat ulang hanya lewat `bao operator generate-root` dengan kuorum pemegang share; dianjurkan hanya untuk setup awal dan dicabut segera setelah tidak diperlukan | `[SRC-252]` |
 | Log audit akses rahasia | Audit device file/socket/syslog → security log | `[SRC-226]` `[KEPUTUSAN-79]` |
 | Ketersediaan | Raft 3 node; data direplikasi ke semua node | `[SRC-227]` |
 | Segel | Seal Shamir bawaan: kunci pembuka dipecah menjadi beberapa share | `[SRC-228]` |
@@ -502,8 +532,17 @@ Konfigurasi non-rahasia ditaruh di variabel lingkungan dalam berkas Compose per 
 
 - **Unseal manual**: tanpa KMS tidak ada auto-unseal, jadi node yang restart harus dibuka manual oleh pemegang share `[SRC-228]` `[KEPUTUSAN-79]`. Jumlah share, ambang, dan pemegangnya adalah keputusan user sebelum go-live (PT-38). Kehilangan share melebihi ambang berarti data terenkripsi tidak dapat dibuka. Dampaknya ke RTO dicatat di risk register (§13.3).
 - **Cache DEK**: DEK di-cache di memori proses dengan batas waktu (ADR-013), supaya gangguan singkat OpenBao tidak langsung menghentikan baca data klinis `[KEPUTUSAN-79]`.
-- **MFA manusia**: login OpenBao untuk manusia wajib MFA. Mekanismenya `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1 `[KEPUTUSAN-79]`.
-- **Akses darurat (break-glass)**: penerbitan sertifikat atau kredensial superuser berjangka waktu dengan persetujuan orang kedua, memicu peringatan. Mekanismenya ditetapkan sebelum go-live (PT-38) `[KEPUTUSAN-79]` `[DOK: adr/ADR-021-keamanan-klien-akses-admin-pipeline.md]`.
+Ketentuan berikut adalah perbaikan B-02 review keamanan, selaras dengan ADR-025 (KEPUTUSAN-143 dst.). Tujuannya: tidak ada manusia dengan hak tetap atas OpenBao, host kunci, atau database (ADR-021 butir 3).
+
+- **MFA manusia**: semua login OpenBao manusia memakai Login MFA TOTP `[SRC-251]`. Perlindungan brute force passcode TOTP tidak aktif secara bawaan, jadi batas laju dipasang pada jalur login dan `/sys/mfa/validate`, dan `max_validation_attempts` (bawaan 5) dipertahankan atau diperketat `[SRC-251]`. Cara memasang batas laju itu diverifikasi Tahap 8 Fase 1.
+- **Tanpa root token permanen**: root token hasil inisialisasi hanya dipakai untuk konfigurasi awal, lalu dicabut. Root token baru hanya dibuat lewat `bao operator generate-root` dengan kuorum pemegang share unseal, dicatat, dan memicu peringatan `[SRC-252]`.
+- **Policy sebagai kode**: policy, metode auth, mount, dan audit device ditulis sebagai kode di `infra/`. Perubahan diterapkan dengan token admin berumur pendek yang baru terbit setelah persetujuan Control Group oleh orang kedua `[SRC-253]`. Tidak ada manusia yang memegang hak tetap untuk menulis policy.
+- **Peran SSH CA per kelas host** `[SRC-225]`:
+  - peran "deploy": hanya app-1, app-2, dan bastion, principal non-root, TTL pendek;
+  - akses ke `db-*`, `bao-*`, `cache`, dan `ops`: hanya lewat jalur break-glass.
+- **Akses darurat (break-glass)**: sertifikat SSH untuk host `db-*`/`bao-*` dan kredensial superuser database diterbitkan dari path ber-Control Group. Penerbitannya butuh persetujuan orang kedua, berjangka waktu, dan memicu peringatan `[SRC-253]` `[DOK: adr/ADR-021-keamanan-klien-akses-admin-pipeline.md]`. OpenBao tidak memberi tahu approver, jadi permintaan tertunda dikirim lewat Alertmanager (§4.3) `[SRC-253]`. Siapa orang kedua tetap keputusan user (PT-38).
+- **Kredensial pemilik skema saat deploy production**: diminta skrip deploy dari database secrets engine di path ber-Control Group, dengan TTL setara durasi migrasi, dan tidak ditampilkan ke operator (§3.2 butir 4) `[SRC-224]` `[SRC-253]`.
+- **Konsol panel penyedia**: akun bernama, MFA bila tersedia (`[TIDAK DIKETAHUI]`, PT-39), sesuai §2.1.
 - **Rotasi** `[KEPUTUSAN-88]`: kredensial DB dinamis berakhir sesuai TTL; KEK lewat rotasi Transit; kunci blind index berversi (`nik_bidx_key_version`, data dictionary); prosedur rotasi tertulis sebelum go-live.
 - **Larangan pencatatan**: password, PIN, OTP, token, dan nomor kartu/rekening lengkap tidak pernah dicatat di log mana pun (ADR-005) `[DOK: CLAUDE.md]`.
 
@@ -580,7 +619,7 @@ Syarat umum: semua penyedia memproses dan menyimpan data di Indonesia, tanpa kec
 
 | Penyedia | Fungsi | Yang sudah terverifikasi | Yang wajib dikonfirmasi tertulis atau diverifikasi | PT |
 | --- | --- | --- | --- | --- |
-| DOKU (utama) | Payment gateway | Menyatakan PJP Level 1, nomor izin tidak disebut `[SRC-203]`; split settlement langsung ke lebih dari satu rekening bank, fee platform tidak dinyatakan `[SRC-204]`; sub-account dan split rule `[SRC-205]`; refund penuh atau parsial, non-kartu lewat tiket/email `[SRC-206]`; DOKU Public Key untuk verifikasi pesan, retry notifikasi hingga 6 kali `[SRC-207]` | Lokasi pemrosesan dan penyimpanan data; nomor izin BI; mekanisme split settlement untuk markup dan bagian rekanan; refund dari dana yang sudah terbagi (PT-27); biaya/MDR; algoritma tanda tangan notifikasi; idempotensi API | PT-36 |
+| DOKU (utama) | Payment gateway | Menyatakan PJP Level 1, nomor izin tidak disebut `[SRC-203]`; split settlement langsung ke lebih dari satu rekening bank, fee platform tidak dinyatakan `[SRC-204]`; sub-account dan split rule `[SRC-205]`; refund penuh atau parsial, non-kartu lewat tiket/email `[SRC-206]`; DOKU Public Key untuk verifikasi pesan `[SRC-207]` | Lokasi pemrosesan dan penyimpanan data; nomor izin BI; mekanisme split settlement untuk markup dan bagian rekanan; refund dari dana yang sudah terbagi (PT-27); biaya/MDR; algoritma tanda tangan notifikasi; idempotensi API | PT-36 |
 | Xendit (cadangan) | Payment gateway | Split ke saldo sub-akun, fee platform sebagai route `[SRC-193]` `[SRC-194]`; penarikan sub-akun ke bank `[SRC-195]`; refund hanya ke metode asal, parsial bergantung kanal `[SRC-196]` `[SRC-197]`; token callback `x-callback-token` `[SRC-199]` | Sama dengan DOKU; izin BI tidak terverifikasi dari situs | PT-36 |
 | Amazon SES | Email notifikasi | Endpoint API `email.ap-southeast-3.amazonaws.com` ada; endpoint SMTP tidak tersedia di Jakarta `[SRC-84]` `[SRC-209]`; DKIM domain khusus dan endpoint terkait lain tercantum untuk Jakarta `[SRC-210]`; harga a la carte USD 0,10 per 1.000 email, akun baru default paket Essentials USD 0,16 per 1.000 `[SRC-243]` | Pernyataan resmi AWS tentang lokasi pemrosesan dan penyimpanan data SES di region `[TIDAK DIKETAHUI]`, diverifikasi Tahap 8 Fase 1. Akun AWS khusus email dengan hak minimum `[USER] T5-Q4` | — |
 | Lalamove | Kurir instan | Pasar Indonesia didukung; `POST /v3/quotations`, `POST /v3/orders`; webhook (ORDER_STATUS_CHANGED, DRIVER_ASSIGNED, ORDER_CREATED); autentikasi HMAC-SHA256 `[SRC-216]` | Lokasi data; area layanan; biaya; mekanisme pembayaran ongkir (PT-31). Konsekuensi yang sudah disetujui: "pilihan kurir" US-703 AC3 berarti jenis layanan/kendaraan Lalamove, dan alamat di luar area layanan membuat checkout tidak dapat dilanjutkan `[USER] T5-Q5` | PT-37 |
@@ -646,7 +685,7 @@ Kurs USD ke Rupiah tidak dihitung karena kurs tidak termasuk sumber terverifikas
 | Apple Developer Program | Perpanjangan tahunan | USD 99 | USD 99 |
 | SES, domain, LB, PPN | | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` |
 
-Selisih kedua basis (Rp5.981.800) adalah bagian Hostinger yang dibayar di muka untuk Maret 2028 sampai Januari 2029 (perhitungan: 11 × 543.800).
+Selisih kolom pada tabel ini sendiri adalah Rp6.525.600 (12 × 543.800, bagian Hostinger yang sudah dibayar di muka). Selisih kumulatif kedua basis sepanjang periode sampai go-live dan 12 bulan operasi adalah Rp5.981.800, yaitu bagian Hostinger yang dibayar di muka untuk Maret 2028 sampai Januari 2029 (perhitungan: 11 × 543.800).
 
 ### 11.5 Ringkasan baseline yang diusulkan
 
@@ -685,7 +724,7 @@ Total ini **bukan total biaya proyek**, karena komponen `[TIDAK DIKETAHUI]` di a
 | Checklist ASVS L2 dan mitigasi threat model §6.2–§6.3 | Tidak dimuat di dokumen ini. Bab ASVS 5.0.0 V1–V17 terdaftar `[SRC-245]` untuk dipakai checklist | Tertunda (dokumen checklist Tahap 5 terpisah) |
 | Format respons API: kode modul, kode kasus, deskripsi | `docs/05-response-codes.md` `[KEPUTUSAN-84]` | Terpenuhi |
 | Dokumentasi API: versi OpenAPI, UI, validator contract test, format WebSocket | OpenAPI 3.1, Swagger UI 5.35.0, Schemathesis 4.33.4, AsyncAPI 3.1.0 (§8) | Terpenuhi |
-| Keamanan pipeline dan akses admin: identitas pipeline jangka pendek, proteksi branch, persetujuan deploy, IAM/KMS/log audit penyedia | §3.3 dan §5: OIDC GitHub ke OpenBao, persetujuan di sisi VPS, SSH CA, kredensial DB dinamis, log audit OpenBao. MFA OpenBao dan break-glass belum ditetapkan | Sebagian (Tertunda Tahap 8 dan sebelum go-live) |
+| Keamanan pipeline dan akses admin: identitas pipeline jangka pendek, proteksi branch, persetujuan deploy, IAM/KMS/log audit penyedia | §2.1, §2.5, §3.3, dan §5: runner staging JIT terisolasi, OIDC GitHub ke OpenBao staging, persetujuan di sisi VPS, firewall default deny per host:port, Login MFA TOTP `[SRC-251]`, tanpa root token permanen `[SRC-252]`, Control Groups untuk policy, break-glass, dan kredensial pemilik skema `[SRC-253]`, SSH CA per kelas host, log audit OpenBao. MFA panel penyedia `[TIDAK DIKETAHUI]` (PT-39); orang kedua PT-38 | Sebagian (verifikasi Tahap 8; PT-38, PT-39) |
 | Penetralan PDF: CDR atau render ulang di Indonesia | qpdf `--json` untuk menolak PDF berkonten aktif (fallback ADR-018 butir 6); antivirus `[TIDAK DIKETAHUI]` | Sebagian (fallback) |
 | Biaya: baseline pihak ketiga dan infrastruktur | §11; komponen `[TIDAK DIKETAHUI]` tersisa | Sebagian (gate Tahap 5) |
 
@@ -718,7 +757,7 @@ Total ini **bukan total biaya proyek**, karena komponen `[TIDAK DIKETAHUI]` di a
 | PT-36 | Konfirmasi tertulis DOKU (dan Xendit sebagai cadangan): lokasi pemrosesan dan penyimpanan data, nomor izin BI, mekanisme split settlement untuk markup dan bagian rekanan, refund dari dana terbagi, biaya | User | Sebelum pengembangan EP-08 (Tahap 7 menetapkan) |
 | PT-37 | Konfirmasi tertulis Lalamove: lokasi data, area layanan, biaya, mekanisme pembayaran ongkir (terkait PT-31) | User | Sebelum EP-07 |
 | PT-38 | Pemegang share unseal OpenBao (jumlah, ambang, orang) dan orang kedua untuk persetujuan deploy production dan akses darurat | User + CTO | Sebelum go-live (Tahap 12) |
-| PT-39 | Konfirmasi Biznet Gio: protokol listener load balancer (TCP/WebSocket) dan harganya; perutean Magic Transit; harga termasuk PPN atau tidak | User | Tahap 8 Fase 1 |
+| PT-39 | Konfirmasi Biznet Gio: protokol listener load balancer (TCP/WebSocket), penerusan IP klien asli (syarat keras sebelum go-live, §2.6), dan harganya; perutean Magic Transit; harga termasuk PPN atau tidak; jaringan privat dan akun terpisah untuk staging; MFA dan log aktivitas konsol panel (juga Hostinger) | User | Tahap 8 Fase 1 |
 
 Sumber: lembar keputusan Tahap 5; PT-35 dari `[USER] T5-Q7`. PT-18 dan PT-25 terjawab sebagai di luar baseline proyek `[USER] T5-Q9, T5-Q10`; PT-28 terjawab sebagian (CR-013) `[USER] T5-Q11a`.
 
@@ -730,7 +769,8 @@ Fakta yang belum terdaftar di `docs/sources.md`. Setiap butir diverifikasi ke su
 2. chrony dan sumber waktu NTP.
 3. Dokumentasi replikasi streaming PostgreSQL 18.
 4. Versi Alertmanager; agen pengirim log dan metrik; perangkat pemeriksa ketersediaan.
-5. OpenBao: KV secrets engine, AppRole, mekanisme MFA, perintah snapshot Raft (Tahap 12), perilaku Raft saat dua node tidak tersedia.
+5. OpenBao: KV secrets engine, AppRole, cara memasang batas laju pada jalur login dan `/sys/mfa/validate`, konfigurasi Control Groups pada path database secrets engine dan SSH CA, perintah snapshot Raft (Tahap 12), perilaku Raft saat dua node tidak tersedia.
+5a. Isolasi jaringan dan akun staging dari production di Biznet Gio; MFA dan log aktivitas konsol panel Biznet Gio/Hostinger (PT-39); SSO Grafana dan autentikasi push Loki/Prometheus; konfigurasi runner JIT GitHub.
 6. Format klaim `sub` token OIDC GitHub untuk ref branch.
 7. Jenis kredensial baca GHCR untuk host.
 8. NEO Object Storage: endpoint HTTPS, versioning, presigned PUT/POST dan batas ukuran, kompatibilitas pgBackRest dan Loki.
@@ -739,7 +779,7 @@ Fakta yang belum terdaftar di `docs/sources.md`. Setiap butir diverifikasi ke su
 10. Port media LiveKit dan aturan firewall host `video`.
 11. Nama opsi Keycloak untuk pemakaian ulang token penyegar; parameter OIDC `max_age`/`prompt` dan klaim `auth_time`; mode klaster Keycloak.
 12. (Selesai 2026-11-18: status advisory `chrono` RUSTSEC-2026-0543 terdaftar sebagai SRC-250.)
-13. Kemampuan API pustaka: jsonwebtoken (daftar izin algoritma, issuer, audience), aws-lc-rs (AES-256-GCM, HMAC, SHA-256, RNG), jose (JWE), perintah migrasi sqlx-cli, nama opsi PII sentry_flutter.
+13. Kemampuan API pustaka: jsonwebtoken (daftar izin algoritma, issuer, audience), aws-lc-rs (AES-256-GCM, HMAC, SHA-256, RNG), jose (JWE), perintah migrasi sqlx-cli (nama opsi PII sentry_flutter sudah terverifikasi, SRC-255).
 14. Generator klien API Dart; ESLint dan test unit web; lint clippy untuk `unwrap()`.
 15. Mekanisme platform untuk pengecualian cadangan perangkat dan penyembunyian layar; metode uji lalu lintas jaringan build rilis (ADR-021 butir 1–2).
 16. Batas laju per IP di Caddy; evaluasi OWASP CRS.

@@ -26,7 +26,7 @@ Tanggal: 2026-11-18
 - Waktu: crate `time` 0.3.55 `[SRC-177]`. Log: tracing 0.1.44 dan tracing-subscriber 0.3.23 dengan format JSON `[SRC-174]` `[SRC-175]` `[SRC-238]`.
 - Klien Valkey: crate `redis` 1.8.2 versi stabil, bukan 2.0.0-rc `[SRC-171]`.
 - **Antrean job** (ADR-007) dibangun tipis sendiri di modul Platform: tabel job dengan `SELECT ... FOR UPDATE SKIP LOCKED` `[SRC-36]`. Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi, yang langsung mengembalikan `false` bila kunci sedang dipegang dan dilepas saat sesi berakhir `[SRC-234]`. Ini menjawab "mekanisme penguncinya ditetapkan di Tahap 5" pada konsekuensi ADR-007.
-- **Workspace Cargo**: `rs-backend` adalah satu binary dengan subcommand `api`, `realtime`, `worker`, dan `audit-relay`; `rme-backend` adalah satu binary dengan subcommand `api` dan `worker`. Pustaka bersama (`audit`, `crypto`, `authz`, `envelope`, `platform-jobs`, `integration-contract`) dipakai RME lewat workspace, tanpa ketergantungan runtime (ADR-006 butir 2).
+- **Workspace Cargo**: `rs-backend` adalah satu binary dengan subcommand `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, dan `privacy-worker`; `rme-backend` adalah satu binary dengan subcommand `api`, `worker`, `audit-relay`, `audit-verify`, dan `privacy-worker`. Setiap subcommand dijalankan sebagai deployment tersendiri dengan identitas OpenBao sendiri (review DBA Tahap 5 DBA5-B01, F-P09, F-P10; ADR-025). Pustaka bersama (`audit`, `crypto`, `authz`, `envelope`, `platform-jobs`, `integration-contract`) dipakai RME lewat workspace, tanpa ketergantungan runtime (ADR-006 butir 2).
 - **Batas modul** (konsekuensi ADR-006): setiap modul bisnis Rumah Sehat adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Aturan ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul.
 - Test dan rantai pasok: `cargo test` dengan testcontainers 0.28.0 untuk PostgreSQL 18, Valkey, dan Keycloak `[SRC-181]`; `cargo fmt --check`; `cargo clippy -- -D warnings`; cargo-deny 0.21.0 (lisensi, advisory, sumber) dan cargo-audit 0.23.0 `[SRC-183]` `[SRC-184]`.
 
@@ -59,20 +59,20 @@ Ketentuan tambahan:
 - Login: flutter_appauth (Authorization Code + PKCE lewat browser sistem, RFC 8252) `[SRC-135]` `[SRC-77]`. Token disimpan dengan flutter_secure_storage 11.2.0 `[SRC-136]` (ADR-011 butir 7).
 - Kunci aplikasi tenaga kesehatan setelah 15 menit tidak aktif (CR-009) memakai local_auth `[SRC-137]`.
 - Video: livekit_client `[SRC-138]`. HTTP: dio `[SRC-139]`. Navigasi: go_router `[SRC-140]`. State: flutter_riverpod `[SRC-141]`. WebSocket: web_socket_channel 3.0.3, rilis terakhir 2025-04, dipantau `[SRC-142]`.
-- Laporan crash: sentry_flutter 10.5.0 mengirim ke GlitchTip yang dijalankan sendiri (ADR-025), dengan `sendDefaultPii` dimatikan `[SRC-143]` `[SRC-150]` (ADR-010 butir 4).
+- Laporan crash: sentry_flutter 10.5.0 mengirim ke GlitchTip yang dijalankan sendiri (ADR-025), dengan `sendDefaultPii` dimatikan `[SRC-143]` `[SRC-255]` `[SRC-150]` (ADR-010 butir 4).
 - Klien API Dart dibangkitkan dari OpenAPI. Generatornya diverifikasi dan dipilih di Tahap 8 Fase 1. Mobile developer boleh mengusulkan pengganti pustaka state management lewat change request sebelum Tahap 8.
 - Pengecualian dari cadangan perangkat dan penyembunyian layar saat aplikasi di latar belakang (ADR-021 butir 1): mekanisme platformnya `[TIDAK DIKETAHUI]` hari ini dan diverifikasi di Tahap 8.
 
 **5. Satu monorepo** `[KEPUTUSAN-89]`:
 
 ```
-apps/rs-backend/        crate binary Rumah Sehat (api, realtime, worker, audit-relay)
-apps/rme-backend/       crate binary RME (api, worker)
+apps/rs-backend/        crate binary Rumah Sehat (api, realtime, worker, audit-relay, audit-verify, privacy-worker)
+apps/rme-backend/       crate binary RME (api, worker, audit-relay, audit-verify, privacy-worker)
 crates/                 pustaka Rust bersama (audit, crypto, authz, envelope, platform-jobs, integration-contract, test-support)
 web/backoffice/ web/portal/ web/rme/   tiga aplikasi Next.js; web/packages/ (klien API bertipe, BFF auth, komponen UI)
 mobile/apps/pasien/ mobile/apps/nakes/ mobile/packages/  (pub workspace)
 db/migrations/app/ db/migrations/audit/ db/migrations/rme/   SQL murni, sqlx-cli
-db/roles/               SQL role dan grant per database (dijalankan pemilik skema)
+db/roles/               bootstrap klaster per database (role, atribut, keanggotaan, skema, ekstensi; dijalankan superuser, idempoten, tanpa password); hak per tabel ada di berkas migrasi
 openapi/                spesifikasi OpenAPI hasil generate (di-commit) + asyncapi/
 infra/                  Compose per lingkungan, Caddyfile, konfigurasi LiveKit, realm Keycloak, policy OpenBao, pgBackRest, aturan Prometheus/Loki, skrip provisioning dan deploy
 scripts/verify.sh       pintu verifikasi tunggal
@@ -99,7 +99,7 @@ Batas antara Rumah Sehat dan RME di monorepo hanya berupa kode bersama di `crate
 
 - **Kecepatan pengembangan.** Rust menambah waktu compile pada setiap siklus `scripts/verify.sh` dan CI, menuntut lebih banyak putaran perbaikan, dan beberapa komponen (antrean job) ditulis sendiri. Besaran perlambatannya `[TIDAK DIKETAHUI]` dan diukur di reference implementation Tahap 8 Fase 1. Hasilnya menjadi masukan estimasi effort Tahap 7 dan Tahap 8, serta urutan pengurangan scope PRD §2.3 `[DOK: 03-prd.md]`. Risikonya dicatat sebagai RT-24.
 - **Pemeliharaan setelah go-live (PT-35).** Sistem ini menuntut kemampuan Rust, TypeScript/Next.js, dan Flutter/Dart. Mobile developer hanya dikontrak sampai go-live `[USER] T5-Q7`. Siapa yang memelihara backend Rust, ketiga web, dan aplikasi mobile setelah go-live belum diketahui (PT-35, pemilik user/CEO, tenggat Tahap 7). Risikonya dicatat sebagai RT-29.
-- **Riwayat advisory Next.js** `[SRC-246]`. Server Next.js memegang sesi admin, rekanan, dan pengguna RME, sehingga RCE di server Next.js berdampak langsung pada sesi. Kewajiban yang timbul: pemantauan halaman advisory, patch Critical/High paling lambat 7 hari, dan review keamanan atas setiap fitur Next.js baru yang dipakai. Advisory "Cross-client response injection and disclosure in self-hosted Next.js applications forwarding fetched responses" `[SRC-246]` relevan langsung dengan pola Route Handler yang meneruskan respons API Rust. Apakah Next.js 16.4.6 sudah memuat perbaikan untuk advisory itu `[TIDAK DIKETAHUI]`, karena versi terdampak tidak tercatat di SRC-246. Hal ini wajib diperiksa di halaman advisory sebelum versi dipin di Tahap 8 Fase 1. Risikonya dicatat sebagai RT-25.
+- **Riwayat advisory Next.js** `[SRC-246]`. Server Next.js memegang sesi admin, rekanan, dan pengguna RME, sehingga RCE di server Next.js berdampak langsung pada sesi. Kewajiban yang timbul: pemantauan halaman advisory, patch Critical/High paling lambat 7 hari, dan review keamanan atas setiap fitur Next.js baru yang dipakai. Advisory "Cross-client response injection and disclosure in self-hosted Next.js applications forwarding fetched responses" `[SRC-246]` relevan langsung dengan pola Route Handler yang meneruskan respons API Rust. Advisory itu (GHSA-pc58-hwjq-p385) ditambal sejak 16.4.5, sehingga Next.js 16.4.6 tidak terdampak `[SRC-248]`. Pola ini tetap menjadi alasan versi Next.js tidak boleh turun di bawah versi yang sudah ditambal. Risikonya dicatat sebagai RT-25.
 - **Server Next.js menjadi modul T1** (autentikasi dan sesi). Perubahan di BFF auth (`web/packages/`) dan konfigurasi sesi wajib review penuh oleh code-reviewer dan security, ditambah test negatif: cookie tanpa token CSRF ditolak, sesi kedaluwarsa ditolak, token tidak bocor ke browser, dan sesi portal tidak dapat memanggil API backoffice (ADR-006 butir 5).
 - **Tiga toolchain** (Rust, Node.js/pnpm, Flutter/Dart) dijalankan di `scripts/verify.sh` dan CI. Waktu verifikasi penuh bertambah. Mode cepat lokal hanya untuk iterasi, sedangkan git hook dan CI selalu menjalankan mode penuh `[KEPUTUSAN-82]`.
 - **Relay audit** berasal dari binary yang sama dengan proses lain, tetapi berjalan sebagai kontainer terpisah dengan identitas OpenBao sendiri, dan hanya memegang kredensial `audit_relay` dan `audit_writer` (ADR-009 butir 3) `[KEPUTUSAN-74]` `[KEPUTUSAN-79]`. Test dan review memastikan proses lain tidak memperoleh kredensial itu.
