@@ -6,14 +6,14 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 
 | BR | Kebutuhan bisnis | Sumber BR | Story | Test case | File kode / test | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` | US-101, US-103 (US-102 dihapus CR-007) | TC-US-101-1–5, 7–15; TC-US-103-1–19 |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-002 | Ruang Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email,… | `[DOK] P4.1` `[USER] T3-Q3` | US-105, US-108 | TC-US-105-1–14; TC-US-108-1–7 |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik da… | `[DOK] P4.6a` | US-106, US-107 | TC-US-106-1–22; TC-US-107-1–5 |  | BRD v1.0 |
-| BR-004 | Admin Ruang Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan… | `[DOK] P4.6b` | US-106, US-107, US-201 | TC-US-106-1–22; TC-US-107-1–5; TC-US-201-1–19 |  | BRD v1.0 |
+| BR-001 | Pasien dapat mendaftar dan masuk dengan email + password. Login Google/Apple dihapus (CR-007) | `[DOK] P4.4` `[USER] T4-Q1, T4-Q2` | US-101, US-103, US-110 (US-102 dihapus CR-007) | TC-US-101-1–5, 7–30; TC-US-103-1–51; TC-US-110-1–12 |  | BRD v1.3 (CR-007/Tahap 4); PRD v1.2 final (Checkpoint 2: CR-017, CR-018, US-110) |
+| BR-002 | Ruang Sehat menyimpan data identitas dasar pasien (nama, tanggal lahir, jenis kelamin, nomor HP, email,… | `[DOK] P4.1` `[USER] T3-Q3` | US-105, US-108 | TC-US-105-1–25; TC-US-108-1–7 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-003 | NIK dan foto KTP pasien wajib sebelum memakai konsultasi online, home visit, serta pendaftaran klinik da… | `[DOK] P4.6a` | US-106, US-107 | TC-US-106-1–34; TC-US-107-1–5 |  | BRD v1.0 |
+| BR-004 | Admin Ruang Sehat memverifikasi NIK dan foto KTP secara manual (disetujui atau ditolak) sebelum layanan… | `[DOK] P4.6b` | US-106, US-107, US-201 | TC-US-106-1–34; TC-US-107-1–5; TC-US-201-1–27 |  | BRD v1.0 |
 | BR-005 | Akun dokter, psikolog, fisioterapis, dan tenaga medis diverifikasi dan dikelola admin Ruang Sehat. Setia… | `[DOK] P8.2a` `[USER] T2-Q2` | US-202, US-203 | TC-US-202-1–6; TC-US-203-1–5 |  | BRD v1.0 |
 | BR-006 | Akun rekanan (klinik, lab, toko kecantikan, toko alat kesehatan, apotek) dan admin mitranya diverifikasi… | `[DOK] P8.2a` `[USER] T2-Q3, T2-Q3b` | US-205, US-206 | TC-US-205-1–7; TC-US-206-1–5 |  | BRD v1.0 |
 | BR-007 | Aplikasi pasien tersedia di Android dan iOS; tenaga kesehatan memakai aplikasi mobile yang juga tersedia… | `[DOK] P6.1, P6.2` `[USER] T3-Q9` | NFR-COMP-01 | TC-NFR-COMP-1; TC-NFR-COMP-3 |  | BRD v1.2 (CR-006/Tahap 3) |
-| BR-008 | Pasien dapat memesan konsultasi online, pendaftaran klinik/lab, dan home visit untuk anggota keluarga ya… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201, US-310, US-902 | TC-US-107-1–5; TC-US-108-1–7; TC-US-109-1–4; TC-US-201-1–19; TC-US-310-1–5; TC-US-902-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-008 | Pasien dapat memesan konsultasi online, pendaftaran klinik/lab, dan home visit untuk anggota keluarga ya… | `[USER] T3-Q3, T3-Q3a` | US-107, US-108, US-109, US-201, US-310, US-902 | TC-US-107-1–5; TC-US-108-1–7; TC-US-109-1–4; TC-US-201-1–27; TC-US-310-1–5; TC-US-902-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-010 | Pasien dapat berkonsultasi dengan dokter lewat chat teks dan panggilan video | `[DOK] P3.1, P3.2` | US-303, US-304, US-305, US-306 | TC-US-303-1–4; TC-US-304-1–8; TC-US-305-1–10; TC-US-306-1–6 |  | BRD v1.0 |
 | BR-011 | Pasien dapat berkonsultasi kesehatan mental dengan psikolog lewat chat teks dan panggilan video | `[DOK] P2.1, P3.1, P3.2` | US-303, US-304 | TC-US-303-1–4; TC-US-304-1–8 |  | BRD v1.0 |
 | BR-012 | Pasien dapat berkonsultasi dengan fisioterapis dan tenaga medis lewat chat teks dan panggilan video | `[USER] T2-Q5` | US-303, US-304 | TC-US-303-1–4; TC-US-304-1–8 |  | BRD v1.0 |
@@ -45,7 +45,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-045 | Refund diberikan bila layanan gagal terjadi (contoh: tenaga kesehatan tidak hadir, barang tidak dikirim… | `[USER] T2-Q9, T2-Q17, T2-Q18, T3-Q5, T3-Q6, T3-Q7, T3-Q8` | US-307, US-504, US-705, US-805, US-806, US-807, US-808, US-812, US-1403 | TC-US-307-1–9; TC-US-504-1–3; TC-US-705-1–4; TC-US-805-1–7; TC-US-806-1–10; TC-US-807-1–10; TC-US-808-1–11; TC-US-812-1–7; TC-US-1403-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-046 | Admin Ruang Sehat, admin klinik, admin lab, dan admin outlet dapat melihat laporan transaksi dan pembagi… | `[DOK] P8.2a, PS6c, PS6d` `[USER] T2-Q4` | US-811, US-1201 | TC-US-811-1–5; TC-US-1201-1–5 |  | BRD v1.0 |
 | BR-050 | Ruang Sehat mengirim pemberitahuan ke pasien lewat email dan notifikasi di dalam aplikasi; push dan WhatsApp dihapus (CR-007) | `[DOK] P4.5` `[USER] T4-Q1, T4-Q2` | US-902, US-1001, US-1002 | TC-US-902-1–3; TC-US-1001-1–8; TC-US-1002-1–4 |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-060 | Backoffice admin Ruang Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 | TC-US-207-1–8; TC-US-208-1–14 |  | BRD v1.0 |
+| BR-060 | Backoffice admin Ruang Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 | TC-US-207-1–17; TC-US-208-1–27 |  | BRD v1.0 |
 | BR-061 | Backoffice admin Ruang Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehata… | `[DOK] P8.2a` | US-1101, US-1102 | TC-US-1101-1–6; TC-US-1102-1–2 |  | BRD v1.0 |
 | BR-062 | Backoffice admin Ruang Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` | US-1003, US-1103, US-1104 | TC-US-1003-1–4; TC-US-1103-1–4; TC-US-1104-1–4 |  | BRD v1.0 |
 | BR-063 | Backoffice admin Ruang Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | US-809, US-810, US-812 | TC-US-809-1–6; TC-US-810-1–3; TC-US-812-1–7 |  | BRD v1.0 |
@@ -53,18 +53,18 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | US-1104, US-1201, US-1202, US-1203 | TC-US-1104-1–4; TC-US-1201-1–5; TC-US-1202-1–3; TC-US-1203-1–2 |  | BRD v1.0 |
 | BR-070 | Ruang Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` | US-404, US-502, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 | TC-US-404-1–6; TC-US-502-1–3; TC-US-901-1–5; TC-US-1304-1–4; TC-US-1401-1–3; TC-US-1402-1–7; TC-US-1403-1–4; TC-US-1404-1–5; TC-US-1405-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-071 | Ruang Sehat terintegrasi dengan payment gateway (dengan pembagian dana), layanan panggilan video, kurir, dan email; semua penyedia di Indonesia (CR-007) | `[DOK] P4.2` `[USER] T2-Q4, T4-Q1, T4-Q2` | US-1406 | TC-US-1406-1–4 |  | BRD v1.3 (CR-007/Tahap 4) |
-| BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 | TC-US-208-1–14; TC-US-1501-1–16; TC-US-1502-1–5; TC-US-1503-1–3; TC-US-1504-1–9; TC-AUD-1–4; TC-DB-1–5 |  | BRD v1.0 |
-| BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 | TC-US-1501-1–16; TC-AUD-1–4 |  | BRD v1.0 |
+| BR-080 | Audit trail append-only mencatat: (1) login, logout, dan percobaan login gagal; (2) akses ke data pasien… | `[DOK] P5.4` `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-208, US-1501, US-1502, US-1503, US-1504, PRD §7 | TC-US-208-1–27; TC-US-1501-1–18; TC-US-1502-1–5; TC-US-1503-1–3; TC-US-1504-1–11; TC-AUD-1–4; TC-DB-1–5 |  | BRD v1.0 |
+| BR-081 | Audit trail tidak boleh memuat password, PIN, OTP, token, atau nomor kartu/rekening lengkap | `[DOK: adr/ADR-005-audit-trail-append-only.md]` | US-1501, PRD §7 | TC-US-1501-1–18; TC-AUD-1–4 |  | BRD v1.0 |
 | BR-090 | Ruang Sehat menyediakan data untuk mengukur KPI-01 sampai KPI-04 sesuai definisi di bagian 1.2: MAU bert… | `[USER] T2-Q10, T2-Q11` `[DOK: 01-business-case.md]` | US-1405, US-1701 | TC-US-1405-1–4; TC-US-1701-1–5 |  | BRD v1.0 |
 | BR-100 | Ruang Sehat terdaftar sebagai Penyelenggara Sistem Elektronik Lingkup Privat sebelum aplikasi digunakan… | `[SRC-12]` `[SRC-13]` `[SRC-27]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-101 | Konsultasi online berjalan dalam skema telemedisin yang sesuai ketentuan Kemenkes: klinik rekanan (fasya… | `[SRC-02]` `[SRC-03]` `[USER] T2-Q2` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
 | BR-102 | Hanya tenaga kesehatan dengan STR dan SIP yang masih berlaku yang dapat diaktifkan melayani. Masa berlak… | `[SRC-02]` `[SRC-03]` `[SRC-21]` | US-202, US-203, US-204, US-1003 | TC-US-202-1–6; TC-US-203-1–5; TC-US-204-1–6; TC-US-1003-1–4 |  | BRD v1.0 |
-| BR-103 | Pasien memberikan persetujuan eksplisit, tertulis atau terekam, sebelum datanya diproses, dengan informa… | `[SRC-15]` | US-101, US-104, US-1601 | TC-US-101-1–5, 7–15; TC-US-104-1–11; TC-US-1601-1–6 |  | BRD v1.0 |
-| BR-104 | Data anggota keluarga yang masih anak hanya diproses dengan persetujuan orang tua atau wali | `[SRC-15]` | US-104, US-108 | TC-US-104-1–11; TC-US-108-1–7 |  | BRD v1.0 |
+| BR-103 | Pasien memberikan persetujuan eksplisit, tertulis atau terekam, sebelum datanya diproses, dengan informa… | `[SRC-15]` | US-101, US-104, US-1601 | TC-US-101-1–5, 7–30; TC-US-104-1–13; TC-US-1601-1–6 |  | BRD v1.0 |
+| BR-104 | Data anggota keluarga yang masih anak hanya diproses dengan persetujuan orang tua atau wali | `[SRC-15]` | US-104, US-108 | TC-US-104-1–13; TC-US-108-1–7 |  | BRD v1.0 |
 | BR-105 | Data kesehatan (catatan tenaga kesehatan, isi chat konsultasi, resep, hasil lab), data anak, dan data ke… | `[SRC-15]` | NFR-SEC-05, NFR-PRIV-03 | TC-NFR-SEC-05-1; TC-NFR-SEC-05-2; TC-NFR-SEC-05-3; TC-NFR-PRIV-03-1; TC-SEC-1–9; TC-DB-1–5 |  | BRD v1.0 |
 | BR-106 | Pasien dapat menjalankan hak subjek data: informasi, akses dan salinan, perbaikan, penarikan persetujuan… | `[SRC-15]` `[DOK] P5.4` | US-109, US-310, US-1601, US-1602, US-1603, US-1604, US-1605 | TC-US-109-1–4; TC-US-310-1–5; TC-US-1601-1–6; TC-US-1602-1–4; TC-US-1603-1–8; TC-US-1604-1–3; TC-US-1605-1–3 |  | BRD v1.0 |
-| BR-107 | Seluruh kegiatan pemrosesan data pribadi direkam, selaras dengan audit trail BR-080 | `[SRC-15]` | US-104, US-1501, PRD §7 | TC-US-104-1–11; TC-US-1501-1–16; TC-AUD-1–4 |  | BRD v1.0 |
-| BR-108 | Ruang Sehat menjaga keamanan dan kerahasiaan data pribadi yang diprosesnya | `[SRC-15]` `[SRC-13]` | NFR-SEC-05, NFR-SEC-06 | TC-NFR-SEC-05-1; TC-NFR-SEC-05-2; TC-NFR-SEC-05-3; TC-NFR-SEC-06-1; TC-SEC-1–9; TC-DB-1–5 |  | BRD v1.0 |
+| BR-107 | Seluruh kegiatan pemrosesan data pribadi direkam, selaras dengan audit trail BR-080 | `[SRC-15]` | US-104, US-1501, PRD §7 | TC-US-104-1–13; TC-US-1501-1–18; TC-AUD-1–4 |  | BRD v1.0 |
+| BR-108 | Ruang Sehat menjaga keamanan dan kerahasiaan data pribadi yang diprosesnya | `[SRC-15]` `[SRC-13]` | US-103 (MFA dan perangkat hilang, CR-018), US-110, NFR-SEC-02, NFR-SEC-05, NFR-SEC-06, NFR-SEC-11 | TC-NFR-SEC-02-1–5; TC-NFR-SEC-05-1; TC-NFR-SEC-05-2; TC-NFR-SEC-05-3; TC-NFR-SEC-06-1; TC-NFR-SEC-11-1–2; TC-SEC-1–9; TC-DB-1–5; TC-US-103-20–51 (MFA, sesi, CR-017/CR-018); TC-US-110-1–12; TC-US-207-9–17 |  | BRD v1.0; PRD v1.2 final (Checkpoint 2) |
 | BR-109 | Tersedia prosedur pemberitahuan kegagalan pelindungan data pribadi secara tertulis paling lambat 3 x 24… | `[SRC-15]` `[SRC-13]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
 | BR-110 | Penilaian dampak pelindungan data pribadi (DPIA) dilakukan sebelum go-live | `[SRC-15]` | PRD §10 | — (non-perangkat lunak, di luar test plan) |  | BRD v1.0 |
 | BR-111 | Ruang Sehat menunjuk pejabat/petugas pelindungan data pribadi | `[SRC-15]` `[SRC-16]` | US-1603, PRD §10 | TC-US-1603-1–8 |  | BRD v1.0 |
@@ -126,8 +126,8 @@ Peta alur lengkap dan deskripsi terstruktur: `docs/06-design-guideline.md` §10.
 
 | Epic | Story → alur/wireframe |
 | --- | --- |
-| EP-01 | US-101 A01; US-103 A01; US-104 A01, A13; US-105 A03; US-106 A03; US-107 A02, A03, A05; US-108 A04; US-109 A04 |
-| EP-02 | US-201 C02; US-202 B01; US-203 C02 (pola); US-204 — (B01 peringatan SIP); US-205 D-C04; US-206 D-C04, C01; US-207 D-C05; US-208 D-C05, C01 |
+| EP-01 | US-101 A01, A15 (D-A15); US-103 A01, A15 (D-A15); US-104 A01, A13; US-105 A03; US-106 A03; US-107 A02, A03, A05; US-108 A04; US-109 A04; US-110 G01 (D-G01) |
+| EP-02 | US-201 C02; US-202 B01; US-203 C02 (pola); US-204 — (B01 peringatan SIP); US-205 D-C04; US-206 D-C04, C01; US-207 D-C05 (termasuk AC5 reset MFA pasien); US-208 D-C05, C01 |
 | EP-03 | US-301 D01; US-302 B02, D01; US-303 A05; US-304 A05; US-305 A06, B02; US-306 A06, B02; US-307 A06, B02; US-308 B02, A06; US-309 B02, A06, D-F01; US-310 A06; US-311 B02 |
 | EP-04 | US-401 A08; US-402 A08, A07; US-403 A08; US-404 — (A08, E01); US-405 A08; US-406 A08 |
 | EP-05 | US-501 A10; US-502 D-E05, B03; US-503 B03; US-504 A10 |
@@ -143,15 +143,15 @@ Peta alur lengkap dan deskripsi terstruktur: `docs/06-design-guideline.md` §10.
 | EP-15 | US-1501 —; US-1502 D-C10; US-1503 D-C10; US-1504 — |
 | EP-16 | US-1601 A13; US-1602 A13; US-1603 D-C11; US-1604 A13; US-1605 D-C11 (terblokir L-06/PT-24); US-1606 — |
 | EP-17 | US-1701 D-C12 |
-| NFR | NFR-SEC-02 C01, B01; NFR-SEC-04 C01; NFR-SEC-08 A03, A04, B01; NFR-SEC-10 B01; PRD §6.11 aksesibilitas → 06-design-guideline.md §7 (KEPUTUSAN-160) |
+| NFR | NFR-SEC-02 C01, B01, A15 (D-A15, pasien); NFR-SEC-04 C01; NFR-SEC-11 G01 (D-G01); NFR-SEC-08 A03, A04, B01; NFR-SEC-10 B01; PRD §6.11 aksesibilitas → 06-design-guideline.md §7 (KEPUTUSAN-160) |
 
 ## BR → story → fase (Tahap 7)
 
-Usulan pembagian fase `[UP-65]` `[UP-66]`, menunggu Checkpoint 2. Rincian: `docs/07-phase-plan.md`. "F1"–"F4" = Fase 1–4 Tahap 8; Fase 4 bersyarat (gerbang re-plan 2026-12-11). Story dengan AC yang diverifikasi di fase lain ditandai di `docs/backlog.md` kolom Fase. Butir kepatuhan non-perangkat lunak (PRD §10) tidak masuk fase Tahap 8 dan dipantau sebagai gerbang (`docs/07-phase-plan.md` §9).
+Pembagian fase `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-Q6`. Rincian: `docs/07-phase-plan.md`. "F1"–"F4" = Fase 1–4 Tahap 8; Fase 4 bersyarat (gerbang re-plan 2026-12-11). Story dengan AC yang diverifikasi di fase lain ditandai di `docs/backlog.md` kolom Fase. Butir kepatuhan non-perangkat lunak (PRD §10) tidak masuk fase Tahap 8 dan dipantau sebagai gerbang (`docs/07-phase-plan.md` §9).
 
 | BR | Story (fase) | Enabler / UI terkait (fase) |
 | --- | --- | --- |
-| BR-001 | US-101 (F1), US-103 (F1) | EN-06, EN-13, UI-03 (F1) |
+| BR-001 | US-101 (F1), US-103 (F1; jalur Layanan Pelanggan AC8 di F2), US-110 (F2; web RME F3) | EN-06, EN-13, UI-03 (F1) |
 | BR-002 | US-105 (F1), US-108 (F4) | — |
 | BR-003 | US-106 (F1), US-107 (F2) | EN-10, EN-14 (F1) |
 | BR-004 | US-106 (F1), US-201 (F1), US-107 (F2) | EN-14 (F1) |
@@ -190,7 +190,7 @@ Usulan pembagian fase `[UP-65]` `[UP-66]`, menunggu Checkpoint 2. Rincian: `docs
 | BR-045 | US-307, US-805, US-806, US-808, US-812 (F2), US-807, US-1403 (F3), US-504, US-705 (F4) | — |
 | BR-046 | US-811, US-1201 (F3) | — |
 | BR-050 | US-1001, US-1002 (F2), US-902 (F3) | EN-13 (F1), UI-04 (F2) |
-| BR-060 | US-208 (F1), US-207 (F2) | EN-06, EN-07, EN-11, UI-01 (F1) |
+| BR-060 | US-208 (F1; AC8 di F2), US-207 (F2; termasuk AC5 reset MFA pasien, CR-018) | EN-06, EN-07, EN-11, UI-01 (F1) |
 | BR-061 | US-1101, US-1102 (F3) | — |
 | BR-062 | US-1003 (F2), US-1103, US-1104 (F3) | — |
 | BR-063 | US-809, US-812 (F2), US-810 (F3) | — |
@@ -208,7 +208,7 @@ Usulan pembagian fase `[UP-65]` `[UP-66]`, menunggu Checkpoint 2. Rincian: `docs
 | BR-105 | NFR-SEC-05, NFR-PRIV-03 | EN-07, EN-09 (F1) |
 | BR-106 | US-310 (F2), US-1601–US-1605 (F3; US-1605 terblokir PT-24), US-109 (F4) | — |
 | BR-107 | US-104, US-1501 (F1), PRD §7 | EN-05 (F1) |
-| BR-108 | NFR-SEC-05, NFR-SEC-06 | EN-02, EN-06, EN-07, EN-09 (F1) |
+| BR-108 | US-103 (F1, CR-018), US-110 (F2; web RME F3), NFR-SEC-02, NFR-SEC-05, NFR-SEC-06, NFR-SEC-11 | EN-02, EN-06, EN-07, EN-09 (F1) |
 | BR-111 | US-1603 (F3), PRD §10 | — |
 | BR-112 | US-1605, US-1606 (F3, terblokir PT-24), NFR-RET-01 | EN-23 (F3) |
 | BR-113 | US-1406 (F2), NFR-PRIV-01, NFR-PRIV-02, NFR-DR-04 | EN-15 (F2), EN-26, EN-27 (Februari 2027) |
@@ -223,30 +223,31 @@ Usulan pembagian fase `[UP-65]` `[UP-66]`, menunggu Checkpoint 2. Rincian: `docs
 | BR-125 | US-1304 (F3), US-1305, US-1308 (F4) | — |
 | BR-126 | US-1306, US-1310 (F3) | — |
 
-Hitungan story per fase: F1 9, F2 31, F3 41, F4 15 (total 96 story aktif; US-102 dihapus CR-007). Enabler EN-01–EN-27 dan story UI UI-01–UI-05 beserta induk ADR/KEPUTUSAN ada di `docs/backlog.md`.
+Hitungan story per fase: F1 9, F2 32, F3 41, F4 15 (total 97 story aktif; US-102 dihapus CR-007; US-110 ditambahkan di Checkpoint 2 dan dihitung di F2, dengan bagian web RME diverifikasi di F3). Fase 4 tetap bersyarat; dengan baseline Opsi B `[USER] C2-Q1`, pemindahan story Fase 4 mengikuti `docs/07-phase-plan.md`. Enabler EN-01–EN-27 dan story UI UI-01–UI-05 beserta induk ADR/KEPUTUSAN ada di `docs/backlog.md`.
 
 ## Story → test case (Tahap 7)
 
-Sumber: `docs/test-plan.md` (draf 0.1, dari PRD v1.2 draf; belum dieksekusi). ID test case berbentuk `TC-<story>-<n>`. "Fase" = fase pengembangan tempat test case dijalankan (sebagian AC story ditunda ke fase lain, lihat test-plan §9 T-29). "T1" = jumlah test case bertanda modul kritis T1; "Neg." = jumlah test case bertipe negatif. Setiap story memiliki minimal satu test case per AC yang dapat diuji; AC berisi `[TIDAK DIKETAHUI]` dicatat di test-plan §9 T-28.
+Sumber: `docs/test-plan.md` (versi 0.2, disesuaikan dengan PRD v1.2 final setelah Checkpoint 2; belum dieksekusi). ID test case berbentuk `TC-<story>-<n>`. "Fase" = fase pengembangan tempat test case dijalankan (sebagian AC story ditunda ke fase lain, lihat test-plan §9 T-29). "T1" = jumlah test case bertanda modul kritis T1; "Neg." = jumlah test case bertipe negatif. Setiap story memiliki minimal satu test case per AC yang dapat diuji; AC berisi `[TIDAK DIKETAHUI]` dicatat di test-plan §9 T-28.
 
 | Story | Fase | Test case | Jumlah | T1 | Neg. |
 | --- | --- | --- | --- | --- | --- |
-| US-101 | F1 | TC-US-101-1–5, 7–15 | 14 | 14 | 11 |
-| US-103 | F1 | TC-US-103-1–19 | 19 | 19 | 13 |
-| US-104 | F1, F2, Tahap 12 | TC-US-104-1–11 | 11 | 11 | 6 |
-| US-105 | F1, F2 | TC-US-105-1–14 | 14 | 11 | 7 |
-| US-106 | F1 | TC-US-106-1–22 | 22 | 22 | 14 |
+| US-101 | F1 | TC-US-101-1–5, 7–30 | 29 | 29 | 19 |
+| US-103 | F1, F2, F3 | TC-US-103-1–51 | 51 | 50 | 27 |
+| US-104 | F1, F2, Tahap 12 | TC-US-104-1–13 | 13 | 13 | 7 |
+| US-105 | F1, F2 | TC-US-105-1–25 | 25 | 17 | 9 |
+| US-106 | F1, F4 | TC-US-106-1–34 | 34 | 34 | 19 |
 | US-107 | F2, F4 | TC-US-107-1–5 | 5 | 3 | 3 |
 | US-108 | F4 | TC-US-108-1–7 | 7 | 6 | 3 |
 | US-109 | F4 | TC-US-109-1–4 | 4 | 4 | 1 |
-| US-201 | F1, F2, F4 | TC-US-201-1–19 | 19 | 18 | 12 |
+| US-110 | F2, F3 | TC-US-110-1–12 | 12 | 12 | 6 |
+| US-201 | F1, F2, F4 | TC-US-201-1–27 | 27 | 26 | 17 |
 | US-202 | F2 | TC-US-202-1–6 | 6 | 5 | 4 |
 | US-203 | F2 | TC-US-203-1–5 | 5 | 5 | 4 |
 | US-204 | F2 | TC-US-204-1–6 | 6 | 5 | 1 |
 | US-205 | F2, F4 | TC-US-205-1–7 | 7 | 5 | 5 |
 | US-206 | F2 | TC-US-206-1–5 | 5 | 5 | 4 |
-| US-207 | F2, F4 | TC-US-207-1–8 | 8 | 8 | 4 |
-| US-208 | F1 | TC-US-208-1–14 | 14 | 14 | 11 |
+| US-207 | F2, F4 | TC-US-207-1–17 | 17 | 17 | 11 |
+| US-208 | F1, F2 | TC-US-208-1–27 | 27 | 27 | 20 |
 | US-301 | F2 | TC-US-301-1–6 | 6 | 3 | 2 |
 | US-302 | F2 | TC-US-302-1–7 | 7 | 4 | 4 |
 | US-303 | F2 | TC-US-303-1–4 | 4 | 0 | 3 |
@@ -316,10 +317,10 @@ Sumber: `docs/test-plan.md` (draf 0.1, dari PRD v1.2 draf; belum dieksekusi). ID
 | US-1404 | F3 | TC-US-1404-1–5 | 5 | 5 | 3 |
 | US-1405 | F3 | TC-US-1405-1–4 | 4 | 1 | 1 |
 | US-1406 | F2, F4 | TC-US-1406-1–4 | 4 | 4 | 2 |
-| US-1501 | F1 | TC-US-1501-1–16 | 16 | 16 | 10 |
+| US-1501 | F1, F2 | TC-US-1501-1–18 | 18 | 18 | 11 |
 | US-1502 | F3 | TC-US-1502-1–5 | 5 | 4 | 2 |
 | US-1503 | F3 | TC-US-1503-1–3 | 3 | 3 | 2 |
-| US-1504 | F1 | TC-US-1504-1–9 | 9 | 9 | 8 |
+| US-1504 | F1, F2 | TC-US-1504-1–11 | 11 | 11 | 10 |
 | US-1601 | F3 | TC-US-1601-1–6 | 6 | 6 | 3 |
 | US-1602 | F3 | TC-US-1602-1–4 | 4 | 4 | 2 |
 | US-1603 | F3 | TC-US-1603-1–8 | 8 | 8 | 3 |
@@ -332,13 +333,31 @@ Test case lintas story dan NFR:
 
 | Kelompok | Test case | Jumlah |
 | --- | --- | --- |
-| Kriteria umum KU-01–KU-10 | TC-KU-01-1 … TC-KU-10-1 | 14 |
+| Kriteria umum KU-01–KU-10 | TC-KU-01-1 … TC-KU-10-2 | 16 |
 | Skenario wajib endpoint dan isolasi | TC-SEC-1 … TC-SEC-9 | 9 |
-| Kebutuhan non-fungsional (NFR) | TC-NFR-SEC-02-1 … TC-NFR-A11Y-2 | 36 |
+| Kebutuhan non-fungsional (NFR) | TC-NFR-SEC-02-1 … TC-NFR-A11Y-2 | 47 |
 | Audit trail (PRD §7) | TC-AUD-1 … TC-AUD-4 | 4 |
 | Fondasi database dan hak role | TC-DB-1 … TC-DB-5 | 5 |
 | MVP end-to-end Fase 1 | TC-MVP-1 … TC-MVP-2 | 2 |
 
 Hitungan total ada di `docs/test-plan.md` §2.9. Kolom "File kode / test" diisi di Tahap 8 lewat penanda `trace:` (coding standards §7.4).
 
-Klarifikasi AC Fase 1 (temuan test-plan §9 T-01–T-22; US-101, US-103–US-106, US-201, US-208, US-1501, US-1504, KU-02, KU-10, NFR-SEC-03, NFR-SEC-08) ada di `docs/07-klarifikasi-ac-fase-1.md`. Pemetaan T-23–T-35 ke fase ada di §4 dokumen itu. Setelah Checkpoint 2 menyetujuinya, teks AC PRD dan test case story terdampak diperbarui, lalu baris di atas disesuaikan.
+Klarifikasi AC Fase 1 (temuan test-plan §9 T-01–T-22; US-101, US-103–US-106, US-201, US-208, US-1501, US-1504, KU-02, KU-10, NFR-SEC-03, NFR-SEC-08) ada di `docs/07-klarifikasi-ac-fase-1.md`. Pemetaan T-23–T-35 ke fase ada di §4 dokumen itu.
+
+**Perubahan AC setelah Checkpoint 2 (PRD v1.2 final, 2026-11-18).** Baris berikut menandai AC yang berubah atau baru. Test case-nya sudah diperbarui di `docs/test-plan.md` versi 0.2 (kolom "Test case"), dan kolom jumlah di tabel di atas sudah disesuaikan (total 805 test case, test-plan §2.9). Temuan baru dari AC ini: test-plan §9 T-36–T-43.
+
+| Story / kriteria | AC berubah atau baru | Asal | Fase | Test case (test-plan v0.2) |
+| --- | --- | --- | --- | --- |
+| KU-02, KU-10 | Rumusan ulang (batas waktu klien; pesan seragam saat masuk dan layar "Akun nonaktif" saat sesi) | T-20, T-09, UP-73 | Semua | TC-KU-02-1, -3; TC-KU-10-1, -2; TC-SEC-3 |
+| US-101 | AC1a, AC1b, AC1c, AC2, AC2b, AC3 (rumusan ulang); AC5 baru (pendaftaran TOTP dan kode pemulihan) | T-01–T-04, UP-73; CR-018 | F1 | TC-US-101-2, -4, -7, -8, -11, -12 (diubah); TC-US-101-16–30 (baru) |
+| US-103 | AC1 (dengan TOTP), AC1a, AC1b baru, AC2, AC3, AC4a–AC4e, AC5; AC6 baru (CR-017); AC7, AC8 baru (CR-018) | T-05, T-06, T-08, T-09, UP-73; CR-017; CR-018 | F1 (AC8 jalur Layanan Pelanggan: F2) | TC-US-103-1–3, -6, -7, -9, -10, -12–14, -16, -17, -19 (diubah); TC-US-103-20–51 (baru) |
+| US-104 | AC3 (migrasi data) | T-11, UP-75 | F1 | TC-US-104-6 (diubah); TC-US-104-12, -13 (baru) |
+| US-105 | AC1a (tabel validasi), AC1b (usia minimum PB-22), AC4a–AC4e | T-12, T-13, UP-77, UP-73 | F1 | TC-US-105-2, -10, -12–14 (diubah); TC-US-105-15–25 (baru) |
+| US-106 | AC1, AC2, AC3, AC4 (batas NIK berlapis), AC5 | T-07, T-14–T-16, UP-73, UP-74 | F1 | TC-US-106-4, -6–10, -12, -16, -17 (diubah); TC-US-106-23–34 (baru) |
+| US-110 | AC1–AC8 (story baru) | UP-78 a, CR Checkpoint 2 | F2 (web RME: F3) | TC-US-110-1–12 (baru) |
+| US-201 | AC3 (daftar alasan awal), AC3a, AC7, AC8 baru (Verifikator tidak memutuskan pengajuan akunnya sendiri) | T-17, T-18, T-19 d, UP-74, UP-75, UP-76 (PT-56) | F1 | TC-US-201-4, -9, -14, -17 (diubah); TC-US-201-20–27 (baru, termasuk AC8) |
+| US-207 | AC5 baru (reset MFA pasien oleh Layanan Pelanggan) | CR-018 | F2 | TC-US-207-4 (diubah, KU-10); TC-US-207-9–17 (baru; reset MFA hanya Layanan Pelanggan, Super Admin ditolak: TC-US-207-15) |
+| US-208 | AC4–AC7, AC8 (pemberitahuan sub-peran sensitif) | T-19, UP-76 | F1 (AC8: F2) | TC-US-208-4, -12 (diubah); TC-US-208-15–27 (baru) |
+| US-1501 | AC3 (peringatan Fase 1/Fase 2) | T-21 | F1, F2 | TC-US-1501-6, -9 (diubah); TC-US-1501-17, -18 (baru) |
+| US-1504 | AC3 (deteksi manipulasi, pengganti) | T-22 | F1 | TC-US-1504-6–9 (diubah); TC-US-1504-10, -11 (baru) |
+| NFR-SEC-02, -03, -08, -11 | MFA semua akun; nilai kebijakan password; MiB; sesi paralel tidak dibatasi | CR-018, T-02, T-07, UP-78 b | F1, F2 | TC-NFR-SEC-02-1, -2, TC-NFR-SEC-03-2, TC-NFR-SEC-08-1, TC-AUD-2 (diubah); TC-NFR-SEC-02-3–5, TC-NFR-SEC-03-3–7, TC-NFR-SEC-08-3, TC-NFR-SEC-11-1, -2 (baru) |

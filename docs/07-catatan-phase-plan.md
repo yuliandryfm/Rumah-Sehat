@@ -149,3 +149,72 @@ Pertanyaan Checkpoint 2 dari Tahap 6 (`docs/06-catatan-design.md`) tetap berlaku
 - Fact-checker klarifikasi (`docs/fact-check/tahap-07-klarifikasi.md`): LULUS, 0 blokir; konfirmasi teks ASVS 5.0.0 "From L2 onwards, multi-factor authentication mechanisms are required" (S-01).
 - Security architect (`docs/review/tahap-07-security.md`): putaran 1 TIDAK LULUS (B-01: pesan akun nonaktif membuka status akun); putaran 2 LULUS DENGAN CATATAN, 0 blokir. Catatan label baris M4 dan rumusan alasan penolakan jalur asinkron diperbaiki orkestrator; P2-1 (ukur p95 pendaftaran email baru di F1-T50, keputusan bila > 900 ms) dibawa ke Tahap 8.
 - Gate: enabler fondasi di Fase 1 dan test plan dari PRD terpenuhi; Definition of Ready story Fase 1 terpenuhi setelah klarifikasi AC disetujui di Checkpoint 2; persetujuan pembagian fase di Checkpoint 2.
+
+## Tindak lanjut Checkpoint 2: phase plan v0.2 (2026-11-18)
+
+Sumber keputusan: `docs/checkpoint-2.md` bagian "Jawaban user" (label `[USER] C2-Qx` dan `[USER] C2-Bn`). Persona: Project Manager dengan tinjauan Tech Lead. Tingkat ketelitian T2. Berkas yang diubah: `docs/07-phase-plan.md` (v0.2), catatan ini, `docs/sources.md` (SRC-280–SRC-283), `docs/decision-log.md` (KEPUTUSAN-215–KEPUTUSAN-223).
+
+### Status usulan UP-65–UP-78
+
+| ID | Status | Sumber |
+| --- | --- | --- |
+| UP-65 | **Disetujui** apa adanya (tanpa Fase 4, Opsi B). Tanggal fase tetap; hari kerja dihitung ulang setelah libur | `[USER] C2-Q5` |
+| UP-66 | **Disetujui** dengan kriteria phase plan §6.5 | `[USER] C2-Q6` |
+| UP-67 | **Disetujui**: Opsi B baseline, final di gerbang re-plan 2026-12-11; Opsi E dijalankan (developer backend/web mulai awal Januari 2027) | `[USER] C2-Q1, C2-Q2, C2-Q8` |
+| UP-68 | **Disetujui** opsi (c): CR-011 ke rilis berikutnya | `[USER] C2-B5` (delegasi) |
+| UP-69 | **Disetujui** opsi (c): CR-015 ke rilis berikutnya; ubin vaksinasi/infus tidak tampil | `[USER] C2-B6` (delegasi) |
+| UP-70 | **Tercakup** UP-73 | `[USER] C2-B4` (delegasi) |
+| UP-71 | **Disetujui** (PB-07 dan sesi 12 jam sebagai pengecualian essential) | `[USER] C2-B15` (delegasi) |
+| UP-72 | **Disetujui** (draf di server) | `[USER] C2-B15` (delegasi) |
+| UP-73 | **Disetujui** opsi B untuk semua alur; batas NIK berlapis 3/24 jam per akun, 3/24 jam per NIK lintas akun, 10/24 jam per IP, peringatan > 20/jam global; email pemberitahuan penguncian tidak dibangun di rilis 1 | `[USER] C2-B4` (delegasi) |
+| UP-74 | **Disetujui** | `[USER] C2-B14` (delegasi) |
+| UP-75 | **Disetujui**: migrasi data, tanpa layar admin | `[USER] C2-B14` (delegasi) |
+| UP-76 | **Disetujui** (bootstrap dengan persetujuan orang kedua, minimal dua Super Admin, menonaktifkan akun sendiri ditolak, Auditor eksklusif, Auditor terakhir tidak dapat dicabut, pemberitahuan pemberian sub-peran sensitif). Siapa Super Admin pertama dan penyetujunya: PT-52 | `[USER] C2-B7` (delegasi) |
+| UP-77 | **Disetujui** (parameter usia; nilai dari L-08) | `[USER] C2-B14` (delegasi) |
+| UP-78 | **Disetujui**: (a) layar "Perangkat dan sesi aktif" lengkap di Fase 2 untuk semua aplikasi, menjadi US-110; (b) sesi paralel tidak dibatasi untuk semua jenis akun, didokumentasikan | `[USER] C2-Q10, C2-Q11` |
+
+Temuan T7-F9 (MFA pasien terhadap ASVS L2) ditutup dengan opsi M1, MFA wajib untuk pasien `[USER] C2-Q9` (CR-018). Revisi ADR-011 dikerjakan pemegang berkas lain.
+
+### Status pertanyaan terbuka
+
+| ID | Status |
+| --- | --- |
+| PT-42, PT-43, PT-44 | Selesai (UP-72, UP-71, UP-73) |
+| PT-47 | Tetap terbuka, tenggat sebelum Fase 2 (2026-12-14) |
+| PT-48 | Sebagian terjawab: mobile developer penuh waktu ±40 jam/minggu dan mengerjakan seluruh layar mobile (C2-Q3); sesi Claude ≥ 6 jam per hari kerja (C2-Q4); tambahan developer backend/web mulai awal Januari 2027 (C2-Q2, C2-Q8). Throughput dalam jam-task tetap diukur di Fase 1 |
+| PT-49, PT-50, PT-51 | Tetap terbuka |
+| PT-52 (baru) | Super Admin pertama dan orang kedua penyetuju bootstrap; tenggat sebelum EN-26 (2027-02-01); gerbang G-22 |
+| PT-53 (baru) | Developer backend/web tambahan: jumlah orang, biaya terhadap toleransi +20%, tanggal mulai pasti; tenggat gerbang re-plan 2026-12-11; gerbang G-23 |
+
+### Riset hari libur (SRC-280–SRC-283)
+
+| SRC | Halaman | Hasil |
+| --- | --- | --- |
+| SRC-280 | Setneg, SKB 2026 | 24 Desember 2026 (Kamis) cuti bersama, 25 Desember 2026 (Jumat) libur nasional; tidak ada libur di November dan 1–23 Desember 2026 |
+| SRC-281 | Kemenko PMK, SKB 2026 | Hanya judul dan jumlah (17 libur nasional, 8 cuti bersama); lampiran PDF tidak dibuka; dipakai sebagai pembanding |
+| SRC-282 | Kemenko PMK, SKB 2027 | 1 Januari (Jumat), 5 Januari (Selasa), 6 Februari (Sabtu) libur nasional; 5 Februari (Jumat) cuti bersama; rangkaian 8–15 Maret 2027 |
+| SRC-283 | Setneg, SKB 2027 | Tanggal sama dengan SRC-282; cuti bersama swasta diatur pimpinan masing-masing |
+
+SKB 2027 sudah terbit (ditandatangani 15 September 2026), sehingga tanggal 2027 tidak perlu ditulis `[TIDAK DIKETAHUI]`. Perubahan atas SKB 2026 tidak ditemukan lewat pencarian (tidak ada halaman resmi perubahan untuk dibuka).
+
+### Perubahan phase plan v0.2
+
+- Hari kerja: Fase 1 15, Fase 2 16 (sebelumnya 20), Fase 3 15, Februari 9 (sebelumnya 10); mobile developer 50 hari kerja di 2026-11-23 – 2027-02-05 (sebelumnya ±55).
+- Fase 1: F1-T72–F1-T80 (CR-018 dan CR-017), 80 task, 277 jam-task, 54 task T1; jalur kritis tetap 65 jam-task.
+- Fase 2: US-110 (XL), US-207 AC5 reset MFA pasien (M), CR-017 dan daftar ulang TOTP realm `nakes` (M), notifikasi sub-peran sensitif (S): +66 jam-task.
+- Fase 3: US-108/US-109 (Opsi B), CR-017, daftar ulang TOTP, dan US-110 realm `rme` (M).
+- Fase 4 ditandai tidak dikerjakan di baseline Opsi B.
+- Effort: A ±1.967 (+42), B ±1.791, C ±1.718, D ±1.337 jam-task.
+- Kebutuhan jam-task per hari kerja: Fase 1 18,5; Fase 2 43,0; Fase 3 Opsi A (+Fase 4) 62,0, B 50,3, C 45,4, D 20,0; Februari 8,0.
+- Gerbang re-plan mengukur kecepatan per jalur (`v_mobile`, `v_bw`) dan menyajikan kekurangan Fase 3 jalur backend/web yang harus ditutup Opsi E.
+
+### Temuan dan pertentangan (tidak diselesaikan sendiri)
+
+| # | Temuan | Perlakuan |
+| --- | --- | --- |
+| C2-F1 | Pemegang PRD menambah US-103 AC7 (daftar ulang TOTP) dan AC8 (perangkat hilang) serta US-207 AC5 (reset MFA pasien oleh Layanan Pelanggan), dengan rancangan KEPUTUSAN-202–KEPUTUSAN-205. Instruksi awal tugas ini hanya menyebut pendaftaran TOTP, kode pemulihan, Reset Credentials, layar mobile, dan test negatif | Task Fase 1 diselaraskan dengan AC baru (F1-T75, F1-T77, F1-T79, F1-T80); US-207 AC5 dijadwalkan di Fase 2 (KEPUTUSAN-217). KEPUTUSAN-202–205 berstatus menunggu review keamanan; bila berubah, task Fase 1 menyesuaikan |
+| C2-F2 | `docs/decision-log.md` ASUMSI-01 dan KEPUTUSAN-178/182 masih menulis 245 jam-task dan "libur tidak dikurangi" | Di luar rentang yang boleh diubah tugas ini; dilaporkan ke orkestrator. KEPUTUSAN-215 dan KEPUTUSAN-216 menggantikan bagian itu |
+| C2-F3 | `docs/checkpoint-2.md` (Temuan penting 1 dan 3) memuat angka v0.1 (±1.857 jam-task, 16,3 → 61,2) | Catatan historis checkpoint; tidak diubah (bukan berkas tugas ini) |
+| C2-F4 | Phase plan v0.1 §2 mencatat mesin pengembangan Darwin 21.6.0, sedangkan sesi revisi ini berjalan di Linux | Baris §2 diperbarui; mesin Tahap 8 tetap diperiksa di F1-T01 |
+| C2-F5 | Backlog dan traceability perlu task F1-T72–F1-T80, US-110 di Fase 2, US-108/US-109 di Fase 3, dan penanda Fase 4 tidak dikerjakan | Dikerjakan pemegang berkas lain |
+| C2-F6 | Ukuran task yang definisinya disesuaikan klarifikasi AC (klarifikasi §6) belum dinilai ulang | KEPUTUSAN-223: dinilai ulang setelah PRD v1.2 final, sebelum task terdampak pertama dimulai |
