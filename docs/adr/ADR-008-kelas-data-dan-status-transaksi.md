@@ -26,6 +26,8 @@ Setiap tabel masuk tepat satu dari lima kelas berikut. Kelasnya dicatat di data 
 
 Event audit punya penyimpanan sendiri di database terpisah (ADR-009) dan tidak termasuk tabel aplikasi.
 
+**Sub-kelas Master snapshot**: snapshot data pribadi yang menjadi bukti data yang dikirim ke pihak luar (misalnya data penerima layanan yang dikirim ke rekanan). Snapshot tetap kelas Master karena harus dapat dianonimkan (ADR-013). Role aplikasi hanya punya `SELECT` dan `INSERT`, dan `UPDATE` hanya untuk role pekerja privasi pada kolom yang dianonimkan `[KEPUTUSAN-69]`.
+
 **Aturan status entitas transaksi:**
 
 1. Setiap entitas transaksi berstatus memiliki tabel riwayat status `<entitas>_status_event` dan tabel proyeksi `<entitas>_state`.

@@ -63,6 +63,7 @@ Tanggal: 2026-11-18
 - **Tenaga kesehatan**: pola yang sama di realm `nakes`. Akun aplikasi berstatus "Menunggu verifikasi" (US-202).
 - **Admin dan pengguna RME**: dibuat lewat backoffice atau RME. User Keycloak dibuat lewat Admin REST API, lalu undangan aktivasi dikirim untuk mengatur password dan TOTP (US-206, US-208, US-1302).
 - Keycloak hanya menyimpan data identitas minimal (email sebagai username, dan kredensial). Profil, data identitas, dan peran disimpan di database aplikasi.
+- Perubahan email mandiri di konsol akun Keycloak dinonaktifkan. Email hanya diubah lewat API aplikasi (US-105 AC4), yang memperbarui Keycloak lewat Admin REST API `[SRC-72]`, sehingga salinan email di aplikasi tidak tertinggal.
 
 **7. Alur login** `[KEPUTUSAN-24]`:
 - **Aplikasi mobile**: OIDC Authorization Code dengan PKCE lewat browser sistem, bukan webview di dalam aplikasi, sesuai RFC 8252 `[SRC-77]` `[SRC-71]`. Halaman login memakai tema Rumah Sehat; kemampuan tema diverifikasi di Tahap 5 dan desainnya di Tahap 6. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).

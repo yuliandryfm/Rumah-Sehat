@@ -24,11 +24,13 @@ Tanggal: 2026-11-18
 5. **Notifikasi payment gateway** `[KEPUTUSAN-31]`:
    - Endpoint notifikasi memverifikasi keaslian sesuai mekanisme penyedia (NFR-INT-04).
    - Isi notifikasi disimpan sebagai log (tanpa rahasia), unik per ID kejadian penyedia, lalu diproses oleh job.
-   - Penerimaan dana berhasil dicatat di tabel tangkapan pembayaran dengan constraint unik per pesanan. Tangkapan kedua untuk pesanan yang sama gagal di constraint dan dialihkan ke RF-12 (US-802 AC6).
+   - Setiap percobaan pembayaran dicatat sebagai baris transaksi beserta kunci idempotensinya **sebelum** penyedia dipanggil. Referensi dari penyedia disimpan di tabel transaksi anak, sehingga tidak ada `UPDATE` pada baris percobaan dan tidak ada instruksi bayar di penyedia yang tidak tercatat.
+   - Setiap dana masuk dicatat sebagai penerimaan, dengan ID transaksi penyedia sebagai kunci unik. Satu percobaan boleh punya lebih dari satu penerimaan, supaya debit ganda atas instruksi yang sama tetap tercatat.
+   - Penerimaan yang sah menjadi tangkapan pembayaran dengan constraint unik per pesanan. Penerimaan berikutnya untuk pesanan yang sama ditandai ganda dan dialihkan ke RF-12 (US-802 AC6).
    - Nominal yang berbeda diarahkan ke RF-14, dan pembayaran yang berhasil setelah kedaluwarsa ke pemeriksaan slot/stok untuk RF-13.
 6. **Refund** `[KEPUTUSAN-31]`:
    - Refund adalah entitas transaksi dengan riwayat status dan proyeksi (ADR-008).
-   - Constraint unik "satu refund per pesanan kecuali alasan RF-12" ditegakkan dengan partial unique index `[SRC-33]`.
+   - Constraint unik "satu refund per pesanan" ditegakkan dengan partial unique index `[SRC-33]`, dengan pengecualian RF-12 (AB-36). RF-13 dan RF-14 juga dikecualikan, karena keduanya refund atas dana yang tidak menjadi pembayaran pesanan. Tanpa pengecualian ini, refund yang wajib menurut matriks (misalnya RF-01 setelah ada RF-14 pada percobaan lain) ditolak constraint. Tafsiran AB-36 ini menunggu konfirmasi user di gate Tahap 4 `[KEPUTUSAN-67]`. Satu penerimaan dana paling banyak satu refund.
    - Eksekusi lewat job yang memanggil adaptor dengan kunci idempotensi = ID refund, sehingga percobaan ulang tidak menggandakan refund.
    - Job PB-19 memindahkan refund yang tidak dikonfirmasi ke "Perlu dicek" tanpa eksekusi ulang (AB-35).
    - Kewajiban pengembalian rekanan dan platform (AB-34) dicatat sebagai jurnal saat refund dibuat, atau untuk RF-18 saat penyebab ditetapkan, berstatus Terbuka sampai Keuangan menandainya Selesai dengan rujukan bukti (US-808).

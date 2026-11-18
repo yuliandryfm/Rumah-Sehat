@@ -4,14 +4,14 @@ Tanggal: 2026-11-18
 Versi: 0.1 (draf Tahap 4, untuk review `dba-reviewer` dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis**
-Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputusan Keycloak dan Redis `[USER] T4-Q4`. Atribut lengkap, tipe, constraint, dan label sumber per kolom ada di `docs/04-data-dictionary.md`; keputusan baru `[KEPUTUSAN-38]`–`[KEPUTUSAN-65]` dan temuan F-01–F-13 ada di §E dokumen itu.
+Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputusan Keycloak dan Redis `[USER] T4-Q4`. Atribut lengkap, tipe, constraint, dan label sumber per kolom ada di `docs/04-data-dictionary.md`; keputusan baru `[KEPUTUSAN-38]`–`[KEPUTUSAN-69]` dan temuan F-01–F-13 ada di §E dokumen itu. Putaran perbaikan 1 atas review DBA (`docs/review/tahap-04-dba.md`) sudah diterapkan.
 
 ## 0. Cara membaca
 
 - Satu diagram per domain supaya terbaca. Entitas dari domain lain ditampilkan dengan atribut minimal sebagai penghubung.
 - Atribut yang ditampilkan hanya PK, FK, kunci unik (UK), dan kolom penentu. Kolom standar per kelas (ADR-008; *STD-M*, *STD-T*, dan seterusnya di data dictionary §0.4) tidak digambar.
 - Notasi Mermaid: `||` tepat satu, `o|` nol atau satu, `|{` satu atau banyak, `o{` nol atau banyak.
-- Kelas tabel ditulis di komentar atribut pertama: M Master, T Transaksi, R Riwayat status, P Proyeksi, O Operasional, L Log.
+- Kelas tabel ditulis di komentar atribut pertama: M Master, M-snapshot Master snapshot (`[KEPUTUSAN-69]`), T Transaksi, R Riwayat status, P Proyeksi, O Operasional, L Log.
 - Kredensial, MFA, token email, dan sesi IdP dikelola Keycloak; cache dan pencabutan sesi di Redis. Keduanya tidak digambar (data dictionary §0.10).
 - Tiga database terpisah: (A) aplikasi Rumah Sehat, (B) audit (skema sama untuk audit Rumah Sehat dan audit RME), (C) aplikasi RME minimalis. Tidak ada FK lintas database.
 
@@ -25,9 +25,9 @@ Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputus
 | Tenaga kesehatan – Slot – Sesi: satu slot paling banyak satu sesi terbayar (AB-52) | `consultation_slot` 1 — 0..* `consultation_session` (pesanan yang kedaluwarsa atau batal tetap merujuk slot); paling banyak satu terbayar lewat `booked_order_id` unik | Sesuai (penegakan lewat kolom unik) |
 | Pesanan – Penerima layanan: satu pesanan terjadwal untuk satu orang | `patient_order` *..1 `care_recipient` (wajib untuk layanan terjadwal; kosong untuk produk) | Sesuai |
 | Pesanan – Pembayaran – Pembagian dana: satu pembayaran berhasil; satu set pembagian dana | `patient_order` 1 — 0..* `payment_attempt`; 1 — 0..1 `payment_capture`; pembagian dana per harga terkunci percobaan | **Menyimpang dari diagram PRD** (`PESANAN ||--|| PEMBAYARAN`): pesanan boleh tanpa pembayaran (kedaluwarsa atau dibatalkan sebelum bayar) dan boleh punya beberapa percobaan `[KEPUTUSAN-48]` |
-| Pesanan – Refund – Klaim: nol atau satu refund; nol atau satu klaim aktif | Refund: 0..1 per pesanan kecuali RF-12 (partial unique). Klaim: 0..1 per pesanan, apa pun statusnya | **Lebih ketat untuk klaim** `[KEPUTUSAN-50]`: setara dengan UP-36 (tidak ada klaim baru setelah ditolak) dan AB-36 |
+| Pesanan – Refund – Klaim: nol atau satu refund; nol atau satu klaim aktif | Refund: 0..1 per pesanan untuk refund atas pembayaran pesanan; RF-12, RF-13, RF-14 dikecualikan karena atas dana yang tidak menjadi pembayaran pesanan (partial unique, `[KEPUTUSAN-67]`, menunggu konfirmasi user). Klaim: 0..1 per pesanan, apa pun statusnya | **Lebih ketat untuk klaim** `[KEPUTUSAN-50]`: setara dengan UP-36 (tidak ada klaim baru setelah ditolak) dan AB-36 |
 | Sesi – Catatan – Resep: nol atau satu catatan berversi; nol atau banyak resep | `consultation_session` 1 — 0..* `consultation_note_version` (satu catatan, banyak versi); 1 — 0..* `prescription` | Sesuai |
-| Pendaftaran lab – Hasil lab: nol atau banyak (berversi) | `patient_order` 1 — 0..* `lab_result` 1 — 1..* `lab_result_version` | Sesuai |
+| Pendaftaran lab – Hasil lab: nol atau banyak (berversi) | `patient_order` 1 — 0..* `lab_result` 1 — 1..* `lab_result_version`; di RME `rme_visit` 1 — 0..* `rme_lab_result` 1 — 1..* `rme_lab_result_version` (review DBA B08) | Sesuai |
 | Rekanan RME – Fasyankes: tepat satu | `fasyankes.rumah_sehat_partner_id` unik, tanpa FK lintas database | Sesuai |
 | Kunjungan RME – Pesanan Rumah Sehat: tepat satu | `rme_visit.rumah_sehat_order_id` unik, tanpa FK lintas database | Sesuai |
 
@@ -343,7 +343,15 @@ erDiagram
   order_status_event {
     uuid id PK "R"
     uuid patient_order_id FK "UK bersama version"
+    text order_kind FK "FK komposit ke patient_order dan transisi"
     int version
+    text from_status FK
+    text to_status FK
+  }
+  order_status_transition {
+    uuid id PK "M acuan"
+    text order_kind "UK bersama from_status, to_status"
+    text from_status
     text to_status
   }
   order_state {
@@ -351,7 +359,7 @@ erDiagram
     text status
   }
   order_personal_snapshot {
-    uuid id PK "M dapat dianonimkan"
+    uuid id PK "M-snapshot, hanya privacy_worker U"
     uuid patient_order_id FK, UK
   }
   partner_recipient_alias {
@@ -371,8 +379,12 @@ erDiagram
   order_price_lock_line {
     uuid id PK "T"
     uuid order_price_lock_id FK
-    int quantity
+    uuid product_id FK "UK bersama order_price_lock_id"
+    int quantity "satu-satunya sumber jumlah barang"
     bigint unit_markup_idr
+  }
+  product {
+    uuid id PK "M"
   }
   order_parameter_snapshot {
     uuid id PK "T"
@@ -402,11 +414,6 @@ erDiagram
     uuid id PK "T"
     uuid patient_order_id FK, UK
   }
-  product_order_item {
-    uuid id PK "T"
-    uuid patient_order_id FK
-    uuid product_id FK
-  }
   shipment {
     uuid id PK "T"
     uuid patient_order_id FK, UK
@@ -414,6 +421,7 @@ erDiagram
   shipment_tracking_event {
     uuid id PK "L"
     uuid shipment_id FK
+    bytea description_enc "Enc, wadah status_note"
   }
   patient {
     uuid id PK "M"
@@ -428,24 +436,25 @@ erDiagram
   care_recipient |o--o{ patient_order : "menerima layanan"
   partner ||--o{ patient_order : "melayani atau menjual"
   patient_order ||--|{ order_status_event : "transisi"
+  order_status_transition |o--o{ order_status_event : "transisi yang diizinkan"
   patient_order ||--|| order_state : "status terkini"
   patient_order ||--|| order_personal_snapshot : "snapshot data pribadi"
   partner ||--o{ partner_recipient_alias : "alias penerima"
   care_recipient ||--o{ partner_recipient_alias : "dialiaskan"
   patient_order ||--o{ order_price_lock : "dikunci per percobaan bayar"
   order_price_lock ||--|{ order_price_lock_line : "rincian per unit"
+  product |o--o{ order_price_lock_line : "barang"
   order_price_lock ||--o{ order_parameter_snapshot : "parameter terkunci"
   patient_order ||--o{ inventory_hold : "menahan slot atau stok"
   patient_order ||--o| order_partner_acknowledgement : "diterima rekanan"
   patient_order ||--o{ order_follow_up_flag : "ditandai"
   order_follow_up_flag ||--o| order_follow_up_resolution : "diselesaikan"
   patient_order ||--o| product_order_detail : "detail produk"
-  patient_order ||--o{ product_order_item : "barang"
   patient_order ||--o| shipment : "dikirim"
   shipment ||--o{ shipment_tracking_event : "pelacakan"
 ```
 
-Detail pesanan per jenis: `consultation_session` (diagram 6), `appointment` dan `home_visit_detail` (diagram 7), `product_order_detail` (di atas). Masing-masing 1:1 dengan `patient_order` lewat `patient_order_id` unik.
+Detail pesanan per jenis: `consultation_session` (diagram 6), `appointment` dan `home_visit_detail` (diagram 7), `product_order_detail` (di atas). Masing-masing 1:1 dengan `patient_order` lewat `patient_order_id` unik. Barang dan jumlah pesanan produk dibaca dari `order_price_lock_line` milik harga terkunci percobaan yang tertangkap; `product_order_item` dihapus di putaran perbaikan 1 (review DBA S04).
 
 ## 6. Konsultasi (database A)
 
@@ -460,7 +469,11 @@ erDiagram
     uuid health_worker_id FK
     uuid consultation_slot_id FK
     bytea chief_complaint_enc "Enc"
-    uuid data_key_id FK, UK "wadah consultation"
+    uuid chat_data_key_id FK, UK "wadah consultation_chat"
+    uuid clinical_data_key_id FK, UK "wadah consultation_clinical"
+  }
+  data_key {
+    uuid id PK "M khusus, UK bersama container_id"
   }
   consultation_attendance_event {
     uuid id PK "T"
@@ -512,6 +525,11 @@ erDiagram
   prescription_state {
     uuid prescription_id PK, FK "P"
   }
+  prescription_document {
+    uuid id PK "T"
+    uuid prescription_id FK, UK
+    uuid file_id FK, UK "PDF resep"
+  }
   health_worker {
     uuid id PK "M"
   }
@@ -531,8 +549,12 @@ erDiagram
   prescription ||--|{ prescription_item : "item"
   prescription ||--|{ prescription_status_event : "transisi"
   prescription ||--|| prescription_state : "status terkini"
+  prescription ||--o| prescription_document : "PDF"
   prescription |o--o| prescription : "menggantikan"
+  consultation_session ||--|| data_key : "dua wadah (chat, klinis)"
 ```
+
+Wadah konsultasi dipecah dua `[KEPUTUSAN-68]`: `chat_message`, lampiran, dan keluhan awal memakai `chat_data_key_id`; draf dan versi catatan, resep, item resep, dan PDF resep memakai `clinical_data_key_id`. Kesesuaian DEK dengan sesinya ditegakkan FK komposit `(data_key_id, consultation_session_id)` → `data_key (id, container_id)`.
 
 ## 7. Klinik, lab, home visit, dan hasil lab (database A)
 
@@ -614,9 +636,14 @@ erDiagram
     uuid id PK "T"
   }
   payment_attempt {
-    uuid id PK "T"
+    uuid id PK "T, dibuat sebelum memanggil penyedia"
     uuid patient_order_id FK
-    uuid order_price_lock_id FK, UK
+    uuid order_price_lock_id FK, UK "FK komposit bersama patient_order_id"
+    uuid idempotency_key UK
+  }
+  payment_attempt_gateway_ref {
+    uuid id PK "T"
+    uuid payment_attempt_id FK, UK
     text gateway_payment_ref UK
   }
   payment_attempt_status_event {
@@ -632,7 +659,8 @@ erDiagram
   }
   payment_receipt {
     uuid id PK "T"
-    uuid payment_attempt_id FK, UK
+    uuid payment_attempt_id FK "banyak per percobaan"
+    text gateway_transaction_ref UK "kunci idempotensi"
     uuid patient_order_id FK
     uuid payment_gateway_notification_id FK
     text outcome
@@ -640,7 +668,8 @@ erDiagram
   payment_capture {
     uuid id PK "T"
     uuid patient_order_id FK, UK "RF-12 bila kedua"
-    uuid payment_receipt_id FK, UK
+    uuid payment_receipt_id FK, UK "FK komposit ke receipt"
+    uuid payment_attempt_id FK
   }
   fund_split_instruction_line {
     uuid id PK "T"
@@ -669,7 +698,7 @@ erDiagram
   }
   refund {
     uuid id PK "T"
-    uuid patient_order_id FK "UK kecuali rf_12"
+    uuid patient_order_id FK "UK kecuali rf_12, rf_13, rf_14"
     uuid payment_receipt_id FK, UK
     uuid claim_id FK, UK
     text refund_case
@@ -744,7 +773,9 @@ erDiagram
   order_price_lock ||--o| payment_attempt : "harga percobaan"
   payment_attempt ||--|{ payment_attempt_status_event : "transisi"
   payment_attempt ||--|| payment_attempt_state : "status terkini"
-  payment_attempt ||--o| payment_receipt : "dana diterima"
+  payment_attempt ||--o| payment_attempt_gateway_ref : "referensi penyedia"
+  payment_attempt ||--o{ payment_receipt : "dana diterima"
+  payment_attempt ||--o{ payment_capture : "percobaan yang tertangkap"
   payment_gateway_notification |o--o| payment_receipt : "sumber"
   patient_order ||--o| payment_capture : "dikonfirmasi"
   payment_receipt ||--o| payment_capture : "ditangkap"
@@ -774,6 +805,8 @@ erDiagram
 ```
 
 `journal_entry` juga punya FK opsional ke `patient_order`, `payment_capture`, `refund`, dan `partner_obligation`; `partner_fee_invoice` merujuk `partner` dan `partner_fee_rule`. Garis-garis itu tidak digambar supaya diagram terbaca.
+
+Rantai FK komposit `payment_capture` → `payment_receipt` → `payment_attempt` → `order_price_lock` (setiap langkah menyertakan `patient_order_id` atau `payment_attempt_id`) menjamin semuanya milik pesanan yang sama (review DBA S04). Satu percobaan dapat menerima lebih dari satu penerimaan; penerimaan kedua dinilai `duplicate` (RF-12) (review DBA B06). Refund unik per pesanan kecuali RF-12, RF-13, dan RF-14 `[KEPUTUSAN-67]`.
 
 ## 9. Notifikasi, konten, tiket, hak subjek data, persetujuan, dan retensi (database A)
 
@@ -949,9 +982,12 @@ erDiagram
     uuid partner_id FK, UK
   }
   integration_outbox {
-    uuid id PK "O"
+    uuid id PK "O, hanya rujukan"
     uuid event_id UK
     uuid partner_id FK
+    text entity_type
+    uuid entity_id
+    bytea payload_enc "Enc, opsional"
   }
   notification_outbox {
     uuid id PK "O"
@@ -976,10 +1012,11 @@ erDiagram
     text object_key UK
   }
   data_key {
-    uuid id PK "M khusus"
+    uuid id PK "M khusus, UK bersama container_id"
     text container_type "UK bersama container_id"
     uuid container_id
-    bytea wrapped_dek "dikosongkan saat crypto-shred"
+    bytea wrapped_dek "dikosongkan saat crypto-shred, lalu terkunci"
+    text kek_ref
   }
   kpi_snapshot {
     uuid id PK "L"
@@ -1048,11 +1085,11 @@ erDiagram
   audit_chain_anchor |o--o{ audit_chain_verification : "diverifikasi"
 ```
 
-Relasi antar-tabel audit tidak memakai FK deklaratif (tabel terpartisi); konsistensi dijaga relay dalam satu transaksi (data dictionary B). `audit_event.prev_hash` merantai setiap event ke event dengan `seq` sebelumnya (ADR-009 butir 5).
+Relasi antar-tabel audit tidak memakai FK deklaratif (tabel terpartisi); konsistensi dijaga relay dalam satu transaksi (data dictionary B). `audit_event.prev_hash` merantai setiap event ke event dengan `seq` sebelumnya (ADR-009 butir 5). Di database audit RME, `audit_event` dan `audit_event_subject` diberi RLS per `tenant_id` untuk role `audit_tenant_reader` yang dipakai halaman log akses Admin Fasyankes (data dictionary §0.6 B, review DBA B03).
 
 ## 12. Database RME minimalis (database C)
 
-Semua tabel tenant punya `fasyankes_id` dan RLS (ADR-012 butir 5). Kolom `fasyankes_id` tidak digambar di setiap entitas kecuali penghubung utama.
+Semua tabel tenant punya `fasyankes_id` dan RLS (ADR-012 butir 5). Kolom `fasyankes_id` tidak digambar di setiap entitas kecuali penghubung utama. Setiap garis antar-tabel tenant di bawah adalah FK komposit `(fasyankes_id, <induk>_id)` → `<induk> (fasyankes_id, id)`, termasuk ke `rme_data_key` (review DBA S01, `[KEPUTUSAN-68]`).
 
 ### 12.1 Fasyankes, pengguna, layanan, dan jadwal
 
@@ -1186,7 +1223,7 @@ erDiagram
     uuid data_key_id FK, UK "wadah rme_visit"
   }
   rme_visit_personal_snapshot {
-    uuid id PK "M dapat dianonimkan"
+    uuid id PK "M-snapshot, hanya privacy_worker U"
     uuid rme_visit_id FK, UK
   }
   rme_visit_status_event {
@@ -1230,9 +1267,13 @@ erDiagram
     uuid rme_visit_id FK
     uuid service_id FK
   }
+  rme_lab_result {
+    uuid id PK "T, dikirim sebagai external_result_id"
+    uuid rme_visit_id FK
+  }
   rme_lab_result_version {
     uuid id PK "T"
-    uuid rme_visit_id FK "UK bersama version"
+    uuid rme_lab_result_id FK "UK bersama version"
     bytea payload_enc "Enc"
     uuid pdf_file_id FK
   }
@@ -1289,7 +1330,8 @@ erDiagram
   rme_visit ||--o{ rme_medical_record_version : "rekam medis berversi"
   rme_user ||--o{ rme_medical_record_version : "menulis"
   rme_visit ||--o{ rme_lab_order_item : "permintaan lab"
-  rme_visit ||--o{ rme_lab_result_version : "hasil lab berversi"
+  rme_visit ||--o{ rme_lab_result : "hasil lab"
+  rme_lab_result ||--|{ rme_lab_result_version : "versi"
   rme_medical_record_version ||--o| satusehat_submission : "dikirim"
   rme_lab_result_version |o--o| satusehat_submission : "dikirim bila diwajibkan"
   satusehat_submission ||--|{ satusehat_submission_status_event : "transisi"
@@ -1307,7 +1349,9 @@ Tabel operasional RME (`rme_stored_file`, `rme_upload_slot`, `rme_data_key`, `rm
 
 Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **PII** (memuat data pribadi), **Spesifik** (data pribadi spesifik AB-70 atau kolom Sensitif §3.1; `*` = bila penerima anak; `Keu` = keuangan pribadi bila dibuka per pasien), **Enc** (kolom dienkripsi aplikasi), **Anon** (punya kolom yang dianonimkan pekerja privasi). Tanda "—" berarti tidak. Tabel yang hanya memuat ID orang ditandai "ID" di kolom PII: tidak mengidentifikasi tanpa tabel master, tetapi termasuk dalam salinan data subjek.
 
-### 13.1 Database aplikasi Rumah Sehat (136 tabel)
+### 13.1 Database aplikasi Rumah Sehat (138 tabel)
+
+Perubahan putaran perbaikan 1: `product_order_item` dihapus (S04); `order_status_transition` (S05), `prescription_document` (B07), dan `payment_attempt_gateway_ref` (B07) ditambahkan.
 
 | # | Tabel | Domain | Kelas | PII | Spesifik | Enc | Anon |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1319,7 +1363,7 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 6 | address | Pasien | M | Ya | — | — | Ya |
 | 7 | identity_document | Pasien | M | Ya | Ya (NIK, foto) | Ya | Ya |
 | 8 | identity_verification_request | Pasien | T | ID | — | — | — |
-| 9 | identity_verification_request_status_event | Pasien | R | — | — | — | — |
+| 9 | identity_verification_request_status_event | Pasien | R | — | — | Ya (`note_enc`) | — |
 | 10 | identity_verification_request_state | Pasien | P | — | — | — | — |
 | 11 | account_owner_nik_registry | Pasien | M | Ya (blind index) | — | — | Ya |
 | 12 | consent_text_version | Persetujuan | M | — | — | — | — |
@@ -1354,9 +1398,9 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 41 | product_image | Katalog | M | — | — | — | — |
 | 42 | product_stock | Katalog | M | — | — | — | — |
 | 43 | patient_order | Pesanan | T | ID | Keu | — | — |
-| 44 | order_status_event | Pesanan | R | — | — | — | — |
+| 44 | order_status_event | Pesanan | R | — | — | Ya (`note_enc`) | — |
 | 45 | order_state | Pesanan | P | — | — | — | — |
-| 46 | order_personal_snapshot | Pesanan | M | Ya | Ya* | — | Ya |
+| 46 | order_personal_snapshot | Pesanan | M-snapshot | Ya | Ya* | — | Ya |
 | 47 | partner_recipient_alias | Pesanan | M | Ya (pseudonim) | — | — | — |
 | 48 | order_price_lock | Pesanan | T | — | Keu | — | — |
 | 49 | order_price_lock_line | Pesanan | T | — | Keu | — | — |
@@ -1365,88 +1409,92 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 52 | order_partner_acknowledgement | Pesanan | T | — | — | — | — |
 | 53 | order_follow_up_flag | Pesanan | L | — | — | — | — |
 | 54 | order_follow_up_resolution | Pesanan | L | — | — | — | — |
-| 55 | consultation_session | Konsultasi | T | ID | Ya (keluhan awal) | Ya | — |
-| 56 | consultation_attendance_event | Konsultasi | T | ID | — | — | — |
-| 57 | video_room | Konsultasi | O | — | — | — | — |
-| 58 | chat_message | Konsultasi | T | ID | Ya | Ya | — |
-| 59 | chat_attachment | Konsultasi | T | — | Ya (berkas) | — | — |
-| 60 | consultation_note_draft | Konsultasi | O | — | Ya | Ya | — |
-| 61 | consultation_note_version | Konsultasi | T | — | Ya | Ya | — |
-| 62 | prescription | Konsultasi | T | Ya (terenkripsi) | Ya | Ya | — |
-| 63 | prescription_item | Konsultasi | T | — | Ya | Ya | — |
-| 64 | prescription_status_event | Konsultasi | R | — | — | — | — |
-| 65 | prescription_state | Konsultasi | P | — | — | — | — |
-| 66 | appointment | Klinik/lab | T | — | — | — | — |
-| 67 | appointment_queue_number | Klinik/lab | T | — | — | — | — |
-| 68 | queue_board | Klinik/lab | O | — | — | — | — |
-| 69 | home_visit_detail | Home visit | T | — | — | — | — |
-| 70 | home_visit_assignment | Home visit | T | ID | — | — | — |
-| 71 | home_visit_assignment_release | Home visit | T | — | — | — | — |
-| 72 | lab_result | Hasil lab | T | — | — | — | — |
-| 73 | lab_result_version | Hasil lab | T | — | Ya | Ya | — |
-| 74 | product_order_detail | Produk | T | — | — | — | — |
-| 75 | product_order_item | Produk | T | — | Keu | — | — |
-| 76 | shipment | Produk | T | — | — | — | — |
-| 77 | shipment_tracking_event | Produk | L | — | — | — | — |
-| 78 | payment_attempt | Pembayaran | T | — | Keu | — | — |
-| 79 | payment_attempt_status_event | Pembayaran | R | — | — | — | — |
-| 80 | payment_attempt_state | Pembayaran | P | — | — | — | — |
-| 81 | payment_gateway_notification | Pembayaran | L | — | Keu | — | — |
-| 82 | payment_receipt | Pembayaran | T | — | Keu | — | — |
-| 83 | payment_capture | Pembayaran | T | — | Keu | — | — |
-| 84 | fund_split_instruction_line | Pembayaran | T | — | Keu | — | — |
-| 85 | fund_split_report_line | Pembayaran | L | — | Keu | — | — |
-| 86 | journal_account | Jurnal | M | — | — | — | — |
-| 87 | journal_entry | Jurnal | T | — | Keu | — | — |
-| 88 | journal_line | Jurnal | T | — | Keu | — | — |
-| 89 | refund | Refund | T | — | Keu | — | — |
-| 90 | refund_status_event | Refund | R | — | — | — | — |
-| 91 | refund_state | Refund | P | — | — | — | — |
-| 92 | refund_execution_attempt | Refund | L | — | — | — | — |
-| 93 | refund_cause_determination | Refund | T | — | — | — | — |
-| 94 | claim | Klaim | T | Ya (terenkripsi) | Ya | Ya | — |
-| 95 | claim_status_event | Klaim | R | — | — | — | — |
-| 96 | claim_state | Klaim | P | — | — | — | — |
-| 97 | claim_evidence | Klaim | T | — | Ya (foto bukti) | — | — |
-| 98 | claim_escalation | Klaim | T | — | — | — | — |
-| 99 | partner_obligation | Kewajiban | T | — | — | — | — |
-| 100 | partner_obligation_status_event | Kewajiban | R | — | — | — | — |
-| 101 | partner_obligation_state | Kewajiban | P | — | — | — | — |
-| 102 | partner_fee_invoice | Kewajiban | T | — | — | — | — |
-| 103 | reconciliation_run | Rekonsiliasi | L | — | — | — | — |
-| 104 | reconciliation_item | Rekonsiliasi | L | — | — | — | — |
-| 105 | reconciliation_item_resolution | Rekonsiliasi | L | — | — | — | — |
-| 106 | in_app_notification | Notifikasi | L | ID | — | — | — |
-| 107 | in_app_notification_read | Notifikasi | L | — | — | — | — |
-| 108 | email_delivery | Notifikasi | L | ID | — | — | — |
-| 109 | cms_content | Konten | M | — | — | — | — |
-| 110 | complaint_ticket | Tiket | T | ID | — | — | — |
-| 111 | complaint_ticket_status_event | Tiket | R | — | — | — | — |
-| 112 | complaint_ticket_state | Tiket | P | — | — | — | — |
-| 113 | complaint_ticket_message | Tiket | T | Ya (terenkripsi) | Mungkin (teks pasien) | Ya | — |
-| 114 | complaint_ticket_attachment | Tiket | T | Ya (berkas) | — | — | — |
-| 115 | complaint_ticket_forward | Tiket | T | — | — | — | — |
-| 116 | data_subject_request | Hak subjek | T | Ya (terenkripsi) | — | Ya | — |
-| 117 | data_subject_request_status_event | Hak subjek | R | — | — | — | — |
-| 118 | data_subject_request_state | Hak subjek | P | — | — | — | — |
-| 119 | data_subject_request_response | Hak subjek | T | Ya (terenkripsi) | — | Ya | — |
-| 120 | data_export_package | Hak subjek | T | Ya (berkas) | Ya (berkas) | — | — |
-| 121 | retention_run | Retensi | L | — | — | — | — |
-| 122 | integration_client | Integrasi | M | — | — | Ya (rahasia) | — |
-| 123 | partner_endpoint | Integrasi | M | — | — | — | — |
-| 124 | inbound_idempotency_key | Integrasi | O | — | — | — | — |
-| 125 | integration_error_log | Integrasi | L | — | — | — | — |
-| 126 | outbound_delivery_attempt | Integrasi | L | — | — | — | — |
-| 127 | partner_integration_health | Integrasi | O | — | — | — | — |
-| 128 | audit_outbox | Platform | O | Ya (IP, ID) | — | — | — |
-| 129 | integration_outbox | Platform | O | Ya (data penerima minimal) | Mungkin | — | — |
-| 130 | notification_outbox | Platform | O | Ya (email tujuan) | — | — | — |
-| 131 | job | Platform | O | — | — | — | — |
-| 132 | upload_slot | Platform | O | — | — | — | — |
-| 133 | stored_file | Platform | M | Mengikuti perujuk | Mengikuti perujuk | — | — |
-| 134 | data_key | Platform | M khusus | — | — | Rahasia (DEK terbungkus) | — |
-| 135 | kpi_snapshot | Analitik | L | — | — | — | — |
-| 136 | patient_app_activity_month | Analitik | L | ID | — | — | — |
+| 55 | order_status_transition | Pesanan | M (acuan, aplikasi S saja) | — | — | — | — |
+| 56 | consultation_session | Konsultasi | T | ID | Ya (keluhan awal) | Ya | — |
+| 57 | consultation_attendance_event | Konsultasi | T | ID | — | — | — |
+| 58 | video_room | Konsultasi | O | — | — | — | — |
+| 59 | chat_message | Konsultasi | T | ID | Ya | Ya | — |
+| 60 | chat_attachment | Konsultasi | T | — | Ya (berkas) | — | — |
+| 61 | consultation_note_draft | Konsultasi | O | — | Ya | Ya | — |
+| 62 | consultation_note_version | Konsultasi | T | — | Ya | Ya | — |
+| 63 | prescription | Konsultasi | T | Ya (terenkripsi) | Ya | Ya | — |
+| 64 | prescription_item | Konsultasi | T | — | Ya | Ya | — |
+| 65 | prescription_status_event | Konsultasi | R | — | — | Ya (`note_enc`) | — |
+| 66 | prescription_state | Konsultasi | P | — | — | — | — |
+| 67 | prescription_document | Konsultasi | T | Ya (berkas) | Ya (berkas) | — | — |
+| 68 | appointment | Klinik/lab | T | — | — | — | — |
+| 69 | appointment_queue_number | Klinik/lab | T | — | — | — | — |
+| 70 | queue_board | Klinik/lab | O | — | — | — | — |
+| 71 | home_visit_detail | Home visit | T | — | — | — | — |
+| 72 | home_visit_assignment | Home visit | T | ID | — | — | — |
+| 73 | home_visit_assignment_release | Home visit | T | — | — | — | — |
+| 74 | lab_result | Hasil lab | T | — | — | — | — |
+| 75 | lab_result_version | Hasil lab | T | — | Ya | Ya | — |
+| 76 | product_order_detail | Produk | T | — | — | — | — |
+| 77 | shipment | Produk | T | — | — | — | — |
+| 78 | shipment_tracking_event | Produk | L | Ya (terenkripsi) | — | Ya (`description_enc`) | — |
+| 79 | payment_attempt | Pembayaran | T | — | Keu | — | — |
+| 80 | payment_attempt_gateway_ref | Pembayaran | T | — | — | — | — |
+| 81 | payment_attempt_status_event | Pembayaran | R | — | — | — | — |
+| 82 | payment_attempt_state | Pembayaran | P | — | — | — | — |
+| 83 | payment_gateway_notification | Pembayaran | L | — | Keu | — | — |
+| 84 | payment_receipt | Pembayaran | T | — | Keu | — | — |
+| 85 | payment_capture | Pembayaran | T | — | Keu | — | — |
+| 86 | fund_split_instruction_line | Pembayaran | T | — | Keu | — | — |
+| 87 | fund_split_report_line | Pembayaran | L | — | Keu | — | — |
+| 88 | journal_account | Jurnal | M | — | — | — | — |
+| 89 | journal_entry | Jurnal | T | — | Keu | — | — |
+| 90 | journal_line | Jurnal | T | — | Keu | — | — |
+| 91 | refund | Refund | T | — | Keu | — | — |
+| 92 | refund_status_event | Refund | R | — | — | Ya (`note_enc`) | — |
+| 93 | refund_state | Refund | P | — | — | — | — |
+| 94 | refund_execution_attempt | Refund | L | — | — | — | — |
+| 95 | refund_cause_determination | Refund | T | — | — | — | — |
+| 96 | claim | Klaim | T | Ya (terenkripsi) | Ya | Ya | — |
+| 97 | claim_status_event | Klaim | R | — | — | Ya (`note_enc`) | — |
+| 98 | claim_state | Klaim | P | — | — | — | — |
+| 99 | claim_evidence | Klaim | T | — | Ya (foto bukti) | — | — |
+| 100 | claim_escalation | Klaim | T | — | — | — | — |
+| 101 | partner_obligation | Kewajiban | T | — | — | — | — |
+| 102 | partner_obligation_status_event | Kewajiban | R | — | — | Ya (`note_enc`) | — |
+| 103 | partner_obligation_state | Kewajiban | P | — | — | — | — |
+| 104 | partner_fee_invoice | Kewajiban | T | — | — | — | — |
+| 105 | reconciliation_run | Rekonsiliasi | L | — | — | — | — |
+| 106 | reconciliation_item | Rekonsiliasi | L | — | — | — | — |
+| 107 | reconciliation_item_resolution | Rekonsiliasi | L | — | — | — | — |
+| 108 | in_app_notification | Notifikasi | L | ID | — | — | — |
+| 109 | in_app_notification_read | Notifikasi | L | — | — | — | — |
+| 110 | email_delivery | Notifikasi | L | ID | — | — | — |
+| 111 | cms_content | Konten | M | — | — | — | — |
+| 112 | complaint_ticket | Tiket | T | ID | — | — | — |
+| 113 | complaint_ticket_status_event | Tiket | R | — | — | Ya (`note_enc`) | — |
+| 114 | complaint_ticket_state | Tiket | P | — | — | — | — |
+| 115 | complaint_ticket_message | Tiket | T | Ya (terenkripsi) | Mungkin (teks pasien) | Ya | — |
+| 116 | complaint_ticket_attachment | Tiket | T | Ya (berkas) | — | — | — |
+| 117 | complaint_ticket_forward | Tiket | T | — | — | — | — |
+| 118 | data_subject_request | Hak subjek | T | Ya (terenkripsi) | — | Ya | — |
+| 119 | data_subject_request_status_event | Hak subjek | R | — | — | Ya (`note_enc`) | — |
+| 120 | data_subject_request_state | Hak subjek | P | — | — | — | — |
+| 121 | data_subject_request_response | Hak subjek | T | Ya (terenkripsi) | — | Ya | — |
+| 122 | data_export_package | Hak subjek | T | Ya (berkas) | Ya (berkas) | — | — |
+| 123 | retention_run | Retensi | L | — | — | — | — |
+| 124 | integration_client | Integrasi | M | — | — | Ya (rahasia) | — |
+| 125 | partner_endpoint | Integrasi | M | — | — | — | — |
+| 126 | inbound_idempotency_key | Integrasi | O | — | — | — | — |
+| 127 | integration_error_log | Integrasi | L | — | — | — | — |
+| 128 | outbound_delivery_attempt | Integrasi | L | — | — | — | — |
+| 129 | partner_integration_health | Integrasi | O | — | — | — | — |
+| 130 | audit_outbox | Platform | O | Ya (IP, ID) | — | — | — |
+| 131 | integration_outbox | Platform | O | ID (rujukan entitas); isi beku hanya terenkripsi | Mungkin (hanya di `payload_enc`) | Ya (`payload_enc`, opsional) | — |
+| 132 | notification_outbox | Platform | O | Ya (email tujuan) | — | — | — |
+| 133 | job | Platform | O | — | — | — | — |
+| 134 | upload_slot | Platform | O | — | — | — | — |
+| 135 | stored_file | Platform | M | Mengikuti perujuk | Mengikuti perujuk | — | — |
+| 136 | data_key | Platform | M khusus | — | — | Rahasia (DEK terbungkus) | — |
+| 137 | kpi_snapshot | Analitik | L | — | — | — | — |
+| 138 | patient_app_activity_month | Analitik | L | ID | — | — | — |
+
+Kolom `note_enc` (wadah induk atau `status_note`) ada di semua tabel riwayat status; baris di atas menandainya hanya untuk entitas yang alasannya lazim berupa teks bebas.
 
 ### 13.2 Database audit (6 tabel, skema sama di audit Rumah Sehat dan audit RME)
 
@@ -1459,7 +1507,9 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 5 | audit_chain_verification | L | — | — | — | |
 | 6 | audit_archive_manifest | L | — | — | — | |
 
-### 13.3 Database aplikasi RME minimalis (44 tabel)
+### 13.3 Database aplikasi RME minimalis (45 tabel)
+
+Perubahan putaran perbaikan 1: `rme_lab_result` ditambahkan (B08). Semua relasi antar-tabel tenant memakai FK komposit `(fasyankes_id, …)` (S01).
 
 | # | Tabel | Kelas | RLS | PII | Spesifik | Enc | Anon |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1482,7 +1532,7 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 17 | rme_slot_hold | O | Ya | — | — | — | — |
 | 18 | rme_patient | M | Ya | Ya | Ya* ; NIK bila diaktifkan | Ya (NIK) | Ya |
 | 19 | rme_visit | T | Ya | ID | Ya (fakta kunjungan kesehatan) | — | — |
-| 20 | rme_visit_personal_snapshot | M | Ya | Ya | — | — | Ya |
+| 20 | rme_visit_personal_snapshot | M-snapshot | Ya | Ya | — | — | Ya |
 | 21 | rme_visit_status_event | R | Ya | — | — | — | — |
 | 22 | rme_visit_state | P | Ya | — | — | — | — |
 | 23 | rme_queue_ticket | T | Ya | — | — | — | — |
@@ -1492,22 +1542,23 @@ Untuk review DBA dan threat model. Kolom: **Kelas** (§0.3 data dictionary), **P
 | 27 | rme_medical_record_draft | O | Ya | — | Ya | Ya | — |
 | 28 | rme_medical_record_version | T | Ya | — | Ya | Ya | — |
 | 29 | rme_lab_order_item | T | Ya | — | Ya (jenis pemeriksaan) | — | — |
-| 30 | rme_lab_result_version | T | Ya | — | Ya | Ya | — |
-| 31 | satusehat_submission | L | Ya | — | — | — | — |
-| 32 | satusehat_submission_status_event | R | Ya | — | — | — | — |
-| 33 | satusehat_submission_state | P | Ya | — | — | — | — |
-| 34 | satusehat_submission_attempt | L | Ya | — | — | — | — |
-| 35 | satusehat_resource_ref | L | Ya | ID (ID resource di SATUSEHAT) | — | — | — |
-| 36 | terminology_code | M | Tidak (acuan global) | — | — | — | — |
-| 37 | rme_record_export | T | Ya | — | Ya (berkas) | — | — |
-| 38 | rme_stored_file | M | Ya | Mengikuti perujuk | Mengikuti perujuk | — | — |
-| 39 | rme_upload_slot | O | Ya | — | — | — | — |
-| 40 | rme_data_key | M khusus | Ya | — | — | Rahasia (DEK terbungkus) | — |
-| 41 | rme_audit_outbox | O | Tidak (app INSERT saja) | Ya (IP, ID) | — | — | — |
-| 42 | rme_integration_outbox | O | Ya | Ya (payload) | Ya (hasil lab dalam pesan) | — | — |
-| 43 | rme_job | O | Ya | — | — | — | — |
-| 44 | rme_inbound_event | O | Ya | — | — | — | — |
+| 30 | rme_lab_result | T | Ya | — | — | — | — |
+| 31 | rme_lab_result_version | T | Ya | — | Ya | Ya | — |
+| 32 | satusehat_submission | L | Ya | — | — | — | — |
+| 33 | satusehat_submission_status_event | R | Ya | — | — | Ya (`note_enc`) | — |
+| 34 | satusehat_submission_state | P | Ya | — | — | — | — |
+| 35 | satusehat_submission_attempt | L | Ya | — | — | — | — |
+| 36 | satusehat_resource_ref | L | Ya | ID (ID resource di SATUSEHAT) | — | — | — |
+| 37 | terminology_code | M | Tidak (acuan global) | — | — | — | — |
+| 38 | rme_record_export | T | Ya | — | Ya (berkas) | — | — |
+| 39 | rme_stored_file | M | Ya | Mengikuti perujuk | Mengikuti perujuk | — | — |
+| 40 | rme_upload_slot | O | Ya | — | — | — | — |
+| 41 | rme_data_key | M khusus | Ya | — | — | Rahasia (DEK terbungkus) | — |
+| 42 | rme_audit_outbox | O | Tidak (app INSERT saja) | Ya (IP, ID) | — | — | — |
+| 43 | rme_integration_outbox | O | Ya | ID (rujukan entitas); isi beku hanya terenkripsi | Mungkin (hanya di `payload_enc`) | Ya (`payload_enc`, opsional) | — |
+| 44 | rme_job | O | Ya | — | — | — | — |
+| 45 | rme_inbound_event | O | Ya | — | — | — | — |
 
 Catatan untuk threat model:
 - `rme_lab_order_item` dan `rme_visit` tidak dienkripsi, tetapi jenis pemeriksaan dan fakta kunjungan adalah data kesehatan; perlindungannya lewat RLS, otorisasi, dan audit E-05. Hal yang sama berlaku untuk jenis pesanan dan profesi tenaga kesehatan di database Rumah Sehat (temuan F-09).
-- Payload `rme_integration_outbox` untuk hasil lab memuat nilai hasil selama menunggu terkirim. Usulan untuk threat model: enkripsi payload outbox berisi data klinis dengan DEK kunjungan.
+- Outbox integrasi (Rumah Sehat dan RME) hanya menyimpan rujukan entitas; nilai hasil lab dan data penerima disusun serta didekripsi saat pengiriman. Isi yang harus dibekukan disimpan terenkripsi (review DBA B04).
