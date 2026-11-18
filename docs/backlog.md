@@ -38,12 +38,12 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | 1 | Backlog |
+| US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 | US-102 | Dihapus oleh CR-007 (sebelumnya: masuk dengan akun Google atau Apple) | BR-001 | Won't | — | Dihapus |
-| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | 1 (AC3 menunggu PT-44) | Backlog |
-| US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | 1 (AC4 di Fase 2 bersama US-1001) | Backlog |
-| US-105 | Profil data diri | BR-002 | Must | 1 | Backlog |
-| US-106 | Unggah NIK dan foto KTP | BR-003 | Must | 1 (reference implementation) | Backlog |
+| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | 1 (AC3 menunggu PT-44/UP-73; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | 1 (AC4 di Fase 2 bersama US-1001; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-105 | Profil data diri | BR-002 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
+| US-106 | Unggah NIK dan foto KTP | BR-003 | Must | 1 (reference implementation; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 | US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must | 2 | Backlog |
 | US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should | 4 (Opsi B: 3) | Backlog |
 | US-109 | Ubah dan hapus anggota keluarga | BR-008, BR-106 | Should | 4 (Opsi B: 3) | Backlog |
@@ -52,14 +52,14 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | 1 (reference implementation; pemberitahuan AC2 di Fase 2 bersama US-1001) | Backlog |
+| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | 1 (reference implementation; pemberitahuan AC2 di Fase 2 bersama US-1001; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 | US-202 | Pendaftaran tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
 | US-203 | Verifikasi tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
 | US-204 | Pemantauan masa berlaku SIP | BR-102 | Must | 2 | Backlog |
 | US-205 | Onboarding rekanan | BR-006, BR-031 | Must | 2 (PT-47; status integrasi penuh dari US-1405 di Fase 3) | Backlog |
 | US-206 | Akun admin mitra | BR-006 | Must | 2 | Backlog |
 | US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | 2 (kaskade ke produk dan home visit di AC2 diverifikasi di Fase 4) | Backlog |
-| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | 1 | Backlog |
+| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 
 ### [EP-03] Konsultasi online
 
@@ -194,10 +194,10 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | 1 (event fase berikutnya ditambahkan per story) | Backlog |
+| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | 1 (event fase berikutnya ditambahkan per story; DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 | US-1502 | Halaman Audit Log | BR-080 | Must | 3 | Backlog |
 | US-1503 | Export audit log | BR-080 | Must | 3 | Backlog |
-| US-1504 | Perlindungan audit log | BR-080 | Must | 1 | Backlog |
+| US-1504 | Perlindungan audit log | BR-080 | Must | 1 (DoR setelah klarifikasi AC disetujui (docs/07-klarifikasi-ac-fase-1.md)) | Backlog |
 
 ### [EP-16] Persetujuan dan hak subjek data (T1)
 

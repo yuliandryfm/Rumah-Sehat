@@ -340,3 +340,5 @@ Test case lintas story dan NFR:
 | MVP end-to-end Fase 1 | TC-MVP-1 … TC-MVP-2 | 2 |
 
 Hitungan total ada di `docs/test-plan.md` §2.9. Kolom "File kode / test" diisi di Tahap 8 lewat penanda `trace:` (coding standards §7.4).
+
+Klarifikasi AC Fase 1 (temuan test-plan §9 T-01–T-22; US-101, US-103–US-106, US-201, US-208, US-1501, US-1504, KU-02, KU-10, NFR-SEC-03, NFR-SEC-08) ada di `docs/07-klarifikasi-ac-fase-1.md`. Pemetaan T-23–T-35 ke fase ada di §4 dokumen itu. Setelah Checkpoint 2 menyetujuinya, teks AC PRD dan test case story terdampak diperbarui, lalu baris di atas disesuaikan.
