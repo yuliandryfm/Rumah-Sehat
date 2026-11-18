@@ -86,7 +86,7 @@ Tanggal: 2026-11-18
   - cache Redis diperbarui seketika;
   - user di Keycloak dinonaktifkan (`enabled = false`) dan semua sesinya dihapus lewat Admin REST API `[SRC-72]`.
   Akses ditolak sejak langkah kedua, walaupun token lama belum kedaluwarsa. Bila langkah Redis atau Keycloak gagal, langkah itu dicoba ulang lewat job dan memicu peringatan. Entri cache ber-TTL pendek. Aksi berisiko (ekspor, refund, perubahan peran, akses dokumen identitas) membaca status langsung dari database (M-13).
-- **Keluar**: aplikasi memanggil logout Keycloak atau endpoint revokasi `[SRC-71]`, dan backend menandai sesi itu dicabut di Redis sampai token kedaluwarsa.
+- **Keluar**: aplikasi memanggil logout Keycloak atau endpoint revokasi `[SRC-71]`. Backend mencatat sesi itu sebagai dicabut di tabel Operasional database aplikasi, lalu menyalinnya ke cache Redis. Barisnya dibersihkan setelah token terkait pasti kedaluwarsa. Dengan begitu pencabutan tetap berlaku walaupun isi Redis hilang (fact-check FC4-N2-2).
 
 **9. Autentikasi ulang** untuk aksi berisiko (mengajukan hak subjek data, mengunduh salinan data, mengubah email atau password, reset MFA): backend meminta login ulang di Keycloak dan memeriksa waktu autentikasi terakhir di token. Mekanisme parameternya diverifikasi di Tahap 5 `[KEPUTUSAN-24]`.
 

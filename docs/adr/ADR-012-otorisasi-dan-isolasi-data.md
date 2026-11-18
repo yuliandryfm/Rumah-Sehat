@@ -18,7 +18,11 @@ Tanggal: 2026-11-18
    - **tenant**: admin rekanan atas data rekanannya; pengguna RME atas data fasyankesnya;
    - **sub-peran admin**: tujuh sub-peran admin Rumah Sehat sesuai §3.1.
 2. **Data sensitif** (§3.1 kolom "Sensitif") hanya dibuka lewat fungsi akses yang memeriksa kebijakan dan menulis event E-05 sebelum data dikirim (ADR-009). Akses yang ditolak ke data sensitif dicatat dengan hasil gagal `[KEPUTUSAN-27]`.
-3. **Endpoint publik tanpa login** hanya untuk konten yang memang publik (UP-21) dan halaman verifikasi resep (US-309 AC6–AC8, CR-008 `[USER] T4-Q5`). Halaman verifikasi resep hanya dapat dibuka dengan kode verifikasi acak dari PDF, diberi batas laju per sumber, menampilkan data minimal, dan setiap akses dicatat E-05 `[KEPUTUSAN-27]`.
+3. **Endpoint publik tanpa login** hanya untuk konten yang memang publik (UP-21) dan halaman verifikasi resep (US-309 AC6–AC8, CR-008 `[USER] T4-Q5`). Halaman verifikasi resep hanya dapat dibuka dengan kode verifikasi acak dari PDF, dan menampilkan data minimal. Setiap akses dicatat E-05 `[KEPUTUSAN-27]`. Pengamannya (threat model RX-01, M-31):
+   - kode di QR minimal 128 bit acak, sedangkan kode yang diketik manual dipasangkan dengan nomor resep;
+   - batas laju per sumber dan batas laju global;
+   - kode tidak masuk log;
+   - halaman tidak di-cache dan tidak diindeks mesin pencari.
 4. **Respons penolakan**: objek yang tidak boleh diakses dijawab seperti objek yang tidak ada (HTTP 404), sehingga keberadaannya tidak bocor (KU-03). Aksi yang dikenal tetapi tidak diizinkan untuk peran itu dijawab 403 `[KEPUTUSAN-27]`.
 5. **Isolasi di database Rumah Sehat**: skema bersama. Setiap query portal rekanan wajib melewati lapisan repository yang meminta `partner_id` dari sesi, bukan dari parameter permintaan. Kepatuhan diperiksa dengan test isolasi otomatis yang mencoba mengakses data rekanan lain lewat ID untuk setiap endpoint portal (NFR-SEC-06). Row Level Security tidak dipakai di database ini, karena hanya sedikit endpoint yang bersifat per tenant (laporan, profil, keluhan, pengaturan konsultasi) `[KEPUTUSAN-27]`.
 6. **Isolasi di database RME minimalis**: skema bersama, dengan kolom `fasyankes_id` di setiap tabel milik tenant, dan **Row Level Security** sebagai lapisan kedua di bawah pemeriksaan aplikasi `[KEPUTUSAN-27]`:

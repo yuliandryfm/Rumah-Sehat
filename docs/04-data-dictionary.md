@@ -1,10 +1,10 @@
 # Data Dictionary: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf Tahap 4, untuk review `dba-reviewer` dan `security-architect`)
+Versi: 0.2 (draf Tahap 4 untuk gate; sudah direview `dba-reviewer` tiga putaran dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis** (model data, data pribadi spesifik, uang, audit)
-Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-020 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).
+Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-021 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).
 Diagram: `docs/04-erd.md`.
 
 Dokumen ini memfinalkan klasifikasi awal PRD §8 (`[KEPUTUSAN-10]`) dengan lima kelas tabel ADR-008 (`[KEPUTUSAN-21]`). Hal yang belum diketahui ditulis `[TIDAK DIKETAHUI]` beserta rujukan pertanyaan terbukanya. Keputusan teknis baru dari dokumen ini diberi nomor `[KEPUTUSAN-38]` dan seterusnya, dan dicatat oleh orkestrator di `docs/decision-log.md` (§E).
@@ -126,7 +126,7 @@ CHECK: `(deleted_at IS NULL AND deleted_by IS NULL AND delete_reason IS NULL) OR
 
 ### 0.6 Hak role database per kelas
 
-Hak per tabel diberikan dengan `GRANT`; hak per kolom dipakai untuk pekerja privasi `[SRC-35]` (ADR-012 butir 7). `TRUNCATE` tidak diberikan ke role mana pun selain pemilik skema.
+Hak per tabel diberikan dengan `GRANT`; hak per kolom dipakai untuk pekerja privasi `[SRC-35]` (ADR-012 butir 8). `TRUNCATE` tidak diberikan ke role mana pun selain pemilik skema.
 
 **(A) Database aplikasi Rumah Sehat**
 
@@ -161,7 +161,7 @@ Role `audit_verifier` menambah daftar ADR-009 butir 4, karena job verifikasi har
 
 **Khusus database audit RME: role `audit_tenant_reader`** (review DBA B03a, temuan F-06). Dipakai aplikasi RME untuk halaman log akses rekam medis Admin Fasyankes (§7.5, US-1310 AC3). Hak: S pada `audit_event` dan `audit_event_subject` saja, dengan RLS (`FORCE ROW LEVEL SECURITY`) yang membatasi baris ke `tenant_id` = pengaturan sesi yang dipasang aplikasi per transaksi `[SRC-34]`. RLS pada tabel terpartisi dan bentuk kebijakannya diverifikasi di Tahap 5; bila tidak dapat dipakai, cadangannya adalah fungsi baca per tenant yang hanya mengembalikan event E-05 fasyankes yang diminta. Role `audit_reader` tidak dipakai aplikasi RME untuk Admin Fasyankes.
 
-**(C) Database aplikasi RME minimalis** (semua tabel milik tenant memakai RLS dengan `FORCE ROW LEVEL SECURITY`; role di bawah bukan pemilik tabel dan tanpa `BYPASSRLS` `[SRC-34]`, ADR-012 butir 5)
+**(C) Database aplikasi RME minimalis** (semua tabel milik tenant memakai RLS dengan `FORCE ROW LEVEL SECURITY`; role di bawah bukan pemilik tabel dan tanpa `BYPASSRLS` `[SRC-34]`, ADR-012 butir 6)
 
 | Kelas / tabel | `rme_app` | `rme_auth` (pemetaan subjek IdP) | `rme_worker` (job, outbox, SATUSEHAT) | `rme_operator` (onboarding) | `audit_relay` | `privacy_worker` | `key_rotation` (cadangan, A19.7) | `rme_migration` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -171,7 +171,7 @@ Role `audit_verifier` menambah daftar ADR-009 butir 4, karena job verifikasi har
 | `rme_data_key` (Master khusus) | S, I | — | S, I | S, I (DEK kredensial saat onboarding) | — | S; U hanya `wrapped_dek` (menjadi `NULL` bersama pengisian `shredded_at`, S-N3), `shredded_at`, `shred_reason`, dengan kebijakan RLS khusus role ini | U hanya `wrapped_dek`, `kek_ref`, hanya baris `shredded_at IS NULL` | Pemilik |
 | `rme_retention_policy` (acuan global, tanpa RLS) | S | — | — | — | — | S | — | Pemilik, I/U (perubahan nilai lewat migrasi setelah PT-24) |
 | `rme_retention_run` (Log, RLS per fasyankes) | S (kebijakan tenant; Admin Fasyankes melihat laporan fasyankesnya) | — | — | — | — | S, I (kebijakan RLS khusus lintas tenant) | — | Pemilik |
-| Transaksi, Riwayat status | S, I | — | Per tabel (lihat rincian di bawah) | **Tanpa** S atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` (ADR-012 butir 5) | — | S kolom ID, FK subjek, `created_at`, `data_key_id`, `note_data_key_id` | — | Pemilik |
+| Transaksi, Riwayat status | S, I | — | Per tabel (lihat rincian di bawah) | **Tanpa** S atas `rme_patient`, `rme_visit*`, `rme_medical_record*`, `rme_lab_*`, `satusehat_*` (ADR-012 butir 6) | — | S kolom ID, FK subjek, `created_at`, `data_key_id`, `note_data_key_id` | — | Pemilik |
 | Log | S, I | — | Per tabel | — | — | S kolom ID, `created_at`, FK subjek; D hanya baris yang masa retensinya habis menurut `rme_retention_policy` (trigger, seperti A) | — | Pemilik |
 | Proyeksi | S, I, U | — | Per tabel | — | — | — | — | Pemilik |
 | Operasional | S, I, U, D | — | Per tabel | — | — | S, D saat retensi | — | Pemilik |
@@ -200,7 +200,7 @@ Trigger penolak kelas L di database RME membaca masa retensi dari `rme_retention
 
 Tabel yang tidak tercantum tidak dapat diakses `rme_worker`. Pencarian nomor IHS praktisi dan pasien ke SATUSEHAT serta penyimpanannya ke `rme_health_worker_profile` dan `rme_patient` dilakukan `rme_app` (saat Admin Fasyankes melengkapi data, ADR-020 butir 3), sehingga `rme_worker` tidak perlu `UPDATE` atas tabel itu (review DBA S-N2). Webhook dari Rumah Sehat (pesanan terbayar, pembatalan, status home visit, daftar tenaga kesehatan aktif, jawaban penugasan) diproses sinkron oleh proses API RME dengan role `rme_app`, sehingga `rme_worker` tidak perlu hak `INSERT` atas tabel kunjungan dan pasien.
 
-Role `rme_auth` dan `rme_worker` menambah daftar role ADR-012 butir 7 `[KEPUTUSAN-55]`: `rme_auth` memetakan subjek token Keycloak realm `rme` ke pengguna dan fasyankesnya **sebelum** konteks tenant dipasang; `rme_worker` mengambil job dari antrean semua tenant lalu memasang konteks tenant per job. `privacy_worker` di RME memakai kebijakan RLS khusus role itu (lintas tenant untuk job retensi dan anonimisasi). Bentuk kebijakan RLS per role diverifikasi ke dokumentasi Row Security Policies di Tahap 5; SRC-34 baru memverifikasi perilaku `BYPASSRLS` dan `FORCE ROW LEVEL SECURITY`.
+Role `rme_auth` dan `rme_worker` menambah daftar role ADR-012 butir 8 `[KEPUTUSAN-55]`: `rme_auth` memetakan subjek token Keycloak realm `rme` ke pengguna dan fasyankesnya **sebelum** konteks tenant dipasang; `rme_worker` mengambil job dari antrean semua tenant lalu memasang konteks tenant per job. `privacy_worker` di RME memakai kebijakan RLS khusus role itu (lintas tenant untuk job retensi dan anonimisasi). Bentuk kebijakan RLS per role diverifikasi ke dokumentasi Row Security Policies di Tahap 5; SRC-34 baru memverifikasi perilaku `BYPASSRLS` dan `FORCE ROW LEVEL SECURITY`.
 
 ### 0.7 Penempatan data pribadi dan wadah data
 
@@ -300,7 +300,7 @@ Tabel transisi per jenis pesanan (PRD §3.6) disimpan di tabel acuan `order_stat
 
 **Keycloak** `[USER] T4-Q4`: hash password, faktor MFA TOTP dan kode pemulihan, token verifikasi email dan atur ulang password, penghitung penguncian login (US-103 AC3), dan sesi IdP **dikelola Keycloak** di database PostgreSQL miliknya sendiri (`keycloak`), sehingga tidak menjadi tabel aplikasi dan tidak dirinci di dokumen ini. Realm yang direncanakan: `pasien`, `nakes`, `admin` (admin Rumah Sehat dan admin rekanan), `rme` (pengguna RME minimalis), dan `integrasi` (klien service-account per rekanan dan per fasyankes untuk client credentials ADR-014). Otorisasi (ADR-012) tetap di aplikasi: peran, sub-peran, dan keterkaitan tenant disimpan di tabel aplikasi, bukan sebagai role Keycloak. Database `keycloak` mengikuti aturan lokasi Indonesia `[USER] T4-Q1`, dan cakupan backup serta retensinya ditetapkan bersama revisi ADR-011 dan ADR-019 (temuan F-13).
 
-**Redis** `[USER] T4-Q4`: kelas Operasional, **bukan sumber kebenaran**, dan tidak berisi data pribadi selain ID. Isinya: cache status akun (untuk pemeriksaan KU-10 di setiap permintaan), daftar pencabutan sesi, penghitung batas laju, penyebaran pesan WebSocket antar-instans, dan sesi BFF aplikasi web. Kehilangan isi Redis tidak menghilangkan data bisnis: status akun dibaca ulang dari `account` dan `rme_user`, dan sesi yang hilang membuat pengguna masuk ulang. Antrean job dan outbox tetap di PostgreSQL (ADR-007). Tidak ada tabel sesi autentikasi di database aplikasi.
+**Redis** `[USER] T4-Q4`: kelas Operasional, **bukan sumber kebenaran**, dan tidak berisi data pribadi selain ID. Isinya: cache status akun (untuk pemeriksaan KU-10 di setiap permintaan), daftar pencabutan sesi, penghitung batas laju, penyebaran pesan WebSocket antar-instans, dan sesi BFF aplikasi web. Kehilangan isi Redis tidak menghilangkan data bisnis: status akun dibaca ulang dari `account` dan `rme_user`, dan sesi yang hilang membuat pengguna masuk ulang. Antrean job dan outbox tetap di PostgreSQL (ADR-007). Satu-satunya tabel terkait sesi di database aplikasi adalah daftar pencabutan sesi (A1.4, RME C1.11), supaya pencabutan tetap berlaku walaupun isi Redis hilang (fact-check FC4-N2-2).
 
 ---
 
@@ -347,17 +347,32 @@ Index: `UQp (account_id, sub_role) WHERE deleted_at IS NULL`; `ix (sub_role) WHE
 
 #### A1.3 `partner_admin_assignment` (M)
 
-Keterkaitan tenant akun admin mitra ke rekanannya. Sumber: US-206, ADR-012 butir 4, `[USER] T4-Q4`.
+Keterkaitan tenant akun admin mitra ke rekanannya. Sumber: US-206, ADR-012 butir 5, `[USER] T4-Q4`.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | |
 | account_id | uuid | tidak | FK→account | — | Akun berjenis `partner_admin` |
-| partner_id | uuid | tidak | FK→partner | — | Sumber `partner_id` sesi portal (ADR-012 butir 4) |
+| partner_id | uuid | tidak | FK→partner | — | Sumber `partner_id` sesi portal (ADR-012 butir 5) |
 
 Index: `UQp (account_id) WHERE deleted_at IS NULL` (satu akun admin mitra untuk satu rekanan, sesuai US-206 AC2 "data rekanannya sendiri"); `ix (partner_id)`.
 
 Tidak ada tabel sesi, MFA, kode pemulihan, atau token email di database ini; semuanya dikelola Keycloak dan Redis (§0.10).
+
+#### A1.4 `session_revocation` (O)
+
+Sesi Keycloak yang dicabut karena keluar atau pencabutan oleh admin, agar token akses lama ditolak walaupun cache Redis hilang (ADR-011 butir 8, US-103 AC5, KU-10). Disalin ke cache Redis; baris dibersihkan setelah `expires_at`. Sumber: ADR-011, fact-check FC4-N2-2.
+
+| Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
+| --- | --- | --- | --- | --- | --- |
+| id | uuid | tidak | PK | — | |
+| account_id | uuid | tidak | FK→account | — | |
+| idp_session_id | text | tidak | UQ | — | ID sesi Keycloak (`sid`) yang dicabut; kehadiran klaim `sid` diverifikasi Tahap 5 |
+| reason_code | text | tidak | | — | CHECK (`logout`, `admin_revoke`, `account_deactivated`, `role_changed`) |
+| created_at | timestamptz | tidak | | — | |
+| expires_at | timestamptz | tidak | | — | Saat token terakhir sesi itu pasti kedaluwarsa |
+
+Index: `ix (expires_at)` untuk pembersihan.
 
 ### A2. Pasien, penerima layanan, dan identitas
 
@@ -732,7 +747,7 @@ Index: `UQp (partner_id) WHERE approval_status = 'active' AND deleted_at IS NULL
 
 #### A5.5 `partner_bank_account_decision` (T)
 
-Keputusan Verifikator atas rekening. Pemisahan tugas (Verifikator ≠ pemasuk data) ditegakkan aplikasi (ADR-012 butir 6). Sumber: US-1202 AC3.
+Keputusan Verifikator atas rekening. Pemisahan tugas (Verifikator ≠ pemasuk data) ditegakkan aplikasi (ADR-012 butir 7). Sumber: US-1202 AC3.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -1294,9 +1309,10 @@ Resep digital bernomor unik; tidak dapat diubah, dikoreksi dengan membatalkan la
 | replaces_prescription_id | uuid | ya | FK→prescription | — | Resep yang dibatalkan dan digantikan (US-309 AC3) |
 | verification_code_enc | bytea | tidak | | Enc | Kode verifikasi acak yang dicetak di PDF dan QR (US-309 AC6, CR-008 `[USER] T4-Q5`); terenkripsi dengan DEK wadah `consultation_clinical` |
 | verification_code_bidx | bytea | tidak | UQ | — | Blind index HMAC kode verifikasi untuk pencarian dari halaman verifikasi publik tanpa mendekripsi (ADR-013 butir 4 pola sama) |
+| verification_code_bidx_key_version | smallint | tidak | | — | Versi kunci HMAC yang dipakai, agar kode yang sudah tercetak tetap dapat diverifikasi setelah rotasi kunci (pola NIK; catatan DBA putaran 3) |
 | data_key_id | uuid | tidak | FK→data_key | — | Wadah `consultation_clinical`; FK komposit `(data_key_id, consultation_session_id)` → `data_key (id, container_id)` |
 
-Index: `ix (consultation_session_id)`; `UQ (id, data_key_id)` (sasaran FK wadah dari `prescription_item`). PDF resep dibuat setelah baris resep tersimpan, sehingga dicatat di tabel anak `prescription_document` (A9.12), bukan kolom yang diisi belakangan (review DBA B07). Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05, US-309 AC5).
+Index: `ix (consultation_session_id)`; `UQ (id, data_key_id)` (sasaran FK wadah dari `prescription_item`). PDF resep dibuat setelah baris resep tersimpan, sehingga dicatat di tabel anak `prescription_document` (A9.12), bukan kolom yang diisi belakangan (review DBA B07). Format, tanda tangan elektronik, dan kewajiban integrasi resep elektronik `[TIDAK DIKETAHUI]` (L-05, US-309 AC5). Halaman verifikasi publik (US-309 AC6–AC8, CR-008) menampilkan status Terbit atau Dibatalkan sesuai AC7. Bila wadah `consultation_clinical` resep sudah dimusnahkan (crypto-shredding), halaman menampilkan "resep tidak ditemukan" walaupun `verification_code_bidx` masih ada (catatan DBA putaran 3).
 
 #### A9.9 `prescription_item` (T)
 
@@ -2265,7 +2281,7 @@ Index: `ix (container_type, container_id)`. Sensitivitas berkas mengikuti tabel 
 
 #### A19.7 `data_key` (M khusus)
 
-Kunci data (DEK) terbungkus KEK di KMS, satu per wadah (ADR-013 §3). Aturan khusus `[KEPUTUSAN-44]`: tanpa soft delete; crypto-shredding dilakukan role `privacy_worker` dengan mengosongkan `wrapped_dek` dan mengisi `shredded_at`, sehingga baris tetap ada untuk FK dari tabel transaksi (ADR-004). Selama backup lama masih tersimpan (nilai awal 35 hari, ADR-019), DEK terbungkus masih ada di backup itu (temuan F-08).
+Kunci data (DEK) terbungkus KEK di KMS, satu per wadah (ADR-013 §3). Aturan khusus `[KEPUTUSAN-44]`: tanpa soft delete; crypto-shredding dilakukan role `privacy_worker` dengan mengosongkan `wrapped_dek` dan mengisi `shredded_at`, sehingga baris tetap ada untuk FK dari tabel transaksi (ADR-004). Selama backup lama masih tersimpan (masa simpan backup `[TIDAK DIKETAHUI]` PT-24, usulan sementara 35 hari diputuskan di gate, ADR-019), DEK terbungkus masih ada di backup itu (temuan F-08).
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -2436,7 +2452,7 @@ Catatan partisi yang diekspor ke WORM lalu di-*detach* (ADR-009 butir 9).
 
 ## C. Database aplikasi RME minimalis
 
-Database terpisah dari Rumah Sehat (ADR-006 butir 2). Hanya pasien yang datang lewat Rumah Sehat yang tercatat (BR-126, US-1306 AC4). Semua tabel milik tenant punya `fasyankes_id uuid NOT NULL FK→fasyankes` (kecuali disebut lain) dan **RLS: ya** dengan `FORCE ROW LEVEL SECURITY` `[SRC-34]` (ADR-012 butir 5, `[KEPUTUSAN-27]`). Baris *STD-M* dan *STD-T* di bagian ini memakai FK aktor ke `rme_user`. Autentikasi pengguna RME memakai Keycloak realm `rme`; password, MFA, dan sesi tidak disimpan di database ini `[USER] T4-Q4`.
+Database terpisah dari Rumah Sehat (ADR-006 butir 2). Hanya pasien yang datang lewat Rumah Sehat yang tercatat (BR-126, US-1306 AC4). Semua tabel milik tenant punya `fasyankes_id uuid NOT NULL FK→fasyankes` (kecuali disebut lain) dan **RLS: ya** dengan `FORCE ROW LEVEL SECURITY` `[SRC-34]` (ADR-012 butir 6, `[KEPUTUSAN-27]`). Baris *STD-M* dan *STD-T* di bagian ini memakai FK aktor ke `rme_user`. Autentikasi pengguna RME memakai Keycloak realm `rme`; password, MFA, dan sesi tidak disimpan di database ini `[USER] T4-Q4`.
 
 Rumah Sehat dan RME tidak berbagi database, sehingga kolom yang menunjuk entitas Rumah Sehat (`rumah_sehat_partner_id`, `rumah_sehat_order_id`, `rumah_sehat_health_worker_id`, `rs_recipient_alias`) **tanpa FK deklaratif**; konsistensinya dari kontrak integrasi (ADR-014).
 
@@ -2593,6 +2609,10 @@ Tautan akun Tenaga Kesehatan Fasyankes ↔ tenaga kesehatan Rumah Sehat, sehingg
 | rs_health_worker_roster_id | uuid | tidak | FK→rs_health_worker_roster, UQp | — | |
 
 Index: `UQp (rme_user_id) WHERE deleted_at IS NULL`; `UQp (rs_health_worker_roster_id) WHERE deleted_at IS NULL`.
+
+#### C1.11 `rme_session_revocation` (O, RLS: ya)
+
+Sama dengan A1.4 untuk pengguna RME (`rme_user_id` FK→`rme_user`, `fasyankes_id`, `idp_session_id` UQ, `reason_code`, `created_at`, `expires_at`). Sumber: ADR-011 butir 8, US-1302 AC4.
 
 ### C2. Layanan, jadwal, dan ketersediaan
 
@@ -3085,7 +3105,7 @@ Index: `ix (fasyankes_id, created_at DESC)`.
 1. **Partisi** `[KEPUTUSAN-63]`: rilis 1 hanya mempartisi `audit_event` dan `audit_event_subject` (bulanan) `[SRC-39]`. Kandidat yang dievaluasi setelah uji beban NFR-CAP-04 dan setelah PT-24 menetapkan retensi: `chat_message`, `in_app_notification`, `email_delivery`, `integration_error_log`, `outbound_delivery_attempt`, `payment_gateway_notification`, `shipment_tracking_event`. Volume target (30.000 pasien aktif bulanan, 100 sesi bersamaan, NFR-CAP) belum menuntut partisi tabel aplikasi (review DBA S08).
 2. **Pembersihan Operasional**: job membersihkan baris kedaluwarsa `inbound_idempotency_key`, `inventory_hold`, `upload_slot`, `external_access_token`, `rme_slot_hold`, dan `rme_inbound_event`, baris outbox yang selesai, serta baris `job` dan `rme_job` yang selesai. Penghapusan dilakukan bertahap dalam batch kecil supaya tidak mengunci tabel lama. Pengaturan `fillfactor` dan autovacuum per tabel untuk tabel kelas O yang sering di-update atau dihapus (`job`, outbox, `queue_board`, `inventory_hold`) ditetapkan di Tahap 5 setelah diverifikasi ke dokumentasi (review DBA S08).
 3. **Trigger penolak** untuk kelas T, R, L (dengan pengecualian DELETE retensi oleh `privacy_worker` di kelas L, membaca `retention_policy` di database A dan `rme_retention_policy` di database C), trigger "baris yang sudah berlaku tidak boleh diubah" untuk pola §0.8, dan trigger satu arah `data_key`/`rme_data_key` (termasuk syarat `wrapped_dek = NULL` hanya bersama `shredded_at`, S-N3) dibuat sekali sebagai pustaka migrasi `[SRC-40]`.
-4. **Hal yang diverifikasi ke dokumentasi PostgreSQL di Tahap 5** sebelum dipakai (belum ada SRC): (a) constraint yang diperiksa saat commit untuk keseimbangan jurnal (A13), jumlah instruksi pembagian dana terhadap total terkunci (A12.7), dan jumlah baris harga terkunci terhadap kepalanya (A8.7) (review DBA S03); (b) pencegahan tumpang tindih rentang slot (A4.8); (c) kebijakan RLS per role, termasuk RLS pada tabel audit terpartisi (§0.6 B dan C); (d) constraint unik di tabel terpartisi (B); (e) perilaku FK komposit dengan kolom `NULL`, FK terhadap RLS, dan FK pada kolom terhitung (§0.2, A8.2); (f) index BRIN untuk tabel audit (B1).
+4. **Hal yang diverifikasi ke dokumentasi PostgreSQL di Tahap 5** sebelum dipakai (belum ada SRC): (a) constraint yang diperiksa saat commit untuk keseimbangan jurnal (A13), jumlah instruksi pembagian dana terhadap total terkunci (A12.7), dan jumlah baris harga terkunci terhadap kepalanya (A8.7) (review DBA S03); (b) pencegahan tumpang tindih rentang slot (A4.8); (c) kebijakan RLS per role, termasuk RLS pada tabel audit terpartisi (§0.6 B dan C); (d) constraint unik di tabel terpartisi (B): sudah terverifikasi, kolom constraint wajib memuat semua kolom kunci partisi `[SRC-39]`, sehingga PK `audit_event` memuat `recorded_at`; (e) perilaku FK komposit dengan kolom `NULL`, FK terhadap RLS, dan FK pada kolom terhitung (§0.2, A8.2); (f) index BRIN untuk tabel audit (B1).
 5. **Nama modul pemilik tabel** diselaraskan dengan `docs/04-arsitektur.md` §3 (temuan F-12).
 6. **Index tambahan**:
    - Putaran perbaikan 1 (review DBA S06): `payment_receipt (payment_attempt_id)`, `journal_entry (refund_id | payment_capture_id | partner_obligation_id)`, `order_price_lock_line (product_id)`, `appointment (partner_service_id, scheduled_start_at)`, `chat_attachment (chat_message_id)`, `claim_evidence (claim_id)`, `complaint_ticket_attachment (complaint_ticket_message_id)`, `prescription (consultation_session_id)`, `job (run_at) WHERE status = 'queued'`, `rme_lab_result (rme_visit_id)`; urutan harga katalog memakai `patient_price_idr`; index trigram dibuat partial; index `health_worker (profession)` dihapus.
@@ -3141,10 +3161,10 @@ Index: `ix (fasyankes_id, created_at DESC)`.
 | F-02 | ADR-009 butir 4: `audit_writer` hanya `INSERT`, padahal relay perlu membaca kepala rantai (`seq`, `event_hash` terakhir) setelah restart | Tambahkan akses baca sempit ke kepala rantai (view atau fungsi) di ADR-009; bentuknya Tahap 5 | Diterima. ADR-009 butir 4: `audit_writer` mendapat baca sempit atas kepala rantai lewat fungsi atau view; ditambah role `audit_verifier` |
 | F-03 | Log dan operasional yang memuat data pribadi (misalnya `consent_record` yang merujuk pasien, alamat IP di audit) tidak punya jalur retensi: ADR-008 memasang trigger penolak `DELETE` di kelas Log, dan ADR-013 hanya mengatur transaksi (crypto-shredding) dan master (anonimisasi) | Tetapkan di ADR-013 cara pemusnahan baris Log saat retensi habis (misalnya hak `DELETE` khusus `privacy_worker` dengan pengecualian trigger), setelah PT-24 | Diterima. ADR-013 §5 dan ADR-008: baris Log dihapus oleh `privacy_worker` setelah retensi habis; trigger penolak mengizinkan hanya role itu; tidak aktif sebelum PT-24 |
 | F-04 | `[KEPUTUSAN-43]` memperluas daftar enkripsi dan wadah ADR-013 §3 | Revisi ADR-013 (status masih Diusulkan) | Diterima. ADR-013 §3 direvisi sesuai KEPUTUSAN-43, ditambah wadah `status_note` (F-10) |
-| F-05 | RME memerlukan role `rme_auth` dan `rme_worker` di luar daftar ADR-012 butir 7 | Revisi ADR-012 | Diterima. ADR-012 butir 7 memuat `rme_auth` dan `rme_worker` |
-| F-06 | Admin Fasyankes membaca log akses dari database audit RME lewat `audit_reader` yang dapat membaca semua fasyankes; isolasi hanya di aplikasi RME | Pertimbangkan RLS per `tenant_id` di database audit RME, atau view per tenant; bawa ke threat model | Diterima. ADR-012 butir 8: RLS per `tenant_id` untuk role pembaca Admin Fasyankes di database audit RME, atau fungsi baca per tenant bila RLS pada tabel terpartisi tidak memadai (verifikasi Tahap 5); dibawa ke threat model |
+| F-05 | RME memerlukan role `rme_auth` dan `rme_worker` di luar daftar ADR-012 butir 8 | Revisi ADR-012 | Diterima. ADR-012 butir 8 memuat `rme_auth` dan `rme_worker` |
+| F-06 | Admin Fasyankes membaca log akses dari database audit RME lewat `audit_reader` yang dapat membaca semua fasyankes; isolasi hanya di aplikasi RME | Pertimbangkan RLS per `tenant_id` di database audit RME, atau view per tenant; bawa ke threat model | Diterima. ADR-012 butir 9: RLS per `tenant_id` untuk role pembaca Admin Fasyankes di database audit RME, atau fungsi baca per tenant bila RLS pada tabel terpartisi tidak memadai (verifikasi Tahap 5); dibawa ke threat model |
 | F-07 | ADR-018 tidak mencantumkan bucket untuk foto produk dari katalog rekanan | Tambah bucket publik `public_catalog` (tanpa data pribadi) di ADR-018 | Diterima. ADR-018 butir 1 memuat foto katalog rekanan di bucket publik tanpa data pribadi |
-| F-08 | Crypto-shredding baru tuntas setelah backup yang memuat DEK terbungkus habis masa simpannya (nilai awal 35 hari, ADR-019) | Cantumkan di ADR-013 dan pertanyaan legal L-06 | Diterima. Dicantumkan di konsekuensi ADR-013; ditanyakan ke legal bersama L-06 |
+| F-08 | Crypto-shredding baru tuntas setelah backup yang memuat DEK terbungkus habis masa simpannya (masa simpan backup `[TIDAK DIKETAHUI]` PT-24, usulan sementara 35 hari diputuskan di gate, ADR-019) | Cantumkan di ADR-013 dan pertanyaan legal L-06 | Diterima. Dicantumkan di konsekuensi ADR-013; ditanyakan ke legal bersama L-06 |
 | F-09 | Profesi tenaga kesehatan dan jenis pesanan (misalnya konsultasi psikolog) tidak dienkripsi tetapi dapat mengungkap data kesehatan | Bawa ke threat model dan DPIA (BR-110); perlindungan saat ini lewat otorisasi dan audit | Diterima sebagai risiko sisa; dicantumkan di ADR-013 dan dibawa ke threat model serta DPIA (BR-110) |
 | F-10 | Kolom `note` di riwayat status adalah teks bebas di tabel transaksi; bila petugas menulis data pribadi, kolom ini tidak dapat dianonimkan | Batasi lewat UI (kode alasan + teks pendek) dan pedoman; terima sebagai risiko sisa atau enkripsi per pesanan | Diputuskan: kolom `note` diganti `note_enc` + `note_data_key_id` dengan wadah entitas induk atau wadah `status_note` (§0, §0.7) |
 | F-11 | Struktur penerima layanan (`care_recipient`) dan klaim (satu per pesanan) menyimpang dari bentuk PRD §8; kardinalitas lain dicatat di `docs/04-erd.md` §0 | Konfirmasi di gate Tahap 4 | Dinilai konsisten dengan aturan PRD (UP-36 dan AB-36 menyiratkan satu klaim per pesanan; pesanan tanpa pembayaran adalah pesanan Menunggu pembayaran/Kedaluwarsa). Ditampilkan di gate Tahap 4 |

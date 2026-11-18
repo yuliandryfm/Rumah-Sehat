@@ -7,7 +7,7 @@ Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, BRD v1.3 `[DOK: 02-brd.md]`, ADR-001–ADR-005 (diterima), wawancara Tahap 4 `[USER] T4-Qx` (`docs/04-catatan-arsitektur.md`)
 Tingkat ketelitian: **T1 Kritis** untuk seluruh dokumen (keputusan arsitektur, model data, audit trail, keamanan; `aturan-kerja.md` §1)
 
-Dokumen terkait: ADR-006–ADR-020 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
+Dokumen terkait: ADR-006–ADR-021 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
 
 **Label sumber.** `[DOK: ...]` adalah dokumen yang lulus gate. `[USER] T4-Qx` adalah jawaban user di Tahap 4. `[KEPUTUSAN-xx]` tercatat di `docs/decision-log.md` dan dirinci di ADR yang disebut. `[SRC-xx]` tercatat di `docs/sources.md`. Rujukan `US-`, `AB-`, `NFR-`, `PB-`, `E-` mengacu ke PRD; `BR-` mengacu ke BRD.
 
@@ -35,6 +35,8 @@ Dokumen terkait: ADR-006–ADR-020 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 Keputusan user di tahap ini:
 
 - **T4-Q1**: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia, tanpa kecuali. Ini menjawab PT-22 `[USER] T4-Q1`.
+- **T4-Q5**: keaslian resep diperiksa apotek lewat QR/kode ke halaman verifikasi di domain resmi (CR-008) `[USER] T4-Q5`.
+- **T4-Q6**: aplikasi tenaga kesehatan dikunci (biometrik/PIN perangkat) setelah 15 menit tidak aktif (CR-009) `[USER] T4-Q6`.
 - **T4-Q4**: Keycloak sebagai identity provider dan Redis sebagai komponen pendukung, tanpa message broker `[USER] T4-Q4`.
 - **T4-Q3**: aplikasi tenaga kesehatan tetap terpisah dari aplikasi pasien, dan RME minimalis tetap web khusus klinik/lab tanpa sistem `[USER] T4-Q3` (KEPUTUSAN-19).
 - **T4-Q2**: CR-007 disetujui. Login Google/Apple, push notification, dan WhatsApp dihapus. Notifikasi dikirim lewat email dan di dalam aplikasi `[USER] T4-Q2`. BRD naik ke v1.3 dan PRD ke v1.1.
@@ -184,12 +186,16 @@ sequenceDiagram
   participant RT as realtime
   participant API as api
   participant DB as PostgreSQL
+  participant RD as Redis
   participant N as Aplikasi Nakes
   P->>API: buka ruang sesi (waktu mulai tiba)
   API->>DB: catat waktu bergabung (server)
   P->>RT: kirim pesan (ID dari klien)
-  RT->>DB: simpan terenkripsi + NOTIFY(id)
-  DB-->>RT: NOTIFY ke instans pemegang koneksi nakes
+  RT->>DB: simpan terenkripsi
+  RT->>RD: publish(id)
+  RD-->>RT: sinyal ke instans pemegang koneksi nakes
+  RT->>DB: baca pesan by id
+  Note over RT,N: klien yang tersambung ulang mengambil pesan sejak ID terakhir (Pub/Sub at-most-once)
   RT-->>N: teruskan pesan
   Note over API,DB: job PB-02/PB-03 dan akhir durasi menentukan status (§3.5)
 ```
@@ -259,16 +265,20 @@ flowchart TB
       RMEP[RME api/worker x2+]
       KCP[Keycloak x2+ terklaster]
     end
-    RDS[(Redis)]
+    RDS[(Redis Rumah Sehat)]
+    RDR[(Redis RME)]
     PGA[(PG aplikasi RS<br/>+ standby)]
     PGU[(PG audit)]
     PGR[(PG RME<br/>+ standby)]
     OBJ[(Object storage<br/>versi + WORM)]
     BK[(Backup PITR + harian<br/>Indonesia)]
   end
-  LB --> A1 & R1 & RMEP & KCP
+  LB --> A1 & R1 & RMEP
+  LB -->|hanya endpoint OIDC realm pengguna| KCP
+  A1 & RMEP -->|Admin REST, jaringan internal| KCP
   KCP --> PGA
-  A1 & R1 & RMEP --> RDS
+  A1 & R1 --> RDS
+  RMEP --> RDR
   A1 & R1 & W1 --> PGA
   W1 --> PGU
   RMEP --> PGR
@@ -407,5 +417,12 @@ Dicatat di `CLAUDE.md` `[KEPUTUSAN-37]`: autentikasi/sesi/MFA, termasuk konfigur
 | CR | Ringkasan | Dokumen | Sumber |
 | --- | --- | --- | --- |
 | CR-007 | Semua penyedia pihak ketiga di Indonesia. Login Google/Apple, push, dan WhatsApp dihapus. Notifikasi lewat email dan di dalam aplikasi | BRD v1.3, PRD v1.1, backlog, traceability, catatan KEPUTUSAN-06 | `[USER] T4-Q1, T4-Q2` |
+| CR-008 | Verifikasi keaslian resep oleh apotek non-rekanan lewat QR/kode ke domain resmi | PRD v1.1 US-309 AC5–AC8, backlog, data dictionary A9.8 | `[USER] T4-Q5` |
+| CR-009 | Kunci aplikasi tenaga kesehatan setelah 15 menit tidak aktif | PRD v1.1 NFR-SEC-10, backlog, ADR-021 | `[USER] T4-Q6` |
 
-ADR-001–ADR-005 tidak diubah. ADR-008 menambah kelas Proyeksi dan Operasional, dan ADR-013 menetapkan cara anonimisasi (ADR-003) dan pemusnahan berjalan tanpa `UPDATE`/`DELETE` baris transaksi (ADR-004).
+Teks ADR-001–ADR-005 tidak diubah. Penerapannya memuat tafsiran berikut, yang ditampilkan di gate:
+- ADR-008 menambah kelas Proyeksi, Operasional, dan sub-kelas Master snapshot.
+- ADR-013 menetapkan cara anonimisasi (ADR-003) dan pemusnahan berjalan tanpa `UPDATE`/`DELETE` baris transaksi (ADR-004), termasuk penghapusan baris Log oleh pekerja privasi setelah retensi habis.
+- Primary key `audit_event` komposit `(event_id, recorded_at)` karena aturan partisi PostgreSQL `[SRC-39]`; `event_id` tetap UUIDv7 (ADR-002, KEPUTUSAN-56).
+- `data_key` tanpa soft delete, karena pemusnahan kunci adalah tindakan satu arah yang tercatat (ADR-003, KEPUTUSAN-44).
+- Event login E-01–E-04 dicatat Keycloak lebih dulu lalu diambil worker, sehingga aplikasi tidak dapat membatalkan login bila pencatatan gagal. Ini pengecualian dari KEPUTUSAN-15 yang diterima bersama keputusan Keycloak (T4-Q4); keterlambatan pengambilan memicu peringatan (ADR-011 butir 10).

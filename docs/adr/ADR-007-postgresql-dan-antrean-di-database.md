@@ -14,7 +14,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-1. **PostgreSQL** adalah database untuk keempat penyimpanan data: database aplikasi Rumah Sehat, database audit Rumah Sehat, database aplikasi RME minimalis, dan database audit RME minimalis. Versi major stabil tertinggi saat ini adalah 18 `[SRC-30]`; versi yang dipakai ditetapkan di Tahap 5 `[KEPUTUSAN-20]`.
+1. **PostgreSQL** adalah database untuk penyimpanan data berikut (ditambah database Keycloak, ADR-011): database aplikasi Rumah Sehat, database audit Rumah Sehat, database aplikasi RME minimalis, dan database audit RME minimalis. Versi major stabil tertinggi saat ini adalah 18 `[SRC-30]`; versi yang dipakai ditetapkan di Tahap 5 `[KEPUTUSAN-20]`.
 2. Kemampuan PostgreSQL yang menjadi dasar desain, semuanya terverifikasi di dokumentasi resmi:
    - tipe `uuid` native 128-bit `[SRC-31]`;
    - partial unique index `[SRC-33]`;
