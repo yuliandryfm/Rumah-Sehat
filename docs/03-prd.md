@@ -151,7 +151,7 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 | ID | Aturan | Sumber |
 | --- | --- | --- |
 | AB-10 | Harga layanan yang dibayar pasien = harga rekanan + markup Ruang Sehat. Markup berbentuk persen atau nominal, diatur per rekanan oleh admin Ruang Sehat | BR-042 |
-| AB-10a | **CR-013.** Pajak dihitung dari (harga rekanan + markup) setelah markup diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga. Tarif pajak adalah parameter berlaku-mulai yang diatur Keuangan (PB-21). Jenis pajak, tarif, cara pembulatan, dasar hitung per unit atau per pesanan, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan perilaku saat tarif belum diatur `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-042 `[USER] T5-Q11, T5-Q11a` (CR-013) |
+| AB-10a | **CR-013.** Pajak dihitung dari (harga rekanan + markup) setelah markup diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga. Tarif pajak adalah parameter berlaku-mulai yang diatur Keuangan (PB-21). Jenis pajak, tarif, cara pembulatan, dasar hitung per unit atau per pesanan, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan perilaku saat tarif belum diatur `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-042 `[USER] T5-Q11, T5-Q11a` (arah rumus dan baris terpisah); `[DOK: backlog.md CR-013]` (tarif berlaku-mulai diatur Keuangan) |
 | AB-11 | Untuk produk, total = jumlah harga produk (harga rekanan + markup, per unit dikali jumlah) + pajak (AB-10a, CR-013) + ongkos kirim | BR-034, BR-042 `[USER] T5-Q11a` (CR-013) |
 | AB-11a | Markup dihitung per unit layanan atau produk atas harga rekanan per unit. Markup persen dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Markup nominal berlaku per unit. Markup tidak dikenakan pada ongkos kirim dan biaya transaksi | `[UP-51]` |
 | AB-12 | Untuk metode pembayaran non-QRIS, biaya transaksi ditambahkan ke total dan ditampilkan sebelum pasien membayar. Untuk QRIS, pasien tidak dikenai biaya transaksi, dan MDR dipotong dari bagian rekanan. Pembebanan per metode menunggu L-12 | BR-044 `[SRC-24]` |
@@ -355,7 +355,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-18 | Batas status Dikirim tanpa kabar kurir sebelum pasien dapat mengajukan "barang tidak sampai" (RF-16) | 7 hari | Super Admin | `[UP-52]` |
 | PB-19 | Batas refund berstatus Diproses tanpa konfirmasi penyedia sebelum menjadi "Perlu dicek" (AB-35) | 2 x 24 jam | Super Admin | `[UP-55]` |
 | PB-20 | Batas Keuangan menetapkan penyebab RF-18 sebelum berlaku penyebab platform | 3 hari kerja | Super Admin | `[UP-56]` |
-| PB-21 | Tarif pajak atas (harga rekanan + markup), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[USER] T5-Q11, T5-Q11a` |
+| PB-21 | Tarif pajak atas (harga rekanan + markup), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[DOK: backlog.md CR-013]` |
 
 "Hari kerja" mengikuti kalender hari kerja yang diatur Super Admin. Batas berbasis hari kerja (PB-05, PB-16, PB-20) dihitung dari waktu kejadian dan berakhir pukul 23.59 WIB pada hari kerja ke-N setelah hari kejadian; hari libur tidak dihitung `[UP-37]`.
 
@@ -1095,7 +1095,7 @@ Rujukan: BR-045, BR-063, §3.7 `[UP-32]` · Audit: E-14
 - AC1. Given Super Admin mengubah parameter PB-01–PB-10 atau PB-14–PB-20, When nilainya valid (angka positif dengan satuan yang ditentukan; untuk PB-14 daftar dokumen tidak kosong), Then perubahan tersimpan dengan riwayat.
 - AC2. Given parameter diubah, When pesanan yang pembayarannya dibuat sebelum perubahan dievaluasi (misalnya batas pembatalan), Then nilai yang berlaku saat pembayaran dibuat yang dipakai (AB-17) `[UP-32]`.
 - AC3. Given nilai tidak valid (kosong, negatif, atau nol untuk batas waktu), When disimpan, Then ditolak (KU-01).
-- AC4. **CR-013.** Given Keuangan mengatur tarif pajak PB-21 dengan waktu berlaku (segera atau tanggal mendatang), When disimpan, Then pengaturan tersimpan dengan riwayat, tercatat sebagai E-14, dan pesanan yang pembayarannya dibuat sebelum waktu berlaku memakai tarif lama (AB-17). Batas nilai yang sah `[TIDAK DIKETAHUI]` (sisa PT-28) `[USER] T5-Q11a`.
+- AC4. **CR-013.** Given Keuangan mengatur tarif pajak PB-21 dengan waktu berlaku (segera atau tanggal mendatang), When disimpan, Then pengaturan tersimpan dengan riwayat, tercatat sebagai E-14, dan pesanan yang pembayarannya dibuat sebelum waktu berlaku memakai tarif lama (AB-17). Batas nilai yang sah `[TIDAK DIKETAHUI]` (sisa PT-28). Sumber: `[DOK: backlog.md CR-013]` (tarif berlaku-mulai diatur Keuangan); pencatatan E-14 mengikuti §7.1 (perubahan parameter bisnis); pilihan "segera atau tanggal mendatang" mengikuti pola berlaku-mulai US-809 AC1.
 
 ### EP-09 Hasil lab
 
