@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C03 Backoffice: klaim refund dan antrean Keuangan - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>C03 Backoffice: keputusan klaim, antrean Keuangan, laporan transaksi <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-807 AC3-AC5, US-808, US-802 AC3 (RF-14), US-811. Modul T1 (pembayaran, refund, kewajiban rekanan). Waktu WIB (AB-42). Nominal dihitung server dan hanya ditampilkan. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo">Rumah Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Layanan Pelanggan &middot; cs1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+      <nav class="web-side" aria-label="Menu"><span class="sec">Layanan pelanggan</span><a class="on" href="#" aria-current="page">Klaim refund (5)</a><a href="#">Tiket keluhan (9)</a><a href="#">Tindak lanjut pesanan (2)</a></nav>
+      <div class="web-main">
+        <h2 class="t-title">Klaim refund</h2>
+        <div class="split">
+          <div class="table-wrap"><table class="tbl">
+            <thead><tr><th scope="col">Diajukan</th><th scope="col">Pesanan</th><th scope="col">Jenis</th><th scope="col">Batas keputusan</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              <tr class="sel"><td>1 Mar 16.05</td><td>RS-270301-XXXXXX</td><td>RF-10 barang rusak</td><td>6 Mar 23.59</td><td><span class="badge warning">Diajukan</span></td></tr>
+              <tr><td>25 Feb 10.00</td><td>RS-270225-XXXXXX</td><td>RF-06 tidak datang</td><td>2 Mar 23.59</td><td><span class="badge danger">Terlambat, eskalasi</span></td></tr>
+            </tbody></table></div>
+          <div class="panel">
+            <p class="t-sub">RF-10 &middot; Barang rusak</p>
+            <dl class="kv"><dt>Pesanan</dt><dd>Produk &middot; Apotek Rekanan A</dd><dt>Pasien</dt><dd>Sari A.</dd><dt>Keterangan</dt><dd>[keterangan pasien]</dd></dl>
+            <div class="doc-img">Foto bukti (dibuka = E-05)</div>
+            <div class="price"><div class="line"><span>Refund ke pasien (seluruh pembayaran)</span><span>Rp&middot;&middot;&middot;</span></div><div class="line"><span>Kelompok penanggung</span><span>Penyebab rekanan (AB-34)</span></div></div>
+            <div class="field"><label for="ra">Alasan (wajib bila menolak)</label><textarea id="ra" class="input" style="min-height:56px"></textarea></div>
+            <div class="row" style="justify-content:flex-end"><button class="btn btn-danger">Tolak klaim</button><button class="btn btn-primary">Setujui dan buat refund</button></div>
+            <p class="t-cap">Konfirmasi kedua menampilkan nominal sebelum disimpan. Tombol terkunci saat diproses (KU-05).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="web-caption"><b>1. Keputusan klaim (US-807 AC3-AC5, AB-33)</b>Klaim lewat PB-05 bertanda "Terlambat, eskalasi" dan hanya dapat diputuskan Super Admin.</p>
+  </section>
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo">Rumah Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Keuangan &middot; fin@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+      <nav class="web-side" aria-label="Menu"><span class="sec">Keuangan</span><a class="on" href="#" aria-current="page">Antrean tindak lanjut (4)</a><a href="#">Laporan transaksi</a><a href="#">Rekonsiliasi</a><a href="#">Kewajiban rekanan</a><a href="#">Markup rekanan</a><a href="#">Biaya rekanan</a></nav>
+      <div class="web-main">
+        <h2 class="t-title">Antrean tindak lanjut</h2>
+        <div class="chips"><span class="chip on">Semua (4)</span><span class="chip">Refund gagal (1)</span><span class="chip">Perlu dicek (1)</span><span class="chip">Nominal tidak sama (1)</span><span class="chip">Penetapan penyebab RF-18 (1)</span></div>
+        <div class="table-wrap"><table class="tbl">
+          <thead><tr><th scope="col">Masuk</th><th scope="col">Pesanan</th><th scope="col">Jenis</th><th scope="col" class="num">Nominal</th><th scope="col">Batas</th><th scope="col">Aksi</th></tr></thead>
+          <tbody>
+            <tr><td>1 Mar 11.00</td><td>RS-...-01</td><td><span class="badge danger">Refund gagal</span></td><td class="num">Rp100.000</td><td>-</td><td><button class="btn btn-secondary btn-sm">Proses ulang</button></td></tr>
+            <tr><td>27 Feb 09.00</td><td>RS-...-02</td><td><span class="badge warning">Perlu dicek</span></td><td class="num">Rp265.000</td><td>-</td><td><button class="btn btn-secondary btn-sm">Tanyakan status ke penyedia</button></td></tr>
+            <tr><td>1 Mar 10.10</td><td>RS-...-03</td><td><span class="badge warning">Nominal tidak sama (RF-14)</span></td><td class="num">Rp250.000</td><td>2 Mar 23.59</td><td><button class="btn btn-secondary btn-sm">Periksa dan buat refund</button></td></tr>
+            <tr><td>1 Mar 08.00</td><td>RS-...-04</td><td><span class="badge neutral">Menunggu penetapan penyebab (RF-18)</span></td><td class="num">Rp300.000</td><td>4 Mar 23.59</td><td><button class="btn btn-secondary btn-sm">Tetapkan penyebab</button></td></tr>
+          </tbody></table></div>
+        <p class="t-cap">"Perlu dicek" tidak dapat dieksekusi ulang sebelum status penyedia diketahui (AB-35). Penetapan RF-18 wajib rujukan log integrasi (US-808 AC6). Menandai kewajiban rekanan "Selesai" wajib rujukan bukti (AC5).</p>
+        <div class="alert info"><span>i</span><span>Laporan transaksi (US-811): pola tabel yang sama dengan filter periode, rekanan, jenis layanan, status; kolom total, bagian rekanan, markup, MDR/biaya transaksi, refund, status pembagian; tombol "Ekspor CSV" (dicatat E-12).</span></div>
+      </div>
+    </div>
+    <p class="web-caption"><b>2. Antrean Keuangan (US-808 AC2, AC4, AC6; US-802 AC3)</b>Jenis antrean dengan teks + badge. Batas waktu dalam WIB.</p>
+  </section>
+
+</main>
+</body>
+</html>

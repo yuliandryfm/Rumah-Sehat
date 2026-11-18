@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A13 Privasi, persetujuan, hak subjek data - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A13 Privasi: persetujuan, penarikan, dan hak subjek data (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-1601, US-1602, US-1604, US-104 AC4 (versi baru). Modul T1 (EP-16). Aksi berisiko memakai autentikasi ulang di halaman login (ADR-011 butir 9). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Privasi dan data pribadi</h2></div>
+      <div class="body">
+        <p class="t-sub">Persetujuan Anda</p>
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Pemrosesan data utama</b></p><p class="t-cap">Versi [v-x] &middot; disetujui 1 Feb 2027</p></div><a class="btn btn-text btn-sm" href="#">Tarik</a></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>[Butir tambahan bila ditetapkan legal]</b></p><p class="t-cap">Versi [v-y] &middot; disetujui 1 Feb 2027</p></div><a class="btn btn-text btn-sm" href="#">Tarik</a></div>
+        </div>
+        <a class="btn btn-secondary btn-block" href="#">Baca teks persetujuan</a>
+        <p class="t-sub">Hak atas data pribadi</p>
+        <a class="btn btn-primary btn-block" href="#">Ajukan permintaan</a>
+        <div class="list"><div class="list-item"><div class="grow"><p class="t-small">Akses dan salinan</p><p class="t-cap">DS-270301-XXXXXX &middot; 1 Mar 2027</p></div><span class="badge info">Diproses</span></div></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Pengaturan privasi (US-1601 AC1)</b>Daftar butir, versi, tanggal.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Tarik persetujuan utama</h2></div>
+      <div class="body">
+        <div class="alert danger"><span>!</span><span><b>Akibat penarikan</b>Anda hanya dapat masuk untuk melihat riwayat dan status, mengajukan hak atas data, dan memberi persetujuan kembali. Pemesanan baru tidak dapat dilakukan. Berlaku paling lambat 3x24 jam.</span></div>
+        <p class="t-sub">Pesanan aktif Anda</p>
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small">Konsultasi video &middot; 2 Mar</p><p class="t-cap">Akan dibatalkan: refund sesuai aturan pembatalan (RF-01/RF-02)</p></div></div>
+          <div class="list-item"><div class="grow"><p class="t-small">Pesanan produk &middot; Dikirim</p><p class="t-cap">Tetap diselesaikan sampai diterima</p></div></div>
+        </div>
+        <div class="check"><span class="box" role="checkbox" aria-checked="false"></span><span>Saya memahami akibat di atas.</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-danger btn-block">Tarik persetujuan</button><button class="btn btn-text btn-block">Batal</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Penarikan butir utama (US-1601 AC2-AC3)</b>Kelayakan pembatalan tanpa refund karena penarikan menunggu L-08/L-14. Butir tambahan: hanya tujuan butir itu yang berhenti (AC4).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ajukan permintaan</h2></div>
+      <div class="body">
+        <div class="field"><label for="jp">Jenis permintaan</label><select id="jp" class="input"><option>Akses dan salinan</option><option>Informasi</option><option>Perbaikan</option><option>Penghapusan</option><option>Penundaan atau pembatasan</option><option>Keberatan</option><option>Portabilitas</option></select></div>
+        <div class="field"><label for="un">Untuk</label><select id="un" class="input"><option>Saya (Sari)</option><option>Citra (anak)</option></select></div>
+        <div class="field"><label for="ds">Keterangan</label><textarea id="ds" class="input"></textarea></div>
+        <div class="alert info"><span>i</span><span>Demi keamanan, Anda akan diminta memasukkan password lagi sebelum permintaan dikirim.</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut dan verifikasi</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Ajukan hak subjek data (US-1602 AC1)</b>Setelah login ulang: status "Diterima" dan batas waktu tampil.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.10</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Permintaan DS-270301-XXXXXX</h2></div>
+      <div class="body">
+        <span class="badge success">Selesai</span>
+        <ol class="timeline"><li class="done">Diterima &middot; 1 Mar 09.07</li><li class="done">Diproses</li><li class="now"><b>Selesai</b> &middot; 2 Mar 15.00</li></ol>
+        <p class="t-small">Batas waktu: 4 Mar 2027 09.07 (3x24 jam)</p>
+        <div class="card"><p class="t-sub">Salinan data pribadi</p><p class="t-small">Format dapat dibaca mesin dan dapat dibaca orang.</p><p class="t-cap">Tautan berlaku sampai 9 Mar 2027 (7 hari). Unduhan memerlukan password lagi.</p><button class="btn btn-primary btn-sm" style="align-self:flex-start">Unduh salinan</button></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Status dan salinan (US-1602 AC2, US-1604 AC2)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.00</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Beranda</h2></div>
+      <div class="body">
+        <div class="alert info"><span>i</span><span><b>Teks persetujuan akan diperbarui</b>Berlaku mulai 1 Apr 2027. <a href="#">Baca perubahan</a> (US-104 AC4)</span></div>
+        <div class="alert warning"><span>!</span><span><b>Persetujuan ditarik</b>Anda dapat melihat riwayat dan mengajukan hak atas data. <a href="#">Beri persetujuan kembali</a> untuk memesan layanan.</span></div>
+        <div class="card"><p class="t-sub">Setujui versi baru untuk memesan</p><p class="t-small">Versi [v-z] berlaku sejak 1 Apr 2027. Anda perlu menyetujuinya sebelum membuat pesanan baru.</p><button class="btn btn-primary btn-sm" style="align-self:flex-start">Baca dan setujui</button></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Pemberitahuan versi baru dan akun berstatus terbatas</b>Status "Pemrosesan dibatasi" (US-1603 AC6) memakai pola yang sama.</p>
+  </section>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A09 Informasi biaya MCU dan lab - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A09 Informasi biaya MCU dan lab (aplikasi pasien, boleh tanpa masuk) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-601, US-602; harga tampil = harga bayar di aplikasi (AB-14). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Biaya MCU &amp; Lab</h2></div>
+      <div class="body">
+        <div class="field"><label for="q">Pemeriksaan atau paket MCU</label><input id="q" class="input" value="MCU dasar"></div>
+        <div class="field"><label for="k">Kota</label><select id="k" class="input"><option>Kota Makassar</option></select></div>
+        <p class="t-cap">Urut dari harga terendah &middot; harga sama dengan harga bayar di aplikasi</p>
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Lab Rekanan W</b></p><p class="t-cap">Paket MCU Dasar &middot; 8 pemeriksaan</p></div><div style="text-align:right"><p class="t-sub">Rp600.000</p><a class="btn btn-secondary btn-sm" href="#">Daftar</a></div></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Lab Rekanan Z</b></p><p class="t-cap">Paket MCU Dasar &middot; 8 pemeriksaan</p></div><div style="text-align:right"><p class="t-sub">Rp650.000</p><a class="btn btn-secondary btn-sm" href="#">Daftar</a></div></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Lab Rekanan V</b></p><p class="t-cap">Data harga sementara tidak tersedia (KU-08)</p></div><span class="badge neutral">Tidak tersedia</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Cari dan bandingkan (US-601 AC1, AC3)</b>Kosong: "Pemeriksaan tidak ditemukan di kota ini" + saran ubah kata kunci/kota.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Paket MCU Dasar</h2></div>
+      <div class="body">
+        <div class="row between"><p class="t-sub">Lab Rekanan W</p><p class="t-sub">Rp600.000</p></div>
+        <p class="t-sub">Pemeriksaan dalam paket</p>
+        <ul class="t-small" style="margin:0;padding-left:20px"><li>[Pemeriksaan 1]</li><li>[Pemeriksaan 2]</li><li>[... dari data rekanan]</li></ul>
+        <p class="t-sub">Persiapan</p>
+        <p class="t-small">[Informasi persiapan dari rekanan, misalnya puasa]</p>
+        <p class="t-cap">Rincian tampil bila tersedia dari rekanan (US-601 AC2).</p>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Daftar di lab ini</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Rincian paket (US-601 AC2)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.03</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Paket MCU Dasar</h2></div>
+      <div class="body"><div class="skel lg"></div><div class="skel"></div></div>
+      <div class="scrim"><div class="sheet">
+        <p class="t-title">Masuk untuk mendaftar</p>
+        <p class="t-small muted">Setelah masuk dan identitas disetujui, Anda kembali ke Paket MCU Dasar di Lab Rekanan W.</p>
+        <button class="btn btn-primary btn-block">Masuk</button>
+        <button class="btn btn-secondary btn-block">Daftar akun</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>3. Lanjut mendaftar (US-602 AC1-AC2)</b>Sudah masuk dan terverifikasi: langsung ke alur A08 layar 2 dengan rekanan dan layanan terpilih.</p>
+  </section>
+
+</main>
+</body>
+</html>

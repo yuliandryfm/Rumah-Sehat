@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A02 Beranda, navigasi, notifikasi, konten - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A02 Beranda, navigasi, kotak notifikasi, dan konten (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-1001, US-1102, US-107 (penanda status), pola navigasi UP-62 dan ubin layanan UP-63. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap" aria-label="Beranda pasien masuk">
+    <div class="screen">
+      <div class="status-bar"><span>09.41</span><span></span></div>
+      <div class="appbar">
+        <span class="logo" style="flex:1;padding-left:8px"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat <small>draf</small></span>
+        <button class="icon-btn" aria-label="Notifikasi, 2 belum dibaca">&#128276;<span class="badge danger" style="padding:0 5px;margin-left:-8px">2</span></button>
+      </div>
+      <div class="body">
+        <p class="t-small muted">Halo, Sari</p>
+        <div class="field"><label for="q" class="t-cap">Cari layanan</label><input id="q" class="input" placeholder="Cari dokter, klinik, lab, produk"></div>
+        <div class="alert warning"><span>!</span><span><b>Identitas menunggu verifikasi</b>Konsultasi, home visit, dan pendaftaran klinik/lab dapat dipesan setelah disetujui. <a href="#">Lihat status</a></span></div>
+        <div class="grid3">
+          <button class="tile"><span class="ico">&#128172;</span>Konsultasi Online</button>
+          <button class="tile"><span class="ico">&#127973;</span>Pendaftaran Klinik</button>
+          <button class="tile"><span class="ico">&#129514;</span>Pendaftaran Lab</button>
+          <button class="tile"><span class="ico">&#127968;</span>Home Visit</button>
+          <button class="tile"><span class="ico">&#128176;</span>Biaya MCU &amp; Lab</button>
+          <button class="tile"><span class="ico">&#128722;</span>Belanja Produk</button>
+        </div>
+        <div class="card">
+          <div class="row between"><span class="t-sub">Jadwal berikutnya</span><span class="badge info">Terkonfirmasi</span></div>
+          <p class="t-small">Konsultasi video &middot; dr. A (contoh)</p>
+          <p class="t-small muted">Sen, 1 Mar 2027 &middot; 10.00 (waktu perangkat)</p>
+        </div>
+        <div class="card mint"><p class="t-sub">[Banner konten tayang]</p><p class="t-small">Promo hanya informasi, tidak mengubah harga (US-1101 AC4)</p></div>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama">
+        <a class="on" href="#" aria-current="page"><span class="ico">&#8962;</span>Beranda</a>
+        <a href="#"><span class="ico">&#128197;</span>Pesanan</a>
+        <a href="#"><span class="ico">&#128196;</span>Kesehatan</a>
+        <a href="#"><span class="ico">&#128100;</span>Profil</a>
+      </nav>
+    </div>
+    <p class="screen-cap"><b>1. Beranda (sudah masuk)</b>Enam ubin untuk tujuh layanan rilis 1 (UP-63). Penanda status verifikasi (US-107). Pesanan = jadwal aktif + riwayat; Kesehatan = catatan konsultasi, resep, hasil lab (UP-62).</p>
+  </section>
+
+  <section class="screen-wrap" aria-label="Beranda tamu">
+    <div class="screen">
+      <div class="status-bar"><span>09.41</span><span></span></div>
+      <div class="appbar"><span class="logo" style="flex:1;padding-left:8px"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat <small>draf</small></span><a class="btn btn-secondary btn-sm" href="#">Masuk</a></div>
+      <div class="body">
+        <div class="grid3">
+          <button class="tile"><span class="ico">&#128172;</span>Konsultasi Online</button>
+          <button class="tile"><span class="ico">&#127973;</span>Pendaftaran Klinik</button>
+          <button class="tile"><span class="ico">&#129514;</span>Pendaftaran Lab</button>
+          <button class="tile"><span class="ico">&#127968;</span>Home Visit</button>
+          <button class="tile"><span class="ico">&#128176;</span>Biaya MCU &amp; Lab</button>
+          <button class="tile"><span class="ico">&#128722;</span>Belanja Produk</button>
+        </div>
+        <p class="t-sub">Artikel kesehatan</p>
+        <div class="list">
+          <div class="list-item"><div class="avatar">IMG</div><div class="grow"><p class="t-small">[Judul artikel]</p><p class="t-cap">Kategori &middot; 12 Feb 2027</p></div></div>
+          <div class="list-item"><div class="avatar">IMG</div><div class="grow"><p class="t-small">[Judul artikel]</p><p class="t-cap">Kategori &middot; 10 Feb 2027</p></div></div>
+        </div>
+      </div>
+      <div class="scrim"><div class="sheet">
+        <p class="t-title">Masuk untuk melanjutkan</p>
+        <p class="t-small muted">Pemesanan konsultasi memerlukan akun dan identitas yang sudah disetujui. Setelah masuk, Anda kembali ke layanan ini.</p>
+        <button class="btn btn-primary btn-block">Masuk</button><button class="btn btn-secondary btn-block">Daftar</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>2. Tamu menekan layanan berbatas</b>Kembali ke layanan yang sama setelah masuk (pola US-602 AC2). Biaya MCU/lab, belanja, artikel tetap terbuka.</p>
+  </section>
+
+  <section class="screen-wrap" aria-label="Kotak notifikasi">
+    <div class="screen">
+      <div class="status-bar"><span>09.45</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Notifikasi</h2><button class="btn btn-text btn-sm">Tandai dibaca</button></div>
+      <div class="body" style="padding:0">
+        <div class="list" style="border-radius:0;border:0">
+          <div class="list-item"><span class="badge info">Baru</span><div class="grow"><p class="t-small"><b>Hasil lab Anda tersedia</b></p><p class="t-cap">Buka aplikasi untuk melihat. &middot; 5 menit lalu</p></div></div>
+          <div class="list-item"><span class="badge info">Baru</span><div class="grow"><p class="t-small"><b>Pembayaran berhasil</b></p><p class="t-cap">Pesanan RS-270301-XXXXXX &middot; 1 jam lalu</p></div></div>
+          <div class="list-item"><span class="badge neutral">Dibaca</span><div class="grow"><p class="t-small">Tenaga kesehatan berangkat ke lokasi</p><p class="t-cap">Kemarin 13.02</p></div></div>
+          <div class="list-item"><span class="badge neutral">Dibaca</span><div class="grow"><p class="t-small">Pesan baru di sesi konsultasi</p><p class="t-cap">Kemarin 10.15</p></div></div>
+        </div>
+        <div class="note" style="margin:16px">Isi tanpa diagnosis, nama obat, nilai hasil lab, atau isi chat (AB-73, US-1001 AC2). Status "Baru/Dibaca" dengan teks, bukan warna saja (WCAG 1.4.1).</div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Kotak notifikasi (US-1001 AC4, CR-007)</b>Urut terbaru; tampil juga sebagai spanduk sesaat saat aplikasi terbuka. Tidak ada push.</p>
+  </section>
+
+  <section class="screen-wrap" aria-label="Memuat dan gagal">
+    <div class="screen">
+      <div class="status-bar"><span>09.41</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Beranda</h2></div>
+      <div class="body">
+        <p class="t-cap">Memuat (kerangka)</p>
+        <div class="skel" style="width:60%"></div>
+        <div class="grid3"><div class="skel lg"></div><div class="skel lg"></div><div class="skel lg"></div></div>
+        <div class="skel lg"></div>
+        <div class="divider"></div>
+        <div class="state" style="padding:16px">
+          <div class="ill">&#8635;</div>
+          <p class="t-title">Gagal terhubung</p>
+          <p class="t-small muted">Periksa koneksi internet Anda, lalu coba lagi.</p>
+          <button class="btn btn-primary">Coba lagi</button>
+          <p class="ref">Kode referensi: 0193...66e7</p>
+        </div>
+      </div>
+      <div class="toast" role="status"><span>Konten tidak tersedia</span><a href="#">Tutup</a></div>
+    </div>
+    <p class="screen-cap"><b>4. Pola memuat dan galat jaringan (KU-02)</b>Kerangka dipakai &gt;300 ms; toast "konten tidak tersedia" bila tautan banner mati (US-1102 AC2).</p>
+  </section>
+
+</main>
+</body>
+</html>

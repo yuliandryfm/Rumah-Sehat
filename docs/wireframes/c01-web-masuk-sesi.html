@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C01 Web: masuk, MFA, sesi, akses ditolak - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>C01 Web (backoffice, portal rekanan, web RME): masuk dengan MFA, batas sesi, akses ditolak <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story/NFR: US-206 AC1, US-208 AC1, US-1302 AC1, NFR-SEC-02, NFR-SEC-04, KU-03, KU-10; ADR-011 butir 3, 5, 7. Modul T1. Halaman masuk = tema login Keycloak (realm admin/rme), sesi dipegang BFF Next.js. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+  <section>
+    <div class="web no-side">
+      <div class="web-top"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat &middot; Backoffice <small>draf logo</small></span></div>
+      <div style="display:flex;gap:24px;justify-content:center;padding:24px">
+        <div class="login-box" style="margin:0">
+          <p class="t-title">Masuk</p>
+          <div class="field"><label for="e">Email</label><input id="e" class="input" value="admin@contoh.id"></div>
+          <div class="field"><label for="p">Password</label><input id="p" class="input" type="password" value="xxxxxxxx"></div>
+          <button class="btn btn-primary btn-block">Masuk</button>
+          <a href="#" class="t-small">Lupa password?</a>
+          <p class="t-cap">Tanpa CAPTCHA teka-teki; paste dan pengelola password diizinkan (WCAG 3.3.8).</p>
+        </div>
+        <div class="login-box" style="margin:0">
+          <p class="t-title">Kode verifikasi</p>
+          <p class="t-small">Masukkan kode dari aplikasi authenticator.</p>
+          <div class="field"><label for="o">Kode</label><input id="o" class="input otp" inputmode="numeric" value="123456"></div>
+          <button class="btn btn-primary btn-block">Verifikasi</button>
+          <a href="#" class="t-small">Gunakan kode pemulihan</a>
+          <div class="alert warning"><span>!</span><span><b>Akun nonaktif</b>Hubungi admin Rumah Sehat. (KU-10)</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="web-caption"><b>1. Masuk + TOTP (realm admin dan rme)</b>Judul aplikasi berganti per permukaan: "Backoffice", "Portal Rekanan", "RME". Aktivasi pertama lewat undangan: atur password lalu TOTP (US-206 AC1, US-1302 AC1).</p>
+  </section>
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; admin@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+      <nav class="web-side" aria-label="Menu"><a class="on" href="#">Antrean verifikasi</a><a href="#">Tenaga kesehatan</a><a href="#">Rekanan</a></nav>
+      <div class="web-main" style="position:relative">
+        <div class="skel" style="width:40%"></div><div class="skel lg"></div><div class="skel lg"></div>
+        <div class="scrim center" style="position:absolute"><div class="dialog" role="alertdialog" aria-labelledby="sx" style="width:440px;margin:0 auto">
+          <p class="t-title" id="sx">Sesi akan berakhir dalam 2 menit</p>
+          <p class="t-small">Anda tidak aktif selama hampir 30 menit. Pilih "Tetap masuk" untuk melanjutkan tanpa kehilangan isian.</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-text">Keluar sekarang</button><button class="btn btn-primary">Tetap masuk</button></div>
+        </div></div>
+      </div>
+    </div>
+    <p class="web-caption"><b>2. Peringatan batas sesi tidak aktif (NFR-SEC-04, WCAG 2.2.1)</b>Muncul 2 menit sebelum batas 30 menit, dapat diperpanjang dengan satu aksi (KEPUTUSAN-170). Batas mutlak 12 jam diberi peringatan tanpa perpanjangan (PT-43).</p>
+  </section>
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo">Rumah Sehat &middot; Portal Rekanan</span><span class="grow"></span><span class="t-small">Admin Klinik X</span></div>
+      <nav class="web-side" aria-label="Menu"><a href="#">Laporan transaksi</a><a href="#">Konsultasi online</a><a href="#">Keluhan</a><a href="#">Profil rekanan</a></nav>
+      <div class="web-main">
+        <div class="state"><div class="ill">?</div><p class="t-title">Data tidak ditemukan</p><p class="t-small muted">Halaman atau data ini tidak tersedia untuk akun Anda.</p><a class="btn btn-primary" href="#">Kembali ke beranda</a><p class="ref">Kode referensi: 0193...5e6f</p></div>
+      </div>
+    </div>
+    <p class="web-caption"><b>3. Akses ditolak tanpa membocorkan keberadaan data (KU-03)</b>Pesan sama untuk "tidak ada" dan "tidak berhak". Kode referensi = correlation_id (KEPUTUSAN-172).</p>
+  </section>
+
+</main>
+</body>
+</html>

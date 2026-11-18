@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C02 Backoffice: verifikasi identitas dan tenaga kesehatan - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>C02 Backoffice: antrean verifikasi identitas (pola juga untuk verifikasi tenaga kesehatan) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-201, US-203 (pola sama). Berkas identitas T1 (ADR-018): foto hanya untuk Verifikator, pembukaan dicatat E-05. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; v1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+      <nav class="web-side" aria-label="Menu">
+        <span class="sec">Verifikasi</span><a class="on" href="#" aria-current="page">Identitas pasien (12)</a><a href="#">Tenaga kesehatan (3)</a><a href="#">Rekanan (1)</a><a href="#">Perubahan rekening (0)</a>
+        <span class="sec">Akun</span><a href="#">Pasien</a><a href="#">Admin mitra</a>
+      </nav>
+      <div class="web-main">
+        <h2 class="t-title">Antrean verifikasi identitas</h2>
+        <div class="split">
+          <div class="stack">
+            <div class="toolbar"><div class="field"><label for="jd">Jenis dokumen</label><select id="jd" class="input"><option>Semua</option><option>KTP</option><option>KK (anak)</option></select></div><div class="field"><label for="pn">Peran</label><select id="pn" class="input"><option>Semua</option><option>Pemilik akun</option><option>Anggota keluarga</option></select></div></div>
+            <div class="table-wrap"><table class="tbl">
+              <caption class="t-cap" style="text-align:left;padding:8px">Urut dari pengajuan terlama (US-201 AC1)</caption>
+              <thead><tr><th scope="col">Diajukan</th><th scope="col">Nama</th><th scope="col">Peran</th><th scope="col">Dokumen</th><th scope="col">NIK</th></tr></thead>
+              <tbody>
+                <tr class="sel"><td>1 Mar 08.01</td><td>Citra</td><td>Anak dari Sari A.</td><td>KK</td><td>************0003</td></tr>
+                <tr><td>1 Mar 08.15</td><td>Sari A.</td><td>Pemilik akun</td><td>KTP</td><td>************0001</td></tr>
+                <tr><td>1 Mar 09.02</td><td>Budi</td><td>Suami dari Sari A.</td><td>KTP</td><td>************0002</td></tr>
+              </tbody></table></div>
+            <div class="pager"><span>1-3 dari 12</span><span><button class="btn btn-secondary btn-sm">Sebelumnya</button> <button class="btn btn-secondary btn-sm">Berikutnya</button></span></div>
+          </div>
+          <div class="panel">
+            <p class="t-sub">Citra &middot; anak &middot; KK</p>
+            <dl class="kv"><dt>Pemilik akun</dt><dd>Sari A.</dd><dt>Tanggal lahir</dt><dd>3 Feb 2018</dd><dt>NIK</dt><dd>3171xxxxxxxx0003 (lengkap untuk Verifikator)</dd></dl>
+            <div class="doc-img">Foto Kartu Keluarga (dibuka = E-05)</div>
+            <div class="check"><span class="box" role="checkbox" aria-checked="false"></span><span>Pemilik akun tercantum sebagai orang tua/wali di KK (US-201 AC4)</span></div>
+            <div class="field is-error"><label for="ar">Alasan penolakan</label><select id="ar" class="input"><option>Pilih alasan</option><option>Foto buram</option><option>Pemilik akun tidak tercantum di KK</option><option>Data tidak cocok</option></select><span class="err">Pilih alasan untuk menolak</span></div>
+            <div class="field"><label for="kt">Keterangan tambahan (opsional, tampil ke pasien)</label><textarea id="kt" class="input" style="min-height:56px"></textarea></div>
+            <div class="row" style="justify-content:flex-end"><button class="btn btn-danger">Tolak</button><button class="btn btn-primary">Setujui</button></div>
+            <div class="alert warning"><span>!</span><span><b>Pengajuan sudah diputuskan</b>Verifikator lain sudah menyetujui pengajuan ini pukul 08.20. (US-201 AC5)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="web-caption"><b>1. Antrean dan keputusan (US-201 AC1-AC7)</b>NIK termasking di daftar; lengkap hanya di panel Verifikator. NIK pemilik akun yang sudah dipakai menolak persetujuan dengan pesan (AC7). Pola sama untuk verifikasi tenaga kesehatan (US-203): panel dokumen STR/SIP/penugasan + isian konfirmasi afiliasi klinik (tanggal, cara, nama petugas) yang wajib sebelum "Setujui" (AC1-AC2).</p>
+  </section>
+
+</main>
+</body>
+</html>

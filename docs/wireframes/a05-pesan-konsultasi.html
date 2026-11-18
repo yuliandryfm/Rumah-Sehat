@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A05 Pesan konsultasi online - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A05 Cari dan pesan konsultasi online (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-303, US-304, US-107, lanjut ke A07 (US-801, US-802). Harga = tarif + markup (AB-10), satu angka (AB-13). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Konsultasi online</h2></div>
+      <div class="body">
+        <div class="field"><label for="cn" class="t-cap">Cari nama</label><input id="cn" class="input" placeholder="Nama tenaga kesehatan"></div>
+        <div class="chips" role="group" aria-label="Jenis tenaga kesehatan"><span class="chip on">Dokter</span><span class="chip">Psikolog</span><span class="chip">Fisioterapis</span><span class="chip">Tenaga medis</span></div>
+        <div class="card">
+          <div class="row"><div class="avatar">DA</div><div class="grow"><p class="t-sub">dr. A (contoh)</p><p class="t-cap">Dokter &middot; Klinik Rekanan X</p></div></div>
+          <div class="row between t-small"><span>Chat Rp75.000</span><span>Video Rp100.000</span></div>
+          <p class="t-small muted">Slot terdekat: Hari ini 14.00</p>
+        </div>
+        <div class="card">
+          <div class="row"><div class="avatar">PB</div><div class="grow"><p class="t-sub">B, M.Psi. (contoh)</p><p class="t-cap">Psikolog &middot; Klinik Rekanan Y</p></div></div>
+          <div class="row between t-small"><span>Chat Rp120.000</span><span class="muted">Video tidak tersedia</span></div>
+          <p class="t-small muted">Slot terdekat: Besok 09.00</p>
+        </div>
+        <p class="t-cap">Kosong: "Tidak ada tenaga kesehatan tersedia" + saran ubah jenis/pencarian (US-303 AC3)</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Cari (US-303 AC1-AC3)</b>Hanya yang siap melayani dan punya slot. Klinik penaung selalu tampil (BR-014). Harga contoh, bukan data.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Pilih jadwal</h2></div>
+      <div class="body">
+        <div class="row"><div class="avatar">DA</div><div class="grow"><p class="t-sub">dr. A (contoh)</p><p class="t-cap">Dokter &middot; Klinik Rekanan X &middot; SIP tercatat</p></div></div>
+        <div class="field"><label>Jenis konsultasi</label><div class="chips"><span class="chip">Chat &middot; 30 mnt &middot; Rp75.000</span><span class="chip on">Video &middot; 20 mnt &middot; Rp100.000</span></div></div>
+        <div class="tabs"><span class="tab on">Hari ini</span><span class="tab">Sel 2</span><span class="tab">Rab 3</span><span class="tab">Kam 4</span></div>
+        <p class="t-cap">Waktu sesuai zona waktu perangkat Anda (WIB)</p>
+        <div class="grid3"><span class="chip">14.00</span><span class="chip on">14.20</span><span class="chip">14.40</span><span class="chip" style="opacity:.6" aria-disabled="true">15.00 penuh</span><span class="chip">15.20</span><span class="chip">15.40</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Profil dan slot (US-303 AC2, AB-41)</b>Slot penuh bertanda teks, bukan warna saja. Label zona waktu perangkat.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.03</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Detail pesanan</h2></div>
+      <div class="body">
+        <div class="field"><label>Untuk siapa?</label>
+          <div class="list">
+            <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio on">&#9679;</span></span><span class="grow t-small">Saya (Sari)</span><span class="badge success">Disetujui</span></div>
+            <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio"></span></span><span class="grow t-small">Citra (anak)</span><span class="badge warning">Menunggu verifikasi</span></div>
+          </div>
+        </div>
+        <div class="field"><label for="kl">Keluhan awal (opsional)</label><textarea id="kl" class="input">Demam sejak 2 hari</textarea><span class="hint">18/500 karakter. Hanya dilihat tenaga kesehatan sesi ini.</span></div>
+        <div class="alert info"><span>i</span><span><b>Buka aplikasi pada jadwal</b>Rumah Sehat tidak mengirim notifikasi ke layar ponsel. Pengingat dikirim lewat email 24 jam dan 1 jam sebelumnya. (UP-64, CR-007)</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut ke pembayaran</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Penerima dan keluhan (US-304 AC1, US-107)</b>Slot ditahan PB-07 setelah Lanjut. Penerima tanpa status Disetujui menghentikan pemesanan (layar 4).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.04</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Detail pesanan</h2></div>
+      <div class="body">
+        <div class="alert warning"><span>!</span><span><b>Identitas Citra belum disetujui</b>Konsultasi dapat dipesan setelah verifikasi disetujui. <a href="#">Lihat status verifikasi</a> (US-107 AC1)</span></div>
+        <div class="alert warning"><span>!</span><span><b>Jadwal kurang dari 24 jam lagi</b>Jika Anda membatalkan sesi ini, pembayaran tidak dapat dikembalikan. (US-304 AC3, PB-01)</span></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Slot baru saja dipesan orang lain</b>Pilih jadwal lain. Anda belum dikenai biaya. (KU-09)</span></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Data klinik sementara tidak tersedia</b>Pemesanan belum dapat dilanjutkan. Coba beberapa saat lagi. (KU-08)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Kondisi penghenti sebelum bayar</b>Semua pesan muncul sebelum pembayaran dibuat.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>13.58</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Konsultasi video</h2></div>
+      <div class="body">
+        <div class="row between"><span class="badge info">Terkonfirmasi</span><span class="t-cap">RS-270301-XXXXXX</span></div>
+        <div class="card"><p class="t-sub">dr. A (contoh) &middot; Video 20 menit</p><p class="t-small">Hari ini 14.20 WIB &middot; untuk Sari</p></div>
+        <button class="btn btn-primary btn-block is-disabled" aria-disabled="true">Masuk ruang sesi (dibuka 14.20)</button>
+        <p class="t-cap">Tombol aktif saat waktu mulai. Tenaga kesehatan ditunggu sampai 15 menit (PB-03).</p>
+        <a class="btn btn-secondary btn-block" href="#">Batalkan pesanan</a>
+        <a class="btn btn-text btn-block" href="#">Lihat bukti pembayaran</a>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Pesanan terkonfirmasi (US-304 AC2)</b>Batal mengikuti A12. Status dengan teks (KEPUTUSAN-169).</p>
+  </section>
+
+</main>
+</body>
+</html>

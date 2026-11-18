@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A03 Profil dan verifikasi identitas - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A03 Profil dan verifikasi identitas KTP (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-105, US-106, US-107; status AB-05. Berkas identitas modul T1 (ADR-018). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.00</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Profil</h2></div>
+      <div class="body">
+        <div class="card">
+          <div class="row"><div class="avatar">SA</div><div class="grow"><p class="t-sub">Sari A.</p><p class="t-cap">nama@contoh.id</p></div></div>
+          <div class="row between"><span class="t-small">Identitas</span><span class="badge warning">Menunggu verifikasi</span></div>
+        </div>
+        <div class="list">
+          <a class="list-item" href="#"><span class="grow t-small">Data diri</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small">Identitas (NIK dan KTP)</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small">Daftar alamat (2)</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small">Anggota keluarga (1)</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small">Privasi dan data pribadi</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small">Bantuan dan keluhan</span><span>&rsaquo;</span></a>
+          <a class="list-item" href="#"><span class="grow t-small" style="color:var(--c-danger)">Keluar</span></a>
+        </div>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a href="#"><span class="ico">&#8962;</span>Beranda</a><a href="#"><span class="ico">&#128197;</span>Pesanan</a><a href="#"><span class="ico">&#128196;</span>Kesehatan</a><a class="on" href="#" aria-current="page"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>1. Profil (US-105)</b>Status identitas selalu dengan teks (AB-05). Alamat ganda untuk produk dan home visit (US-105 AC2).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Verifikasi identitas</h2></div>
+      <div class="body">
+        <div class="alert info"><span>i</span><span>Verifikasi dilakukan manual oleh admin Rumah Sehat. Anda akan diberi tahu lewat email dan aplikasi.</span></div>
+        <div class="field is-error"><label for="nik">NIK</label><input id="nik" class="input" inputmode="numeric" value="3171xx12a"><span class="err">NIK hanya boleh berisi angka</span><span class="hint">Panjang dan format NIK final menunggu sumber resmi (US-106 AC2)</span></div>
+        <div class="field"><label>Foto KTP</label>
+          <div class="doc-img">Pratinjau foto KTP</div>
+          <div class="row"><button class="btn btn-secondary btn-sm">Ambil foto</button><button class="btn btn-secondary btn-sm">Pilih dari galeri</button></div>
+          <span class="hint">JPG atau PNG, maksimal 5 MB (NFR-SEC-08)</span>
+        </div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Berkas tidak dapat diunggah</b>Gunakan JPG atau PNG berukuran paling besar 5 MB.</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Kirim untuk verifikasi</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Unggah NIK dan KTP (US-106 AC1-AC3)</b>Papan ketik angka. Pratinjau foto tidak disimpan di galeri aplikasi (coding-standards §1.6).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Status identitas</h2></div>
+      <div class="body">
+        <div class="card"><div class="row between"><span class="t-sub">Menunggu verifikasi</span><span class="badge warning">Menunggu</span></div><p class="t-small muted">NIK ************0001 &middot; dikirim 1 Mar 2027 10.03</p><p class="t-small">Foto tidak dapat diganti sampai diputuskan.</p><button class="btn btn-text btn-sm" style="align-self:flex-start">Batalkan pengiriman</button></div>
+        <div class="card"><div class="row between"><span class="t-sub">Ditolak</span><span class="badge danger">Ditolak</span></div><p class="t-small"><b>Alasan:</b> Foto KTP buram (contoh alasan dari daftar)</p><button class="btn btn-primary btn-sm" style="align-self:flex-start">Unggah ulang</button></div>
+        <div class="card"><div class="row between"><span class="t-sub">Disetujui</span><span class="badge success">Disetujui</span></div><p class="t-small muted">Semua layanan dapat dipesan.</p></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>NIK ini sudah terdaftar sebagai pemilik akun lain</b>Hubungi layanan pelanggan untuk bantuan. <a href="#">Hubungi layanan pelanggan</a> (US-106 AC4)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Empat status AB-05 dan NIK ganda</b>NIK ditampilkan termasking di semua layar (KEPUTUSAN-171).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.10</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Data diri</h2></div>
+      <div class="body">
+        <div class="field"><label for="nm">Nama lengkap</label><input id="nm" class="input" value="Sari Ayu"></div>
+        <div class="field"><label for="tl">Tanggal lahir</label><input id="tl" class="input" value="12/05/1990"></div>
+        <div class="field"><label>Jenis kelamin</label><div class="row"><span class="check"><span class="box radio on">&#9679;</span>Perempuan</span><span class="check"><span class="box radio"></span>Laki-laki</span></div></div>
+        <div class="field"><label for="hp">Nomor HP</label><input id="hp" class="input" value="0812xxxxxxx"></div>
+      </div>
+      <div class="scrim center"><div class="dialog">
+        <p class="t-title">Verifikasi ulang diperlukan</p>
+        <p class="t-small">Mengubah nama atau tanggal lahir mengembalikan status identitas ke "Menunggu verifikasi". Layanan yang memerlukan identitas tidak dapat dipesan sampai disetujui lagi. Pesanan yang sudah dibayar tetap berlaku.</p>
+        <div class="row" style="justify-content:flex-end"><button class="btn btn-text btn-sm">Batal</button><button class="btn btn-primary btn-sm">Simpan perubahan</button></div>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>4. Ubah data identitas (US-105 AC3)</b>Perubahan email lewat tautan verifikasi dan autentikasi ulang (US-105 AC4, ADR-011 butir 9).</p>
+  </section>
+
+</main>
+</body>
+</html>

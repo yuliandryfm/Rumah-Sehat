@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A01 Registrasi, persetujuan data, masuk - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A01 Registrasi, persetujuan data, dan masuk (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-101, US-103, US-104 (EP-01, EP-16 terkait). Modul T1 (autentikasi, persetujuan). Formulir daftar native di aplikasi; halaman masuk dibuka di browser sistem dengan tema Rumah Sehat (ADR-011 butir 6-7). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <!-- 1. Layar pembuka -->
+  <section class="screen-wrap" aria-label="Layar 1 pembuka">
+    <div class="screen">
+      <div class="status-bar"><span>09.41</span><span>sinyal</span></div>
+      <div class="body" style="justify-content:center;align-items:center;text-align:center">
+        <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat <small>draf logo</small></span>
+        <p class="t-display">Layanan kesehatan dari rumah</p>
+        <p class="t-body muted">[Teks pembuka menunggu persetujuan copy]</p>
+      </div>
+      <div class="footer-bar">
+        <a class="btn btn-primary btn-block" href="#">Daftar</a>
+        <a class="btn btn-secondary btn-block" href="#">Masuk</a>
+        <a class="btn btn-text btn-block" href="#">Lihat layanan tanpa masuk</a>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Pembuka</b>Informasi biaya, katalog produk, dan konten dapat dilihat tanpa masuk (US-601 AC1, US-701 AC1, US-1102 AC1). Tanpa tombol Google/Apple (CR-007).</p>
+  </section>
+
+  <!-- 2. Formulir daftar -->
+  <section class="screen-wrap" aria-label="Layar 2 formulir daftar">
+    <div class="screen">
+      <div class="status-bar"><span>09.41</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Daftar akun</h2></div>
+      <div class="body">
+        <p class="t-small muted">Langkah 1 dari 2</p>
+        <div class="field"><label for="em">Email</label><input id="em" class="input" type="email" value="nama@contoh.id"></div>
+        <div class="field is-error"><label for="pw">Password</label>
+          <div class="row"><input id="pw" class="input" type="password" value="12345"><button class="icon-btn" aria-label="Tampilkan password">&#128065;</button></div>
+          <span class="err">Password belum memenuhi kebijakan</span>
+          <span class="hint">Aturan password mengikuti NFR-SEC-03 / ASVS L2 (teks final Tahap 8). Tempel (paste) dan pengelola password diizinkan.</span>
+        </div>
+        <div class="note"><b>Catatan:</b> email yang sudah terdaftar tidak membuat akun baru; pasien diarahkan ke Masuk atau Atur ulang password (US-101 AC3). Pesan muncul setelah kirim di langkah 2.</div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Formulir daftar (native)</b>Galat per isian (KU-01, WCAG 3.3.1). Isian yang benar tidak hilang.</p>
+  </section>
+
+  <!-- 3. Persetujuan -->
+  <section class="screen-wrap" aria-label="Layar 3 persetujuan">
+    <div class="screen">
+      <div class="status-bar"><span>09.42</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Persetujuan pemrosesan data</h2></div>
+      <div class="body">
+        <p class="t-small muted">Langkah 2 dari 2. Versi teks: [v-x, tanggal berlaku]</p>
+        <div class="list">
+          <div class="list-item"><span class="grow t-small">(a) Dasar hukum pemrosesan <span class="badge warning">teks menunggu L-08</span></span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(b) Tujuan pemrosesan</span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(c) Jenis dan relevansi data, termasuk data kesehatan</span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(d) Jangka waktu retensi dokumen <span class="badge warning">PT-24</span></span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(e) Rincian informasi yang dikumpulkan</span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(f) Jangka waktu pemrosesan <span class="badge warning">PT-24</span></span><span>&#9662;</span></div>
+          <div class="list-item"><span class="grow t-small">(g) Hak Anda sebagai subjek data + kontak Rumah Sehat</span><span>&#9662;</span></div>
+        </div>
+        <div class="check is-error"><span class="box" role="checkbox" aria-checked="false"></span><span>Saya telah membaca dan menyetujui pemrosesan data pribadi saya sesuai penjelasan di atas. <span class="err" style="color:var(--c-danger);display:block">! Persetujuan wajib untuk membuat akun</span></span></div>
+        <div class="note">Kotak tidak tercentang otomatis. Butir tambahan dapat ditambah tanpa ubah aplikasi (US-104 AC3, KEPUTUSAN-12): tiap butir satu kotak terpisah.</div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Setuju dan daftar</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Persetujuan (US-104 AC1, AC5; US-101 AC4)</b>Tujuh informasi Pasal 21 ayat (1) UU PDP (SRC-15) sebagai bagian yang dapat dibuka. Tombol tetap aktif; menekan tanpa centang menampilkan galat (KEPUTUSAN-168).</p>
+  </section>
+
+  <!-- 4. Cek email -->
+  <section class="screen-wrap" aria-label="Layar 4 cek email">
+    <div class="screen">
+      <div class="status-bar"><span>09.43</span><span></span></div>
+      <div class="body">
+        <div class="state">
+          <div class="ill">&#9993;</div>
+          <p class="t-title">Periksa email Anda</p>
+          <p class="t-body muted">Kami mengirim tautan verifikasi ke nama@contoh.id. Buka tautan itu untuk mengaktifkan akun.</p>
+          <button class="btn btn-secondary">Kirim ulang tautan</button>
+          <a class="btn btn-text" href="#">Ubah email</a>
+        </div>
+        <div class="alert warning"><span>!</span><span><b>Tautan sudah kedaluwarsa atau sudah dipakai</b>Minta tautan baru dengan "Kirim ulang tautan". (US-101 AC2)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Akun dibuat, email belum diverifikasi (US-101 AC1-AC2)</b>Pesan status diumumkan ke pembaca layar tanpa memindah fokus (WCAG 4.1.3).</p>
+  </section>
+
+  <!-- 5. Masuk di browser sistem -->
+  <section class="screen-wrap" aria-label="Layar 5 masuk">
+    <div class="screen">
+      <div class="status-bar"><span>09.50</span><span>browser sistem &middot; login.[domain]</span></div>
+      <div class="body">
+        <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat <small>draf logo</small></span>
+        <p class="t-title">Masuk</p>
+        <div class="alert danger"><span>&#10005;</span><span><b>Email atau password salah</b>Periksa kembali lalu coba lagi.</span></div>
+        <div class="field"><label for="le">Email</label><input id="le" class="input" value="nama@contoh.id"></div>
+        <div class="field"><label for="lp">Password</label><input id="lp" class="input" type="password" value="xxxxxxxx"></div>
+        <button class="btn btn-primary btn-block">Masuk</button>
+        <a href="#" class="t-small">Lupa password?</a>
+        <div class="alert warning"><span>!</span><span><b>Pesan saat akun terkunci (US-103 AC3): menunggu keputusan</b>Rumusan belum ditetapkan PRD dan menyentuh enumerasi akun (US-103 AC2); diputuskan bersama review keamanan di Tahap 7 (PT-44).</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Masuk (tema login Keycloak, US-103 AC1-AC3)</b>Pesan galat umum tidak menyebut bagian yang salah. Tanpa CAPTCHA teka-teki; paste dan autofill diizinkan (WCAG 3.3.8).</p>
+  </section>
+
+  <!-- 6. Lupa password dan keluar -->
+  <section class="screen-wrap" aria-label="Layar 6 lupa password dan keluar">
+    <div class="screen">
+      <div class="status-bar"><span>09.52</span><span>browser sistem</span></div>
+      <div class="body">
+        <p class="t-title">Atur ulang password</p>
+        <div class="field"><label for="re">Email</label><input id="re" class="input" value="nama@contoh.id"></div>
+        <button class="btn btn-primary btn-block">Kirim tautan</button>
+        <div class="alert info"><span>i</span><span>Jika email terdaftar, tautan atur ulang sudah dikirim dan berlaku 60 menit.</span></div>
+        <div class="divider"></div>
+        <p class="t-sub">Dialog keluar (dari Profil)</p>
+        <div class="dialog" style="box-shadow:none;border:1px solid var(--c-divider)">
+          <p class="t-title">Keluar dari Rumah Sehat?</p>
+          <p class="t-small muted">Anda perlu masuk lagi untuk memesan atau melihat riwayat.</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-text btn-sm">Batal</button><button class="btn btn-primary btn-sm">Keluar</button></div>
+        </div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>6. Atur ulang password (US-103 AC4) dan keluar (AC5)</b>Pesan yang sama untuk email terdaftar atau tidak.</p>
+  </section>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A11 Belanja produk - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A11 Belanja produk: katalog, keranjang, checkout, pelacakan, klaim (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-701 s.d. US-706, US-801 AC4, US-807 (RF-10, RF-16). Kurir Lalamove saja; "pilihan kurir" = jenis layanan/kendaraan Lalamove (CR-012, T5-Q5). Identitas tidak wajib (AB-01). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>19.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Belanja</h2><button class="icon-btn" aria-label="Keranjang, 3 barang">&#128722;</button></div>
+      <div class="body">
+        <div class="field"><label for="s" class="t-cap">Cari produk</label><input id="s" class="input" placeholder="Nama produk"></div>
+        <div class="chips"><span class="chip on">Semua</span><span class="chip">Obat bebas</span><span class="chip">Kecantikan</span><span class="chip">Kesehatan lain</span></div>
+        <div class="grid2">
+          <div class="card"><div class="doc-img" style="height:90px">Foto</div><p class="t-small">[Vitamin C]</p><p class="t-sub">Rp45.000</p><p class="t-cap">Apotek Rekanan A</p></div>
+          <div class="card"><div class="doc-img" style="height:90px">Foto</div><p class="t-small">[Sunscreen]</p><p class="t-sub">Rp89.000</p><span class="badge neutral">Habis</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Katalog (US-701)</b>Produk habis bertanda teks "Habis" dan tidak dapat masuk keranjang (AC2). Boleh tanpa masuk.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>19.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Detail produk</h2></div>
+      <div class="body">
+        <div class="doc-img">Foto produk</div>
+        <p class="t-title">[Vitamin C 500 mg]</p>
+        <p class="t-display" style="font-size:22px">Rp45.000</p>
+        <div class="row t-small"><span class="badge info">Obat bebas</span><span>Stok: 12</span></div>
+        <p class="t-small"><b>Apotek Rekanan A</b> &middot; Apotek</p>
+        <p class="t-small">[Deskripsi dari outlet]</p>
+        <p class="t-cap">Informasi wajib menurut ketentuan BPOM [TIDAK DIKETAHUI] (L-03, US-702 AC4).</p>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Tambah ke keranjang</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Detail (US-702 AC1)</b>Nama dan jenis outlet selalu tampil.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>19.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Keranjang</h2></div>
+      <div class="body">
+        <div class="card">
+          <p class="t-sub">Apotek Rekanan A</p>
+          <div class="row between"><span class="t-small">[Vitamin C] Rp45.000</span><span class="row"><button class="icon-btn" aria-label="Kurangi">&minus;</button><span>12</span><button class="icon-btn" aria-label="Tambah" disabled>+</button></span></div>
+          <p class="t-cap" role="status">Jumlah dibatasi sesuai stok (12). (US-703 AC2)</p>
+          <button class="btn btn-primary btn-sm">Checkout dari outlet ini</button>
+        </div>
+        <div class="card">
+          <p class="t-sub">Toko Kecantikan B</p>
+          <div class="row between"><span class="t-small">[Serum] Rp120.000</span><span>1</span></div>
+          <button class="btn btn-secondary btn-sm">Checkout dari outlet ini</button>
+        </div>
+        <p class="t-cap">Satu checkout = satu outlet (US-703 AC1). Kosong: "Keranjang kosong" + "Mulai belanja".</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Keranjang per outlet (US-703 AC1-AC2)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>19.07</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Checkout</h2></div>
+      <div class="body">
+        <div class="field"><label for="ad">Alamat pengiriman</label><select id="ad" class="input"><option>Rumah - Jl. Contoh No. 5</option></select></div>
+        <div class="field"><label>Pengiriman (Lalamove)</label>
+          <div class="list"><div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio on">&#9679;</span></span><span class="grow t-small">[Jenis layanan/kendaraan 1]</span><span class="t-small">Rp18.000</span></div><div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio"></span></span><span class="grow t-small">[Jenis 2]</span><span class="t-small">Rp25.000</span></div></div>
+        </div>
+        <div class="price card"><div class="line"><span>Harga produk (12)</span><span>Rp540.000</span></div><div class="line"><span>Ongkos kirim</span><span>Rp18.000</span></div><div class="line"><span>Pajak <span class="badge warning">PT-28</span></span><span>Rp&middot;&middot;&middot;</span></div><div class="line"><span>Biaya transaksi</span><span>Rp0</span></div><div class="line total"><span>Total</span><span>Rp&middot;&middot;&middot;</span></div></div>
+        <div class="alert warning"><span>!</span><span><b>Pesanan tidak dapat dibatalkan setelah dibayar.</b> (US-801 AC4, RF-11)</span></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Alamat di luar area pengiriman</b>Checkout tidak dapat dilanjutkan. Pilih alamat lain. (US-703 AC3)</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Pilih metode pembayaran</button></div>
+    </div>
+    <p class="screen-cap"><b>4. Checkout (US-703 AC3-AC4)</b>Dasar pajak atas ongkir/biaya transaksi [TIDAK DIKETAHUI] (sisa PT-28). Lanjut ke A07.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>20.10</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Pesanan produk</h2></div>
+      <div class="body">
+        <span class="badge info">Dikirim</span>
+        <ol class="timeline"><li class="done">Dibayar &middot; 19.10</li><li class="done">Diproses outlet &middot; 19.25</li><li class="now"><b>Dikirim</b> &middot; resi [nomor] &middot; 19.50</li><li>Diterima</li></ol>
+        <a href="#" class="t-small">Riwayat pelacakan kurir</a>
+        <button class="btn btn-primary btn-block">Pesanan diterima</button>
+        <button class="btn btn-secondary btn-block is-disabled" aria-disabled="true">Barang tidak sampai (aktif setelah 7 hari tanpa kabar kurir)</button>
+        <p class="t-cap">Tidak ada tombol batal (US-705 AC4). Ditolak outlet / gagal kirim / tidak diserahkan: badge bahaya + info refund otomatis (US-704 AC2, AC4, AC5).</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Status dan pelacakan (US-704, US-705 AC1)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ajukan klaim</h2></div>
+      <div class="body">
+        <p class="t-small">Batas pengajuan: <b>3 Mar 2027 19.55</b> (2x24 jam setelah Diterima, PB-04)</p>
+        <div class="field"><label>Alasan</label><div class="stack"><span class="check"><span class="box radio on">&#9679;</span>Barang rusak</span><span class="check"><span class="box radio"></span>Tidak sesuai</span><span class="check"><span class="box radio"></span>Kurang</span><span class="check"><span class="box radio"></span>Tidak sampai</span></div></div>
+        <div class="field is-error"><label>Foto bukti (wajib untuk rusak/tidak sesuai/kurang)</label><button class="btn btn-secondary btn-sm" style="align-self:flex-start">+ Tambah foto</button><span class="err">Tambahkan minimal satu foto</span></div>
+        <div class="field"><label for="ds">Keterangan</label><textarea id="ds" class="input"></textarea></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Kirim klaim</button></div>
+    </div>
+    <p class="screen-cap"><b>6. Klaim barang (US-705 AC2, US-807 AC1)</b>Setelah kirim: status "Klaim", batas keputusan PB-05 tampil.</p>
+  </section>
+
+</main>
+</body>
+</html>

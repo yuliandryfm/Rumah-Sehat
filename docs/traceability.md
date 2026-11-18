@@ -119,3 +119,28 @@ Rincian per butir ada di `docs/05-stack.md` §12 dan `docs/05-asvs-checklist.md`
 | NFR-INT-01–04 | Antrean job PostgreSQL (SKIP LOCKED, advisory lock), adaptor DOKU, Lalamove | 05-stack.md, KEPUTUSAN-74, CR-012 |
 | ADR-022, ADR-023 | utoipa OpenAPI 3.1, Swagger UI staging, AsyncAPI, registry `response_code`, contract test di skrip verifikasi | 05-stack.md §6, §8, 05-response-codes.md |
 | AB-11, AB-12, US-801, US-812 (CR-013 pajak) | Komponen pajak di harga terkunci dan jurnal; diterapkan sebelum EP-08 | backlog.md CR-013 |
+
+## Story → wireframe (Tahap 6)
+
+Peta alur lengkap dan deskripsi terstruktur: `docs/06-design-guideline.md` §10. Berkas HTML di `docs/wireframes/`. "D-xx" = deskripsi terstruktur di §10.2; "—" = tanpa layar sendiri (§10.3).
+
+| Epic | Story → alur/wireframe |
+| --- | --- |
+| EP-01 | US-101 A01; US-103 A01; US-104 A01, A13; US-105 A03; US-106 A03; US-107 A02, A03, A05; US-108 A04; US-109 A04 |
+| EP-02 | US-201 C02; US-202 B01; US-203 C02 (pola); US-204 — (B01 peringatan SIP); US-205 D-C04; US-206 D-C04, C01; US-207 D-C05; US-208 D-C05, C01 |
+| EP-03 | US-301 D01; US-302 B02, D01; US-303 A05; US-304 A05; US-305 A06, B02; US-306 A06, B02; US-307 A06, B02; US-308 B02, A06; US-309 B02, A06, D-F01; US-310 A06; US-311 B02 |
+| EP-04 | US-401 A08; US-402 A08, A07; US-403 A08; US-404 — (A08, E01); US-405 A08; US-406 A08 |
+| EP-05 | US-501 A10; US-502 D-E05, B03; US-503 B03; US-504 A10 |
+| EP-06 | US-601 A09; US-602 A09 |
+| EP-07 | US-701–US-705 A11; US-706 A11, A08 |
+| EP-08 | US-801 A07, A11; US-802 A07, C03; US-803 — (C03, D01); US-804 A07; US-805 A12; US-806 — (A12); US-807 A12, A10, A11, C03; US-808 C03, A12; US-809 D-C06; US-810 D-C06; US-811 C03; US-812 D-C06 |
+| EP-09 | US-901 — (A02, A08); US-902 A08 |
+| EP-10 | US-1001 A02, D-F02; US-1002 D-F02; US-1003 B02, D-F02 |
+| EP-11 | US-1101 D-C07; US-1102 A02; US-1103 D-A14; US-1104 D-C08 |
+| EP-12 | US-1201 D01; US-1202 D-D02; US-1203 D-D02 |
+| EP-13 | US-1301 D-E02; US-1302 D-E02, C01; US-1303 D-E03; US-1304 E01; US-1305 E01; US-1306 E01; US-1307 D-E04; US-1308 D-E05; US-1309 E01; US-1310 D-E06 |
+| EP-14 | US-1401–US-1404 —; US-1405 D-C09; US-1406 — |
+| EP-15 | US-1501 —; US-1502 D-C10; US-1503 D-C10; US-1504 — |
+| EP-16 | US-1601 A13; US-1602 A13; US-1603 D-C11; US-1604 A13; US-1605 D-C11 (terblokir L-06/PT-24); US-1606 — |
+| EP-17 | US-1701 D-C12 |
+| NFR | NFR-SEC-02 C01, B01; NFR-SEC-04 C01; NFR-SEC-08 A03, A04, B01; NFR-SEC-10 B01; PRD §6.11 aksesibilitas → 06-design-guideline.md §7 (KEPUTUSAN-160) |
