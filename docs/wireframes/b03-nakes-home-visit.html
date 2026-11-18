@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B03 Tenaga kesehatan: tugas home visit - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>B03 Aplikasi tenaga kesehatan: tugas dan status home visit <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-503, US-502 AC1/AC3 (pemberitahuan penugasan). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>07.30</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Home visit</h2></div>
+      <div class="body">
+        <div class="card"><div class="row between"><p class="t-sub">Sel, 2 Mar &middot; 10.00 WITA</p><span class="badge info">Ditugaskan</span></div><p class="t-small">Citra &middot; Perawatan luka</p><p class="t-cap">Klinik Rekanan X</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Kam, 4 Mar &middot; 13.00 WITA</p><span class="badge info">Ditugaskan</span></div><p class="t-small">Pasien E &middot; Perawatan luka</p></div>
+        <p class="t-cap">Kosong: "Belum ada tugas home visit."</p>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a href="#"><span class="ico">&#128172;</span>Sesi</a><a class="on" href="#" aria-current="page"><span class="ico">&#127968;</span>Home visit</a><a href="#"><span class="ico">&#128197;</span>Jadwal</a><a href="#"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>1. Daftar tugas (US-503 AC1)</b>Jadwal dalam zona waktu rekanan berlabel (AB-40).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.35</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Tugas home visit</h2></div>
+      <div class="body">
+        <span class="badge info">Berangkat</span>
+        <dl class="kv" style="grid-template-columns:100px 1fr"><dt>Pasien</dt><dd>Citra</dd><dt>Layanan</dt><dd>Perawatan luka</dd><dt>Jadwal</dt><dd>Sel, 2 Mar 10.00 WITA</dd><dt>Alamat</dt><dd>Jl. Contoh No. 5 &middot; <a href="#">Buka peta</a></dd><dt>Nomor HP</dt><dd>0812xxxxxxx &middot; <a href="#">Telepon</a></dd></dl>
+        <p class="t-cap">Nomor HP hanya tampil di hari kunjungan sampai kunjungan selesai.</p>
+        <ol class="timeline"><li class="done">Ditugaskan</li><li class="now"><b>Berangkat</b> 09.30</li><li>Tiba</li><li>Selesai</li></ol>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Tandai Tiba</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Detail dan status berurutan (US-503 AC1-AC2)</b>Hanya satu tombol status berikutnya yang tampil, sehingga urutan tidak dapat dilompati.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Tugas home visit</h2></div>
+      <div class="body">
+        <span class="badge info">Tiba</span>
+        <button class="btn btn-primary btn-block">Tandai Selesai</button>
+        <button class="btn btn-secondary btn-block">Pasien tidak ada di lokasi</button>
+        <p class="t-cap">Rekam medis kunjungan untuk klinik pengguna RME minimalis diisi di web RME, bukan di aplikasi ini (US-1306 AC6, EP-13 terpisah).</p>
+      </div>
+      <div class="scrim"><div class="sheet">
+        <p class="t-title">Pasien tidak ada di lokasi?</p>
+        <p class="t-small">Status menjadi "Pasien tidak hadir". Pasien dapat mengajukan keberatan.</p>
+        <div class="field is-error"><label for="kt">Keterangan</label><textarea id="kt" class="input"></textarea><span class="err">Keterangan wajib diisi</span></div>
+        <button class="btn btn-danger btn-block">Simpan</button><button class="btn btn-text btn-block">Batal</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>3. Selesai atau pasien tidak ada (US-503 AC3)</b>Opsi "Pasien tidak ada" hanya tampil dari status Tiba.</p>
+  </section>
+
+</main>
+</body>
+</html>

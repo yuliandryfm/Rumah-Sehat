@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B02 Tenaga kesehatan: jadwal, sesi, catatan, resep - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>B02 Aplikasi tenaga kesehatan: jadwal praktik, daftar sesi, sesi, catatan, resep <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-302, US-311, US-305, US-306, US-307 AC4, US-308, US-309, US-1003. Data klinis: T2 dengan perlakuan teliti. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>13.50</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Sesi</h2><button class="icon-btn" aria-label="Notifikasi">&#128276;</button></div>
+      <div class="tabs"><span class="tab on">Hari ini</span><span class="tab">Akan datang</span><span class="tab">Selesai</span></div>
+      <div class="body">
+        <div class="card"><div class="row between"><p class="t-sub">14.20 &middot; Video 20 mnt</p><span class="badge info">Terkonfirmasi</span></div><p class="t-small">Sari A.</p><button class="btn btn-primary btn-sm is-disabled" aria-disabled="true">Bergabung (dibuka 14.20)</button></div>
+        <div class="card"><div class="row between"><p class="t-sub">15.00 &middot; Chat 30 mnt</p><span class="badge info">Terkonfirmasi</span></div><p class="t-small">Pasien B</p></div>
+        <p class="t-cap">Kosong: "Tidak ada sesi hari ini." Waktu sesuai zona perangkat (AB-41).</p>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a class="on" href="#" aria-current="page"><span class="ico">&#128172;</span>Sesi</a><a href="#"><span class="ico">&#127968;</span>Home visit</a><a href="#"><span class="ico">&#128197;</span>Jadwal</a><a href="#"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>1. Daftar sesi (US-311 AC1, AC3)</b>Navigasi aplikasi tenaga kesehatan (UP-62).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>13.55</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Detail sesi</h2></div>
+      <div class="body">
+        <dl class="kv" style="grid-template-columns:110px 1fr"><dt>Pasien</dt><dd>Sari A. &middot; P &middot; 12 Mei 1990</dd><dt>Jadwal</dt><dd>14.20 &middot; Video 20 mnt</dd></dl>
+        <div class="card"><p class="t-sub">Keluhan awal</p><p class="t-small">Demam sejak 2 hari</p><p class="t-cap">Akses ke detail ini dicatat (E-05, US-311 AC4)</p></div>
+        <a class="btn btn-text btn-block" href="#" style="color:var(--c-danger)">Batalkan sesi</a>
+      </div>
+      <div class="scrim"><div class="sheet">
+        <p class="t-title">Batalkan sesi ini?</p>
+        <p class="t-small">Pasien menerima pengembalian seluruh pembayaran otomatis.</p>
+        <div class="field is-error"><label for="al">Alasan</label><textarea id="al" class="input"></textarea><span class="err">Alasan wajib diisi</span></div>
+        <button class="btn btn-danger btn-block">Batalkan sesi</button><button class="btn btn-text btn-block">Kembali</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>2. Detail dan pembatalan (US-311 AC4, US-307 AC4, RF-05)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>14.30</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Sari A. &middot; Chat</h2><span class="badge info" style="margin-right:8px">Sisa 10:02</span></div>
+      <div class="row" style="padding:8px;gap:8px;background:var(--c-surface);border-bottom:1px solid var(--c-divider)"><button class="btn btn-secondary btn-sm">Catatan</button><button class="btn btn-secondary btn-sm">Resep</button><button class="btn btn-secondary btn-sm">Mulai video</button></div>
+      <div class="body"><div class="chat"><div class="bubble them">Demam sejak 2 hari, dok.<span class="meta">14.22</span></div><div class="bubble me">Baik, sudah minum obat apa?<span class="meta">14.23 &middot; Terkirim</span></div></div></div>
+      <div class="composer"><button class="icon-btn" aria-label="Lampirkan foto">&#128206;</button><input class="input" placeholder="Tulis pesan"><button class="icon-btn" aria-label="Kirim" style="background:var(--c-primary);color:#fff">&#10148;</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Ruang sesi (US-305, US-306)</b>Tombol Resep hanya untuk dokter (AB-53).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>14.38</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Tutup">&#10005;</button><h2>Catatan konsultasi</h2></div>
+      <div class="body">
+        <div class="field"><label for="k1">Keluhan</label><textarea id="k1" class="input" style="min-height:56px"></textarea></div>
+        <div class="field"><label for="k2">Temuan</label><textarea id="k2" class="input" style="min-height:56px"></textarea></div>
+        <div class="field"><label for="k3">Diagnosis atau kesan</label><input id="k3" class="input" placeholder="Cari kode diagnosis"><span class="hint">Kode mengikuti terminologi SATUSEHAT (ADR-020, US-308 AC4)</span></div>
+        <div class="field"><label for="k4">Rencana atau saran</label><textarea id="k4" class="input" style="min-height:56px"></textarea></div>
+        <div class="alert info"><span>i</span><span>Mengubah catatan final membuat versi baru dengan alasan perubahan; versi lama tetap tersimpan.</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Finalkan catatan</button></div>
+    </div>
+    <p class="screen-cap"><b>4. Catatan terstruktur (US-308 AC1-AC2)</b>Konfirmasi sebelum finalisasi: "Catatan akan dapat dilihat pasien."</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>14.45</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Tutup">&#10005;</button><h2>Resep digital</h2></div>
+      <div class="body">
+        <div class="card"><p class="t-sub">Obat 1</p><div class="field"><label for="o1">Nama obat</label><input id="o1" class="input"></div><div class="grid2"><div class="field"><label for="o2">Kekuatan/dosis</label><input id="o2" class="input"></div><div class="field"><label for="o3">Jumlah</label><input id="o3" class="input" inputmode="numeric"></div></div><div class="field"><label for="o4">Aturan pakai</label><input id="o4" class="input"></div></div>
+        <button class="btn btn-secondary btn-block">+ Tambah obat</button>
+      </div>
+      <div class="scrim center"><div class="dialog">
+        <p class="t-title">Terbitkan resep?</p>
+        <p class="t-small">Resep yang sudah terbit tidak dapat diubah. Koreksi dilakukan dengan membatalkan (dengan alasan) lalu menerbitkan resep baru.</p>
+        <div class="row" style="justify-content:flex-end"><button class="btn btn-text btn-sm">Periksa lagi</button><button class="btn btn-primary btn-sm">Terbitkan</button></div>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>5. Resep (US-309 AC1, AC3)</b>Resep terbit memuat nomor unik, SIP, klinik, tanggal, kode verifikasi dan QR di PDF (AC6).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>18.00</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Jadwal praktik</h2></div>
+      <div class="body">
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Senin</b></p><p class="t-cap">13.00-17.00 WIB</p></div><button class="icon-btn" aria-label="Ubah jadwal Senin">&#9998;</button></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Rabu</b></p><p class="t-cap">09.00-12.00 WIB</p></div><button class="icon-btn" aria-label="Ubah jadwal Rabu">&#9998;</button></div>
+        </div>
+        <p class="t-sub">Pengecualian tanggal</p>
+        <div class="list"><div class="list-item"><span class="grow t-small">17 Mar 2027 &middot; libur</span></div></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Jadwal bertumpuk</b>Rabu 10.00-11.00 bertumpuk dengan jadwal yang ada. (US-302 AC2)</span></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Tidak dapat diubah</b>Ada sesi terbayar pada jadwal ini. Batalkan sesi itu lebih dulu. (US-302 AC3, AC5)</span></div>
+        <p class="t-cap">Slot dibentuk dari durasi yang diatur klinik di portal (US-301).</p>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a href="#"><span class="ico">&#128172;</span>Sesi</a><a href="#"><span class="ico">&#127968;</span>Home visit</a><a class="on" href="#" aria-current="page"><span class="ico">&#128197;</span>Jadwal</a><a href="#"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>6. Jadwal mingguan dan pengecualian (US-302 AC1-AC3, AC5)</b></p>
+  </section>
+
+</main>
+</body>
+</html>

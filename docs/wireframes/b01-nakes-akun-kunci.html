@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B01 Tenaga kesehatan: pendaftaran, masuk MFA, kunci aplikasi - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>B01 Aplikasi tenaga kesehatan: pendaftaran, masuk dengan MFA, kunci aplikasi <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-202, US-204 (pemberitahuan SIP), NFR-SEC-10 (CR-009), ADR-011 (realm nakes, TOTP wajib), ADR-021 butir 1. Modul T1. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Daftar tenaga kesehatan</h2></div>
+      <div class="body">
+        <p class="t-small muted">Langkah 2 dari 3: dokumen izin</p>
+        <div class="field"><label for="jn">Jenis</label><select id="jn" class="input"><option>Dokter</option><option>Psikolog</option><option>Fisioterapis</option><option>Tenaga medis</option></select></div>
+        <div class="field"><label for="kp">Klinik penaung</label><input id="kp" class="input" value="Klinik Rekanan X"><span class="hint">Hanya klinik rekanan aktif (US-202 AC4)</span></div>
+        <div class="field"><label for="str">Nomor STR</label><input id="str" class="input"><button class="btn btn-secondary btn-sm" style="align-self:flex-start">+ Foto STR</button></div>
+        <div class="field is-error"><label for="sip">Tanggal berakhir SIP</label><input id="sip" class="input" value="01/01/2027"><span class="err">SIP sudah berakhir. Unggah SIP yang masih berlaku.</span></div>
+        <div class="field"><label>Dokumen penugasan dari klinik</label><button class="btn btn-secondary btn-sm" style="align-self:flex-start">+ Unggah PDF/foto</button><span class="hint">Foto JPG/PNG maks. 5 MB; PDF maks. 10 MB</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut</button></div>
+    </div>
+    <p class="screen-cap"><b>1. Pendaftaran (US-202 AC1, AC3)</b>Dokumen wajib mengikuti PB-14 (STR dan SIP, menunggu L-07).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.10</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Status akun</h2></div>
+      <div class="body">
+        <div class="card"><div class="row between"><p class="t-sub">Menunggu verifikasi</p><span class="badge warning">Menunggu</span></div><p class="t-small">Admin Rumah Sehat memeriksa dokumen dan mengonfirmasi afiliasi ke klinik Anda. Anda belum tampil untuk pasien.</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Ditolak</p><span class="badge danger">Ditolak</span></div><p class="t-small"><b>Alasan:</b> [alasan Verifikator]</p><button class="btn btn-primary btn-sm" style="align-self:flex-start">Perbaiki dokumen</button></div>
+        <div class="alert warning"><span>!</span><span><b>SIP berakhir 30 hari lagi</b>Unggah SIP baru agar akun tetap aktif. (US-204 AC1, PB-09)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>2. Status verifikasi (US-202 AC2)</b>Selama menunggu/ditolak, hanya layar ini dan lengkapi dokumen yang tersedia.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.20</span><span>browser sistem &middot; login.[domain]</span></div>
+      <div class="body">
+        <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat &middot; Tenaga Kesehatan <small>draf</small></span>
+        <p class="t-title">Kode verifikasi</p>
+        <p class="t-small">Masukkan 6 digit kode dari aplikasi authenticator Anda.</p>
+        <div class="field"><label for="otp">Kode</label><input id="otp" class="input otp" inputmode="numeric" value="123 456"><span class="hint">Tempel (paste) diizinkan (WCAG 3.3.8)</span></div>
+        <button class="btn btn-primary btn-block">Verifikasi</button>
+        <a href="#" class="t-small">Gunakan kode pemulihan</a>
+        <div class="divider"></div>
+        <p class="t-sub">Masuk pertama: atur authenticator</p>
+        <div class="qr" style="width:120px;height:120px" role="img" aria-label="QR pengaturan authenticator"></div>
+        <p class="t-cap">Tidak bisa memindai? Tampilkan kunci dalam teks. Simpan 12 kode pemulihan.</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Masuk + TOTP (ADR-011 butir 5)</b>Tema login Keycloak yang sama dengan pasien. Jumlah digit final ditetapkan konfigurasi realm.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.40</span><span></span></div>
+      <div class="body" style="justify-content:center;align-items:center;text-align:center">
+        <div class="ill" style="width:96px;height:96px;border-radius:50%;background:var(--c-mint);display:flex;align-items:center;justify-content:center;font-size:40px">&#128274;</div>
+        <p class="t-title">Aplikasi terkunci</p>
+        <p class="t-small muted">Tidak aktif lebih dari 15 menit. Verifikasi bahwa ini perangkat Anda.</p>
+        <button class="btn btn-primary btn-block">Buka dengan biometrik atau PIN perangkat</button>
+        <p class="t-cap">Isian yang belum dikirim tetap ada di memori aplikasi dan muncul kembali setelah dibuka, selama aplikasi tidak ditutup. Isi klinis tidak disimpan persisten di perangkat.</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Kunci aplikasi (NFR-SEC-10, CR-009)</b>Gagal verifikasi berulang: tetap di layar ini dengan opsi "Keluar dan masuk ulang". Aturan data di perangkat: coding-standards §1.6. Apakah catatan konsultasi perlu disimpan sebagai draf di server: lihat PT-42.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen" style="background:var(--c-primary-strong)">
+      <div class="body" style="justify-content:center;align-items:center">
+        <span class="logo" style="color:#fff"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#DFF4ED"/></svg>Rumah Sehat</span>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Layar privasi di pengalih aplikasi</b>Isi layar disembunyikan saat aplikasi di latar belakang (ADR-021 butir 1; mekanisme diverifikasi Tahap 8). Berlaku untuk aplikasi pasien dan tenaga kesehatan.</p>
+  </section>
+
+</main>
+</body>
+</html>

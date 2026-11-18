@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A07 Ringkasan harga, pembayaran, bukti bayar - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A07 Ringkasan harga, pembayaran, dan bukti bayar (aplikasi pasien, dipakai semua layanan) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-801, US-802, US-804; aturan AB-10 s.d. AB-17, CR-013 (pajak). Modul T1. Semua angka dihitung server; angka di wireframe hanya contoh. Metode pembayaran mengikuti payment gateway terpilih (AB-25, [TIDAK DIKETAHUI]). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ringkasan pesanan</h2></div>
+      <div class="body">
+        <div class="alert info"><span>&#9201;</span><span>Slot ditahan sampai <b>11.35</b>. Selesaikan pembayaran sebelum waktu itu. (PB-07)</span></div>
+        <div class="card">
+          <p class="t-sub">Pendaftaran Lab &middot; Lab Rekanan Z</p>
+          <p class="t-small">Pemeriksaan darah lengkap &middot; untuk Sari</p>
+          <p class="t-small muted">Sen, 1 Mar 2027 &middot; 08.00 WITA</p>
+        </div>
+        <div class="field"><label>Metode pembayaran</label>
+          <div class="list">
+            <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio on">&#9679;</span></span><span class="grow t-small">QRIS</span><span class="t-cap">Biaya Rp0</span></div>
+            <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio"></span></span><span class="grow t-small">[Metode lain sesuai payment gateway]</span><span class="t-cap">Biaya tampil</span></div>
+          </div>
+        </div>
+        <div class="price card">
+          <div class="line"><span>Harga layanan</span><span>Rp250.000</span></div>
+          <div class="line"><span>Pajak <span class="badge warning">CR-013, tarif menunggu PT-28</span></span><span>Rp&middot;&middot;&middot;</span></div>
+          <div class="line"><span>Biaya transaksi (QRIS)</span><span>Rp0</span></div>
+          <div class="line total"><span>Total</span><span>Rp&middot;&middot;&middot;</span></div>
+        </div>
+        <div class="alert warning"><span>!</span><span><b>Yang perlu Anda ketahui</b>Harga hanya mencakup layanan yang tercantum. Tindakan tambahan diselesaikan dan dibayar di luar aplikasi (AB-16). Batal paling lambat 24 jam sebelum jadwal: harga layanan dikembalikan; kurang dari itu atau tidak hadir: tidak ada pengembalian. <a href="#">Aturan lengkap</a></span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Bayar Rp&middot;&middot;&middot;</button></div>
+    </div>
+    <p class="screen-cap"><b>1. Ringkasan harga (US-801 AC1, AC3)</b>Harga layanan satu angka; markup tidak tampil sebagai baris (AB-13). Untuk produk: baris ongkos kirim dan pernyataan "tidak dapat dibatalkan setelah dibayar" (AC4, lihat A11).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.06</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ringkasan pesanan</h2></div>
+      <div class="body"><div class="skel lg"></div><div class="skel lg"></div></div>
+      <div class="scrim center"><div class="dialog" role="alertdialog" aria-labelledby="hb">
+        <p class="t-title" id="hb">Harga berubah</p>
+        <p class="t-small">Harga dari rekanan diperbarui sebelum pembayaran dibuat.</p>
+        <div class="price"><div class="line"><span>Total sebelumnya</span><span><s>Rp250.000</s></span></div><div class="line total"><span>Total terbaru</span><span>Rp265.000</span></div></div>
+        <p class="t-small">Setujui total terbaru untuk melanjutkan.</p>
+        <button class="btn btn-primary btn-block">Setujui dan bayar Rp265.000</button>
+        <button class="btn btn-text btn-block">Kembali</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>2. Harga atau ketersediaan berubah (AB-15, US-801 AC5)</b>Pembayaran tidak dibuat sebelum pasien menyetujui. Angka lama dicoret dan juga disebut dengan teks.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.07</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Tutup">&#10005;</button><h2>Pembayaran</h2></div>
+      <div class="body" style="align-items:center;text-align:center">
+        <p class="t-small muted">Total</p><p class="t-display">Rp&middot;&middot;&middot;</p>
+        <p class="t-small">Bayar sebelum <b>11.35</b> (sisa 28 menit)</p>
+        <div class="qr" role="img" aria-label="Kode QRIS pembayaran"></div>
+        <p class="t-cap">Instruksi dari payment gateway. Status diperbarui otomatis.</p>
+        <div class="alert info" style="text-align:left"><span>&#8635;</span><span>Menunggu konfirmasi pembayaran dari payment gateway...</span></div>
+        <button class="btn btn-secondary btn-block">Ganti metode pembayaran</button>
+        <button class="btn btn-text btn-block">Batalkan pesanan</button>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Instruksi dan menunggu (US-802 AC1, AC4)</b>Pesanan dikonfirmasi hanya dari notifikasi server yang terverifikasi, bukan dari aplikasi. Mengganti metode membatalkan instruksi lama bila penyedia mendukung.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.12</span><span></span></div>
+      <div class="body">
+        <div class="state"><div class="ill">&#10003;</div><p class="t-title">Pembayaran berhasil</p><p class="t-small muted">Pesanan Anda terkonfirmasi. Bukti pembayaran juga dikirim ke email.</p><span class="badge info">Terkonfirmasi</span></div>
+        <button class="btn btn-primary btn-block">Lihat pesanan</button><button class="btn btn-secondary btn-block">Lihat bukti pembayaran</button>
+        <div class="divider"></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Pembayaran gagal</b>Coba metode lain sebelum 11.35. <a href="#">Pilih metode</a></span></div>
+        <div class="alert warning"><span>!</span><span><b>Waktu pembayaran habis</b>Pesanan kedaluwarsa dan slot dilepas. Jika dana terlanjur terpotong, dana dikembalikan otomatis atau slot dikonfirmasi bila masih tersedia. (US-802 AC5)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Hasil: berhasil, gagal, kedaluwarsa</b>Hasil diumumkan sebagai pesan status (WCAG 4.1.3). Tombol bayar terkunci selama proses agar tidak ganda (KU-05).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.15</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Bukti pembayaran</h2><button class="icon-btn" aria-label="Unduh">&#11015;</button></div>
+      <div class="body">
+        <dl class="kv" style="grid-template-columns:130px 1fr">
+          <dt>Nomor transaksi</dt><dd>RS-270301-XXXXXX</dd>
+          <dt>Tanggal</dt><dd>1 Mar 2027 11.11 WIB</dd>
+          <dt>Pemberi layanan</dt><dd>Lab Rekanan Z</dd>
+          <dt>Metode</dt><dd>QRIS</dd>
+        </dl>
+        <div class="price card"><div class="line"><span>Harga layanan</span><span>Rp250.000</span></div><div class="line"><span>Pajak</span><span>Rp&middot;&middot;&middot;</span></div><div class="line"><span>Biaya transaksi</span><span>Rp0</span></div><div class="line total"><span>Total dibayar</span><span>Rp&middot;&middot;&middot;</span></div></div>
+        <p class="t-small">Rumah Sehat berperan sebagai platform yang menghubungkan Anda dengan rekanan pemberi layanan.</p>
+        <p class="t-cap">Kolom pajak dan identitas merchant of record menunggu PT-28 dan L-12 (US-804 AC2).</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Bukti pembayaran (US-804 AC1)</b>Tanpa data klinis.</p>
+  </section>
+
+</main>
+</body>
+</html>

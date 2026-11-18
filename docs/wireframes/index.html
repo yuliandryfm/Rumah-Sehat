@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indeks wireframe Rumah Sehat (Tahap 6, draf)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>Wireframe Rumah Sehat <span class="draft-tag">DRAF Tahap 6, menunggu Checkpoint 2</span></h1>
+  <p>HTML statis tanpa dependensi eksternal. Token visual adalah usulan (UP-58). Logo hanya placeholder (UP-60). Angka harga dan nama di layar adalah contoh, bukan data. Peta lengkap alur ke story: <code>docs/06-design-guideline.md</code> §10.</p>
+</header>
+<main class="index">
+<table>
+  <thead><tr><th>ID</th><th>Alur</th><th>Permukaan</th><th>Story utama</th><th>File</th></tr></thead>
+  <tbody>
+    <tr><td>A01</td><td>Registrasi, persetujuan data, masuk, atur ulang password, keluar</td><td>Aplikasi pasien + tema login</td><td>US-101, US-103, US-104</td><td><a href="a01-registrasi-masuk.html">a01-registrasi-masuk.html</a></td></tr>
+    <tr><td>A02</td><td>Beranda, navigasi, kotak notifikasi, konten</td><td>Aplikasi pasien</td><td>US-1001, US-1102, US-107</td><td><a href="a02-beranda-notifikasi.html">a02-beranda-notifikasi.html</a></td></tr>
+    <tr><td>A03</td><td>Profil dan verifikasi identitas KTP</td><td>Aplikasi pasien</td><td>US-105, US-106, US-107</td><td><a href="a03-profil-identitas.html">a03-profil-identitas.html</a></td></tr>
+    <tr><td>A04</td><td>Anggota keluarga</td><td>Aplikasi pasien</td><td>US-108, US-109</td><td><a href="a04-anggota-keluarga.html">a04-anggota-keluarga.html</a></td></tr>
+    <tr><td>A05</td><td>Cari dan pesan konsultasi online</td><td>Aplikasi pasien</td><td>US-303, US-304</td><td><a href="a05-pesan-konsultasi.html">a05-pesan-konsultasi.html</a></td></tr>
+    <tr><td>A06</td><td>Sesi konsultasi, catatan, resep, riwayat</td><td>Aplikasi pasien</td><td>US-305 s.d. US-310</td><td><a href="a06-sesi-konsultasi.html">a06-sesi-konsultasi.html</a></td></tr>
+    <tr><td>A07</td><td>Ringkasan harga, pembayaran, bukti bayar</td><td>Aplikasi pasien</td><td>US-801, US-802, US-804</td><td><a href="a07-pembayaran.html">a07-pembayaran.html</a></td></tr>
+    <tr><td>A08</td><td>Pendaftaran klinik/lab, appointment, antrean, hasil lab, daftar pesanan</td><td>Aplikasi pasien</td><td>US-401 s.d. US-406, US-902, US-706</td><td><a href="a08-klinik-lab.html">a08-klinik-lab.html</a></td></tr>
+    <tr><td>A09</td><td>Informasi biaya MCU dan lab</td><td>Aplikasi pasien</td><td>US-601, US-602</td><td><a href="a09-info-biaya.html">a09-info-biaya.html</a></td></tr>
+    <tr><td>A10</td><td>Home visit: pesan, pantau, lapor, keberatan</td><td>Aplikasi pasien</td><td>US-501, US-504</td><td><a href="a10-home-visit.html">a10-home-visit.html</a></td></tr>
+    <tr><td>A11</td><td>Belanja produk sampai klaim barang</td><td>Aplikasi pasien</td><td>US-701 s.d. US-706</td><td><a href="a11-belanja-produk.html">a11-belanja-produk.html</a></td></tr>
+    <tr><td>A12</td><td>Pembatalan, klaim, status refund</td><td>Aplikasi pasien</td><td>US-805 s.d. US-808</td><td><a href="a12-batal-klaim-refund.html">a12-batal-klaim-refund.html</a></td></tr>
+    <tr><td>A13</td><td>Privasi: persetujuan, penarikan, hak subjek data</td><td>Aplikasi pasien</td><td>US-1601, US-1602, US-1604, US-104 AC4</td><td><a href="a13-privasi-hak-data.html">a13-privasi-hak-data.html</a></td></tr>
+    <tr><td>B01</td><td>Pendaftaran tenaga kesehatan, masuk MFA, kunci aplikasi</td><td>Aplikasi tenaga kesehatan</td><td>US-202, NFR-SEC-10</td><td><a href="b01-nakes-akun-kunci.html">b01-nakes-akun-kunci.html</a></td></tr>
+    <tr><td>B02</td><td>Jadwal praktik, sesi, catatan, resep</td><td>Aplikasi tenaga kesehatan</td><td>US-302, US-311, US-305-US-309</td><td><a href="b02-nakes-sesi-jadwal.html">b02-nakes-sesi-jadwal.html</a></td></tr>
+    <tr><td>B03</td><td>Tugas home visit</td><td>Aplikasi tenaga kesehatan</td><td>US-503</td><td><a href="b03-nakes-home-visit.html">b03-nakes-home-visit.html</a></td></tr>
+    <tr><td>C01</td><td>Masuk web dengan MFA, batas sesi, akses ditolak</td><td>Ketiga web</td><td>US-206, US-208, US-1302, NFR-SEC-04, KU-03</td><td><a href="c01-web-masuk-sesi.html">c01-web-masuk-sesi.html</a></td></tr>
+    <tr><td>C02</td><td>Verifikasi identitas (pola verifikasi tenaga kesehatan)</td><td>Backoffice</td><td>US-201, US-203</td><td><a href="c02-bo-verifikasi.html">c02-bo-verifikasi.html</a></td></tr>
+    <tr><td>C03</td><td>Klaim refund, antrean Keuangan, laporan</td><td>Backoffice</td><td>US-807, US-808, US-811</td><td><a href="c03-bo-klaim-keuangan.html">c03-bo-klaim-keuangan.html</a></td></tr>
+    <tr><td>D01</td><td>Laporan transaksi dan konsultasi online</td><td>Portal rekanan</td><td>US-1201, US-301, US-302</td><td><a href="d01-portal-rekanan.html">d01-portal-rekanan.html</a></td></tr>
+    <tr><td>E01</td><td>Appointment, check-in, antrean, rekam medis, SATUSEHAT</td><td>Web RME</td><td>US-1304, US-1305, US-1306, US-1309</td><td><a href="e01-rme-kunjungan.html">e01-rme-kunjungan.html</a></td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>

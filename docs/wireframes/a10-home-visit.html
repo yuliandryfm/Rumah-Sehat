@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A10 Home visit - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A10 Pesan dan pantau home visit (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-501, US-504, US-805, US-807 (RF-06, RF-17); pembayaran lewat A07. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Home Visit</h2></div>
+      <div class="body">
+        <div class="field"><label for="al">Alamat kunjungan</label><select id="al" class="input"><option>Rumah - Jl. Contoh No. 5</option><option>+ Tambah alamat</option></select></div>
+        <div class="card"><div class="row between"><p class="t-sub">Perawatan luka</p><p class="t-sub">Rp300.000</p></div><p class="t-cap">Klinik Rekanan X &middot; jadwal tersedia besok (WITA)</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Fisioterapi di rumah</p><p class="t-sub">Rp350.000</p></div><p class="t-cap">Klinik Rekanan Y</p></div>
+        <div class="state" style="padding:16px;border:1px dashed var(--c-divider);border-radius:12px"><div class="ill">&#127968;</div><p class="t-small">Kosong: "Home visit belum tersedia di alamat ini." + tombol "Ganti alamat" (US-501 AC3)</p></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Alamat dan layanan (US-501 AC1, AC3)</b>Hanya klinik yang area layanannya mencakup alamat.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Perawatan luka</h2></div>
+      <div class="body">
+        <p class="t-cap">Klinik Rekanan X &middot; jadwal dalam WITA</p>
+        <div class="tabs"><span class="tab on">Sel 2</span><span class="tab">Rab 3</span><span class="tab">Kam 4</span></div>
+        <div class="grid3"><span class="chip">08.00</span><span class="chip on">10.00</span><span class="chip">13.00</span></div>
+        <div class="field"><label>Untuk siapa?</label><select class="input"><option>Citra (anak) - Disetujui</option></select></div>
+        <div class="alert warning"><span>!</span><span>Harga hanya mencakup layanan yang tercantum. Tindakan tambahan diselesaikan dan dibayar di luar aplikasi. (AB-16, tampil juga di ringkasan A07)</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut ke pembayaran</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Jadwal dan penerima (US-501 AC2)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.05</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Home visit</h2></div>
+      <div class="body">
+        <div class="row between"><span class="badge info">Berangkat</span><span class="t-cap">RS-270302-XXXXXX</span></div>
+        <div class="card"><p class="t-sub">Ns. D (contoh) &middot; Perawat</p><p class="t-cap">Klinik Rekanan X &middot; Sel, 2 Mar 10.00 WITA &middot; untuk Citra</p></div>
+        <ol class="timeline" aria-label="Linimasa status">
+          <li class="done">Terkonfirmasi &middot; 1 Mar 11.12</li>
+          <li class="done">Ditugaskan ke Ns. D &middot; 1 Mar 16.00</li>
+          <li class="now"><b>Berangkat</b> &middot; 2 Mar 09.40</li>
+          <li>Tiba</li>
+          <li>Selesai</li>
+        </ol>
+        <button class="btn btn-secondary btn-block">Laporkan tenaga kesehatan tidak datang</button>
+        <p class="t-cap">Tombol aktif bila belum "Tiba" 15 menit setelah jadwal mulai (PB-03), sampai 2x24 jam setelah jadwal berakhir (PB-15). Tidak tersedia setelah "Tiba" (US-504 AC3).</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Linimasa (US-504 AC1-AC2)</b>Status ditulis, bukan hanya titik berwarna.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.20</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Home visit</h2></div>
+      <div class="body"><div class="skel lg"></div><div class="skel lg"></div></div>
+      <div class="scrim"><div class="sheet">
+        <p class="t-title">Laporkan tenaga kesehatan tidak datang?</p>
+        <p class="t-small">Laporan menjadi klaim pengembalian dana dan diputuskan Layanan Pelanggan paling lambat 3 hari kerja (PB-05).</p>
+        <div class="field"><label for="ket">Keterangan</label><textarea id="ket" class="input" placeholder="Ceritakan apa yang terjadi"></textarea></div>
+        <button class="btn btn-primary btn-block">Kirim laporan</button>
+        <button class="btn btn-text btn-block">Batal</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>4. Laporan tidak datang = klaim RF-06 (US-504 AC2, US-807)</b>Status lanjut: "Dilaporkan tidak datang".</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>11.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Home visit</h2></div>
+      <div class="body">
+        <span class="badge danger">Pasien tidak hadir</span>
+        <div class="alert warning"><span>!</span><span><b>Tenaga kesehatan menandai pasien tidak ada di lokasi</b>Keterangan: "[keterangan tenaga kesehatan]". Bila tidak benar, ajukan keberatan paling lambat 2x24 jam setelah jadwal berakhir.</span></div>
+        <button class="btn btn-secondary btn-block">Ajukan keberatan</button>
+        <p class="t-cap">Keberatan menjadi klaim RF-17 (US-503 AC3, US-807). Klaim yang ditolak tidak dapat diajukan ulang.</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Keberatan atas "Pasien tidak hadir"</b></p>
+  </section>
+
+</main>
+</body>
+</html>

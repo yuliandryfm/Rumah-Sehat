@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A08 Pendaftaran klinik dan lab, appointment, antrean, hasil lab - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A08 Pendaftaran klinik dan lab, appointment, antrean, hasil lab (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-401, US-402, US-403, US-405, US-406, US-902; pembayaran lewat A07. Jadwal dalam zona waktu rekanan berlabel (AB-40). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Pendaftaran Lab</h2></div>
+      <div class="body">
+        <div class="tabs"><span class="tab">Klinik</span><span class="tab on">Lab</span></div>
+        <div class="field"><label for="kt">Kota</label><select id="kt" class="input"><option>Kota Makassar</option></select><span class="hint">Izin lokasi opsional; pencarian tetap jalan tanpa izin (US-401 AC3)</span></div>
+        <div class="field"><label for="ps" class="t-cap">Pemeriksaan</label><input id="ps" class="input" value="darah lengkap"></div>
+        <div class="card"><div class="row between"><p class="t-sub">Lab Rekanan Z</p><span class="t-small">mulai Rp250.000</span></div><p class="t-cap">Jl. Contoh No. 1 &middot; slot terdekat besok 08.00 WITA</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Lab Rekanan W</p><span class="badge neutral">Data tidak tersedia</span></div><p class="t-cap">Data sementara tidak dapat diambil. Terakhir diperbarui 07.42 WITA. (KU-08)</p></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Cari klinik/lab (US-401 AC1-AC3)</b>Hanya rekanan aktif dan terintegrasi. Data lama tidak ditampilkan seolah terbaru.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.02</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Lab Rekanan Z</h2></div>
+      <div class="body">
+        <p class="t-cap">Jl. Contoh No. 1, Kota Makassar &middot; zona WITA</p>
+        <div class="list">
+          <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio on">&#9679;</span></span><div class="grow"><p class="t-small">Pemeriksaan darah lengkap</p></div><span class="t-small">Rp250.000</span></div>
+          <div class="list-item"><span class="check" style="min-height:auto;padding:0"><span class="box radio"></span></span><div class="grow"><p class="t-small">Paket MCU Dasar</p><p class="t-cap">8 pemeriksaan &middot; <a href="#">rincian</a></p></div><span class="t-small">Rp650.000</span></div>
+          <div class="list-item" aria-disabled="true"><span class="check" style="min-height:auto;padding:0"><span class="box radio" style="border-color:var(--c-border-strong)"></span></span><div class="grow"><p class="t-small muted">Vaksinasi / suntik-infus vitamin</p><span class="badge warning">Menunggu CR-015</span></div><span class="t-cap">Belum dapat dipesan</span></div>
+        </div>
+        <p class="t-sub">Jadwal (WITA)</p>
+        <div class="grid3"><span class="chip on">08.00</span><span class="chip">08.30</span><span class="chip">09.00</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Layanan dan slot (US-402 AC1)</b>Butir CR-015 hanya penanda katalog, tanpa alur (backlog CR-015). Lanjut ke penerima layanan lalu ringkasan A07 dengan pernyataan AB-16.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>07.50</span><span>offline</span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Appointment</h2></div>
+      <div class="body">
+        <div class="alert info"><span>i</span><span>Anda sedang offline. Kode check-in tetap dapat ditunjukkan. (US-403 AC2)</span></div>
+        <div class="card" style="align-items:center;text-align:center">
+          <span class="badge info">Terkonfirmasi</span>
+          <div class="qr" role="img" aria-label="QR check-in"></div>
+          <p class="t-title" style="letter-spacing:.15em">K7QX 2M9R</p>
+          <p class="t-cap">Tunjukkan kode ini di meja pendaftaran</p>
+        </div>
+        <dl class="kv" style="grid-template-columns:110px 1fr"><dt>Rekanan</dt><dd>Lab Rekanan Z</dd><dt>Alamat</dt><dd>Jl. Contoh No. 1</dd><dt>Layanan</dt><dd>Darah lengkap</dd><dt>Jadwal</dt><dd>Sen, 1 Mar 2027 08.00 WITA</dd><dt>Untuk</dt><dd>Sari</dd></dl>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Appointment dan kode check-in (US-403)</b>Kode 8 karakter tanpa I/L/O/U (KEPUTUSAN-107), dikelompokkan 4-4 agar mudah dibaca. Bila batal/kedaluwarsa: badge "Tidak berlaku" dan QR disamarkan (AC3).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>08.20</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Antrean</h2></div>
+      <div class="body">
+        <span class="badge info">Check-in</span>
+        <div class="grid2">
+          <div class="card mint" style="text-align:center"><p class="t-cap">Nomor Anda</p><p class="t-display">A-12</p></div>
+          <div class="card" style="text-align:center"><p class="t-cap">Sedang dilayani</p><p class="t-display">A-09</p></div>
+        </div>
+        <p class="t-small" role="status">3 nomor lagi sebelum giliran Anda.</p>
+        <p class="t-cap">Diperbarui otomatis &middot; terakhir 08.19.50 WITA</p>
+        <div class="note">Tampilan antrean tidak muncul bila rekanan tidak menyediakan data antrean (US-405 AC3). Notifikasi di aplikasi saat tinggal 3 nomor (PB-10).</div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Antrean real-time (US-405, prioritas Should)</b>Perubahan nomor diumumkan sebagai pesan status, tanpa memindah fokus.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>15.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Hasil lab</h2></div>
+      <div class="body">
+        <div class="card"><div class="row between"><p class="t-sub">Darah lengkap</p><span class="badge warning">Dikoreksi</span></div><p class="t-cap">Lab Rekanan Z &middot; 1 Mar 2027 &middot; untuk Sari</p><p class="t-small">Versi terbaru ditampilkan. <a href="#">Lihat versi sebelumnya</a> (US-901 AC3)</p></div>
+        <div class="table-wrap"><table class="tbl"><thead><tr><th scope="col">Pemeriksaan</th><th scope="col" class="num">Nilai</th><th scope="col">Satuan</th><th scope="col">Rujukan</th></tr></thead><tbody><tr><td>[Item]</td><td class="num">[n]</td><td>[sat]</td><td>[rentang]</td></tr><tr><td>[Item]</td><td class="num">[n]</td><td>[sat]</td><td>[rentang]</td></tr></tbody></table></div>
+        <button class="btn btn-secondary btn-block">Unduh PDF</button>
+        <p class="t-cap">Nilai di luar rujukan ditandai dengan teks/ikon, bukan warna saja (WCAG 1.4.1); penandaan hanya bila data rekanan menyediakannya.</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Hasil lab (US-902)</b>Dibuka dari tab Kesehatan &rarr; Hasil lab atau notifikasi. Unduhan dicatat (E-12).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>15.10</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Pesanan</h2></div>
+      <div class="tabs"><span class="tab on">Aktif</span><span class="tab">Riwayat</span></div>
+      <div class="body">
+        <div class="chips"><span class="chip on">Semua</span><span class="chip">Klinik</span><span class="chip">Lab</span><span class="chip">Home visit</span><span class="chip">Konsultasi</span><span class="chip">Produk</span></div>
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Lab Rekanan Z</b> &middot; Darah lengkap</p><p class="t-cap">1 Mar 08.00 WITA &middot; Sari &middot; Rp&middot;&middot;&middot;</p></div><span class="badge info">Terkonfirmasi</span></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>Klinik X</b> &middot; Home visit</p><p class="t-cap">2 Mar 10.00 WITA &middot; Citra</p></div><span class="badge info">Ditugaskan</span></div>
+        </div>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a href="#"><span class="ico">&#8962;</span>Beranda</a><a class="on" href="#" aria-current="page"><span class="ico">&#128197;</span>Pesanan</a><a href="#"><span class="ico">&#128196;</span>Kesehatan</a><a href="#"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>6. Daftar pesanan dan riwayat (US-406, US-706)</b>Filter penerima dan status di tab Riwayat (US-406 AC1-AC2).</p>
+  </section>
+
+</main>
+</body>
+</html>

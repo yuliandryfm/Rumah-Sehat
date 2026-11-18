@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D01 Portal rekanan: laporan dan konsultasi online - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>D01 Portal rekanan: laporan transaksi dan pengaturan konsultasi online <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-1201, US-301, US-302 AC4; US-1202/US-1203 hanya lihat (AB-62). Waktu dalam zona rekanan (AB-42). Markup dan total bayar pasien tidak tampil (US-1201 AC2). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Rumah Sehat &middot; Portal Rekanan</span><span class="grow"></span><span class="t-small">Klinik Rekanan X (klinik + outlet)</span><button class="btn btn-secondary">Keluar</button></div>
+      <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Laporan transaksi</a><a href="#">Konsultasi online</a><a href="#">Keluhan (lihat)</a><a href="#">Profil rekanan (lihat)</a></nav>
+      <div class="web-main">
+        <h2 class="t-title">Laporan transaksi</h2>
+        <div class="toolbar">
+          <div class="field"><label for="pr">Periode</label><select id="pr" class="input"><option>Maret 2027</option></select></div>
+          <div class="field"><label for="jl">Jenis</label><select id="jl" class="input"><option>Gabungan</option><option>Layanan klinik</option><option>Penjualan produk</option></select></div>
+          <div class="field"><label for="st">Status</label><select id="st" class="input"><option>Semua</option></select></div>
+          <button class="btn btn-secondary">Ekspor CSV</button>
+        </div>
+        <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
+          <div class="panel"><p class="t-cap">Bagian rekanan (bulan ini)</p><p class="t-title">Rp&middot;&middot;&middot;</p></div>
+          <div class="panel"><p class="t-cap">Refund</p><p class="t-title">Rp&middot;&middot;&middot;</p></div>
+          <div class="panel"><p class="t-cap">Kewajiban pengembalian terbuka</p><p class="t-title">Rp&middot;&middot;&middot;</p></div>
+          <div class="panel"><p class="t-cap">Tagihan biaya rekanan</p><p class="t-title">[PB-12]</p></div>
+        </div>
+        <div class="table-wrap"><table class="tbl">
+          <thead><tr><th scope="col">Tanggal (WITA)</th><th scope="col">Nomor</th><th scope="col">Layanan/produk</th><th scope="col">Penerima</th><th scope="col" class="num">Harga rekanan</th><th scope="col" class="num">MDR</th><th scope="col" class="num">Bagian rekanan</th><th scope="col" class="num">Refund</th><th scope="col">Kewajiban</th></tr></thead>
+          <tbody>
+            <tr><td>1 Mar 08.10</td><td>RS-...-11</td><td>Home visit</td><td>Citra</td><td class="num">300.000</td><td class="num">[n]</td><td class="num">[n]</td><td class="num">-</td><td>-</td></tr>
+            <tr><td>1 Mar 09.00</td><td>RS-...-12</td><td>Konsultasi video</td><td>Pasien B</td><td class="num">100.000</td><td class="num">[n]</td><td class="num">[n]</td><td class="num">100.000</td><td><span class="badge warning">Terbuka</span></td></tr>
+          </tbody></table></div>
+        <div class="pager"><span>Rekap harian dan bulanan tersedia di tab terpisah</span><span>1-2 dari 120</span></div>
+      </div>
+    </div>
+    <p class="web-caption"><b>1. Laporan transaksi (US-1201 AC1-AC4)</b>Tanpa data klinis. Kosong: "Belum ada transaksi pada periode ini." Tabel lebar boleh gulir horizontal (pengecualian tata letak dua dimensi WCAG 1.4.10).</p>
+  </section>
+
+  <section>
+    <div class="web">
+      <div class="web-top"><span class="logo">Rumah Sehat &middot; Portal Rekanan</span><span class="grow"></span><span class="t-small">Klinik Rekanan X</span></div>
+      <nav class="web-side" aria-label="Menu"><a href="#">Laporan transaksi</a><a class="on" href="#" aria-current="page">Konsultasi online</a><a href="#">Keluhan (lihat)</a><a href="#">Profil rekanan (lihat)</a></nav>
+      <div class="web-main">
+        <h2 class="t-title">Konsultasi online &middot; dr. A</h2>
+        <div class="split">
+          <div class="panel">
+            <p class="t-sub">Tarif dan durasi</p>
+            <div class="table-wrap"><table class="tbl"><thead><tr><th scope="col">Jenis</th><th scope="col">Tarif (Rp)</th><th scope="col">Durasi (menit)</th></tr></thead><tbody>
+              <tr><td>Chat</td><td><input class="input" value="70000" aria-label="Tarif chat"></td><td><select class="input" aria-label="Durasi chat"><option>30</option></select></td></tr>
+              <tr><td>Video</td><td><div class="field is-error"><input class="input" value="0" aria-label="Tarif video"><span class="err">Tarif harus lebih dari 0</span></div></td><td><select class="input" aria-label="Durasi video"><option>20</option></select></td></tr>
+            </tbody></table></div>
+            <p class="t-cap">Durasi kelipatan 5 menit, 10-120 menit. Jenis tanpa tarif tidak dapat dipesan pasien (US-301 AC2). Perubahan berlaku untuk pembayaran yang dibuat sesudahnya (AC3).</p>
+            <div class="row" style="justify-content:flex-end"><button class="btn btn-primary">Simpan</button></div>
+          </div>
+          <div class="panel">
+            <p class="t-sub">Jadwal praktik (selalu dengan label zona waktu)</p>
+            <div class="list"><div class="list-item"><span class="grow t-small">Senin 13.00-17.00</span><button class="btn btn-text btn-sm">Ubah</button></div><div class="list-item"><span class="grow t-small">Rabu 09.00-12.00</span><button class="btn btn-text btn-sm">Ubah</button></div></div>
+            <p class="t-cap">Aturan sama dengan aplikasi tenaga kesehatan; perubahan tercatat atas nama admin klinik (US-302 AC4).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="web-caption"><b>2. Pengaturan konsultasi online (US-301 AC1-AC4, US-302 AC4)</b>Hanya tenaga kesehatan klinik sendiri yang tampil (KU-03).</p>
+  </section>
+
+</main>
+</body>
+</html>

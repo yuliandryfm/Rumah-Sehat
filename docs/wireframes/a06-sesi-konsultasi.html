@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A06 Sesi konsultasi, catatan, resep, riwayat - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A06 Sesi konsultasi, catatan, resep, dan riwayat (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-305, US-306, US-307, US-308 (lihat), US-309 AC4, US-310. Data klinis sensitif (AB-70): tidak disimpan persisten di perangkat kecuali berkas yang sengaja diunduh. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>14.20</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ruang sesi</h2><span class="t-cap" style="padding-right:8px">Sisa 20:00</span></div>
+      <div class="body">
+        <div class="state">
+          <div class="ill">&#8987;</div>
+          <p class="t-title">Menunggu dr. A bergabung</p>
+          <p class="t-small muted">Tetap di layar ini. Panggilan video hanya dapat diterima saat Anda berada di ruang sesi.</p>
+        </div>
+        <div class="alert danger"><span>&#10005;</span><span><b>Tenaga kesehatan tidak hadir</b>Seluruh pembayaran dikembalikan otomatis. Status refund dapat dilihat di detail pesanan. (US-307 AC1, RF-04)</span></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Ruang tunggu (US-305 AC1, US-306 AC1, US-307)</b>Hitung mundur sesi berupa event waktu nyata (pengecualian WCAG 2.2.1). Waktu bergabung dicatat server.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>14.25</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>dr. A &middot; Chat</h2><span class="badge info" style="margin-right:8px">Sisa 15:02</span></div>
+      <div class="body" style="background:var(--c-bg)">
+        <div class="chat">
+          <div class="bubble them">Selamat siang, ada keluhan apa?<span class="meta">14.21</span></div>
+          <div class="bubble me">Demam sejak 2 hari, dok.<span class="meta">14.22 &middot; Terkirim</span></div>
+          <div class="bubble me">[Foto]<span class="meta">14.24 &middot; Belum terkirim, dicoba lagi otomatis</span></div>
+        </div>
+      </div>
+      <div class="composer"><button class="icon-btn" aria-label="Lampirkan foto">&#128206;</button><input class="input" placeholder="Tulis pesan"><button class="icon-btn" aria-label="Kirim" style="background:var(--c-primary);color:#fff">&#10148;</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Chat (US-305 AC2-AC3)</b>Status kirim dengan teks. Foto JPG/PNG maks. 5 MB. Pesan baru diumumkan pembaca layar (WCAG 4.1.3).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen" style="background:#1A2B2E">
+      <div class="status-bar" style="color:#fff"><span>14.30</span><span>Sisa 10:12</span></div>
+      <div class="video">Video dr. A<div class="pip">Kamera Anda</div></div>
+      <div class="alert warning" style="margin:8px;border-radius:8px"><span>!</span><span><b>Koneksi terputus</b>Menyambung ulang... Durasi tidak bertambah. (US-306 AC2)</span></div>
+      <div class="video-ctrl">
+        <button class="icon-btn" aria-label="Matikan mikrofon">&#127908;</button>
+        <button class="icon-btn" aria-label="Matikan kamera">&#127909;</button>
+        <button class="icon-btn" aria-label="Buka chat">&#128172;</button>
+        <button class="icon-btn end" aria-label="Akhiri panggilan">&#9742;</button>
+      </div>
+    </div>
+    <p class="screen-cap"><b>3. Video (US-306)</b>Tanpa tombol rekam (AB-74). Kontrol berlabel untuk pembaca layar; target 56 dp.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>15.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Hasil konsultasi</h2></div>
+      <div class="tabs"><span class="tab on">Catatan</span><span class="tab">Resep</span><span class="tab">Chat</span></div>
+      <div class="body">
+        <div class="row between"><span class="badge success">Selesai</span><span class="t-cap">1 Mar 2027 &middot; dr. A</span></div>
+        <div class="card">
+          <p class="t-sub">Catatan konsultasi</p>
+          <p class="t-small"><b>Keluhan</b> ...</p><p class="t-small"><b>Temuan</b> ...</p><p class="t-small"><b>Diagnosis/kesan</b> ...</p><p class="t-small"><b>Rencana/saran</b> ...</p>
+          <p class="t-cap">Versi 2 &middot; diperbarui 15.10 &middot; <a href="#">lihat riwayat versi</a> (US-308 AC2)</p>
+        </div>
+        <div class="card">
+          <div class="row between"><p class="t-sub">Resep RX-270301-XXXXXX</p><span class="badge success">Terbit</span></div>
+          <p class="t-small">2 obat &middot; kode verifikasi ABCD-EFGH</p>
+          <button class="btn btn-secondary btn-sm" style="align-self:flex-start">Unduh PDF</button>
+        </div>
+        <p class="t-cap">Chat menjadi baca-saja setelah sesi berakhir (US-305 AC4).</p>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Catatan dan resep (US-308, US-309 AC4, US-310 AC2)</b>Resep berstatus "Dibatalkan" tetap tampil dengan badge bahaya. Unduhan dicatat (E-12).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>15.20</span><span></span></div>
+      <div class="appbar"><h2 style="padding-left:8px">Kesehatan</h2></div>
+      <div class="body">
+        <div class="field"><label for="pp" class="t-cap">Tampilkan untuk</label><select id="pp" class="input"><option>Saya (Sari)</option><option>Citra (anak)</option><option>Budi (suami)</option></select></div>
+        <div class="tabs"><span class="tab on">Konsultasi</span><span class="tab">Hasil lab</span></div>
+        <div class="list">
+          <div class="list-item"><div class="grow"><p class="t-small"><b>dr. A</b> &middot; Video</p><p class="t-cap">1 Mar 2027</p></div><span class="badge success">Selesai</span></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>B, M.Psi.</b> &middot; Chat</p><p class="t-cap">12 Feb 2027</p></div><span class="badge danger">Tenaga kesehatan tidak hadir</span></div>
+          <div class="list-item"><div class="grow"><p class="t-small"><b>dr. C</b> &middot; Chat</p><p class="t-cap">2 Feb 2027</p></div><span class="badge neutral">Dibatalkan pasien</span></div>
+        </div>
+        <div class="note">Membuka data klinis anggota keluarga dicatat audit (E-05, AB-71). Anggota yang dihapus tetap dapat dipilih untuk riwayat (US-310 AC3).</div>
+      </div>
+      <nav class="bottom-nav" aria-label="Navigasi utama"><a href="#"><span class="ico">&#8962;</span>Beranda</a><a href="#"><span class="ico">&#128197;</span>Pesanan</a><a class="on" href="#" aria-current="page"><span class="ico">&#128196;</span>Kesehatan</a><a href="#"><span class="ico">&#128100;</span>Profil</a></nav>
+    </div>
+    <p class="screen-cap"><b>5. Riwayat konsultasi (US-310 AC1)</b>Kosong: "Belum ada riwayat konsultasi" + tombol "Cari tenaga kesehatan".</p>
+  </section>
+
+</main>
+</body>
+</html>

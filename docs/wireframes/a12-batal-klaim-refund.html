@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A12 Pembatalan, klaim, status refund - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A12 Pembatalan layanan terjadwal, klaim, dan status refund (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-805, US-806, US-807, US-808 (sisi pasien); matriks RF-01 s.d. RF-18. Modul T1. Nominal dihitung server. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Batalkan pesanan</h2></div>
+      <div class="body"><div class="skel lg"></div></div>
+      <div class="scrim"><div class="sheet" role="alertdialog" aria-labelledby="b1">
+        <p class="t-title" id="b1">Batalkan konsultasi video?</p>
+        <p class="t-small">Jadwal: Sel, 2 Mar 14.20 WIB (lebih dari 24 jam lagi).</p>
+        <div class="price card"><div class="line"><span>Dibayar</span><span>Rp102.500</span></div><div class="line"><span>Biaya transaksi (tidak dikembalikan)</span><span>&minus;Rp2.500</span></div><div class="line total"><span>Dikembalikan</span><span>Rp100.000</span></div></div>
+        <p class="t-cap">Dana kembali ke metode pembayaran asal; waktu sampai mengikuti penyedia (AB-30).</p>
+        <button class="btn btn-danger btn-block">Ya, batalkan</button>
+        <button class="btn btn-text btn-block">Tidak jadi</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>1. Batal sebelum PB-01 (US-805 AC1-AC2, RF-01)</b>Konfirmasi wajib; tombol destruktif berlabel aksi.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>09.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Batalkan pesanan</h2></div>
+      <div class="body"><div class="skel lg"></div></div>
+      <div class="scrim"><div class="sheet" role="alertdialog" aria-labelledby="b2">
+        <p class="t-title" id="b2">Tidak ada pengembalian dana</p>
+        <p class="t-small">Jadwal kurang dari 24 jam lagi. Jika tetap dibatalkan, pembayaran tidak dikembalikan dan slot dilepas.</p>
+        <button class="btn btn-danger btn-block">Tetap batalkan tanpa refund</button>
+        <button class="btn btn-secondary btn-block">Tidak jadi</button>
+      </div></div>
+    </div>
+    <p class="screen-cap"><b>2. Batal kurang dari PB-01 (US-805 AC3, RF-02)</b>Tombol batal tidak tersedia setelah Berlangsung/Check-in/Berangkat atau status akhir (AC4).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>16.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Ajukan klaim</h2></div>
+      <div class="body">
+        <p class="t-small">Pesanan RS-270301-XXXXXX &middot; Konsultasi chat</p>
+        <div class="field"><label>Jenis masalah</label><div class="stack"><span class="check"><span class="box radio on">&#9679;</span>Layanan gagal karena gangguan aplikasi Rumah Sehat</span></div><span class="hint">Pilihan yang muncul sesuai jenis pesanan dan batas waktunya (US-807 AC1)</span></div>
+        <div class="field"><label for="ur">Ceritakan masalahnya</label><textarea id="ur" class="input"></textarea></div>
+        <div class="field"><label>Bukti (opsional)</label><button class="btn btn-secondary btn-sm" style="align-self:flex-start">+ Tambah foto</button></div>
+        <p class="t-cap">Batas pengajuan: 3 Mar 2027 14.40 (2x24 jam setelah jadwal berakhir, PB-15)</p>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Kirim klaim</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Klaim RF-07 (US-807 AC1-AC2)</b>Hanya satu klaim aktif per pesanan; di luar batas, tombol klaim tidak tersedia.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.00</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Detail pesanan</h2></div>
+      <div class="body">
+        <div class="card"><div class="row between"><p class="t-sub">Klaim</p><span class="badge warning">Diajukan</span></div><p class="t-small">Diputuskan paling lambat 6 Mar 2027 23.59 WIB (3 hari kerja, PB-05).</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Refund</p><span class="badge info">Diproses</span></div><p class="t-small">Rp100.000 ke QRIS asal.</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Refund</p><span class="badge success">Berhasil</span></div><p class="t-small">Rp100.000 &middot; 4 Mar 2027</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Refund</p><span class="badge warning">Sedang ditangani</span></div><p class="t-small">Pengembalian dana mengalami kendala dan sedang ditangani tim kami. (AB-32)</p></div>
+        <div class="card"><div class="row between"><p class="t-sub">Klaim</p><span class="badge danger">Ditolak</span></div><p class="t-small"><b>Alasan:</b> [alasan dari Layanan Pelanggan]. Klaim baru untuk pesanan ini tidak dapat diajukan.</p></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>4. Status klaim dan refund (US-806, US-807 AC3-AC4, US-808 AC2)</b>Status internal "Gagal" tampil ke pasien sebagai "Sedang ditangani" (AB-32); "Perlu dicek" tetap tampil "Diproses" karena hasil penyedia belum diketahui (KEPUTUSAN-169).</p>
+  </section>
+
+</main>
+</body>
+</html>

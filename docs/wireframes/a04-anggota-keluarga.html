@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A04 Anggota keluarga - Wireframe Rumah Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>A04 Anggota keluarga (aplikasi pasien) <span class="draft-tag">DRAF Tahap 6</span></h1>
+  <p>Story: US-108, US-109; aturan AB-03, AB-04, AB-05. Persetujuan dan data anak: T1. <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow">
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.20</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Anggota keluarga</h2></div>
+      <div class="body">
+        <div class="list">
+          <div class="list-item"><div class="avatar">BU</div><div class="grow"><p class="t-small"><b>Budi</b> &middot; Suami</p><span class="badge success">Disetujui</span></div><button class="icon-btn" aria-label="Menu Budi">&#8942;</button></div>
+          <div class="list-item"><div class="avatar">CI</div><div class="grow"><p class="t-small"><b>Citra</b> &middot; Anak</p><span class="badge warning">Menunggu verifikasi</span></div><button class="icon-btn" aria-label="Menu Citra">&#8942;</button></div>
+        </div>
+        <button class="btn btn-secondary btn-block">+ Tambah anggota keluarga</button>
+        <div class="state" style="padding:16px"><p class="t-cap">Kondisi kosong: "Belum ada anggota keluarga. Tambahkan untuk memesankan layanan bagi mereka." + tombol Tambah</p></div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>1. Daftar anggota (US-108, US-109)</b>Status per anggota mengikuti AB-05.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.21</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Tambah anggota</h2></div>
+      <div class="body">
+        <p class="t-small muted">Langkah 1 dari 2</p>
+        <div class="field"><label for="n">Nama lengkap</label><input id="n" class="input" value="Citra"></div>
+        <div class="field"><label for="h">Hubungan</label><select id="h" class="input"><option>Anak</option><option>Suami/Istri</option><option>Orang tua</option><option>Lainnya</option></select><span class="hint">Daftar hubungan final [TIDAK DIKETAHUI], usulan saja</span></div>
+        <div class="field"><label for="d">Tanggal lahir</label><input id="d" class="input" value="03/02/2018"></div>
+        <div class="field"><label>Jenis kelamin</label><div class="row"><span class="check"><span class="box radio on">&#9679;</span>Perempuan</span><span class="check"><span class="box radio"></span>Laki-laki</span></div></div>
+        <div class="alert info"><span>i</span><span>Berdasarkan tanggal lahir, anggota ini diverifikasi dengan <b>Kartu Keluarga</b>. (Ditentukan sistem; batas usia menunggu L-08, US-108 AC6)</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Lanjut</button></div>
+    </div>
+    <p class="screen-cap"><b>2. Data dasar</b>Alur KTP (dewasa) atau KK (anak) ditentukan sistem, bukan dipilih pasien.</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.22</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Dokumen anak</h2></div>
+      <div class="body">
+        <p class="t-small muted">Langkah 2 dari 2</p>
+        <div class="field"><label for="na">NIK anak</label><input id="na" class="input" inputmode="numeric" value="3171xxxxxxxxxxxx"></div>
+        <div class="field"><label>Foto Kartu Keluarga</label><div class="doc-img">Pratinjau KK</div><div class="row"><button class="btn btn-secondary btn-sm">Ambil foto</button><button class="btn btn-secondary btn-sm">Galeri</button></div><span class="hint">KK harus memuat Anda sebagai orang tua/wali. JPG/PNG maks. 5 MB.</span></div>
+        <div class="check is-error"><span class="box" role="checkbox" aria-checked="false"></span><span>Sebagai orang tua/wali, saya memberikan persetujuan pemrosesan data pribadi anak ini. [Teks final menunggu L-08] <span style="color:var(--c-danger);display:block">! Persetujuan wajib diberikan</span></span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Kirim untuk verifikasi</button></div>
+    </div>
+    <p class="screen-cap"><b>3. Anak: NIK + KK + persetujuan orang tua/wali (US-108 AC2-AC3)</b>Persetujuan tersimpan sebagai bukti (BR-104).</p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.23</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Dokumen dewasa</h2></div>
+      <div class="body">
+        <div class="field"><label for="nd">NIK</label><input id="nd" class="input" inputmode="numeric"></div>
+        <div class="field"><label>Foto KTP</label><div class="doc-img">Pratinjau KTP</div></div>
+        <div class="check"><span class="box" role="checkbox" aria-checked="false"></span><span>Saya menyatakan telah mendapat persetujuan yang bersangkutan untuk mendaftarkan dan memproses datanya di Rumah Sehat. [Teks final menunggu L-08]</span></div>
+        <div class="alert danger"><span>&#10005;</span><span><b>NIK sama dengan NIK pemilik akun</b>Gunakan NIK anggota keluarga. (US-108 AC4) &middot; Duplikat di akun yang sama juga ditolak (AC5).</span></div>
+      </div>
+      <div class="footer-bar"><button class="btn btn-primary btn-block">Kirim untuk verifikasi</button></div>
+    </div>
+    <p class="screen-cap"><b>4. Dewasa: NIK + KTP + pernyataan (US-108 AC1, AB-04)</b></p>
+  </section>
+
+  <section class="screen-wrap">
+    <div class="screen">
+      <div class="status-bar"><span>10.30</span><span></span></div>
+      <div class="appbar"><button class="icon-btn" aria-label="Kembali">&larr;</button><h2>Anggota keluarga</h2></div>
+      <div class="body">
+        <div class="scrim center" style="position:static;background:transparent;padding:0"><div class="dialog" style="border:1px solid var(--c-divider)">
+          <p class="t-title">Belum dapat dihapus</p>
+          <p class="t-small">Budi masih punya pesanan terjadwal yang sudah dibayar. Hapus setelah pesanan selesai atau dibatalkan.</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-primary btn-sm">Lihat pesanan</button></div>
+        </div></div>
+        <div class="dialog" style="border:1px solid var(--c-divider);box-shadow:none">
+          <p class="t-title">Hapus Citra dari anggota keluarga?</p>
+          <p class="t-small">Riwayat layanan Citra tetap dapat Anda lihat selama datanya disimpan.</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-text btn-sm">Batal</button><button class="btn btn-danger btn-sm">Hapus</button></div>
+        </div>
+        <div class="note">Mengubah nama, tanggal lahir, NIK, atau dokumen mengembalikan status ke "Menunggu verifikasi" (US-109 AC1).</div>
+      </div>
+    </div>
+    <p class="screen-cap"><b>5. Hapus (US-109 AC2-AC3)</b>Tombol destruktif berwarna bahaya dan berlabel jelas.</p>
+  </section>
+
+</main>
+</body>
+</html>
