@@ -1,7 +1,7 @@
 # ERD (Model Data Logikal): Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2 (draf Tahap 4 untuk gate; sudah direview `dba-reviewer` dan `security-architect`). Tabel pencabutan sesi A1.4 dan C1.11 ditambahkan setelah fact-check; rinciannya di data dictionary
+Versi: 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` ( sudah direview `dba-reviewer` dan `security-architect`). Tabel pencabutan sesi A1.4 dan C1.11 ditambahkan setelah fact-check; rinciannya di data dictionary
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis**
 Dasar: PRD v1.1 §8 `[DOK: 03-prd.md]`, ADR-001–ADR-020 `[DOK: adr/]`, keputusan Keycloak dan Redis `[USER] T4-Q4`. Atribut lengkap, tipe, constraint, dan label sumber per kolom ada di `docs/04-data-dictionary.md`; keputusan baru `[KEPUTUSAN-38]`–`[KEPUTUSAN-69]` dan temuan F-01–F-13 ada di §E dokumen itu. Putaran perbaikan 1 atas review DBA (`docs/review/tahap-04-dba.md`) sudah diterapkan.

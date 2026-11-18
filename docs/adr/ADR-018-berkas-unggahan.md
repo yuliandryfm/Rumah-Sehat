@@ -1,6 +1,6 @@
 # ADR-018: Berkas di object storage privat, unggah dan unduh lewat URL bertanda tangan setelah otorisasi
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

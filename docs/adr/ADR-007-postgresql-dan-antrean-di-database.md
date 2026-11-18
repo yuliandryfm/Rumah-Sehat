@@ -1,6 +1,6 @@
 # ADR-007: PostgreSQL sebagai database, antrean kerja dan outbox di PostgreSQL, dan Redis sebagai komponen pendukung
 
-Status: Diusulkan (revisi 2026-11-18 sesuai `[USER] T4-Q4`: Redis ditambahkan sebagai komponen pendukung, tanpa message broker)
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`; revisi 2026-11-18 sesuai `[USER] T4-Q4`: Redis ditambahkan sebagai komponen pendukung, tanpa message broker)
 Tanggal: 2026-11-18
 
 ## Konteks

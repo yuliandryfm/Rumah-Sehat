@@ -1,6 +1,6 @@
 # ADR-014: Kontrak integrasi rekanan, yaitu Partner Integration API v1 dan webhook bertanda tangan
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks
@@ -13,7 +13,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-**1. Bentuk kontrak.** Partner Integration API versi 1: REST dengan JSON di atas HTTPS, dengan spesifikasi OpenAPI yang diterbitkan untuk rekanan (US-1401). Galat dikembalikan dalam format Problem Details (RFC 9457) `[SRC-47]`, dengan kode galat yang terdokumentasi. Versi ada di path (`/v1`). Perubahan yang merusak kompatibilitas diterbitkan sebagai versi baru dengan masa transisi `[KEPUTUSAN-30]`.
+**1. Bentuk kontrak.** Partner Integration API versi 1: REST dengan JSON di atas HTTPS, dengan spesifikasi OpenAPI yang diterbitkan untuk rekanan (US-1401). Galat dikembalikan dalam format Problem Details (RFC 9457) `[SRC-47]`, dengan envelope `response_code`/`response_description` sesuai ADR-023 dan kode galat yang terdokumentasi. Versi ada di path (`/v1`). Perubahan yang merusak kompatibilitas diterbitkan sebagai versi baru dengan masa transisi `[KEPUTUSAN-30]`.
 
 **2. Arah dan pola** `[KEPUTUSAN-30]`:
 

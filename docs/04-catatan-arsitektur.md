@@ -90,3 +90,12 @@ Jawaban: "Catat, putuskan di Tahap 7 (Recommended)".
 Catatan penyusun: CR-011 dicatat di `docs/backlog.md`; PT-34 baru (apakah RME berbayar, model/harga/siklus, cara bayar, telat bayar; pemilik CEO; tenggat Tahap 7) dan titik perluasan dicatat di arsitektur §13.
 
 **Fact-check bagian 3 (cek ulang perubahan gate):** LULUS tanpa blokir. Non-blokir dirapikan: label ADR-022 alternatif ke-3, label `[USER] T4-G2` di KEPUTUSAN-23/35, teks KEPUTUSAN-46/-54/-67, ringkasan arsitektur §1. Batasan ADR-022 butir 2 (UI interaktif tidak publik di production) dimintakan persetujuan eksplisit di G5.
+
+**G5. Persetujuan gate Tahap 4.** Diajukan tiga kali karena user mengajukan pertanyaan dan masukan:
+- Jawaban pertama (teks bebas): "untuk format response API dijelaskan di tahhap ini atau tahap lain?". Penyusun menjelaskan aspek yang sudah ditetapkan di Tahap 4 (REST/JSON, galat RFC 9457, ISO 8601, Rupiah bulat, UUIDv7, versi `/v1`, idempotensi, OpenAPI) dan yang ditetapkan di Tahap 5 (bentuk respons sukses, gaya nama field, pagination, header).
+- Jawaban kedua (teks bebas): "format API Response baik galat atau sukses seperti apa?". Penyusun menunjukkan contoh sukses (`data`/`meta`, snake_case, cursor) dan galat RFC 9457 (member standar dari halaman RFC 9457 yang dibuka 2026-11-18, ditambah `code`, `correlation_id`, `errors`), dengan pilihan mengunci format sekarang (ADR-023) atau di Tahap 5.
+- Jawaban ketiga (teks bebas): "tambhkan envelope baru untuk meyimpan response code yang berupa numeric string dan response description. kemudian HTTP Status dilepas saja,". Penyusun mengusulkan envelope `response_code` (string 7 digit: kategori HTTP 3 + modul 2 + kasus 2) + `response_description`, dan menanyakan makna "HTTP Status dilepas": (a) field `status` dihapus dari body, kode HTTP tetap di header (rekomendasi); atau (b) selalu HTTP 200.
+
+Pertanyaan akhir: "Setujui gate Tahap 4 dengan format respons envelope response_code (7 digit) + response_description? Apakah kode HTTP tetap dipakai di header, atau selalu HTTP 200?" (pilihan: setujui + HTTP tetap (rekomendasi); setujui + selalu HTTP 200; koreksi lain)
+Jawaban (T4-G5): "Setujui + HTTP tetap (Recommended)".
+Catatan penyusun: gate Tahap 4 disetujui. ADR-023 ditulis (Diterima, KEPUTUSAN-73). ADR-006–ADR-023 berstatus Diterima; arsitektur, ERD, data dictionary, threat model, dan risk register v1.0; BRD v1.3 dan PRD v1.1 disetujui; KEPUTUSAN-18–73 dikonfirmasi; batasan ADR-022 butir 2 (UI dokumentasi API hanya di lokal/staging) termasuk yang disetujui.

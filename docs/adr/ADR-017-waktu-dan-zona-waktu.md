@@ -1,6 +1,6 @@
 # ADR-017: Waktu disimpan sebagai instan UTC, zona waktu sebagai nama IANA, dan kalender hari kerja di database
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

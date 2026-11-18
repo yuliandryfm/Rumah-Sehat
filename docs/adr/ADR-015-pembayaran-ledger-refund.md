@@ -1,6 +1,6 @@
 # ADR-015: Pembayaran lewat adaptor payment gateway, harga terkunci, jurnal berpasangan, dan refund berbasis job
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

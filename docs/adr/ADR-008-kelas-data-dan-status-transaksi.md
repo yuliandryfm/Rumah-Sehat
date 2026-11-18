@@ -1,6 +1,6 @@
 # ADR-008: Lima kelas tabel dan pola status untuk entitas transaksi
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

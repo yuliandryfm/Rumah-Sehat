@@ -1,6 +1,6 @@
 # ADR-019: Tiga lingkungan di cloud Indonesia, deployment berbasis kontainer, PITR, dan uji pemulihan
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

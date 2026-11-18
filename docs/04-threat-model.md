@@ -1,7 +1,7 @@
 # Threat Model: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4)
+Versi: 1.0, LULUS dan disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (sebelumnya 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4))
 Penyusun: Claude (subagent `security-architect`)
 Tingkat ketelitian: **T1 Kritis** (keamanan, autentikasi/otorisasi, data pribadi spesifik, uang, audit trail; `aturan-kerja.md` §1)
 Dasar: PRD v1.1 `[DOK: 03-prd.md]` (termasuk CR-008 US-309 AC6–AC8 dan CR-009 NFR-SEC-10), arsitektur v0.1 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-021 `[DOK: adr/]`, data dictionary v0.1 `[DOK: 04-data-dictionary.md]`, risk register v0.1 `[DOK: 04-risk-register.md]`, backlog `[DOK: backlog.md]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]` (T4-Q1, T4-Q2, T4-Q4, T4-Q5, T4-Q6)

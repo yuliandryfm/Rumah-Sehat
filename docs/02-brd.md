@@ -1,7 +1,7 @@
 # BRD (Business Requirements Document): Rumah Sehat
 
 Tanggal: 2026-11-17
-Versi: 1.3 (revisi CR-007 dari Tahap 4: semua penyedia pihak ketiga memproses data di Indonesia; login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`, teks revisi diperiksa di gate Tahap 4). Versi 1.2 (revisi CR-006 dari wawancara Tahap 3, disetujui bersama PRD di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
+Versi: 1.3 (revisi CR-007 dari Tahap 4: semua penyedia pihak ketiga memproses data di Indonesia; login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`, disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.2 (revisi CR-006 dari wawancara Tahap 3, disetujui bersama PRD di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`). Versi 1.1 (revisi CR-005) disetujui di gate revisi 2026-11-17 `[USER] T2-Gate-CR005`. Versi 1.0 disetujui di gate Tahap 2, 2026-11-17
 Penyusun: Claude (persona Business Analyst + Compliance Officer); review kepatuhan oleh subagent `compliance-reviewer`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1 Kritis** untuk bagian 6 (kepatuhan dan data pribadi/kesehatan), bagian 5.5 (alur uang), dan bagian 5.11 (rekam medis, CR-006); **T2 Standar** untuk bagian lain.

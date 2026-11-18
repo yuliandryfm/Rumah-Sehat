@@ -1,6 +1,6 @@
 # ADR-006: Modular monolith untuk backend Rumah Sehat, dengan RME minimalis sebagai sistem terpisah
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

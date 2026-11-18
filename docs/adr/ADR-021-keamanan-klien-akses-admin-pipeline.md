@@ -1,6 +1,6 @@
 # ADR-021: Keamanan aplikasi mobile, akses administratif production, dan pipeline CI/CD
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

@@ -1,6 +1,6 @@
 # ADR-012: Otorisasi berbasis peran dan relasi, dengan isolasi per rekanan dan per fasyankes
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

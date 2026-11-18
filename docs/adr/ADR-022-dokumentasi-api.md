@@ -1,6 +1,6 @@
 # ADR-022: Semua API didokumentasikan dengan OpenAPI, dengan UI interaktif di lokal/staging dan contract test
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks
@@ -12,7 +12,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-1. **Spesifikasi OpenAPI untuk setiap API HTTP**: API aplikasi pasien, API aplikasi tenaga kesehatan, API backoffice, API portal rekanan, Partner Integration API, endpoint webhook (payment gateway dan webhook masuk RME), dan API RME. Spesifikasi disimpan di repositori, berversi bersama kode, dan menjadi kontrak resmi setiap endpoint, termasuk skema permintaan dan respons, kode galat Problem Details (RFC 9457 `[SRC-47]`), dan cara autentikasi `[KEPUTUSAN-72]`.
+1. **Spesifikasi OpenAPI untuk setiap API HTTP**: API aplikasi pasien, API aplikasi tenaga kesehatan, API backoffice, API portal rekanan, Partner Integration API, endpoint webhook (payment gateway dan webhook masuk RME), dan API RME. Spesifikasi disimpan di repositori, berversi bersama kode, dan menjadi kontrak resmi setiap endpoint, termasuk skema permintaan dan respons, format respons dan kode galat sesuai ADR-023 (envelope `response_code` yang kompatibel dengan RFC 9457 `[SRC-47]`), dan cara autentikasi `[KEPUTUSAN-72]`.
 2. **UI dokumentasi interaktif** (misalnya Swagger UI atau setara) untuk membaca dan mencoba API tersedia di lingkungan **lokal dan staging**. Di production, dokumentasi API internal tidak dibuka publik, supaya tidak mempermudah pemetaan serangan. Rekanan menerima dokumentasi Partner Integration API sebagai dokumen statis dan mencobanya di sandbox staging (ADR-014 butir 8) `[KEPUTUSAN-72]`.
 3. **Contract test otomatis** memastikan implementasi sesuai spesifikasi: setiap endpoint di kode ada di spesifikasi dan sebaliknya, dan respons sesuai skema. Test ini menjadi bagian `scripts/verify.sh` (Tahap 5). Spesifikasi yang tidak sesuai implementasi membuat verifikasi merah `[KEPUTUSAN-72]`.
 4. **Data contoh** di spesifikasi dan di UI staging hanya data sintetis, tanpa data pribadi nyata (ADR-019) `[KEPUTUSAN-72]`.

@@ -1,6 +1,6 @@
 # ADR-013: Perlindungan data pribadi spesifik, yaitu enkripsi berlapis, minimisasi, retensi, dan crypto-shredding
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks

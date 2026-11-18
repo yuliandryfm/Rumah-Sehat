@@ -1,7 +1,7 @@
 # Data Dictionary: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2 (draf Tahap 4 untuk gate; sudah direview `dba-reviewer` tiga putaran dan `security-architect`)
+Versi: 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis** (model data, data pribadi spesifik, uang, audit)
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-021 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).

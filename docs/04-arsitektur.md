@@ -1,13 +1,13 @@
 # Arsitektur Sistem: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf untuk gate Tahap 4)
+Versi: 1.0, disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`
 Penyusun: Claude (persona Solution Architect + DBA + Security Architect). Review DBA oleh subagent `dba-reviewer`, threat model oleh `security-architect`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, BRD v1.3 `[DOK: 02-brd.md]`, ADR-001–ADR-005 (diterima), wawancara Tahap 4 `[USER] T4-Qx` (`docs/04-catatan-arsitektur.md`)
 Tingkat ketelitian: **T1 Kritis** untuk seluruh dokumen (keputusan arsitektur, model data, audit trail, keamanan; `aturan-kerja.md` §1)
 
-Dokumen terkait: ADR-006–ADR-022 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
+Dokumen terkait: ADR-006–ADR-023 (`docs/adr/`), ERD (`docs/04-erd.md`), data dictionary (`docs/04-data-dictionary.md`), threat model (`docs/04-threat-model.md`), risk register (`docs/04-risk-register.md`).
 
 **Label sumber.** `[DOK: ...]` adalah dokumen yang lulus gate. `[USER] T4-Qx` adalah jawaban user di Tahap 4. `[KEPUTUSAN-xx]` tercatat di `docs/decision-log.md` dan dirinci di ADR yang disebut. `[SRC-xx]` tercatat di `docs/sources.md`. Rujukan `US-`, `AB-`, `NFR-`, `PB-`, `E-` mengacu ke PRD; `BR-` mengacu ke BRD.
 
@@ -32,6 +32,7 @@ Dokumen terkait: ADR-006–ADR-022 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 | ADR-020 | SATUSEHAT dikirim dari RME atas nama fasyankes, secara asinkron | KEPUTUSAN-36 |
 | ADR-021 | Keamanan aplikasi mobile (data di perangkat, kendali SDK), akses administratif production (tanpa hak tetap, akses darurat), dan pipeline CI/CD | KEPUTUSAN-71 |
 | ADR-022 | Semua API didokumentasikan dengan OpenAPI; UI interaktif di lokal/staging; contract test | KEPUTUSAN-72 |
+| ADR-023 | Envelope respons API: `response_code` 7 digit + `response_description` + `data`/`meta` atau `errors` + `correlation_id`; kode HTTP tetap di header; galat kompatibel RFC 9457 | KEPUTUSAN-73 |
 
 Keputusan user di tahap ini:
 
@@ -395,6 +396,7 @@ Pemilihan berikut wajib diverifikasi ke dokumentasi resmi dan dibawa ke user. Sy
 | Redis | Distribusi dan lisensi `[SRC-76]`, layanan terkelola atau dijalankan sendiri di Indonesia (ADR-007) |
 | Log, metrik, crash report | Di Indonesia atau dijalankan sendiri (ADR-010) |
 | Checklist ASVS L2 | Pemetaan kontrol per bab (ADR-011), ditambah mitigasi Sedang/Rendah dan penguatan threat model (`docs/04-threat-model.md` §6.2–§6.3) |
+| Format respons API | Daftar kode modul, kode kasus, dan deskripsi `response_code` (ADR-023) |
 | Dokumentasi API | Versi OpenAPI, UI dokumentasi, validator contract test, format spesifikasi WebSocket (ADR-022) |
 | Keamanan pipeline dan akses admin | Identitas pipeline jangka pendek, proteksi branch, persetujuan deploy, IAM/KMS/log audit penyedia (ADR-021) |
 | Penetralan PDF | Pustaka CDR atau render ulang yang berjalan di Indonesia (ADR-018 butir 6) |

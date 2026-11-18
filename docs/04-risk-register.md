@@ -1,7 +1,7 @@
 # Risk Register Teknis: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf untuk gate Tahap 4)
+Versi: 1.0, disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`
 Penyusun: Claude (persona Solution Architect)
 Tingkat ketelitian: T1
 

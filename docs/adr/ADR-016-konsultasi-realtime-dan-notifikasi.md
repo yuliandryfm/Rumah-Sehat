@@ -1,6 +1,6 @@
 # ADR-016: Chat lewat WebSocket, video lewat server media di Indonesia, notifikasi lewat email dan di dalam aplikasi
 
-Status: Diusulkan
+Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
 
 ## Konteks
