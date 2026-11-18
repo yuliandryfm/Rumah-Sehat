@@ -24,10 +24,10 @@ Tanggal: 2026-11-18
 | Rumah Sehat memanggil rekanan secara sinkron | Pemeriksaan harga dan ketersediaan sekaligus penahanan slot atau stok sebelum pembayaran dibuat (AB-15, KU-09). Rekanan mengembalikan ID penahanan dan masa berlakunya, minimal PB-07 |
 
 **3. Keamanan** `[KEPUTUSAN-30]`:
-- Panggilan masuk: setiap rekanan, dan setiap fasyankes di RME minimalis, punya klien sendiri dengan OAuth 2.0 client credentials `[SRC-45]` dan token akses berumur pendek. Lapisan mTLS dipertimbangkan di Tahap 5.
+- Panggilan masuk: setiap rekanan, dan setiap fasyankes di RME minimalis, punya klien sendiri di realm Keycloak `integrasi` dengan OAuth 2.0 client credentials `[SRC-45]` `[SRC-71]` dan token akses berumur pendek (ADR-011, `[USER] T4-Q4`). Database aplikasi memetakan `client_id` ke rekanan. Lapisan mTLS dipertimbangkan di Tahap 5.
 - Webhook dan panggilan sinkron keluar: ditandatangani HMAC-SHA256 `[SRC-46]` atas stempel waktu dan isi pesan, dengan rahasia per rekanan. Rekanan menolak pesan yang lebih tua dari 5 menit.
 - Setiap rekanan hanya dapat menulis dan membaca data miliknya. ID rekanan diambil dari kredensial, bukan dari isi pesan (ADR-012).
-- Batas laju dan batas ukuran pesan per rekanan. Kredensial salah dan tanda tangan tidak valid dicatat di security log (ADR-010).
+- Batas laju per rekanan (penghitung di Redis, ADR-007) dan batas ukuran pesan. Kredensial salah dan tanda tangan tidak valid dicatat di security log (ADR-010).
 
 **4. Keandalan** `[KEPUTUSAN-30]`:
 - Pesan masuk yang mengubah data wajib membawa kunci idempotensi. Kunci disimpan 7 hari (kelas Operasional), dan pesan ulang dengan kunci yang sama mendapat respons yang sama tanpa diproses ulang.

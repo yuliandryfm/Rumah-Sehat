@@ -32,13 +32,15 @@ Data production tidak pernah disalin ke staging atau lokal.
 **3. Topologi production** `[KEPUTUSAN-35]`:
 - Proses `api`, `realtime`, dan `worker` (ADR-006) masing-masing minimal 2 instans, tersebar di lebih dari satu zona bila region menyediakannya. Job tunggal dijalankan satu instans lewat penguncian (ADR-007).
 - Penyeimbang beban dengan TLS dan dukungan WebSocket, ditambah perlindungan aplikasi web dan batas laju di region yang sama.
-- Database PostgreSQL terkelola, tiga instans: (a) aplikasi Rumah Sehat; (b) audit, berisi database audit Rumah Sehat dan database audit RME sebagai database terpisah dengan role terpisah; (c) aplikasi RME minimalis.
+- Database PostgreSQL terkelola, tiga instans: (a) aplikasi Rumah Sehat, ditambah database `keycloak` dengan role terpisah; (b) audit, berisi database audit Rumah Sehat dan database audit RME sebagai database terpisah dengan role terpisah; (c) aplikasi RME minimalis.
+- Keycloak minimal 2 instans terklaster `[SRC-66]`, dan Redis terkelola atau dijalankan sendiri di region Indonesia (ADR-007, ADR-011) `[USER] T4-Q4`.
 - Instans (a) dan (c) memakai standby dengan failover otomatis di zona lain bila layanan terkelola menyediakannya. Instans audit (b) tanpa standby, karena gangguan audit store tidak menghentikan aksi: event tertahan di outbox (ADR-009).
 - Biaya topologi ini dihitung di Tahap 5. Kalau biayanya tidak dapat diterima, pengurangan (misalnya tanpa standby) dibawa ke user beserta dampaknya terhadap NFR-AVL-01.
 
 **4. Backup dan RPO** `[KEPUTUSAN-35]`:
 - Pemulihan point-in-time dari arsip WAL berkelanjutan untuk ketiga instans. Dokumentasi PostgreSQL menyatakan `archive_timeout` membatasi umur data yang belum diarsipkan, dan nilai sekitar satu menit biasanya wajar `[SRC-38]`. Target interval arsip ≤ 1 menit, jauh di bawah RPO 15 menit. Padanan pengaturan ini di layanan terkelola diverifikasi di Tahap 5.
-- Backup penuh harian. Masa simpan backup nilai awal 35 hari, disesuaikan bila PT-24 menetapkan lain.
+- Backup penuh harian. Masa simpan backup `[TIDAK DIKETAHUI]` (PT-24), dengan usulan nilai sementara 35 hari yang diputuskan user di gate Tahap 4. Sampai ada keputusan, backup tidak dihapus otomatis.
+- Redis tidak di-backup sebagai sumber data, karena isinya dibangun ulang dari PostgreSQL (ADR-007).
 - Semua backup disimpan di Indonesia (NFR-DR-04), di zona berbeda dari database utama bila tersedia.
 - Object storage memakai versi objek. Kepala rantai audit memakai WORM (ADR-009).
 

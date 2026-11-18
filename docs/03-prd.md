@@ -17,7 +17,7 @@ PRD menetapkan *apa* yang dibangun dan bagaimana mengujinya. *Bagaimana* membang
 
 | Penanda | Arti |
 | --- | --- |
-| `BR-xxx` | Kebutuhan bisnis di BRD v1.2 (dokumen yang lulus gate atau diajukan bersama PRD ini). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
+| `BR-xxx` | Kebutuhan bisnis di BRD v1.3 (dokumen yang lulus gate atau diajukan bersama PRD ini; v1.3 memuat CR-007). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
 | `[USER] T3-Qx` | Jawaban user di wawancara Tahap 3, tercatat di `docs/03-catatan-prd.md`. `[USER] T2-Qx` merujuk ke `docs/02-catatan-brd.md` |
 | `[DOK] Px.x` | Project Brief dan catatan intake (`docs/00-project-brief.md`, `docs/00-catatan-intake.md`) |
 | `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5 |
@@ -1443,7 +1443,7 @@ Rujukan: BR-070, BR-090 `[UP-46]` · Audit: E-10 (perubahan status integrasi)
 
 #### US-1406 Integrasi pihak ketiga
 
-Sebagai Rumah Sehat, saya ingin terhubung dengan penyedia pihak ketiga, agar login, pembayaran, video, kurir, dan notifikasi berjalan.
+Sebagai Rumah Sehat, saya ingin terhubung dengan penyedia pihak ketiga, agar pembayaran, video, kurir, dan notifikasi email berjalan.
 Rujukan: BR-071, BR-113, BR-115 · Audit: mengikuti story pemakai
 
 - AC1. Given penyedia (payment gateway dengan pembagian dana, video, kurir, email) dipilih di Tahap 4–5 dan disetujui user, When integrasi dibangun, Then setiap fitur pemakainya (US-802, US-306, US-703, US-1001) lulus AC-nya.

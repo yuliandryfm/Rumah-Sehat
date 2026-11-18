@@ -16,11 +16,11 @@ Dokumen terkait: ADR-006–ADR-020 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 | ADR | Keputusan | Keputusan di decision log |
 | --- | --- | --- |
 | ADR-006 | Backend Rumah Sehat berupa modular monolith dengan proses `api`, `realtime`, dan `worker`. RME minimalis adalah sistem terpisah. Ada dua aplikasi Flutter (pasien, tenaga kesehatan) dan dua web (backoffice, portal rekanan) | KEPUTUSAN-18, -19 |
-| ADR-007 | PostgreSQL untuk semua database. Antrean job dan outbox di PostgreSQL. Tanpa broker di rilis 1 | KEPUTUSAN-20 |
+| ADR-007 | PostgreSQL untuk semua database. Antrean job dan outbox di PostgreSQL. Redis sebagai komponen pendukung. Tanpa message broker | KEPUTUSAN-20 |
 | ADR-008 | Lima kelas tabel. Status transaksi dicatat lewat riwayat status INSERT-only ditambah proyeksi | KEPUTUSAN-21 |
 | ADR-009 | Audit trail: outbox atomik, database audit terpisah, hash berantai dengan jangkar WORM | KEPUTUSAN-22 |
 | ADR-010 | Audit trail, application log, dan security log dikelola terpisah | KEPUTUSAN-23 |
-| ADR-011 | Target ASVS 5.0.0 Level 2, Argon2id, sesi divalidasi server, MFA TOTP termasuk untuk tenaga kesehatan | KEPUTUSAN-24, -25, -26 |
+| ADR-011 | Target ASVS 5.0.0 Level 2. Keycloak sebagai identity provider (realm per populasi), MFA TOTP termasuk untuk tenaga kesehatan, penolakan sesi seketika di aplikasi | KEPUTUSAN-24, -25, -26 |
 | ADR-012 | Otorisasi berbasis peran dan relasi dengan default deny. RLS di RME minimalis | KEPUTUSAN-27 |
 | ADR-013 | Enkripsi tingkat aplikasi untuk data spesifik, crypto-shredding, dan retensi yang dapat diatur | KEPUTUSAN-28, -29 |
 | ADR-014 | Partner Integration API v1, webhook bertanda tangan, idempotensi | KEPUTUSAN-30 |
@@ -31,9 +31,11 @@ Dokumen terkait: ADR-006–ADR-020 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 | ADR-019 | Tiga lingkungan di cloud Indonesia, PITR, standby, uji pemulihan | KEPUTUSAN-35 |
 | ADR-020 | SATUSEHAT dikirim dari RME atas nama fasyankes, secara asinkron | KEPUTUSAN-36 |
 
-Keputusan bisnis di tahap ini (keduanya oleh user):
+Keputusan user di tahap ini:
 
 - **T4-Q1**: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia, tanpa kecuali. Ini menjawab PT-22 `[USER] T4-Q1`.
+- **T4-Q4**: Keycloak sebagai identity provider dan Redis sebagai komponen pendukung, tanpa message broker `[USER] T4-Q4`.
+- **T4-Q3**: aplikasi tenaga kesehatan tetap terpisah dari aplikasi pasien, dan RME minimalis tetap web khusus klinik/lab tanpa sistem `[USER] T4-Q3` (KEPUTUSAN-19).
 - **T4-Q2**: CR-007 disetujui. Login Google/Apple, push notification, dan WhatsApp dihapus. Notifikasi dikirim lewat email dan di dalam aplikasi `[USER] T4-Q2`. BRD naik ke v1.3 dan PRD ke v1.1.
 
 ## 2. Konteks sistem
@@ -95,6 +97,8 @@ flowchart TB
   DBA[(PostgreSQL<br/>audit RS + audit RME)]
   OS[(Object storage<br/>privat + WORM)]
   KMS[KMS dan secret manager]
+  KC[Keycloak<br/>realm pasien, nakes, admin, rme, integrasi]
+  RD[(Redis<br/>cache, sesi BFF, Pub/Sub, batas laju)]
   subgraph RMES[RME minimalis]
     RW[Web RME]
     RB[Backend RME<br/>api + worker]
@@ -108,6 +112,10 @@ flowchart TB
   WK -->|relay audit| DBA
   API & WK --> OS
   API & WK --> KMS
+  AP & AN & BO & PR -->|login OIDC| KC
+  RW -->|login OIDC| KC
+  API & RT --> RD
+  API -->|validasi token, Admin REST| KC
   RW --> RB --> DBRME
   RB -->|relay audit| DBA
   RB <-->|Partner Integration API| API
@@ -163,7 +171,7 @@ sequenceDiagram
   R->>RS: check-in / selesai (API, idempotensi)
 ```
 
-Kegagalan ditangani sebagai berikut: rekanan tidak merespons membuat pembayaran tidak dibuat (KU-08); notifikasi ganda menjadi RF-12; nominal berbeda menjadi RF-14; pembayaran setelah kedaluwarsa menjadi RF-13; pesanan belum diterima rekanan saat jadwal mulai menjadi RF-18 (ADR-014, ADR-015) `[KEPUTUSAN-30]` `[KEPUTUSAN-31]`.
+Kegagalan ditangani sebagai berikut: rekanan tidak merespons membuat pembayaran tidak dibuat (KU-08); notifikasi ganda menjadi RF-12; nominal berbeda menjadi RF-14; pembayaran yang berhasil setelah kedaluwarsa tetap dikonfirmasi bila slot/stok masih tersedia, dan menjadi RF-13 bila tidak (US-802 AC5); pesanan belum diterima rekanan saat jadwal mulai menjadi RF-18 (ADR-014, ADR-015) `[KEPUTUSAN-30]` `[KEPUTUSAN-31]`.
 
 ### 4.2 Sesi konsultasi chat
 
@@ -227,6 +235,8 @@ sequenceDiagram
 | Server media video | Klien ke SFU | WebRTC, token per peserta per sesi | Suara dan gambar konsultasi (tidak disimpan) | Indonesia | ADR-016 |
 | Email | Keluar | Penyedia atau relay SMTP | Alamat email, isi tanpa data kesehatan rinci | Indonesia | ADR-016 |
 | SATUSEHAT | RME ke Kemenkes | FHIR, OAuth2 client credentials per fasyankes `[SRC-56]` | Rekam medis, NIK pasien dan praktisi | Layanan Kemenkes | ADR-020 |
+| Keycloak | Aplikasi/web ke Keycloak; backend ke Admin REST API | OIDC (Authorization Code + PKCE, BFF untuk web), client credentials untuk rekanan `[SRC-71]` | Email dan kredensial | Dijalankan sendiri di cloud Indonesia `[USER] T4-Q4` | ADR-011 |
+| Redis | Internal | Terkelola atau dijalankan sendiri | Hanya ID internal | Region Indonesia | ADR-007 |
 | KMS, secret manager, object storage, log | Internal cloud | Layanan terkelola | Kunci, berkas, log | Region Indonesia | ADR-013, ADR-018, ADR-010 |
 
 Login Google/Apple, push notification, dan WhatsApp tidak diintegrasikan (CR-007) `[USER] T4-Q2`.
@@ -244,14 +254,18 @@ flowchart TB
       R1[realtime x2+]
       W1[worker x2+]
       RMEP[RME api/worker x2+]
+      KCP[Keycloak x2+ terklaster]
     end
+    RDS[(Redis)]
     PGA[(PG aplikasi RS<br/>+ standby)]
     PGU[(PG audit)]
     PGR[(PG RME<br/>+ standby)]
     OBJ[(Object storage<br/>versi + WORM)]
     BK[(Backup PITR + harian<br/>Indonesia)]
   end
-  LB --> A1 & R1 & RMEP
+  LB --> A1 & R1 & RMEP & KCP
+  KCP --> PGA
+  A1 & R1 & RMEP --> RDS
   A1 & R1 & W1 --> PGA
   W1 --> PGU
   RMEP --> PGR
@@ -272,10 +286,11 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
   5. RME minimalis ke Rumah Sehat;
   6. RME minimalis ke SATUSEHAT;
   7. aplikasi ke server media video;
-  8. proses aplikasi ke KMS, secret manager, dan object storage;
-  9. pipeline CI/CD ke lingkungan cloud.
+  8. proses aplikasi ke KMS, secret manager, object storage, Redis, dan Admin REST API Keycloak;
+  9. browser sistem dan aplikasi ke Keycloak (login OIDC);
+  10. pipeline CI/CD ke lingkungan cloud.
 - **Kontrol utama**:
-  - Autentikasi dan sesi (ADR-011): Argon2id, MFA TOTP untuk semua peran non-pasien, sesi divalidasi server.
+  - Autentikasi dan sesi (ADR-011): Keycloak dengan realm per populasi, Argon2, MFA TOTP untuk semua peran non-pasien, Authorization Code + PKCE lewat browser sistem, BFF untuk web, penolakan seketika lewat status akun dan daftar pencabutan di Redis/DB.
   - Otorisasi (ADR-012): default deny, relasi, 404 untuk objek terlarang, RLS di RME.
   - Perlindungan data (ADR-013): TLS, KMS, enkripsi tingkat aplikasi untuk data spesifik, blind index NIK.
   - Integrasi (ADR-014): token per klien, HMAC dengan stempel waktu, idempotensi, validasi skema.
@@ -286,7 +301,7 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
 
 ## 8. Data
 
-- **Empat database PostgreSQL**: aplikasi Rumah Sehat, audit Rumah Sehat, aplikasi RME minimalis, dan audit RME (yang terakhir berbagi instans dengan audit Rumah Sehat). Database terpisah dan role terpisah (ADR-007, ADR-019) `[KEPUTUSAN-20]` `[KEPUTUSAN-35]`.
+- **Lima database PostgreSQL**: aplikasi Rumah Sehat, Keycloak (berbagi instans dengan aplikasi Rumah Sehat), audit Rumah Sehat, audit RME (berbagi instans audit), dan aplikasi RME minimalis. Redis hanya menyimpan data turunan tanpa data pribadi selain ID (ADR-007). Database terpisah dan role terpisah (ADR-007, ADR-019) `[KEPUTUSAN-20]` `[KEPUTUSAN-35]`.
 - **Kelas tabel** Master, Transaksi, Proyeksi, Operasional, dan Log, dengan hak role per kelas (ADR-008) `[KEPUTUSAN-21]`. Klasifikasi final setiap entitas ada di data dictionary, yang memfinalkan KEPUTUSAN-10.
 - **Keputusan data Tahap 4** `[DOK: .claude/skills/runbook/references/tahap-04-arsitektur.md]`:
   - *Multi-tenancy*: Rumah Sehat memakai skema bersama dengan isolasi di lapisan repository dan test isolasi. RME minimalis memakai skema bersama dengan `fasyankes_id` dan RLS (ADR-012) `[KEPUTUSAN-27]`.
@@ -305,7 +320,7 @@ Setiap NFR PRD §6 dan spesifikasi audit §7 dijawab arsitektur. Kolom "Bukti" m
 | NFR | Jawaban arsitektur | ADR | Bukti |
 | --- | --- | --- | --- |
 | NFR-PERF-01/02 (API baca 500 ms, tulis 1 dtk p95) | Modular monolith tanpa lompatan jaringan antar-layanan; index sesuai data dictionary; pihak ketiga dipanggil lewat job, kecuali cek ketersediaan sinkron yang tidak dihitung di NFR | ADR-006, ADR-007, ADR-014 | Uji beban NFR-CAP-04 |
-| NFR-PERF-03 (chat 2 dtk p95) | WebSocket, simpan lalu `NOTIFY` berisi ID | ADR-016, ADR-007 | Uji beban 100 sesi |
+| NFR-PERF-03 (chat 2 dtk p95) | WebSocket, simpan lalu sinyal Redis Pub/Sub berisi ID, klien mengambil ulang yang terlewat | ADR-016, ADR-007 | Uji beban 100 sesi |
 | NFR-PERF-04 (halaman web 3 dtk p95) | Web statis + API; tanpa render server untuk data besar | ADR-006 | Uji beban web |
 | NFR-PERF-05 (notifikasi ≤ 1 menit) | Outbox notifikasi diproses worker; kotak notifikasi + WebSocket; email ke penyedia di Indonesia | ADR-016 | Metrik waktu kejadian ke penyerahan |
 | NFR-CAP-01–03 (30.000 MAU, 1.000 bersamaan, 100 sesi) | Proses `api`, `realtime`, `worker` diskalakan horizontal; database terkelola dengan standby | ADR-006, ADR-019 | NFR-CAP-04 |
@@ -317,9 +332,9 @@ Setiap NFR PRD §6 dan spesifikasi audit §7 dijawab arsitektur. Kolom "Bukti" m
 | NFR-DR-03 (uji pemulihan) | Uji pemulihan penuh sebelum go-live | ADR-019 | Laporan uji |
 | NFR-DR-04 (backup di Indonesia) | Backup di region Indonesia | ADR-019 | Konfigurasi penyedia (Tahap 5) |
 | NFR-SEC-01 (ASVS) | Level 2; checklist di Tahap 5 | ADR-011 | Audit Tahap 10 |
-| NFR-SEC-02 (MFA) | TOTP untuk admin RS, admin rekanan, pengguna RME, dan tenaga kesehatan | ADR-011 | Test autentikasi |
-| NFR-SEC-03 (password, penguncian) | Argon2id; kebijakan ASVS L2; kunci 15 menit setelah 5 kali gagal | ADR-011 | Test |
-| NFR-SEC-04 (sesi web 30 menit) | Idle 30 menit, mutlak 12 jam | ADR-011 | Test |
+| NFR-SEC-02 (MFA) | TOTP Keycloak wajib di realm `nakes`, `admin`, `rme`, dengan kode pemulihan | ADR-011 | Test autentikasi |
+| NFR-SEC-03 (password, penguncian) | Argon2 Keycloak (≥ parameter OWASP); kebijakan ASVS L2; deteksi brute force 5 gagal, kunci 15 menit | ADR-011 | Test |
+| NFR-SEC-04 (sesi web 30 menit) | BFF dan SSO Session Idle 30 menit, mutlak 12 jam | ADR-011 | Test |
 | NFR-SEC-05 (enkripsi + perlindungan tambahan data spesifik) | TLS; enkripsi penyedia; envelope encryption tingkat aplikasi | ADR-013 | Review kode, audit Tahap 10 |
 | NFR-SEC-06 (isolasi antar-rekanan/fasyankes) | Repository ber-tenant + test isolasi; RLS di RME | ADR-012 | Test isolasi otomatis |
 | NFR-SEC-07 (hak minimum) | Kebijakan per endpoint; role database per kelas | ADR-012, ADR-008 | Review DBA, audit |
@@ -331,7 +346,7 @@ Setiap NFR PRD §6 dan spesifikasi audit §7 dijawab arsitektur. Kolom "Bukti" m
 | NFR-PRIV-04 (video tidak direkam) | Rekaman tidak dikonfigurasi + test konfigurasi | ADR-016 | Test |
 | NFR-PRIV-05 (bukti persetujuan per versi) | Tabel versi teks + rekaman persetujuan (Log) | ADR-008 | Data dictionary |
 | NFR-RET-01 (retensi dapat diatur, otomatis) | Tabel kebijakan retensi + job + crypto-shredding | ADR-013 | Test job retensi |
-| NFR-RET-02 (angka retensi) | `[TIDAK DIKETAHUI]` (PT-24); desain tidak memusnahkan apa pun sebelum ditetapkan | ADR-013, ADR-009 | — |
+| NFR-RET-02 (angka retensi) | `[TIDAK DIKETAHUI]` (PT-24). Data aplikasi dan audit tidak dimusnahkan sebelum ditetapkan. Retensi application log, security log, dan backup juga keputusan bisnis: usulan nilai sementara diputuskan user di gate Tahap 4, dan sebelum itu tidak ada penghapusan otomatis | ADR-013, ADR-009, ADR-010, ADR-019 | — |
 | NFR-COMP-01–03 | Flutter Android/iOS; web dua versi browser terakhir | ADR-006 | Uji kompatibilitas Tahap 9 |
 | NFR-LOC-01/02 | Bahasa Indonesia; Rupiah `bigint`; zona waktu AB-40–42 | ADR-015, ADR-017 | Test |
 | NFR-OBS-01 | Pemeriksa ketersediaan + metrik + peringatan | ADR-010 | Konfigurasi pemantauan |
@@ -355,13 +370,15 @@ Pemilihan berikut wajib diverifikasi ke dokumentasi resmi dan dibawa ke user. Sy
 | Email | Penyedia atau relay di Indonesia (ADR-016) |
 | Kurir | Integrasi status pengiriman; data di Indonesia |
 | Bahasa, framework, ORM, pustaka UUIDv7 | Mendukung pola ADR-007, ADR-008, ADR-009 |
+| Keycloak | Versi, pengaturan parameter Argon2, tema login, konfigurasi realm sebagai kode, mekanisme autentikasi ulang, rotasi token penyegar, pemetaan jenis event (ADR-011) |
+| Redis | Distribusi dan lisensi `[SRC-76]`, layanan terkelola atau dijalankan sendiri di Indonesia (ADR-007) |
 | Log, metrik, crash report | Di Indonesia atau dijalankan sendiri (ADR-010) |
 | Checklist ASVS L2 | Pemetaan kontrol per bab (ADR-011) |
 | Biaya | Baseline biaya pihak ketiga dan infrastruktur (Business Case §9) |
 
 ## 12. Modul kritis (T1)
 
-Dicatat di `CLAUDE.md` `[KEPUTUSAN-37]`: autentikasi/sesi/MFA; otorisasi dan isolasi (termasuk RLS RME); harga, pembayaran, jurnal, refund, klaim, dan kewajiban; pustaka dan database audit; enkripsi, kunci, pekerja privasi, dan retensi; persetujuan dan hak subjek data; gateway integrasi rekanan; berkas dokumen identitas dan klinis; rekam medis RME dan SATUSEHAT; migrasi skema dan hak role database.
+Dicatat di `CLAUDE.md` `[KEPUTUSAN-37]`: autentikasi/sesi/MFA, termasuk konfigurasi realm Keycloak dan validasi token; otorisasi dan isolasi (termasuk RLS RME); harga, pembayaran, jurnal, refund, klaim, dan kewajiban; pustaka dan database audit; enkripsi, kunci, pekerja privasi, dan retensi; persetujuan dan hak subjek data; gateway integrasi rekanan; berkas dokumen identitas dan klinis; rekam medis RME dan SATUSEHAT; migrasi skema dan hak role database.
 
 ## 13. Ketergantungan dan pertanyaan terbuka yang memengaruhi arsitektur
 

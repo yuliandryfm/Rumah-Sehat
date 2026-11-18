@@ -20,7 +20,7 @@ Tanggal: 2026-11-18
 **2. Enkripsi saat disimpan, lapis penyedia.** Disk database, backup, dan object storage dienkripsi oleh penyedia cloud dengan kunci yang dikelola di layanan manajemen kunci (KMS) region Indonesia. Kemampuannya diverifikasi saat pemilihan penyedia di Tahap 5 `[KEPUTUSAN-28]`.
 
 **3. Enkripsi tingkat aplikasi (envelope encryption) untuk data pribadi spesifik** `[KEPUTUSAN-28]`:
-- Kolom yang dienkripsi: NIK; keluhan awal; teks pesan chat; isi catatan konsultasi; item resep; nilai hasil lab; isi rekam medis RME minimalis; deskripsi klaim; rahasia TOTP; kredensial rahasia rekanan dan SATUSEHAT yang disimpan sistem.
+- Kolom yang dienkripsi: NIK; keluhan awal; teks pesan chat; isi catatan konsultasi; item resep; nilai hasil lab; isi rekam medis RME minimalis; deskripsi klaim; rahasia HMAC webhook rekanan; kredensial SATUSEHAT per fasyankes. Password, rahasia TOTP, dan rahasia klien integrasi dikelola Keycloak (ADR-011), tidak disimpan di database aplikasi.
 - Setiap **wadah data** punya kunci data (DEK) sendiri. Wadah adalah satu sesi konsultasi (chat, catatan, resep), satu hasil lab, satu kunjungan RME, satu dokumen identitas, atau satu klaim. DEK disimpan terbungkus oleh kunci utama (KEK) di KMS, di tabel kunci data.
 - Data anak dan data keuangan pribadi yang bukan teks klinis (misalnya nama anak dan nominal transaksi) tidak dienkripsi di tingkat aplikasi. Perlindungannya lewat otorisasi (ADR-012), audit E-05, dan enkripsi lapis penyedia, karena kolom ini dibutuhkan untuk pencarian dan laporan.
 - Alasannya: administrator database, salinan backup, dan log query tidak dapat membaca isi klinis tanpa akses ke KMS.

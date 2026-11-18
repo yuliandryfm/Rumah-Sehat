@@ -10,6 +10,7 @@ Tanggal: 2026-11-18
 - Fitur rekam penyedia video dinonaktifkan, dan cara memverifikasinya ditetapkan di Tahap 4 (US-306 AC4) `[DOK: 03-prd.md]`.
 - Semua penyedia pihak ketiga memproses data di Indonesia `[USER] T4-Q1`. Push dan WhatsApp dihapus. Notifikasi pasien dan tenaga kesehatan lewat email dan notifikasi di dalam aplikasi. Panggilan video hanya dapat diterima saat kedua pihak berada di ruang sesi (CR-007) `[USER] T4-Q2`.
 - Antrean real-time diperbarui dengan keterlambatan maksimal 30 detik dari data rekanan (US-405 AC1) `[DOK: 03-prd.md]`.
+- Redis ditambahkan sebagai komponen pendukung, antara lain untuk sinyal real-time antar-instans (ADR-007) `[USER] T4-Q4`.
 
 ## Keputusan
 
@@ -17,7 +18,8 @@ Tanggal: 2026-11-18
 
 **2. Alur pesan chat** `[KEPUTUSAN-32]`:
 - Klien membuat ID pesan (UUIDv7) sebelum mengirim, sehingga kiriman ulang setelah koneksi pulih tidak menggandakan pesan (KU-05).
-- Server memeriksa bahwa pengirim adalah peserta sesi dan sesi masih dalam waktunya, menyimpan pesan terenkripsi (ADR-013) sebagai baris transaksi, lalu memberi sinyal `NOTIFY` dengan ID pesan (ADR-007). Proses `realtime` yang memegang koneksi penerima membaca pesan dan meneruskannya.
+- Server memeriksa bahwa pengirim adalah peserta sesi dan sesi masih dalam waktunya, menyimpan pesan terenkripsi (ADR-013) sebagai baris transaksi, lalu menerbitkan sinyal berisi ID pesan lewat Redis Pub/Sub (ADR-007). Proses `realtime` yang memegang koneksi penerima membaca pesan dari database dan meneruskannya.
+- Karena Redis Pub/Sub bersifat at-most-once `[SRC-74]`, klien yang tersambung ulang selalu meminta pesan sejak ID terakhir yang diterimanya, sehingga tidak ada pesan yang hilang dari tampilan.
 - Lampiran foto diunggah lewat alur berkas (ADR-018) dan dirujuk dari pesan.
 - Setelah durasi sesi habis, server menolak pesan baru, dan ruang chat menjadi baca-saja (US-305 AC4).
 - Akses tenaga kesehatan ke riwayat chat setelah sesi dicatat E-05.
@@ -47,6 +49,7 @@ Tanggal: 2026-11-18
 
 ## Konsekuensi
 
+- Gangguan Redis memperlambat penerusan pesan antar-instans (cadangan `LISTEN/NOTIFY`, ADR-007), tetapi tidak menghilangkan pesan.
 - Proses `realtime` menyimpan koneksi panjang. Penyeimbang beban harus mendukung WebSocket, dan kapasitasnya diuji di NFR-CAP-03/CAP-04.
 - Tanpa push, pengguna hanya menerima pemberitahuan di layar ponsel lewat email. Risiko lupa jadwal dan terlambat bergabung dicatat di risk register. Pengingat email (PB-08) dan tampilan jadwal di aplikasi menjadi mitigasinya.
 - Kalau server media dijalankan sendiri, tim menanggung operasi dan pemantauannya, termasuk kapasitas untuk 100 sesi video bersamaan. Kalau memakai penyedia terkelola, lokasi pemrosesan media di Indonesia wajib dibuktikan dari dokumentasi resmi penyedia di Tahap 5.

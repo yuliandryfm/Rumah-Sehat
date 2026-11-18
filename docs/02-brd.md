@@ -141,6 +141,7 @@ Ringkasan tingkat bisnis. Alur rinci, status, dan pengecualian disusun di PRD.
 | Integrasi perangkat kesehatan atau wearable | `[DOK] P3.6a` |
 | Pengantaran sampel lab atau pengambilan sampel di rumah | `[DOK] P3.6a` |
 | Login pasien dengan nomor HP + OTP; notifikasi SMS | `[DOK] P4.4, P4.5` |
+| Login dengan akun Google atau Apple; notifikasi push; notifikasi WhatsApp (dihapus, CR-007) | `[USER] T4-Q1, T4-Q2` |
 | Tenaga kesehatan "mitra langsung" Rumah Sehat tanpa fasyankes rekanan (diganti, CR-001) | `[USER] T2-Q2` |
 | Penampungan dana pasien di rekening PT. Arunika lalu diteruskan sendiri ke mitra (diganti, CR-003) | `[USER] T2-Q4` |
 | Model komisi berupa potongan dari harga rekanan (diganti markup, CR-004) | `[USER] T2-Q6a` |

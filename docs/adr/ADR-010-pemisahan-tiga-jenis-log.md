@@ -18,10 +18,10 @@ Tiga jenis log dikelola terpisah, dengan tujuan, isi, penyimpanan, akses, dan re
 | --- | --- | --- | --- |
 | Tujuan | Akuntabilitas dan kepatuhan: siapa melakukan apa terhadap data siapa (fitur produk) | Debugging dan operasi | Deteksi dan investigasi ancaman |
 | Isi | Event E-01–E-17 dengan field PRD §7.2 (ADR-009) | Log terstruktur JSON: waktu, level, komponen, ID korelasi, rute (pola, bukan URL berisi ID sensitif), status, durasi, galat dan stack trace. Hanya ID internal, tanpa data pribadi | Login berhasil/gagal dan penguncian akun, kegagalan MFA, akses ditolak (termasuk percobaan ganti ID), pelampauan batas laju, tanda tangan webhook atau kredensial rekanan tidak valid, hasil verifikasi hash berantai audit, kegagalan atau keterlambatan relay audit, percobaan ubah/hapus audit, ketidakcocokan proyeksi status (ADR-008), perubahan hak akses |
-| Penghasil | Pustaka audit (ADR-009) | Semua proses (`api`, `realtime`, `worker`, RME) | Middleware autentikasi/otorisasi, gateway integrasi, job verifikasi, log database |
+| Penghasil | Pustaka audit (ADR-009) | Semua proses (`api`, `realtime`, `worker`, RME, Keycloak) | Event Keycloak (ADR-011), middleware otorisasi, gateway integrasi, job verifikasi, log database |
 | Penyimpanan | Database audit terpisah dan arsip WORM | Layanan log terkelola di region Indonesia atau yang dijalankan sendiri di cloud Indonesia (Tahap 5) | Aliran atau indeks terpisah dari application log, dengan aturan peringatan |
 | Akses | Auditor, Super Admin (aplikasi); Admin Fasyankes untuk log akses rekam medis fasyankesnya | Tim teknis | Hanya pemegang peran keamanan di tim teknis; tidak lewat aplikasi |
-| Retensi | `[TIDAK DIKETAHUI]` (PT-24); tidak dimusnahkan sebelum ditetapkan | Nilai awal 30 hari | Nilai awal 1 tahun |
+| Retensi | `[TIDAK DIKETAHUI]` (PT-24); tidak dimusnahkan sebelum ditetapkan | `[TIDAK DIKETAHUI]` (PT-24). Usulan nilai sementara 30 hari, diputuskan user di gate Tahap 4 | `[TIDAK DIKETAHUI]` (PT-24). Usulan nilai sementara 1 tahun, diputuskan user di gate Tahap 4 |
 
 Ketentuan tambahan:
 
@@ -29,7 +29,7 @@ Ketentuan tambahan:
 2. **Satu kejadian, beberapa log.** Login gagal tercatat di audit trail (E-02) untuk akuntabilitas dan di security log untuk deteksi. Isi masing-masing mengikuti aturan log-nya, dan keduanya dihubungkan dengan ID korelasi yang sama.
 3. **Pemantauan dan peringatan** (NFR-OBS-01): pemeriksaan ketersediaan berkala dari luar terhadap endpoint kesehatan layanan inti, metrik (laju galat, latensi p95 dibanding NFR-PERF, panjang antrean job, umur outbox, status integrasi per rekanan), dan peringatan ke tim teknis. Pemeriksa ketersediaan hanya memanggil endpoint kesehatan yang tidak memuat data pribadi.
 4. **Laporan crash aplikasi mobile** dikirim ke layanan di Indonesia atau yang dijalankan sendiri di cloud Indonesia, tanpa data pribadi. SDK analitik atau crash pihak ketiga yang mengirim data ke luar Indonesia tidak boleh dipasang `[USER] T4-Q1`.
-5. Nilai retensi application log dan security log adalah nilai awal teknis. Keduanya disesuaikan bila PT-24 menetapkan lain, karena keduanya memuat data pribadi (alamat IP dan ID akun).
+5. Retensi application log dan security log adalah keputusan bisnis, karena keduanya memuat data pribadi (alamat IP dan ID akun) (BR-112, PT-24). Nilai sementaranya dibawa ke user di gate Tahap 4. Sampai ada keputusan, kedua log tidak dihapus otomatis.
 
 ## Alternatif yang ditolak
 

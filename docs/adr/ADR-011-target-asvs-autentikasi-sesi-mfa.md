@@ -1,49 +1,113 @@
-# ADR-011: Target ASVS Level 2, autentikasi, sesi yang divalidasi server, dan MFA TOTP
+# ADR-011: Target ASVS Level 2, dengan Keycloak sebagai identity provider dan pencabutan sesi seketika di aplikasi
 
-Status: Diusulkan
+Status: Diusulkan (revisi 2026-11-18 sesuai `[USER] T4-Q4`: autentikasi memakai Keycloak, menggantikan rancangan autentikasi buatan sendiri)
 Tanggal: 2026-11-18
 
 ## Konteks
 
-- NFR-SEC-01: kontrol keamanan diverifikasi terhadap OWASP ASVS 5.0.0; level dan pemetaan ditetapkan di Tahap 4 `[DOK: 03-prd.md]` `[KEPUTUSAN-05]`. ASVS 5.0 menggambarkan Level 2 sebagai level yang "Most applications should be striving to achieve", Level 3 untuk aplikasi yang ingin menunjukkan tingkat keamanan tertinggi, dan pemilihan level bergantung pada sensitivitas aplikasi `[SRC-48]`.
-- Login pasien hanya email dan password; login Google/Apple dihapus oleh CR-007 `[USER] T4-Q2` (BR-001).
-- KEPUTUSAN-06 menetapkan: verifikasi email sebelum akun aktif, penguncian 15 menit setelah 5 kali gagal berturut-turut, tautan atur ulang password sekali pakai 60 menit, MFA wajib untuk admin Rumah Sehat, admin rekanan, dan pengguna RME minimalis, serta sesi web berakhir setelah 30 menit tanpa aktivitas. MFA tenaga kesehatan diputuskan di Tahap 4 `[KEPUTUSAN-06]`.
-- Akun nonaktif harus ditolak termasuk pada sesi yang masih terbuka (KU-10). Untuk pengguna RME, akses berakhir seketika (US-1302 AC4). Keluar mengakhiri sesi di server (US-103 AC5) `[DOK: 03-prd.md]`.
-- Tenaga kesehatan membuka keluhan awal dan riwayat chat banyak pasien (§3.1, E-05) `[DOK: 03-prd.md]`.
-- Tidak ada SMS (BR-050), dan semua penyedia pihak ketiga wajib di Indonesia `[USER] T4-Q1`.
+- NFR-SEC-01: kontrol keamanan diverifikasi terhadap OWASP ASVS 5.0.0; level dan pemetaan ditetapkan di Tahap 4 `[DOK: 03-prd.md]` `[KEPUTUSAN-05]`. ASVS 5.0 menyebut Level 2 sebagai level yang "Most applications should be striving to achieve", Level 3 untuk tingkat keamanan tertinggi, dan level dipilih menurut sensitivitas aplikasi `[SRC-48]`.
+- User memutuskan memakai Keycloak dan Redis, tanpa message broker `[USER] T4-Q4`. Semua komponen dan penyedia wajib memproses data di Indonesia `[USER] T4-Q1`.
+- Login pasien hanya email dan password; login Google/Apple dihapus (CR-007) `[USER] T4-Q2`.
+- KEPUTUSAN-06 menetapkan kontrol berikut. MFA tenaga kesehatan diputuskan di Tahap 4 `[KEPUTUSAN-06]`.
+  - verifikasi email sebelum akun aktif;
+  - penguncian 15 menit setelah 5 kali gagal berturut-turut;
+  - tautan atur ulang password sekali pakai 60 menit;
+  - MFA wajib untuk admin Rumah Sehat, admin rekanan, dan pengguna RME;
+  - sesi web berakhir setelah 30 menit tanpa aktivitas.
+- Akun nonaktif harus ditolak termasuk pada sesi yang masih terbuka (KU-10). Untuk pengguna RME, akses berakhir seketika (US-1302 AC4). Keluar mengakhiri sesi di server (US-103 AC5). Akun tidak dibuat sebelum pasien menyetujui persetujuan pemrosesan data (US-101 AC1, AC4; US-104) `[DOK: 03-prd.md]`.
+- Kemampuan Keycloak yang terverifikasi (versi 26.8.2, lisensi Apache 2.0 `[SRC-64]`):
+  - database PostgreSQL `[SRC-65]` dan klaster multi-node `[SRC-66]`;
+  - kebijakan OTP berbasis waktu `[SRC-67]` dan kode pemulihan sebagai fitur stabil `[SRC-68]`;
+  - deteksi brute force `[SRC-69]`;
+  - Argon2 sebagai hash bawaan non-FIPS, verifikasi email, batas waktu atur ulang password, SSO Session Idle/Max, Access Token Lifespan, back-channel logout, dan realm yang terisolasi `[SRC-70]`;
+  - Authorization Code dengan PKCE, client credentials, introspeksi, dan revokasi token `[SRC-71]`;
+  - Admin REST API untuk membuat user, mengubah status `enabled`, menghapus semua sesi user, dan mengambil event `[SRC-72]`;
+  - penyimpanan event dengan masa simpan `[SRC-73]`.
 
 ## Keputusan
 
-1. **Target verifikasi: ASVS 5.0.0 Level 2** untuk semua komponen (aplikasi mobile, web, backend Rumah Sehat, RME minimalis, Partner Integration API). Pemetaan kontrol per bab ASVS disusun di Tahap 5 sebagai checklist, dan diverifikasi di Tahap 10 `[KEPUTUSAN-26]`.
-2. **Penyimpanan password** memakai Argon2id dengan parameter minimal 19 MiB memori, 2 iterasi, dan paralelisme 1, sesuai OWASP Password Storage Cheat Sheet `[SRC-49]`. Kebijakan panjang dan isi password mengikuti ASVS Level 2 dan ditetapkan di Tahap 5 `[KEPUTUSAN-24]`.
-3. **MFA dengan TOTP** (RFC 6238 `[SRC-43]`) lewat aplikasi authenticator di perangkat pengguna. MFA wajib untuk admin Rumah Sehat, admin rekanan, pengguna RME minimalis (KEPUTUSAN-06), **dan tenaga kesehatan** `[KEPUTUSAN-25]`:
-   - diminta saat login di perangkat atau browser baru, yaitu saat membuat sesi baru;
-   - disertai 10 kode pemulihan sekali pakai yang disimpan sebagai hash;
-   - reset MFA hanya oleh admin yang berwenang setelah verifikasi identitas, dan tercatat (E-04);
-   - rahasia TOTP disimpan terenkripsi (ADR-013);
-   - SMS dan OTP email tidak dipakai sebagai faktor kedua.
-   Pasien tidak diwajibkan MFA di rilis 1.
-4. **Sesi divalidasi server di setiap permintaan** `[KEPUTUSAN-24]`:
-   - Token sesi berupa nilai acak, bukan token yang memuat klaim. Server hanya menyimpan hash-nya di tabel sesi (kelas Operasional, ADR-008).
-   - Setiap permintaan memeriksa sesi dan status akun. Penonaktifan akun, perubahan peran, dan keluar langsung mengakhiri semua sesi terkait (KU-10, US-1302 AC4, US-103 AC5).
-   - **Mobile**: token akses berumur 15 menit dan token penyegar yang dirotasi setiap dipakai. Pemakaian ulang token penyegar lama mencabut seluruh rangkaian sesi itu. Batas tidak aktif dan batas mutlak (nilai awal): pasien 30 hari dan 90 hari; tenaga kesehatan 7 hari dan 30 hari. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).
-   - **Web** (backoffice, portal, RME): cookie `HttpOnly` dan `Secure` dengan atribut `SameSite`, perlindungan CSRF untuk permintaan yang mengubah data, batas tidak aktif 30 menit (NFR-SEC-04), dan batas mutlak 12 jam.
-5. **Autentikasi ulang** untuk aksi berisiko: mengajukan hak subjek data dan mengunduh salinan data (US-1602, US-1604), mengubah email atau password, dan reset MFA `[KEPUTUSAN-24]`.
-6. **Kontrol pendukung** (KEPUTUSAN-06): verifikasi email sebelum akun aktif; penguncian 15 menit setelah 5 kali gagal berturut-turut per akun; batas laju per akun dan per alamat IP untuk login, registrasi, dan atur ulang password; pesan galat umum yang tidak membocorkan apakah email terdaftar; tautan atur ulang sekali pakai 60 menit, disimpan sebagai hash.
-7. **Identitas terpisah per sistem.** Akun Rumah Sehat (pasien, tenaga kesehatan, admin Rumah Sehat, admin rekanan) dan akun RME minimalis disimpan di database masing-masing. Klien sistem rekanan memakai kredensial integrasi, bukan akun pengguna (ADR-014).
-8. **Pencatatan**: E-01–E-04 di audit trail (ADR-009), dan sinyal teknis di security log (ADR-010).
+**1. Target verifikasi ASVS 5.0.0 Level 2** untuk semua komponen, termasuk konfigurasi Keycloak. Pemetaan kontrol disusun di Tahap 5 sebagai checklist dan diverifikasi di Tahap 10 `[KEPUTUSAN-26]`.
+
+**2. Keycloak sebagai identity provider** untuk semua akun manusia Rumah Sehat dan RME, serta untuk klien integrasi rekanan `[USER] T4-Q4` `[KEPUTUSAN-24]`:
+- dijalankan sendiri di cloud Indonesia, minimal 2 instans terklaster `[SRC-66]`;
+- memakai database PostgreSQL tersendiri `[SRC-65]` di instans database aplikasi Rumah Sehat, ikut PITR (ADR-019);
+- versi yang dipakai ditetapkan di Tahap 5.
+
+**3. Realm terpisah per populasi.** Realm terisolasi satu sama lain `[SRC-70]`. Pembagiannya `[KEPUTUSAN-24]`:
+
+| Realm | Pengguna | Kebijakan utama |
+| --- | --- | --- |
+| `pasien` | Pasien | Pendaftaran lewat backend (butir 6), verifikasi email, tanpa MFA |
+| `nakes` | Dokter, psikolog, fisioterapis, tenaga medis | Pendaftaran lewat backend (US-202), MFA TOTP wajib `[KEPUTUSAN-25]` |
+| `admin` | Admin Rumah Sehat dan admin rekanan | Hanya undangan, MFA TOTP wajib |
+| `rme` | Pengguna RME minimalis, termasuk Operator RME | Hanya undangan, MFA TOTP wajib. Backend RME hanya menerima token realm ini |
+| `integrasi` | Klien sistem rekanan dan fasyankes RME | Client credentials, satu klien per rekanan/fasyankes (ADR-014) |
+
+**4. Kebijakan kredensial** `[KEPUTUSAN-24]`:
+- Hash password memakai Argon2, bawaan Keycloak untuk deployment non-FIPS `[SRC-70]`. Parameternya minimal setara OWASP Password Storage Cheat Sheet (19 MiB, 2 iterasi, paralelisme 1) `[SRC-49]`; kemampuan mengatur parameter diverifikasi di Tahap 5. Kebijakan panjang dan isi password mengikuti ASVS Level 2.
+- Verifikasi email wajib sebelum akun dipakai `[SRC-70]`.
+- Tautan atur ulang password berlaku 60 menit `[SRC-70]`.
+- Deteksi brute force dalam mode sementara: maksimal 5 kegagalan, penguncian 15 menit (KEPUTUSAN-06) `[SRC-69]`. Kesesuaian perilakunya dengan "5 kali gagal berturut-turut" diuji otomatis di Tahap 8.
+- Pesan galat login dan atur ulang password bersifat umum. Pendaftaran dengan email yang sudah terdaftar mengikuti US-101 AC3.
+
+**5. MFA dengan TOTP** (RFC 6238 `[SRC-43]`) wajib untuk realm `nakes`, `admin`, dan `rme` `[KEPUTUSAN-25]`:
+- Alur autentikasi realm disesuaikan supaya OTP wajib bagi semua pengguna. Alur bawaan Keycloak bersifat bersyarat, hanya meminta OTP dari pengguna yang sudah mengonfigurasinya `[SRC-70]`.
+- Required action "Configure OTP" dijalankan saat login pertama.
+- Algoritma, jumlah digit, dan periode `[SRC-67]` ditetapkan di Tahap 5 dengan memperhatikan kompatibilitas aplikasi authenticator.
+- Kode pemulihan memakai fitur bawaan Keycloak (12 kode sekali pakai) `[SRC-68]` `[SRC-70]`.
+- Reset MFA oleh admin yang berwenang setelah verifikasi identitas, dan tercatat (E-04).
+- SMS dan OTP email tidak dipakai sebagai faktor kedua. Pasien tidak diwajibkan MFA di rilis 1.
+
+**6. Pendaftaran dan pembuatan akun** `[KEPUTUSAN-24]`:
+- **Pasien**: formulir pendaftaran native di aplikasi, termasuk layar persetujuan US-104. Backend memeriksa persetujuan, membuat user di realm `pasien` lewat Admin REST API `[SRC-72]` dengan required action verifikasi email, lalu menyimpan akun aplikasi dan bukti persetujuan di database aplikasi. Bila salah satu langkah gagal, user Keycloak yang sudah terbuat dihapus kembali (kompensasi), sehingga tidak ada akun tanpa persetujuan (US-101 AC4).
+- **Tenaga kesehatan**: pola yang sama di realm `nakes`. Akun aplikasi berstatus "Menunggu verifikasi" (US-202).
+- **Admin dan pengguna RME**: dibuat lewat backoffice atau RME. User Keycloak dibuat lewat Admin REST API, lalu undangan aktivasi dikirim untuk mengatur password dan TOTP (US-206, US-208, US-1302).
+- Keycloak hanya menyimpan data identitas minimal (email sebagai username, dan kredensial). Profil, data identitas, dan peran disimpan di database aplikasi.
+
+**7. Alur login** `[KEPUTUSAN-24]`:
+- **Aplikasi mobile**: OIDC Authorization Code dengan PKCE lewat browser sistem, bukan webview di dalam aplikasi, sesuai RFC 8252 `[SRC-77]` `[SRC-71]`. Halaman login memakai tema Rumah Sehat; kemampuan tema diverifikasi di Tahap 5 dan desainnya di Tahap 6. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).
+- **Web** (backoffice, portal, RME): pola *backend-for-frontend* (BFF). Backend menjalankan Authorization Code sebagai klien rahasia, sehingga token tidak pernah sampai ke browser. Browser memegang cookie sesi `HttpOnly`, `Secure`, dan `SameSite`, dengan perlindungan CSRF. Data sesi BFF disimpan di Redis (ADR-007).
+- **Batas sesi (nilai awal)**: diatur lewat SSO Session Idle/Max dan Access Token Lifespan per realm `[SRC-70]`.
+  - Web: tidak aktif 30 menit (NFR-SEC-04), mutlak 12 jam.
+  - Pasien mobile: 30 hari dan 90 hari.
+  - Tenaga kesehatan mobile: 7 hari dan 30 hari.
+  - Token akses: 5 menit.
+  - Rotasi token penyegar mengikuti pengaturan Keycloak, diverifikasi di Tahap 5.
+
+**8. Penolakan seketika di aplikasi** (KU-10, US-1302 AC4, US-103 AC5) `[KEPUTUSAN-24]`:
+- Setiap permintaan ke backend memvalidasi tanda tangan, audience realm, dan masa berlaku token. Backend juga memeriksa status akun aplikasi dan daftar sesi yang dicabut.
+- Pemeriksaan memakai cache Redis yang diperbarui saat status berubah. Sumber kebenarannya database aplikasi. Bila Redis tidak tersedia, backend membaca status langsung dari database.
+- **Penonaktifan akun atau perubahan peran**:
+  - status di database aplikasi diubah dan dicatat (E-10, E-11);
+  - cache Redis diperbarui seketika;
+  - user di Keycloak dinonaktifkan (`enabled = false`) dan semua sesinya dihapus lewat Admin REST API `[SRC-72]`.
+  Akses ditolak sejak langkah kedua, walaupun token lama belum kedaluwarsa.
+- **Keluar**: aplikasi memanggil logout Keycloak atau endpoint revokasi `[SRC-71]`, dan backend menandai sesi itu dicabut di Redis sampai token kedaluwarsa.
+
+**9. Autentikasi ulang** untuk aksi berisiko (mengajukan hak subjek data, mengunduh salinan data, mengubah email atau password, reset MFA): backend meminta login ulang di Keycloak dan memeriksa waktu autentikasi terakhir di token. Mekanisme parameternya diverifikasi di Tahap 5 `[KEPUTUSAN-24]`.
+
+**10. Event autentikasi ke audit trail** `[KEPUTUSAN-24]`:
+- Keycloak menyimpan event login dan admin event dengan masa simpan, nilai awal 7 hari sebagai penyangga `[SRC-73]`.
+- Worker mengambil event lewat Admin REST API `[SRC-72]` setiap menit, memetakannya ke E-01–E-04, lalu menulisnya ke outbox audit secara idempoten (ADR-009). Event yang sama juga diteruskan ke security log (ADR-010).
+- Sebagian jenis event Keycloak berstatus usang `[SRC-73]`, sehingga pemetaan jenis event ditetapkan per versi di Tahap 5.
+- Keterlambatan pengambilan lebih dari 5 menit memicu peringatan keamanan.
+- Pembuatan akun aplikasi, perubahan peran, dan penonaktifan dicatat langsung oleh aplikasi (E-04, E-10, E-11).
+
+**11. Satu deployment Keycloak untuk Rumah Sehat dan RME**, dengan realm dan admin realm terpisah. Backend Rumah Sehat tidak menerima token realm `rme`, dan sebaliknya `[KEPUTUSAN-24]`.
 
 ## Alternatif yang ditolak
 
-- **ASVS Level 3 untuk seluruh sistem**: lebih sesuai dengan sensitivitas data kesehatan, tetapi menambah kontrol dan bukti verifikasi yang tidak realistis dalam jadwal rilis 1 dengan tim saat ini. Kontrol Level 3 tertentu yang murah dapat diambil di Tahap 5 tanpa mengubah target.
-- **Token klaim bertanda tangan (misalnya JWT) tanpa pengecekan server**: penonaktifan dan keluar baru berlaku setelah token kedaluwarsa, sehingga KU-10 dan US-1302 AC4 tidak terpenuhi.
-- **MFA lewat SMS**: SMS tidak dipakai di proyek ini (BR-050).
-- **MFA lewat OTP email**: kotak email sering menjadi titik kompromi yang sama dengan password.
-- **Tanpa MFA untuk tenaga kesehatan**: satu password yang bocor membuka data kesehatan banyak pasien.
+- **Autentikasi dibangun sendiri** (rancangan awal ADR ini): user memilih komponen yang sudah teruji `[USER] T4-Q4`. Autentikasi juga modul kritis, sehingga mengurangi kode buatan sendiri mengurangi risiko.
+- **Login di webview di dalam aplikasi atau grant password langsung**: RFC 8252 mewajibkan aplikasi native memakai user-agent eksternal `[SRC-77]`.
+- **Satu realm untuk semua pengguna**: kebijakan pendaftaran, MFA, dan sesi berbeda per populasi, sehingga satu kesalahan konfigurasi bisa berdampak lintas populasi.
+- **Deployment Keycloak terpisah untuk RME**: biaya operasional ganda. Dievaluasi ulang bila jawaban L-05 menuntut pemisahan infrastruktur.
+- **Hanya mengandalkan masa berlaku token**: penonaktifan baru berlaku setelah token kedaluwarsa, sehingga KU-10 dan US-1302 AC4 tidak terpenuhi.
+- **ASVS Level 3 untuk seluruh sistem**: tidak realistis dalam jadwal rilis 1. Kontrol Level 3 tertentu dapat diambil di Tahap 5 tanpa mengubah target.
 
 ## Konsekuensi
 
-- Satu query sesi per permintaan. Biayanya kecil pada NFR-CAP-02 dan diukur di uji beban.
-- Tenaga kesehatan memerlukan aplikasi authenticator, dan onboarding-nya (US-202) memuat langkah aktivasi MFA. Ini menambah sedikit hambatan pendaftaran.
-- Kehilangan perangkat MFA memerlukan proses reset oleh admin, dan prosedurnya ditulis sebelum go-live.
+- Ada komponen tambahan yang dioperasikan, dipantau, di-upgrade, dan di-backup: klaster Keycloak dan databasenya. Konfigurasi realm disimpan sebagai kode, mekanismenya ditetapkan di Tahap 5.
+- Login berpindah ke halaman Keycloak di browser sistem. Tema login perlu didesain (Tahap 6) dan dibangun.
+- Keycloak, konfigurasi realm, dan validasi token di backend adalah modul kritis (T1).
+- Tenaga kesehatan memerlukan aplikasi authenticator. Kehilangan perangkat MFA diselesaikan lewat prosedur reset oleh admin yang ditulis sebelum go-live.
 - Nilai batas sesi adalah nilai awal teknis yang diselaraskan dengan checklist ASVS di Tahap 5.

@@ -19,6 +19,7 @@ Tanggal: 2026-11-18
 - Aksi yang mengubah data: event ditulis ke tabel `audit_outbox` di database aplikasi dalam **transaksi yang sama** dengan perubahan bisnisnya. Kalau penulisan event gagal, seluruh transaksi batal dan pengguna menerima pesan gagal (KEPUTUSAN-15).
 - Akses baca data sensitif (E-05): event ditulis dan di-commit sebelum data dikirim ke peminta. Kalau gagal, akses ditolak.
 - Aksi yang gagal (misalnya E-02 login gagal, atau akses ditolak menurut KU-03): event ditulis di transaksi tersendiri dan dicoba ulang, tanpa mengubah hasil aksi.
+- Event login, logout, login gagal, dan perubahan kredensial terjadi di Keycloak. Keycloak menyimpannya sebagai penyangga, lalu worker mengambilnya lewat Admin REST API dan menulisnya ke outbox secara idempoten (ADR-011 butir 10) `[USER] T4-Q4`.
 - Aksi sistem dan integrasi: job tidak ditandai selesai sebelum event-nya tertulis. Pesan integrasi masuk dibalas galat sementara supaya dikirim ulang. Efek eksternal yang sudah terjadi (misalnya refund yang sudah dieksekusi payment gateway) dicatat dari job yang terus dicoba ulang.
 - Role database aplikasi hanya punya hak `INSERT` di `audit_outbox`, tanpa `SELECT`, `UPDATE`, atau `DELETE`.
 
