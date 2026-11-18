@@ -12,7 +12,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-1. **Object storage privat di region Indonesia**, dengan bucket terpisah per sensitivitas: dokumen identitas, berkas klinis (lampiran chat, hasil lab, resep), bukti klaim, dokumen izin, export dan salinan data, serta konten publik CMS. Hanya bucket konten CMS yang boleh dibaca publik, dan isinya tidak boleh memuat data pribadi `[KEPUTUSAN-34]`.
+1. **Object storage privat di region Indonesia**, dengan bucket terpisah per sensitivitas: dokumen identitas, berkas klinis (lampiran chat, hasil lab, resep), bukti klaim, dokumen izin, export dan salinan data, konten publik CMS, serta foto produk dan layanan dari katalog rekanan. Hanya bucket konten CMS dan katalog yang boleh dibaca publik, dan isinya tidak boleh memuat data pribadi `[KEPUTUSAN-34]`.
 2. **Unggah** `[KEPUTUSAN-34]`:
    - Klien meminta slot unggah. Backend memeriksa hak, lalu membuat nama objek UUID (bukan nama asli) dan URL unggah bertanda tangan berumur pendek yang dibatasi jenis dan ukuran, sejauh kemampuan penyedia (diverifikasi Tahap 5).
    - Setelah unggah, backend memvalidasi ukuran, jenis dari isi berkas (bukan dari header), dan untuk foto mendekode lalu mengode ulang gambar sehingga metadata (misalnya lokasi) terbuang.

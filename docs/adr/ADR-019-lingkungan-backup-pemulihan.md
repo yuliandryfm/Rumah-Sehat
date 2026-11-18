@@ -41,6 +41,7 @@ Data production tidak pernah disalin ke staging atau lokal.
 - Pemulihan point-in-time dari arsip WAL berkelanjutan untuk ketiga instans. Dokumentasi PostgreSQL menyatakan `archive_timeout` membatasi umur data yang belum diarsipkan, dan nilai sekitar satu menit biasanya wajar `[SRC-38]`. Target interval arsip ≤ 1 menit, jauh di bawah RPO 15 menit. Padanan pengaturan ini di layanan terkelola diverifikasi di Tahap 5.
 - Backup penuh harian. Masa simpan backup `[TIDAK DIKETAHUI]` (PT-24), dengan usulan nilai sementara 35 hari yang diputuskan user di gate Tahap 4. Sampai ada keputusan, backup tidak dihapus otomatis.
 - Redis tidak di-backup sebagai sumber data, karena isinya dibangun ulang dari PostgreSQL (ADR-007).
+- Database `keycloak` ikut PITR dan backup harian instans (a), karena memuat akun dan kredensial. Retensinya mengikuti PT-24 (ADR-013).
 - Semua backup disimpan di Indonesia (NFR-DR-04), di zona berbeda dari database utama bila tersedia.
 - Object storage memakai versi objek. Kepala rantai audit memakai WORM (ADR-009).
 

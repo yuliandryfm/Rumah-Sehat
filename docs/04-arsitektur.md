@@ -145,6 +145,8 @@ Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]
 | KPI | Dasbor KPI | EP-17 |
 | Platform | Berkas, job, outbox, kalender hari kerja, parameter bisnis | Lintas modul |
 
+**Pemetaan modul ke data dictionary** (`docs/04-data-dictionary.md`): Identitas dan akses → A1; Profil dan verifikasi → A2; Tenaga kesehatan → A4; Rekanan → A5; Katalog salinan → A7; Pemesanan → A8, A10 (klinik, lab, home visit), A11 (produk); Konsultasi → A9; Hasil lab → A10; Pembayaran → A6 (markup, biaya rekanan, tarif metode), A12, A13, A14; Notifikasi, Konten dan layanan pelanggan → A15, A16; Portal rekanan → tanpa tabel sendiri (membaca A5, A14, A16); Gateway integrasi → A18; Privasi → A3, A6 (kebijakan retensi), A17, `data_key` di A19; Platform dan KPI → A6 (parameter bisnis, kalender hari kerja), A19; Audit → B; RME minimalis → C1–C6.
+
 **Modul RME minimalis**: identitas dan akses RME, onboarding fasyankes (Operator RME), layanan/jadwal/harga, appointment dan check-in, antrean, rekam medis kunjungan, hasil lab, home visit, SATUSEHAT, klien integrasi ke Rumah Sehat, dan audit (EP-13) `[DOK: 03-prd.md]`.
 
 ## 4. Alur utama

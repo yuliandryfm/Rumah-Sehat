@@ -27,8 +27,8 @@ Tanggal: 2026-11-18
 
 **4. Audit store terpisah** `[KEPUTUSAN-22]`:
 - Database PostgreSQL tersendiri, di instans database yang terpisah dari database aplikasi di production (ADR-019). Rumah Sehat dan RME minimalis masing-masing punya database audit sendiri.
-- Tabel `audit_event` dipartisi per bulan `[SRC-39]`.
-- Role: `audit_writer` (relay, hanya `INSERT`), `audit_reader` (backoffice dan RME, hanya `SELECT`). Tidak ada role aplikasi yang punya `UPDATE`, `DELETE`, atau `TRUNCATE`. Role pemilik skema hanya dipakai pipeline migrasi.
+- Tabel `audit_event` dipartisi per bulan berdasarkan `recorded_at` `[SRC-39]`. Primary key-nya komposit `(event_id, recorded_at)` karena kolom partisi harus ikut di constraint unik. `event_id` tetap UUIDv7 dari aplikasi, dan keunikannya secara global dijaga lewat tabel kunci event. Bentuk ini dianggap memenuhi ADR-002 (detail di data dictionary §B) `[KEPUTUSAN-56]`.
+- Role: `audit_writer` (relay, `INSERT` ditambah baca sempit atas kepala rantai, yaitu `seq` dan `event_hash` terakhir, lewat fungsi atau view khusus supaya relay dapat melanjutkan rantai setelah restart), `audit_reader` (backoffice dan RME, hanya `SELECT`), dan `audit_verifier` (job verifikasi: baca event dan tulis hasil verifikasi). Tidak ada role aplikasi yang punya `UPDATE`, `DELETE`, atau `TRUNCATE`. Role pemilik skema hanya dipakai pipeline migrasi.
 - Trigger menolak `UPDATE`, `DELETE`, dan `TRUNCATE` di `audit_event` `[SRC-40]`. Percobaan yang ditolak menghasilkan peringatan keamanan dari log database (ADR-010).
 - Aplikasi dan API tidak menyediakan fitur ubah atau hapus event (US-1504). Permintaan ke endpoint semacam itu ditolak dan dicatat sebagai kejadian keamanan.
 

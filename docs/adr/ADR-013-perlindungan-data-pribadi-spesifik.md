@@ -20,8 +20,8 @@ Tanggal: 2026-11-18
 **2. Enkripsi saat disimpan, lapis penyedia.** Disk database, backup, dan object storage dienkripsi oleh penyedia cloud dengan kunci yang dikelola di layanan manajemen kunci (KMS) region Indonesia. Kemampuannya diverifikasi saat pemilihan penyedia di Tahap 5 `[KEPUTUSAN-28]`.
 
 **3. Enkripsi tingkat aplikasi (envelope encryption) untuk data pribadi spesifik** `[KEPUTUSAN-28]`:
-- Kolom yang dienkripsi: NIK; keluhan awal; teks pesan chat; isi catatan konsultasi; item resep; nilai hasil lab; isi rekam medis RME minimalis; deskripsi klaim; rahasia HMAC webhook rekanan; kredensial SATUSEHAT per fasyankes. Password, rahasia TOTP, dan rahasia klien integrasi dikelola Keycloak (ADR-011), tidak disimpan di database aplikasi.
-- Setiap **wadah data** punya kunci data (DEK) sendiri. Wadah adalah satu sesi konsultasi (chat, catatan, resep), satu hasil lab, satu kunjungan RME, satu dokumen identitas, atau satu klaim. DEK disimpan terbungkus oleh kunci utama (KEK) di KMS, di tabel kunci data.
+- Kolom yang dienkripsi: NIK; keluhan awal; teks pesan chat; isi catatan konsultasi; kepala dan item resep; nilai hasil lab dan alasan koreksi; isi rekam medis RME minimalis; deskripsi klaim; teks tiket keluhan; rincian dan tanggapan permintaan hak subjek data; nomor rekening rekanan; catatan teks bebas di riwayat status; rahasia HMAC webhook rekanan; kredensial SATUSEHAT per fasyankes `[KEPUTUSAN-43]`. Password, rahasia TOTP, dan rahasia klien integrasi dikelola Keycloak (ADR-011), tidak disimpan di database aplikasi.
+- Setiap **wadah data** punya kunci data (DEK) sendiri. Wadah adalah satu sesi konsultasi (chat, catatan, resep), satu hasil lab, satu kunjungan RME, satu dokumen identitas, satu klaim, satu tiket keluhan, satu permintaan hak subjek data, satu rekening rekanan, atau satu entitas induk riwayat status yang tidak punya wadah sendiri (misalnya satu pesanan). Daftar lengkap ada di data dictionary §0.7 `[KEPUTUSAN-43]`. DEK disimpan terbungkus oleh kunci utama (KEK) di KMS, di tabel kunci data.
 - Data anak dan data keuangan pribadi yang bukan teks klinis (misalnya nama anak dan nominal transaksi) tidak dienkripsi di tingkat aplikasi. Perlindungannya lewat otorisasi (ADR-012), audit E-05, dan enkripsi lapis penyedia, karena kolom ini dibutuhkan untuk pencarian dan laporan.
 - Alasannya: administrator database, salinan backup, dan log query tidak dapat membaca isi klinis tanpa akses ke KMS.
 
@@ -36,6 +36,8 @@ Validasi format: 16 digit angka, sesuai keterangan resmi Ditjen Dukcapil `[SRC-6
 - Berkas terkait di object storage dihapus, termasuk versi lamanya (ADR-018).
 - Anonimisasi PII di data master (ADR-003) dilakukan dengan menimpa kolom PII di tabel master (nama, kontak, alamat, NIK, dan blind index-nya). Kunci dokumen identitas dihapus. Baris transaksi tidak diubah, karena transaksi hanya merujuk data master lewat ID, atau menyimpan snapshot data pribadi di tabel snapshot kelas Master yang ikut dianonimkan.
 - Hanya role **pekerja privasi** yang boleh menghapus DEK dan menjalankan anonimisasi, bukan role aplikasi biasa. Setiap tindakannya dicatat E-16.
+- **Tabel kelas Log** yang merujuk data pribadi (misalnya bukti persetujuan, log pengiriman email) menyimpan orang hanya lewat ID atau isi terenkripsi (KEPUTUSAN-42). Bila masa retensinya habis (PT-24), baris Log dihapus oleh role pekerja privasi. Trigger penolak kelas Log hanya mengizinkan `DELETE` dari role itu, dan hanya untuk baris yang masa retensinya sudah habis menurut kebijakan retensi. Setiap penghapusan dicatat E-16. Hak ini tidak aktif selama kebijakan retensi masih kosong `[KEPUTUSAN-29]`.
+- **Akun di Keycloak** ikut dianonimkan: saat data master pasien dianonimkan, user di Keycloak dihapus lewat Admin REST API `[SRC-72]`. Event Keycloak hanya disimpan sebagai penyangga sementara (ADR-011 butir 10).
 
 **6. Retensi yang dapat diatur** `[KEPUTUSAN-29]`:
 - Tabel kebijakan retensi (kelas Master) menyimpan masa retensi dan tindakan akhir (akhiri pemrosesan, anonimkan, atau musnahkan lewat crypto-shredding) per kategori data.
@@ -59,6 +61,9 @@ Validasi format: 16 digit angka, sesuai keterangan resmi Ditjen Dukcapil `[SRC-6
 
 ## Konsekuensi
 
+- Crypto-shredding baru tuntas setelah backup yang masih memuat DEK terbungkus habis masa simpannya (ADR-019). Hal ini ditanyakan ke legal bersama L-06.
+- Profesi tenaga kesehatan dan jenis pesanan (misalnya konsultasi psikolog) tidak dienkripsi, padahal dapat mengungkap kondisi kesehatan. Kolom ini dibutuhkan untuk pencarian dan laporan, sehingga perlindungannya lewat otorisasi, audit E-05, dan enkripsi lapis penyedia. Risiko sisanya dinilai di threat model dan DPIA (BR-110).
+- Database `keycloak` adalah penyimpanan data pribadi (email, alamat IP sesi, event) yang ikut kebijakan retensi PT-24 dan PITR (ADR-019).
 - Isi klinis tidak dapat dicari dengan query database. Rilis 1 memang tidak membutuhkan pencarian isi klinis.
 - KMS menjadi ketergantungan kritis. DEK disimpan sementara di memori proses dengan batas waktu untuk menekan panggilan ke KMS. Kehilangan KEK berarti kehilangan data, sehingga prosedur backup kunci mengikuti kemampuan KMS penyedia (Tahap 5).
 - Pustaka enkripsi, pekerja privasi, dan job retensi adalah modul kritis (T1).

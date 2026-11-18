@@ -22,7 +22,7 @@ Setiap tabel masuk tepat satu dari lima kelas berikut. Kelasnya dicatat di data 
 | **Riwayat status** (bagian dari transaksi) | Setiap transisi status entitas transaksi | `SELECT`, `INSERT` saja | `id`, `<entitas>_id`, `version`, `from_status`, `to_status`, `reason_code`, `actor_*`, `created_at` |
 | **Proyeksi** | Status terkini entitas transaksi, satu baris per entitas, diturunkan dari riwayat status | `SELECT`, `INSERT`, `UPDATE`. Tanpa `DELETE` | `<entitas>_id` (PK), `status`, `version`, `updated_at` |
 | **Operasional** | Data teknis berumur pendek yang bukan bukti bisnis: sesi, antrean job, outbox, kunci idempotensi, penahanan slot, draf, kursor sinkronisasi | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | `id`, `created_at`, `expires_at` bila ada |
-| **Log** | Catatan kejadian teknis atau kepatuhan yang hanya ditambah: bukti persetujuan, notifikasi, galat integrasi, percobaan pengiriman SATUSEHAT, notifikasi payment gateway | `SELECT`, `INSERT` saja | `id`, `created_at` |
+| **Log** | Catatan kejadian teknis atau kepatuhan yang hanya ditambah: bukti persetujuan, notifikasi, galat integrasi, percobaan pengiriman SATUSEHAT, notifikasi payment gateway | `SELECT`, `INSERT` saja. Penghapusan hanya oleh role pekerja privasi setelah masa retensi habis (ADR-013) | `id`, `created_at` |
 
 Event audit punya penyimpanan sendiri di database terpisah (ADR-009) dan tidak termasuk tabel aplikasi.
 
@@ -36,7 +36,7 @@ Event audit punya penyimpanan sendiri di database terpisah (ADR-009) dan tidak t
 
 **Konvensi lain untuk semua tabel:**
 
-- Nama tabel dan kolom snake_case, tunggal (misalnya `order`, `order_status_event`) (ADR-001).
+- Nama tabel dan kolom snake_case, tunggal (misalnya `patient_order`, `patient_order_status_event`), dan tidak memakai kata kunci SQL (ADR-001, KEPUTUSAN-38).
 - Primary key `id uuid` UUIDv7 dari aplikasi (ADR-002). Tabel proyeksi memakai ID entitasnya sebagai primary key.
 - Kolom `created_by`, `updated_by`, dan `deleted_by` berisi ID akun, atau `NULL` bila pelakunya sistem. Jenis pelakunya tercatat di event audit.
 - Unique constraint di tabel master memakai partial unique index `WHERE deleted_at IS NULL` (ADR-003) `[SRC-33]`.
