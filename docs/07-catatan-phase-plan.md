@@ -144,4 +144,8 @@ Pertanyaan Checkpoint 2 dari Tahap 6 (`docs/06-catatan-design.md`) tetap berlaku
 
 ## Review sebelum gate
 
-Belum dijalankan saat catatan ini ditulis. Fact-checker dan reviewer dijalankan orkestrator; `qa-engineer` menyusun `docs/test-plan.md` dari PRD.
+- Fact-checker rencana fase (`docs/fact-check/tahap-07.md`): LULUS, 0 blokir. Lima catatan non-blokir (jalur kritis, satuan estimasi, angka CR-011, label) diperbaiki; jalur kritis dihitung ulang orkestrator dengan skrip menjadi 65 jam-task.
+- QA (`docs/test-plan.md`): 674 test case; semua story Must punya test case; 35 temuan AC (§9). Temuan T-01–T-22 menyentuh story Fase 1, sehingga gate Definition of Ready ditangani lewat `docs/07-klarifikasi-ac-fase-1.md` (putaran perbaikan 1).
+- Fact-checker klarifikasi (`docs/fact-check/tahap-07-klarifikasi.md`): LULUS, 0 blokir; konfirmasi teks ASVS 5.0.0 "From L2 onwards, multi-factor authentication mechanisms are required" (S-01).
+- Security architect (`docs/review/tahap-07-security.md`): putaran 1 TIDAK LULUS (B-01: pesan akun nonaktif membuka status akun); putaran 2 LULUS DENGAN CATATAN, 0 blokir. Catatan label baris M4 dan rumusan alasan penolakan jalur asinkron diperbaiki orkestrator; P2-1 (ukur p95 pendaftaran email baru di F1-T50, keputusan bila > 900 ms) dibawa ke Tahap 8.
+- Gate: enabler fondasi di Fase 1 dan test plan dari PRD terpenuhi; Definition of Ready story Fase 1 terpenuhi setelah klarifikasi AC disetujui di Checkpoint 2; persetujuan pembagian fase di Checkpoint 2.

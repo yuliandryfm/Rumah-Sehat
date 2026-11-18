@@ -2,11 +2,12 @@
 
 Tanggal: 2026-11-18
 Reviewer: security-architect (independen, tidak ikut menyusun dokumen yang direview)
-Tingkat ketelitian: T1 Kritis, putaran 1 dari maksimal 2 (`aturan-kerja.md` §1)
-Dokumen yang direview: `docs/07-klarifikasi-ac-fase-1.md` v0.1 (§1.4, §2, T-01–T-09, T-13, T-16, T-18, T-19, §5 S-01–S-05), KEPUTUSAN-187–197 di `docs/decision-log.md`
+Tingkat ketelitian: T1 Kritis, 2 putaran (maksimal 2) (`aturan-kerja.md` §1)
+**Status akhir (putaran 2): LULUS DENGAN CATATAN.** B-01 tertutup. Rinciannya di §10.
+Dokumen yang direview: `docs/07-klarifikasi-ac-fase-1.md` v0.1 (§1.4, §2, T-01–T-09, T-13, T-16, T-18, T-19, §5 S-01–S-05), KEPUTUSAN-187–197 di `docs/decision-log.md`. Putaran 2: v0.2 dan berkas pendukung yang berubah (§10)
 Acuan: ADR-011, ADR-012, ADR-021, ADR-025, `docs/05-asvs-checklist.md` (V6, V7), `docs/03-prd.md` (US-101, US-103, US-105, US-106, US-201, US-208, KU-10, NFR-SEC-02/03), `docs/04-threat-model.md` (APP-04, API-10, KC-01, KC-07, WEB-07, M-12, M-16, H-01, H-04, H-05), `docs/sources.md` (SRC-261, SRC-262, SRC-265)
 
-Metode: kriteria blokir mengikuti `aturan-kerja.md` §2. Setiap klaim keamanan di bawah merujuk ke halaman resmi yang saya buka sendiri hari ini, yaitu R-1–R-10 di §8. Nomor baris merujuk ke `docs/07-klarifikasi-ac-fase-1.md` v0.1.
+Metode: kriteria blokir mengikuti `aturan-kerja.md` §2. Setiap klaim keamanan di bawah merujuk ke halaman resmi yang saya buka sendiri hari ini, yaitu R-1–R-10 di §8. Nomor baris di §1–§9 merujuk ke `docs/07-klarifikasi-ac-fase-1.md` v0.1; nomor baris di §10 merujuk ke v0.2.
 
 ---
 
@@ -241,3 +242,59 @@ Yang dicari tetapi tidak ditemukan di sumber resmi: apakah alur Lupa password Ke
 2. S-01 dibawa ke Checkpoint 2 sebagai pertanyaan terpisah dengan opsi M1–M4 (§3.4), bersama C-14. Keputusan apa pun memerlukan revisi ADR-011.
 3. Orkestrator mencatat keputusan S-02 (§5.5) sebagai KEPUTUSAN, mendaftarkan R-2–R-10 ke `docs/sources.md`, dan menambahkan kutipan tambahan R-1 ke SRC-265.
 4. Catatan bertanda "sebelum task" dimasukkan ke AC atau KEPUTUSAN terkait setelah Checkpoint 2, sebelum F1-T31, F1-T50, F1-T54, F1-T57, dan F1-T65 dimulai.
+
+---
+
+## 10. Cek ulang putaran 2 (terakhir)
+
+Cakupan: hanya baris yang berubah untuk menutup blokir dan memeriksa tindak lanjut catatan (`aturan-kerja.md` §2), bukan review penuh. Yang diperiksa:
+- `docs/07-klarifikasi-ac-fase-1.md` v0.2: §2.3–§2.7, T-02 (baris 188), T-06 (baris 261), T-08 AC4d/AC4e (baris 302–308), T-13 (baris 395–401), T-19 (baris 519–535), §5, §5.1, §5.2, §6;
+- `docs/07-catatan-phase-plan.md`: pertanyaan Checkpoint 2 nomor 5, 13, dan 14;
+- `docs/decision-log.md`: KEPUTUSAN-188, -190, -192, dan -198 sampai -201;
+- `docs/sources.md`: SRC-265 sampai SRC-274;
+- pembanding: `docs/03-prd.md` NFR-PERF-02 (baris 1601) dan `docs/adr/ADR-005-audit-trail-append-only.md` baris 13.
+
+### 10.1 B-01: **tertutup**
+
+- §2.3 P1 (baris 84) mewajibkan satu pesan seragam yang identik kata per kata untuk password salah, akun tidak ada, terkunci, dan nonaktif, tanpa kalimat tambahan.
+- Pesan untuk akun terkunci dan nonaktif sama dengan pesan seragam itu: §2.4 butir 2 (baris 94) dan butir 4 (baris 96). Kalimat Layanan Pelanggan kini menjadi bagian tetap pesan seragam.
+- US-103 AC2 dan KU-10 di §2.5 (baris 107–111) sudah menyatakan hal yang sama, termasuk "tanpa kalimat atau tanda tambahan apa pun".
+- Uji teks persis untuk keempat kondisi di empat realm sudah ditulis untuk F1-T55 (baris 112).
+- Opsi A sekarang diberi tanda "Memerlukan revisi ADR-011 butir 4", sehingga C-13 juga tertutup.
+
+### 10.2 Dua penyimpangan dari saran putaran 1
+
+**(a) C-05: penyamaan waktu 900 ms, sebagai ganti pembuatan akun asinkron (§2.7 butir 4, KEPUTUSAN-201). Dapat diterima, dengan catatan.**
+- **Kesimpulannya benar, rujukannya kurang tepat.** ADR-005 baris 13 melarang password "masuk log", sedangkan muatan job bukan log. Meski begitu, menyimpan password teks asli di tabel antrean tetap tidak boleh: kredensial semestinya hanya tersimpan sebagai hash Argon2 di Keycloak (ADR-011 butir 4). Saran saya, rumuskan alasannya sebagai larangan menyimpan kredensial teks asli at rest, dengan ADR-005 sebagai pendukung. Ini non-blokir.
+- **Konsistensi dengan NFR-PERF-02.** NFR-PERF-02 menetapkan p95 ≤ 1 detik untuk API tulis (`docs/03-prd.md` baris 1601). Batas 900 ms memang di bawah target itu, tetapi hanya menyisakan 100 ms. Bila jalur pembuatan akun di atas 900 ms, dua hal terjadi bersamaan: selisih waktu kembali terlihat, dan p95 pendaftaran dapat melewati 1 detik.
+- **Catatan P2-1 (non-blokir, F1-T50).** Uji yang sudah ditulis (≥ 100 permintaan per kasus, median dan p95) juga harus melaporkan p95 jalur email baru tanpa penahanan. Bila hasilnya di atas 900 ms, pilihannya (1) menaikkan batas dengan pengecualian NFR-PERF-02 yang dicatat untuk endpoint pendaftaran, atau (2) menerima selisih sebagai risiko sisa. Keduanya dibawa sebagai keputusan, tidak diputuskan diam-diam di kode.
+
+**(b) Aturan "memuat bagian lokal email" dihapus (T-02 baris 188, KEPUTUSAN-188). Dapat diterima.**
+- ASVS 6.2.11 dan 6.1.2 (L2) mensyaratkan daftar kata konteks yang terdokumentasi. Contoh di 6.1.2 adalah nama organisasi, produk, dan sistem; bagian lokal email bukan syarat butir tersebut `[SRC-265]`.
+- Daftar kata konteks tetap ada dan sudah ditambah "rumah sehat"/"rumahsehat". "Not email" tetap aktif `[SRC-270]`.
+- Kebijakan yang sama berlaku di semua jalur, sesuai 6.1.3 dan 6.3.4.
+- Ketiga daftar (kata sandi umum, bocor, kata konteks) berupa berkas lokal, sehingga tidak bertentangan dengan T4-Q1.
+
+### 10.3 Pencerminan catatan lain
+
+Tidak ada yang salah secara substantif.
+
+- **S-01** (§5.1; pertanyaan nomor 14 berlabel "Perubahan ADR yang sudah diterima (ADR-011)"): kutipan ketiga teks ASVS, opsi M1–M4, tabel faktor kedua, dan posisi angka 15 karakter cocok dengan §3. Penyusun tidak memberi default. Satu catatan kecil: kalimat "ASVS tidak membahas level berbeda per komponen" di baris 646 sebaiknya diberi label `[SRC-267]` `[SRC-268]` dan dibatasi pada halaman yang dibuka (non-blokir).
+- **UP-78** (§5.2): 7.5.2 dan 7.1.2 sudah disajikan sebagai opsi untuk user, dan opsi (b)/(c) diberi tanda tidak memenuhi L2 penuh. Sudah benar.
+- **KEPUTUSAN-198**: sesuai §5.5. Jeda paling lama 2 menit sudah tertulis dan dapat diuji. Pengguna juga tidak otomatis masuk setelah atur ulang.
+- **KEPUTUSAN-199**: sesuai C-12. Bila alur Reset Credentials ternyata tidak dapat dikonfigurasi supaya meminta OTP, temuannya wajib dibawa ke user sebelum F1-T31 ditutup.
+- **Bootstrap Super Admin** (T-19 baris 519–533): keempat kontrol C-09 masuk, yaitu Control Group (persetujuan orang kedua), undangan yang menunggu aktivasi ikut dihitung, transaksi berkunci, dan undangan sekali pakai 24 jam. Audit juga mencatat identitas penyetuju. Butir (d) dengan opsi M-16 dan larangan mencabut Auditor terakhir menjawab C-10.
+- **Catatan lain yang juga tertutup**: C-03, C-04, C-06, C-08, C-11 (dengan batas per NIK lintas akun, lebih kuat dari usulan saya), dan C-14.
+
+### 10.4 SRC-266 sampai SRC-274: **sesuai**
+
+URL dan kutipan SRC-266 sampai SRC-274 cocok dengan R-2 sampai R-10 di §8. Kutipan tambahan di SRC-265 cocok dengan R-1. Tidak ada kutipan yang melebihi isi halaman yang saya buka.
+
+### 10.5 Verdict akhir
+
+**LULUS DENGAN CATATAN.** Blokir: nol. Catatan non-blokir yang tersisa:
+- **P2-1**: margin 900 ms terhadap NFR-PERF-02 diukur di F1-T50 (§10.2 a).
+- Alasan penolakan jalur asinkron dirumuskan sebagai larangan menyimpan kredensial teks asli at rest.
+- Label sumber untuk baris 646.
+
+Ketiganya tidak memicu putaran review baru. S-01 dan UP-78 tetap menjadi keputusan user di Checkpoint 2.
