@@ -69,3 +69,26 @@ Catatan penyusun: PT-28 terjawab sebagian. Pajak dihitung dari (harga rekanan + 
 **T5-Q12. Apa nama resmi aplikasi ini?** (konteks: satu-satunya gambar di `docs/input/` (`Rumah Sehat Apps.jpeg`) memuat logo, palet warna (#087F78, #DFF4ED, #FAFBF7, #FFFFFF), ikon, dan contoh layar dengan nama "RuangSehat" dan slogan "Satu ruang untuk kesehatan Anda.", sedangkan semua dokumen memakai "Rumah Sehat". Pilihan: (1) Rumah Sehat, wordmark RuangSehat tidak dipakai; (2) RuangSehat menggantikan, lewat change request; (3) keduanya dengan pembagian)
 Jawaban: "Rumah Sehat".
 Catatan penyusun: nama resmi tetap "Rumah Sehat". Wordmark dan slogan "RuangSehat" di pamflet tidak dipakai; simbol logo (rumah dengan daun) dan palet warna pamflet dapat menjadi masukan Tahap 6 (Design Guideline), dan logo bertulisan "Rumah Sehat" dibuat di Tahap 6. PDF ringkasan BRD memakai simbol tanpa tulisan.
+
+## Review sebelum gate
+
+- Review DBA (`docs/review/tahap-05-dba.md`): putaran 1 TIDAK LULUS (DBA5-B01 relay memegang kredensial verifier; DBA5-B02 jalur DISABLE TRIGGER; DBA5-B03 kunci teks persetujuan terbit), putaran 2 LULUS DENGAN CATATAN; catatan 1–4 diterapkan. CR-014 dan RT-31 dari temuan F-P04, N04, F-P13.
+- Review keamanan (`docs/review/tahap-05-security.md`): putaran 1 TIDAK LULUS (B-01 runner staging dan kepercayaan jaringan privat; B-02 administrasi OpenBao), putaran 2 LULUS DENGAN CATATAN (13 Tercermin, 4 Sebagian, 0 Belum). KEPUTUSAN-143–152.
+- Fact-check (`docs/fact-check/tahap-05.md`): TIDAK LULUS (FC5-B01 SRC-156 tanpa URL; FC5-B02 klaim DOKU dari ringkasan tanya-jawab; FC5-B03 `sendDefaultPii` tanpa sumber), cek ulang LULUS. SRC-255 ditambahkan.
+
+## Gate Tahap 5
+
+2026-11-18. Ditampilkan: hasil kerja, hasil tiga review, rekap jawaban T5-Q1–T5-Q12, checklist gate dan gate anti-halu. Pertanyaan diajukan satu per satu.
+
+**G1. Apakah rekap jawaban Tahap 5 (T5-Q1 sampai T5-Q12) sudah benar?** (pilihan: benar semua; ada yang salah)
+Jawaban: "Benar semua".
+
+**G2. Apakah paket tafsiran dan keputusan teknis disetujui sekaligus?** ((a) Valkey menggantikan "Redis" (T4-Q4); (b) BFF web di server Next.js (tafsiran ADR-011 butir 7); (c) lalu lintas di dalam satu host lewat jaringan Docker privat tanpa TLS, antar-host tetap TLS (tafsiran ADR-013 butir 1); (d) pelepasan partisi arsip audit lewat prosedur yang ikut migrasi, dipanggil lewat bastion dengan orang kedua (tafsiran ADR-021 butir 4); (e) CR-014; (f) baseline biaya infrastruktur ±Rp8,26 juta/bulan dengan sewa staging Desember 2026 dan production Februari 2027, di luar LB, PPN, SES, Lalamove, MDR; (g) cakupan 80% baris modul kritis dengan ratchet dan patch Moderate ≤ 30 hari; (h) Grafana/Loki AGPL-3.0 tanpa modifikasi, OpenBao MPL-2.0; (i) rincian penyusun atas T5-Q9/Q10 ("ditanggung PT. Arunika di luar anggaran proyek") dan T5-Q11a (tarif pajak parameter diatur Keuangan). Pilihan: setujui semua (rekomendasi penyusun); ada yang ingin diubah)
+Jawaban: "Setujui semua (Recommended)".
+
+**G3. Bagaimana risiko keamanan sisa akibat CR-012 dan stack baru ditangani?** (G-01 Magic Transit terhadap T4-Q1; G-02 enkripsi disk penyedia belum diketahui; G-03 tanpa review yang tidak dapat dilewati sebelum `main`; G-04 kunci cosign di secret GitHub; G-06 login pasien tanpa MFA bila batas laju per IP tidak berjalan; G-08 MFA panel penyedia belum diketahui; RT-31 volume audit vs disk 60 GB. Pilihan: (1) terima sementara, G-01/G-02/G-08 dikonfirmasi tertulis ke penyedia (PT-39), G-06 dan RT-31 dibuktikan sebelum go-live, hasil buruk dibawa lagi ke user (rekomendasi penyusun); (2) terima semua final; (3) tolak Magic Transit; (4) ada yang diubah)
+Jawaban: "Terima sementara (Recommended)".
+
+**G4. Persetujuan gate Tahap 5** (termasuk `docs/coding-standards.md`, ADR-024/ADR-025 diterima, CR-012/013/014, KEPUTUSAN-74–159; yang tetap terbuka: PT-35, PT-36, PT-37, PT-38 (minimal dua identitas berwenang untuk migrasi production, KEPUTUSAN-151), PT-39, sisa PT-28, PT-20)
+Jawaban: "Setujui gate Tahap 5 (Recommended)".
+Catatan penyusun: gate Tahap 5 disetujui. Dokumen Tahap 5 naik ke v1.0; ADR-024 dan ADR-025 Diterima; CR-012–CR-014 disetujui; KEPUTUSAN-74–159 dikonfirmasi; risiko G-01, G-02, G-03, G-04, G-06, G-08, RT-31 diterima sementara dengan syarat di atas.

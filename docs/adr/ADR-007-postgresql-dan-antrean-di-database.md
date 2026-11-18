@@ -1,7 +1,7 @@
 # ADR-007: PostgreSQL sebagai database, antrean kerja dan outbox di PostgreSQL, dan Redis sebagai komponen pendukung
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`; revisi 2026-11-18 sesuai `[USER] T4-Q4`: Redis ditambahkan sebagai komponen pendukung, tanpa message broker)
-Perubahan: komponen "Redis" diimplementasikan dengan Valkey (ADR-025, KEPUTUSAN-77), menunggu konfirmasi user di gate Tahap 5.
+Perubahan: komponen "Redis" diimplementasikan dengan Valkey (ADR-025, KEPUTUSAN-77), dikonfirmasi user di gate Tahap 5 (2026-11-18, T5-G2).
 Tanggal: 2026-11-18
 
 ## Konteks

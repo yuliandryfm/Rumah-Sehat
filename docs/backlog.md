@@ -325,7 +325,7 @@ Dampak ke scope / waktu / arsitektur:
 - Pertanyaan terbuka baru: PT-35 (pemelihara setelah go-live), PT-36 (konfirmasi tertulis DOKU dan Xendit), PT-37 (konfirmasi tertulis Lalamove), PT-38 (pemegang share unseal OpenBao dan orang kedua), PT-39 (konfirmasi Biznet Gio: protokol load balancer, perutean Magic Transit, PPN).
 - **Catatan tafsiran US-703 AC3 (PRD tidak diubah):** dengan kurir Lalamove saja, "pilihan kurir" pada US-703 AC3 dibaca sebagai jenis layanan atau kendaraan Lalamove yang tersedia untuk alamat itu. Alamat di luar area layanan Lalamove membuat checkout tidak dapat dilanjutkan, sesuai kalimat kedua AC3 `[USER] T5-Q5`. Tafsiran ini ditampilkan di gate Tahap 5.
 - Syarat final penyedia: DOKU (atau Xendit) final setelah konfirmasi tertulis atas lokasi pemrosesan dan penyimpanan data, nomor izin BI, split settlement untuk markup dan bagian rekanan, refund dari dana yang sudah terbagi (PT-27), dan biaya (PT-36). Lalamove final setelah konfirmasi tertulis lokasi data (PT-37). Penyedia yang memproses data di luar Indonesia tidak dipilih (US-1406 AC2, `[USER] T4-Q1`).
-Keputusan: Disetujui user lewat T5-Q1–T5-Q8 (2026-11-18). Final di gate Tahap 5, termasuk konfirmasi Valkey sebagai pengganti "Redis" (T4-Q4) dan penilaian user atas perutean Magic Transit terhadap T4-Q1
+Keputusan: Disetujui user lewat T5-Q1–T5-Q8 dan final di gate Tahap 5 (2026-11-18, T5-G2–G4): Valkey sebagai pengganti "Redis" dikonfirmasi (T5-G2 a); perutean Magic Transit diterima sementara sampai dikonfirmasi tertulis ke Biznet Gio (T5-G3, PT-39)
 
 ### CR-013: Pajak dikenakan atas harga rekanan + markup dan ditambahkan ke total
 
@@ -333,7 +333,7 @@ Diajukan: 2026-11-18 (Tahap 5, jawaban PT-28; `docs/05-catatan-stack.md` T5-Q11,
 Deskripsi: pajak dihitung dari (harga rekanan + markup) setelah markup diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga `[USER] T5-Q11, T5-Q11a`. Tarif pajak menjadi parameter berlaku-mulai yang diatur Keuangan (pola docs/04-data-dictionary.md §0.8). Jenis pajak, tarif, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan isi bukti bayar `[TIDAK DIKETAHUI]` (sisa PT-28).
 Alasan: jawaban user atas PT-28 ("sama seperti layanan lainnya, karena markup dulu baru dibebakan pajaknya") dan pilihan "Di atas harga rekanan+markup".
 Dampak ke scope / waktu / arsitektur: rumus harga PRD AB-11/AB-12 dan tampilan rincian harga (US-801, US-812) bertambah komponen pajak; harga terkunci (ADR-015 butir 3) menyimpan tarif dan nominal pajak; jurnal berpasangan menambah akun pajak tanpa perubahan struktur (ADR-015 konsekuensi); data dictionary A6/A8/A13 bertambah kolom/parameter pajak lewat migrasi; laporan keuangan dan rekonsiliasi. Teks PRD dan data dictionary diperbarui lewat CR ini sebelum pengembangan EP-08, setelah sisa PT-28 dijawab.
-Keputusan: Disetujui user (T5-Q11a, 2026-11-18) untuk arah rumus; penerapan ke PRD dan data dictionary dijadwalkan di Tahap 7, sebelum EP-08. Final di gate Tahap 5
+Keputusan: Disetujui user (T5-Q11a, 2026-11-18) untuk arah rumus; penerapan ke PRD dan data dictionary dijadwalkan di Tahap 7, sebelum EP-08. Disetujui di gate Tahap 5 (2026-11-18, T5-G4)
 
 ### CR-014: Perbaikan teknis data dictionary dari review DBA Tahap 5
 
@@ -343,7 +343,7 @@ Deskripsi:
 - Hak pembersihan `rme_slot_hold` dan `rme_upload_slot` untuk `rme_worker` (`SELECT` kolom yang diperlukan + `DELETE` dengan kebijakan RLS pembersihan baris kedaluwarsa), karena data dictionary §D.2 mewajibkan pembersihan tetapi hak `rme_worker` di §0.6 C tidak memuatnya.
 Alasan: celah teknis yang ditemukan DBA. Memberi `UPDATE` ke role aplikasi atas `data_key` ditolak karena bertentangan dengan ADR-013 §5 dan KEPUTUSAN-66.
 Dampak ke scope / waktu / arsitektur: data dictionary A19 dan C (tabel baru dan hak role) diperbarui setelah gate; desain fisik di `docs/05-physical-schema.md`. Tanpa perubahan PRD atau BRD. Keputusan teknis penyusun, ditampilkan di gate.
-Keputusan: Diusulkan; final di gate Tahap 5
+Keputusan: Disetujui di gate Tahap 5 (2026-11-18, T5-G2 e); data dictionary A19 dan C diperbarui saat migrasi terkait dibuat di Tahap 8
 
 ## Tech Debt
 

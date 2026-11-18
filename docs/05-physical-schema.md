@@ -1,7 +1,7 @@
 # Skema Fisik PostgreSQL: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2 (perbaikan putaran 1 atas `docs/review/tahap-05-dba.md`: blokir DBA5-B01–B03 dan non-blokir N01–N10; menunggu cek ulang DBA, `security-architect`, dan fact-check)
+Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona DBA senior + Principal Engineer)
 Tingkat ketelitian: **T1 Kritis** (model data, migrasi, hak role, RLS, audit, enkripsi)
 Target: PostgreSQL 18.7, dijalankan sendiri `[SRC-118]` `[KEPUTUSAN-77]`

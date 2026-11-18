@@ -1,6 +1,6 @@
 # ADR-025: Hosting VPS Biznet Gio dan Hostinger, OpenBao sebagai pengelola kunci dan rahasia, Valkey, serta observability dan pipeline yang dijalankan sendiri
 
-Status: Diusulkan (menunggu gate Tahap 5; butir Valkey menunggu konfirmasi user karena T4-Q4 menyebut "Redis")
+Status: Diterima (gate Tahap 5, 2026-11-18 `[USER] T5-G4`)
 Tanggal: 2026-11-18
 
 ## Konteks

@@ -1,7 +1,7 @@
 # Coding Standards: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf Tahap 5, menunggu gate Tahap 5)
+Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona Principal Engineer / Tech Lead)
 Tingkat ketelitian: **T2 Standar**. Bagian yang menyangkut modul kritis (§5.3–§5.7, §7.3, §10) **T1**.
 Pembaca: developer di Tahap 8, yaitu Claude (backend Rust, web Next.js) dan mobile developer (Flutter), serta subagent `code-reviewer`.

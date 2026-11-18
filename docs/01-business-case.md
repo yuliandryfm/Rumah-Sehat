@@ -144,6 +144,8 @@ Anggaran total `[TIDAK DIKETAHUI]` `[DOK] P7.1` (PT-11). Periode pembangunan sam
 
 **Total yang sudah bernilai:** Rp34–68 juta ditambah US$25 sampai go-live, dan Rp120–240 juta untuk 12 bulan operasi. Total ini **bukan total biaya proyek**, karena sebagian besar komponen belum bernilai.
 
+**Pembaruan gate Tahap 5 (2026-11-18):** baseline biaya yang disetujui `[USER] T5-G2` mencakup infrastruktur ±Rp8,26 juta/bulan (rincian dan total sampai go-live serta 12 bulan operasi di `docs/05-stack.md` §11), mobile developer Rp34–68 juta sampai go-live (penuh waktu sampai go-live saja `[USER] T5-Q7`), Apple Developer Program USD 99/tahun `[SRC-244]`, dan Google Play USD 25. Biaya tim selain developer dan biaya legal/perizinan di luar anggaran proyek `[USER] T5-Q9, T5-Q10`. Komponen yang belum bernilai (load balancer, PPN, SES, Lalamove, MDR, audit keamanan eksternal) tetap `[TIDAK DIKETAHUI]`. WhatsApp dan push notification tidak lagi dipakai (CR-007).
+
 **Toleransi biaya:** +20% dari perkiraan biaya terakhir yang disetujui `[USER] T1-Q8`. Karena perkiraan saat ini belum lengkap, baseline biaya yang menjadi acuan toleransi baru bisa ditetapkan setelah komponen pihak ketiga dihitung di Tahap 4–5 (lihat bagian 9).
 
 ### 6.2 Waktu

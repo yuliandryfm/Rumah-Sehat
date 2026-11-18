@@ -1,7 +1,7 @@
 # ADR-011: Target ASVS Level 2, dengan Keycloak sebagai identity provider dan pencabutan sesi seketika di aplikasi
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`; revisi 2026-11-18 sesuai `[USER] T4-Q4`: autentikasi memakai Keycloak, menggantikan rancangan autentikasi buatan sendiri)
-Perubahan: butir 7 (BFF) ditafsirkan oleh ADR-024 — BFF dijalankan di server Next.js ([USER] T5-Q1), menunggu gate Tahap 5.
+Perubahan: butir 7 (BFF) ditafsirkan oleh ADR-024 — BFF dijalankan di server Next.js ([USER] T5-Q1), diterima di gate Tahap 5 (2026-11-18).
 Tanggal: 2026-11-18
 
 ## Konteks

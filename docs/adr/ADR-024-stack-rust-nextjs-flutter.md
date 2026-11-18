@@ -1,6 +1,6 @@
 # ADR-024: Stack aplikasi, yaitu backend Rust, web Next.js dengan server Next.js sebagai BFF, mobile Flutter, dan satu monorepo
 
-Status: Diusulkan (menunggu gate Tahap 5)
+Status: Diterima (gate Tahap 5, 2026-11-18 `[USER] T5-G4`)
 Tanggal: 2026-11-18
 
 ## Konteks

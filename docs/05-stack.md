@@ -1,7 +1,7 @@
 # Stack Teknologi dan Platform: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2, draf menunggu gate Tahap 5 (perbaikan setelah review keamanan dan DBA putaran 1–2 serta fact-check)
+Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona Principal Engineer + DevOps/Platform Engineer)
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: Arsitektur v1.0 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-023 (diterima), jawaban user Tahap 5 `[USER] T5-Q1`–`T5-Q8` (`docs/05-catatan-stack.md`), KEPUTUSAN-74–KEPUTUSAN-89 (`docs/decision-log.md`), sumber SRC-84–SRC-247 (`docs/sources.md`)

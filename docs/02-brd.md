@@ -415,8 +415,8 @@ Sesuai rencana tinjauan `[DOK: 01-business-case.md]` §9:
 | PT-08, PT-10, PT-12, PT-13, PT-15 | Terjawab di Tahap 3 | PT-08: T3-Q9; PT-10: target desain T3-Q11; PT-12: T3-Q12; PT-13: T3-Q1–Q1c, T3-Q15 (CR-006); PT-15: T3-Q10. Rincian di PRD §12.1 | — |
 | PT-16 | Terjawab | T2-Q10, T2-Q11 (bagian 1.2) | — |
 | PT-17 | Terbuka | Besaran markup, serta dipakai-tidaknya, bentuk, dan besaran biaya rekanan ditetapkan CEO sebelum go-live; sistem menyediakan pengaturannya (T2-Q1, T2-Q16) | Tidak |
-| PT-18 | Terbuka | Tenggat dipindah ke gate Tahap 5 bersama baseline biaya `[USER] T4-G4` | Tidak |
-| PT-19 | Terbuka | Status mobile developer penuh waktu belum dijawab. Tenggat baru: gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
+| PT-18 | Terjawab | Biaya PM, langganan Claude, dan staf operasional admin (termasuk siaga) di luar anggaran proyek, ditanggung PT. Arunika `[USER] T5-Q9`. Siapa yang menjalankan siaga: PT-35 (`docs/05-stack.md` §13) | — |
+| PT-19 | Terjawab | Mobile developer penuh waktu sampai go-live saja `[USER] T5-Q7`; pemeliharaan setelah go-live menjadi PT-35 | — |
 
 Catatan PT-06: kalimat "pembayaran ke tenaga kesehatan menjadi urusan klinik rekanan" adalah turunan logis dari T2-Q2 dan disetujui user di gate Tahap 2 `[USER] T2-Gate`.
 
@@ -431,9 +431,9 @@ Kolom Pemilik dan Tenggat diusulkan penyusun dan disetujui user di gate Tahap 2 
 | PT-22 | Apakah keputusan "data di Indonesia" juga berlaku untuk penyedia video, email, WhatsApp, push, dan login Google/Apple? **Terjawab:** semua di Indonesia tanpa kecuali `[USER] T4-Q1`; akibatnya CR-007 `[USER] T4-Q2` | User (PM), CEO, CTO | Sebelum Tahap 4 | Tidak |
 | PT-23 | Siapa pejabat/petugas PDP dan pemilik proses notifikasi insiden (internal atau eksternal)? | CEO | Sebelum Tahap 10 | Tidak |
 | PT-24 | Masa retensi per jenis data (setelah L-05) | CEO, berdasarkan pendapat legal | Sebelum Tahap 4 (model data) | Tidak |
-| PT-25 | Anggaran dan waktu perizinan, legal, dan kepatuhan | CEO | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
+| PT-25 | Anggaran dan waktu perizinan, legal, dan kepatuhan **Terjawab (anggaran):** di luar anggaran proyek `[USER] T5-Q10`; waktu perizinan `[TIDAK DIKETAHUI]`, dipantau sebagai risiko jadwal | CEO | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
 | PT-26 | Bagaimana data anggota keluarga dipakai: apakah pasien dapat memesan konsultasi, pendaftaran, home visit, atau produk untuk anggota keluarga? **Terjawab:** BR-008 `[USER] T3-Q3, T3-Q3a` | User (PM) | Tahap 3 | — |
 | PT-27 | Refund setelah dana terbagi langsung ke rekening rekanan (BR-041, BR-045), kini untuk semua layanan termasuk pembatalan sebelum batas waktu (CR-005): siapa yang menanggung, termasuk MDR atas transaksi yang di-refund, dan bagaimana dana ditarik kembali dari rekanan? | CEO; mekanisme teknis di Tahap 4–5 | Tahap 3 (aturan bisnis), Tahap 4–5 (mekanisme). **Aturan bisnis terjawab:** penyebab menanggung, PRD §3.5 `[USER] T3-Q7` | Tidak |
-| PT-28 | Perlakuan pajak atas markup dan pembagian dana langsung untuk semua layanan (usulan review kepatuhan CR-005, pemilik dan tenggat diusulkan penyusun dan disetujui user di gate revisi `[USER] T2-Gate-CR005`; ketentuannya `[TIDAK DIKETAHUI]`) | CEO, dengan konsultan pajak | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
+| PT-28 | Perlakuan pajak atas markup dan pembagian dana langsung untuk semua layanan (usulan review kepatuhan CR-005, pemilik dan tenggat diusulkan penyusun dan disetujui user di gate revisi `[USER] T2-Gate-CR005`; ketentuannya `[TIDAK DIKETAHUI]`) **Terjawab sebagian:** pajak dihitung dari (harga rekanan + markup) dan ditambahkan ke total, baris terpisah `[USER] T5-Q11, T5-Q11a` (CR-013); jenis, tarif, perlakuan ongkir/biaya transaksi, pemungut, dan bukti bayar masih terbuka, tenggat sebelum EP-08 | CEO, dengan konsultan pajak | Gate Tahap 5 bersama baseline biaya (dipindah di gate Tahap 4 `[USER] T4-G4`) | Tidak |
 
 Pertanyaan terbuka baru dari Tahap 3 (PT-29 sampai PT-33) tercatat di `docs/03-prd.md` §12.2.

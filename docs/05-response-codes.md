@@ -1,7 +1,7 @@
 # Registry `response_code`: Rumah Sehat dan RME minimalis
 
 Tanggal: 2026-11-18
-Versi: 0.1, draf menunggu gate Tahap 5
+Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona Principal Engineer)
 Dasar: ADR-023 `[DOK: adr/ADR-023-format-respons-api.md]` (format envelope dan `response_code`), ADR-012 (404 untuk objek terlarang), ADR-014 (idempotensi, batas waktu 5 detik), ADR-010 (isi galat tanpa data terlarang), PRD v1.1 KU-01, KU-03, KU-08, AB-36 `[DOK: 03-prd.md]`, KEPUTUSAN-84 (`docs/decision-log.md`)
 Tingkat ketelitian: T2 Standar (`aturan-kerja.md` §1)

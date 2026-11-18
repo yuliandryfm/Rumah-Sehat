@@ -1,7 +1,7 @@
 # Checklist ASVS 5.0.0 Level 2: Rumah Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.2 (perbaikan setelah review keamanan; draf untuk gate Tahap 5)
+Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona Security Architect)
 Tingkat ketelitian: **T1 Kritis** (keamanan, autentikasi/otorisasi, data pribadi spesifik, kunci, pipeline; `aturan-kerja.md` §1)
 Dasar: ADR-011 butir 1 (target ASVS 5.0.0 Level 2; "Pemetaan kontrol disusun di Tahap 5 sebagai checklist dan diverifikasi di Tahap 10") `[KEPUTUSAN-26]`; arsitektur §7 dan §11 baris "Checklist ASVS L2" `[DOK: 04-arsitektur.md]`; threat model v1.0 §6.2–§6.3 `[DOK: 04-threat-model.md]`; ADR-009, -010, -012, -013, -014, -016, -018, -021, -023 `[DOK: adr/]`; keputusan Tahap 5 KEPUTUSAN-74–KEPUTUSAN-89 `[DOK: decision-log.md]`; jawaban user T5-Q1–T5-Q8 `[DOK: 05-catatan-stack.md]`.
