@@ -14,7 +14,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-**1. Event dibuat oleh aplikasi**, lewat satu pustaka audit yang dipakai semua modul Rumah Sehat dan RME minimalis. Pencatatan tidak memakai trigger database atau CDC, karena keduanya tidak melihat aktor, alamat IP, perangkat, subjek data, dan ID korelasi, dan tidak dapat mencatat akses baca (E-05) `[KEPUTUSAN-22]`.
+**1. Event dibuat oleh aplikasi**, lewat satu pustaka audit yang dipakai semua modul Ruang Sehat dan RME minimalis. Pencatatan tidak memakai trigger database atau CDC, karena keduanya tidak melihat aktor, alamat IP, perangkat, subjek data, dan ID korelasi, dan tidak dapat mencatat akses baca (E-05) `[KEPUTUSAN-22]`.
 
 **2. Jalur tulis atomik lewat outbox** `[KEPUTUSAN-22]`:
 - Aksi yang mengubah data: event ditulis ke tabel `audit_outbox` di database aplikasi dalam **transaksi yang sama** dengan perubahan bisnisnya. Kalau penulisan event gagal, seluruh transaksi batal dan pengguna menerima pesan gagal (KEPUTUSAN-15).
@@ -27,7 +27,7 @@ Tanggal: 2026-11-18
 **3. Relay ke audit store.** Relay berjalan sebagai deployment terpisah yang hanya memegang kredensial `audit_relay` dan `audit_writer`; worker bisnis tidak memegangnya (threat model M-23). Satu pekerja relay (satu instans aktif pada satu waktu) membaca outbox berurutan, menulis event ke audit store, lalu menghapus baris outbox yang sudah terkirim. Target jeda outbox ke store di bawah 1 menit pada kondisi normal. Umur baris outbox tertua dipantau, dan jeda di atas 5 menit memicu peringatan keamanan `[KEPUTUSAN-22]`.
 
 **4. Audit store terpisah** `[KEPUTUSAN-22]`:
-- Database PostgreSQL tersendiri, di instans database yang terpisah dari database aplikasi di production (ADR-019). Rumah Sehat dan RME minimalis masing-masing punya database audit sendiri.
+- Database PostgreSQL tersendiri, di instans database yang terpisah dari database aplikasi di production (ADR-019). Ruang Sehat dan RME minimalis masing-masing punya database audit sendiri.
 - Tabel `audit_event` dipartisi per bulan berdasarkan `recorded_at` `[SRC-39]`. Primary key-nya komposit `(event_id, recorded_at)` karena kolom partisi harus ikut di constraint unik. `event_id` tetap UUIDv7 dari aplikasi, dan keunikannya secara global dijaga lewat tabel kunci event. Bentuk ini dianggap memenuhi ADR-002 (detail di data dictionary §B) `[KEPUTUSAN-56]`.
 - Role: `audit_writer` (relay, `INSERT` ditambah baca sempit atas kepala rantai, yaitu `seq` dan `event_hash` terakhir, lewat fungsi atau view khusus supaya relay dapat melanjutkan rantai setelah restart), `audit_reader` (backoffice dan RME, hanya `SELECT`), dan `audit_verifier` (job verifikasi: baca event dan tulis hasil verifikasi). Tidak ada role aplikasi yang punya `UPDATE`, `DELETE`, atau `TRUNCATE`. Role pemilik skema hanya dipakai pipeline migrasi.
 - Trigger menolak `UPDATE`, `DELETE`, dan `TRUNCATE` di `audit_event` `[SRC-40]`. Percobaan yang ditolak menghasilkan peringatan keamanan dari log database (ADR-010).

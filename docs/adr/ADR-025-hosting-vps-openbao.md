@@ -29,10 +29,10 @@ Production, Biznet Gio:
 | Host | Paket | Harga/bulan | Sumber | Isi |
 | --- | --- | --- | --- | --- |
 | app-1, app-2 | NEO Lite Pro MM.8.4 (4 vCPU, 8 GB, 80 GB NVMe) | Rp999.000 × 2 | `[SRC-94]` | Caddy, `api`, `realtime`, `worker`, 3 server Next.js, RME `api`/`worker`, Keycloak (1 node per host, klaster 2 node), agen metrik/log, ditambah deployment khusus audit dan privasi (lihat catatan di bawah tabel) |
-| db-app | NEO Lite Pro ML.16.8 (8 vCPU, 16 GB, 90 GB) | Rp1.799.000 | `[SRC-94]` | Instans PostgreSQL (a): database aplikasi Rumah Sehat dan database `keycloak`; pgBackRest |
+| db-app | NEO Lite Pro ML.16.8 (8 vCPU, 16 GB, 90 GB) | Rp1.799.000 | `[SRC-94]` | Instans PostgreSQL (a): database aplikasi Ruang Sehat dan database `keycloak`; pgBackRest |
 | db-rme | NEO Lite Pro MM.4.4 (4 vCPU, 4 GB, 60 GB) | Rp699.000 | `[SRC-94]` | Instans PostgreSQL (c): RME minimalis |
-| db-audit | NEO Lite Pro MS.4.2 (2 vCPU, 4 GB, 60 GB) | Rp559.000 | `[SRC-94]` | Instans PostgreSQL (b): audit Rumah Sehat dan audit RME; tanpa standby (ADR-019 butir 3) |
-| cache | NEO Lite MS 4.4 (4 vCPU, 4 GB, 60 GB SSD) | Rp179.000 | `[SRC-93]` | Valkey Rumah Sehat dan Valkey RME (instans terpisah) |
+| db-audit | NEO Lite Pro MS.4.2 (2 vCPU, 4 GB, 60 GB) | Rp559.000 | `[SRC-94]` | Instans PostgreSQL (b): audit Ruang Sehat dan audit RME; tanpa standby (ADR-019 butir 3) |
+| cache | NEO Lite MS 4.4 (4 vCPU, 4 GB, 60 GB SSD) | Rp179.000 | `[SRC-93]` | Valkey Ruang Sehat dan Valkey RME (instans terpisah) |
 | video | NEO Lite Pro MM.8.4 | Rp999.000 | `[SRC-94]` | LiveKit dan TURN (ADR-016, KEPUTUSAN-87); kebutuhan CPU dan bandwidth untuk 100 sesi `[TIDAK DIKETAHUI]`, diukur lewat uji beban |
 | bao-1, bao-2 | NEO Lite MS 4.2 (2 vCPU, 4 GB, 60 GB) | Rp139.000 × 2 | `[SRC-93]` | OpenBao, penyimpanan Raft |
 | ops | NEO Lite MM 8.4 (4 vCPU, 8 GB, 60 GB) | Rp269.000 | `[SRC-93]` | Prometheus, Alertmanager, Grafana, Loki, GlitchTip |
@@ -44,9 +44,9 @@ Deployment khusus audit dan privasi di app-1 dan app-2 (review DBA Tahap 5, DBA5
 
 | Deployment | Sistem | Kredensial yang dipegang | Catatan |
 | --- | --- | --- | --- |
-| `audit-relay` | Rumah Sehat dan RME (deployment terpisah) | Hanya `audit_relay` dan `audit_writer` | ADR-009 butir 3 |
-| `audit-verify` | Rumah Sehat dan RME | Hanya role verifier audit (`audit_verifier`) dan baca bucket WORM | Membaca kepala rantai dari bucket WORM dan mengirim peringatan secara independen dari relay (ADR-009 butir 5) |
-| `privacy-worker` | Rumah Sehat dan RME | Hanya role pekerja privasi dan hak hapus object storage | ADR-013 butir 5 |
+| `audit-relay` | Ruang Sehat dan RME (deployment terpisah) | Hanya `audit_relay` dan `audit_writer` | ADR-009 butir 3 |
+| `audit-verify` | Ruang Sehat dan RME | Hanya role verifier audit (`audit_verifier`) dan baca bucket WORM | Membaca kepala rantai dari bucket WORM dan mengirim peringatan secara independen dari relay (ADR-009 butir 5) |
+| `privacy-worker` | Ruang Sehat dan RME | Hanya role pekerja privasi dan hak hapus object storage | ADR-013 butir 5 |
 
 Production, Hostinger Jakarta `[SRC-85]`:
 
@@ -69,9 +69,9 @@ Total bulanan: Biznet production Rp6.860.000, object storage ±Rp300.000, Hostin
 - Firewall: yang publik hanya load balancer (443), bastion (22, dibatasi sumbernya), dan port WebRTC/TURN host `video` (port persis dari konfigurasi LiveKit, Tahap 8). Lalu lintas privat tidak dipercaya otomatis: production default deny dengan daftar izin per host asal, host tujuan, dan port `[KEPUTUSAN-144]`; staging di jaringan privat terpisah tanpa rute ke production `[KEPUTUSAN-143]`.
 - Firewall production menolak semua lalu lintas secara bawaan (default deny) dan hanya membuka daftar izin per host asal, host tujuan, dan port, bukan seluruh jaringan privat `[KEPUTUSAN-144]`. Contoh daftar izin: app → db-app, db-rme, db-audit (PostgreSQL, misalnya 5432); app → cache (Valkey, misalnya 6379); app dan bastion → bao (OpenBao, misalnya 8200); ops → exporter di setiap host; db-standby Hostinger ↔ db-app dan db-rme hanya lewat terowongan WireGuard. Nomor port final mengikuti konfigurasi di `infra/` dan direview bersama aturan firewall.
 - Observability tidak diekspos ke publik `[KEPUTUSAN-145]`: Grafana hanya dapat dibuka di belakang login SSO admin ber-MFA (mekanisme diverifikasi Tahap 8); Loki dan Prometheus hanya menerima koneksi dari host `ops` dan dari agen yang terautentikasi; akses manusia ke host `ops` lewat bastion.
-- TLS diterminasi di Caddy milik Rumah Sehat di app-1 dan app-2. Caddy mendukung WebSocket di `reverse_proxy` dan HTTPS otomatis `[SRC-237]` `[SRC-189]`. Load balancer NEO dipakai sebagai listener TCP bila tersedia. Protokol listener dan dukungan WebSocket belum terverifikasi `[SRC-102]` (PT-39).
+- TLS diterminasi di Caddy milik Ruang Sehat di app-1 dan app-2. Caddy mendukung WebSocket di `reverse_proxy` dan HTTPS otomatis `[SRC-237]` `[SRC-189]`. Load balancer NEO dipakai sebagai listener TCP bila tersedia. Protokol listener dan dukungan WebSocket belum terverifikasi `[SRC-102]` (PT-39).
 - WAF terkelola tidak tersedia. Perlindungan aplikasi web terdiri atas Caddy sebagai reverse proxy, validasi input, batas laju aplikasi di Valkey, dan batas laju per IP di Caddy (modulnya diverifikasi Tahap 8). Perangkat lunak WAF (misalnya OWASP CRS) dievaluasi di Tahap 8 Fase 1; bila tidak dipakai, dicatat sebagai risiko.
-- Anti-DDoS Biznet disebut "Cloudflare Magic Transit" `[SRC-95]`, sehingga lalu lintas jaringan dapat dirutekan lewat jaringan Cloudflare. Isi lalu lintas tetap terenkripsi karena TLS diterminasi di Caddy milik Rumah Sehat, tetapi lokasi peruteannya `[TIDAK DIKETAHUI]`. Hal ini menjadi **butir gate untuk user** terhadap keputusan T4-Q1 ("tanpa kecuali") dan dikonfirmasi ke Biznet Gio (PT-39).
+- Anti-DDoS Biznet disebut "Cloudflare Magic Transit" `[SRC-95]`, sehingga lalu lintas jaringan dapat dirutekan lewat jaringan Cloudflare. Isi lalu lintas tetap terenkripsi karena TLS diterminasi di Caddy milik Ruang Sehat, tetapi lokasi peruteannya `[TIDAK DIKETAHUI]`. Hal ini menjadi **butir gate untuk user** terhadap keputusan T4-Q1 ("tanpa kecuali") dan dikonfirmasi ke Biznet Gio (PT-39).
 
 **4. Kontainer dan infrastruktur sebagai kode** `[KEPUTUSAN-78]`:
 - Docker Engine 29.10.0 dan Docker Compose 5.8.0 per host `[SRC-187]` `[SRC-188]`. Tanpa Kubernetes: alternatif "Kubernetes yang dikelola sendiri" yang ditolak ADR-019 tetap berlaku, dan NEO Kubernetes `[SRC-100]` tidak dipakai.
@@ -86,7 +86,7 @@ Total bulanan: Biznet production Rp6.860.000, object storage ±Rp300.000, Hostin
 
 **6. Valkey sebagai implementasi komponen "Redis" ADR-007** `[KEPUTUSAN-77]` (**perlu konfirmasi user di gate**, karena T4-Q4 menyebut "Redis"):
 - Valkey 9.1.3, lisensi BSD-3-Clause `[SRC-124]`. Valkey memuat kode Redis berlisensi BSD 3-Clause `[SRC-247]`. Redis 8 ke atas memakai pilihan RSALv2/SSPLv1/AGPLv3 `[SRC-125]` `[SRC-76]`.
-- Dua instans terpisah, satu untuk Rumah Sehat dan satu untuk RME (ADR-007 butir 6), di host `cache`, hanya dapat dicapai dari jaringan privat, dengan autentikasi wajib. Kewajiban TLS dari ADR-007 dan ADR-013 tetap berlaku. Kemampuan TLS Valkey `[TIDAK DIKETAHUI]` (belum terdaftar sebagai sumber) dan diverifikasi di Tahap 8 Fase 1.
+- Dua instans terpisah, satu untuk Ruang Sehat dan satu untuk RME (ADR-007 butir 6), di host `cache`, hanya dapat dicapai dari jaringan privat, dengan autentikasi wajib. Kewajiban TLS dari ADR-007 dan ADR-013 tetap berlaku. Kemampuan TLS Valkey `[TIDAK DIKETAHUI]` (belum terdaftar sebagai sumber) dan diverifikasi di Tahap 8 Fase 1.
 - Valkey tidak di-backup sebagai sumber data (ADR-019 butir 4).
 - Kompatibilitas klien (crate `redis`, ioredis) dibuktikan lewat test integrasi Tahap 8 (ADR-024).
 

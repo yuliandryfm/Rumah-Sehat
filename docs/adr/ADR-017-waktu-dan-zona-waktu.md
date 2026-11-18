@@ -6,7 +6,7 @@ Tanggal: 2026-11-18
 
 ## Konteks
 
-- Jadwal klinik, lab, dan home visit tampil dalam zona waktu lokasi rekanan berlabel (AB-40). Konsultasi tampil dalam zona waktu perangkat (AB-41). Laporan rekanan memakai zona waktu rekanan, sedangkan laporan dan backoffice Rumah Sehat memakai WIB (AB-42) `[USER] T3-Q10` `[DOK: 03-prd.md]`.
+- Jadwal klinik, lab, dan home visit tampil dalam zona waktu lokasi rekanan berlabel (AB-40). Konsultasi tampil dalam zona waktu perangkat (AB-41). Laporan rekanan memakai zona waktu rekanan, sedangkan laporan dan backoffice Ruang Sehat memakai WIB (AB-42) `[USER] T3-Q10` `[DOK: 03-prd.md]`.
 - Batas waktu berbasis jam atau hari kalender dihitung dari waktu absolut (AB-43) `[KEPUTUSAN-11]`. Batas hari kerja berakhir pukul 23.59 WIB pada hari kerja ke-N menurut kalender yang diatur Super Admin `[UP-37]`.
 - Waktu audit disimpan dalam satu acuan baku yang ditetapkan di Tahap 4 (PRD §7.2) `[DOK: 03-prd.md]`.
 

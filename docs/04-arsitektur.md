@@ -1,4 +1,4 @@
-# Arsitektur Sistem: Rumah Sehat
+# Arsitektur Sistem: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`
@@ -15,7 +15,7 @@ Dokumen terkait: ADR-006–ADR-023 (`docs/adr/`), ERD (`docs/04-erd.md`), data d
 
 | ADR | Keputusan | Keputusan di decision log |
 | --- | --- | --- |
-| ADR-006 | Backend Rumah Sehat berupa modular monolith dengan proses `api`, `realtime`, dan `worker`. RME minimalis adalah sistem terpisah. Ada dua aplikasi Flutter (pasien, tenaga kesehatan) dan dua web (backoffice, portal rekanan) | KEPUTUSAN-18, -19 |
+| ADR-006 | Backend Ruang Sehat berupa modular monolith dengan proses `api`, `realtime`, dan `worker`. RME minimalis adalah sistem terpisah. Ada dua aplikasi Flutter (pasien, tenaga kesehatan) dan dua web (backoffice, portal rekanan) | KEPUTUSAN-18, -19 |
 | ADR-007 | PostgreSQL untuk semua database. Antrean job dan outbox di PostgreSQL. Redis sebagai komponen pendukung. Tanpa message broker | KEPUTUSAN-20 |
 | ADR-008 | Lima kelas tabel. Status transaksi dicatat lewat riwayat status INSERT-only ditambah proyeksi | KEPUTUSAN-21 |
 | ADR-009 | Audit trail: outbox atomik, database audit terpisah, hash berantai dengan jangkar WORM | KEPUTUSAN-22 |
@@ -53,12 +53,12 @@ flowchart LR
   subgraph Pengguna
     P[Pasien]
     N[Tenaga kesehatan]
-    ARS[Admin Rumah Sehat]
+    ARS[Admin Ruang Sehat]
     AR[Admin rekanan]
     UR[Staf fasyankes pengguna RME]
   end
   subgraph ID[Cloud region Indonesia]
-    RS[Sistem Rumah Sehat]
+    RS[Sistem Ruang Sehat]
     RME[Sistem RME minimalis]
     VID[Server media video SFU/TURN]
     EM[Penyedia/relay email]
@@ -83,8 +83,8 @@ flowchart LR
   RME -->|FHIR| SS
 ```
 
-- Rumah Sehat hanya menjadi platform yang menghubungkan pasien dengan rekanan `[USER] T3-Q14`. RME minimalis berposisi sebagai salah satu "sistem rekanan" (AB-61) `[DOK: 03-prd.md]`.
-- Semua komponen yang dijalankan atau dikontrak Rumah Sehat memproses data di Indonesia `[USER] T4-Q1`. Lokasi pemrosesan payment gateway, kurir, server video, dan email diverifikasi saat pemilihan penyedia di Tahap 5. Penyedia yang tidak memenuhinya tidak dipilih (US-1406 AC2) `[DOK: 03-prd.md]`.
+- Ruang Sehat hanya menjadi platform yang menghubungkan pasien dengan rekanan `[USER] T3-Q14`. RME minimalis berposisi sebagai salah satu "sistem rekanan" (AB-61) `[DOK: 03-prd.md]`.
+- Semua komponen yang dijalankan atau dikontrak Ruang Sehat memproses data di Indonesia `[USER] T4-Q1`. Lokasi pemrosesan payment gateway, kurir, server video, dan email diverifikasi saat pemilihan penyedia di Tahap 5. Penyedia yang tidak memenuhinya tidak dipilih (US-1406 AC2) `[DOK: 03-prd.md]`.
 
 ## 3. Komponen dan modul
 
@@ -96,7 +96,7 @@ flowchart TB
     BO[Web Backoffice]
     PR[Web Portal Rekanan]
   end
-  subgraph RSB[Backend Rumah Sehat - satu image]
+  subgraph RSB[Backend Ruang Sehat - satu image]
     API[api<br/>REST: aplikasi, web, rekanan, webhook PG]
     RT[realtime<br/>WebSocket]
     WK[worker<br/>job, outbox, relay audit]
@@ -131,7 +131,7 @@ flowchart TB
 
 Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]`.
 
-**Modul backend Rumah Sehat.** Setiap modul hanya diakses lewat antarmuka publiknya (ADR-006):
+**Modul backend Ruang Sehat.** Setiap modul hanya diakses lewat antarmuka publiknya (ADR-006):
 
 | Modul | Tanggung jawab | Epic/story utama |
 | --- | --- | --- |
@@ -155,7 +155,7 @@ Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]
 
 **Pemetaan modul ke data dictionary** (`docs/04-data-dictionary.md`): Identitas dan akses → A1; Profil dan verifikasi → A2; Tenaga kesehatan → A4; Rekanan → A5; Katalog salinan → A7; Pemesanan → A8, A10 (klinik, lab, home visit), A11 (produk); Konsultasi → A9; Hasil lab → A10; Pembayaran → A6 (markup, biaya rekanan, tarif metode), A12, A13, A14; Notifikasi, Konten dan layanan pelanggan → A15, A16; Portal rekanan → tanpa tabel sendiri (membaca A5, A14, A16); Gateway integrasi → A18; Privasi → A3, A6 (kebijakan retensi), A17, `data_key` di A19; Platform dan KPI → A6 (parameter bisnis, kalender hari kerja), A19; Audit → B; RME minimalis → C1–C6.
 
-**Modul RME minimalis**: identitas dan akses RME, onboarding fasyankes (Operator RME), layanan/jadwal/harga, appointment dan check-in, antrean, rekam medis kunjungan, hasil lab, home visit, SATUSEHAT, klien integrasi ke Rumah Sehat, dan audit (EP-13) `[DOK: 03-prd.md]`.
+**Modul RME minimalis**: identitas dan akses RME, onboarding fasyankes (Operator RME), layanan/jadwal/harga, appointment dan check-in, antrean, rekam medis kunjungan, hasil lab, home visit, SATUSEHAT, klien integrasi ke Ruang Sehat, dan audit (EP-13) `[DOK: 03-prd.md]`.
 
 ## 4. Alur utama
 
@@ -222,7 +222,7 @@ sequenceDiagram
   Note over AU: job harian memverifikasi rantai terhadap WORM
 ```
 
-### 4.4 RME minimalis, Rumah Sehat, dan SATUSEHAT
+### 4.4 RME minimalis, Ruang Sehat, dan SATUSEHAT
 
 ```mermaid
 sequenceDiagram
@@ -243,7 +243,7 @@ sequenceDiagram
 
 | Integrasi | Arah | Protokol dan keamanan | Data pribadi | Syarat lokasi | ADR |
 | --- | --- | --- | --- | --- | --- |
-| Sistem rekanan dan RME minimalis | Dua arah | REST/JSON v1, OAuth2 client credentials `[SRC-45]`, webhook HMAC-SHA256 `[SRC-46]`, idempotensi | Data penerima minimal (L-08), hasil lab | Sistem milik rekanan berada di luar kendali Rumah Sehat; data yang dikirim dibatasi dan dicatat E-17 | ADR-014 |
+| Sistem rekanan dan RME minimalis | Dua arah | REST/JSON v1, OAuth2 client credentials `[SRC-45]`, webhook HMAC-SHA256 `[SRC-46]`, idempotensi | Data penerima minimal (L-08), hasil lab | Sistem milik rekanan berada di luar kendali Ruang Sehat; data yang dikirim dibatasi dan dicatat E-17 | ADR-014 |
 | Payment gateway | Dua arah | Adaptor; notifikasi diverifikasi (NFR-INT-04) | Nominal, ID pesanan, data pembayar minimal | Indonesia `[USER] T4-Q1` | ADR-015 |
 | Kurir | Dua arah | Adaptor; status pengiriman | Nama, alamat, nomor HP penerima | Indonesia | ADR-014 (pola), Tahap 5 |
 | Server media video | Klien ke SFU | WebRTC, token per peserta per sesi | Suara dan gambar konsultasi (tidak disimpan) | Indonesia | ADR-016 |
@@ -270,7 +270,7 @@ flowchart TB
       RMEP[RME api/worker x2+]
       KCP[Keycloak x2+ terklaster]
     end
-    RDS[(Redis Rumah Sehat)]
+    RDS[(Redis Ruang Sehat)]
     RDR[(Redis RME)]
     PGA[(PG aplikasi RS<br/>+ standby)]
     PGU[(PG audit)]
@@ -300,8 +300,8 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
   1. internet ke penyeimbang beban (aplikasi mobile, web, rekanan, notifikasi PG);
   2. proses aplikasi ke database aplikasi;
   3. worker relay ke database audit;
-  4. Rumah Sehat ke sistem rekanan (keluar) dan sistem rekanan ke Rumah Sehat (masuk);
-  5. RME minimalis ke Rumah Sehat;
+  4. Ruang Sehat ke sistem rekanan (keluar) dan sistem rekanan ke Ruang Sehat (masuk);
+  5. RME minimalis ke Ruang Sehat;
   6. RME minimalis ke SATUSEHAT;
   7. aplikasi ke server media video;
   8. proses aplikasi ke KMS, secret manager, object storage, Redis, dan Admin REST API Keycloak;
@@ -310,7 +310,7 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
   11. backend ke penyedia pihak ketiga (payment gateway, kurir, email, server media);
   12. perangkat pengguna (aplikasi mobile dan penyimpanan lokalnya);
   13. akses administratif manusia ke infrastruktur production (ADR-021 butir 3).
-- Keycloak dipakai bersama Rumah Sehat dan RME dengan realm terpisah. Redis memakai instans terpisah per sistem (ADR-007).
+- Keycloak dipakai bersama Ruang Sehat dan RME dengan realm terpisah. Redis memakai instans terpisah per sistem (ADR-007).
 - **Kontrol utama**:
   - Autentikasi dan sesi (ADR-011): Keycloak dengan realm per populasi, Argon2, MFA TOTP untuk semua peran non-pasien, Authorization Code + PKCE lewat browser sistem, BFF untuk web, penolakan seketika lewat status akun dan daftar pencabutan di Redis/DB.
   - Otorisasi (ADR-012): default deny, relasi, 404 untuk objek terlarang, RLS di RME.
@@ -323,10 +323,10 @@ Kriteria pemilihan penyedia cloud dan layanan pihak ketiga yang harus diverifika
 
 ## 8. Data
 
-- **Lima database PostgreSQL**: aplikasi Rumah Sehat, Keycloak (berbagi instans dengan aplikasi Rumah Sehat), audit Rumah Sehat, audit RME (berbagi instans audit), dan aplikasi RME minimalis. Redis hanya menyimpan data turunan tanpa data pribadi selain ID (ADR-007). Database terpisah dan role terpisah (ADR-007, ADR-019) `[KEPUTUSAN-20]` `[KEPUTUSAN-35]`.
+- **Lima database PostgreSQL**: aplikasi Ruang Sehat, Keycloak (berbagi instans dengan aplikasi Ruang Sehat), audit Ruang Sehat, audit RME (berbagi instans audit), dan aplikasi RME minimalis. Redis hanya menyimpan data turunan tanpa data pribadi selain ID (ADR-007). Database terpisah dan role terpisah (ADR-007, ADR-019) `[KEPUTUSAN-20]` `[KEPUTUSAN-35]`.
 - **Kelas tabel** Master, Transaksi, Proyeksi, Operasional, dan Log, dengan hak role per kelas (ADR-008) `[KEPUTUSAN-21]`. Klasifikasi final setiap entitas ada di data dictionary, yang memfinalkan KEPUTUSAN-10.
 - **Keputusan data Tahap 4** `[DOK: .claude/skills/runbook/references/tahap-04-arsitektur.md]`:
-  - *Multi-tenancy*: Rumah Sehat memakai skema bersama dengan isolasi di lapisan repository dan test isolasi. RME minimalis memakai skema bersama dengan `fasyankes_id` dan RLS (ADR-012) `[KEPUTUSAN-27]`.
+  - *Multi-tenancy*: Ruang Sehat memakai skema bersama dengan isolasi di lapisan repository dan test isolasi. RME minimalis memakai skema bersama dengan `fasyankes_id` dan RLS (ADR-012) `[KEPUTUSAN-27]`.
   - *Partisi*: hanya `audit_event`, per bulan, untuk arsip dan retensi (ADR-009) `[KEPUTUSAN-22]`. Tabel lain tidak dipartisi di rilis 1. Pemicu evaluasi ulang adalah hasil uji beban atau pertumbuhan tabel chat dan jurnal yang dipantau.
   - *Enkripsi kolom*: envelope encryption tingkat aplikasi dengan DEK per wadah data untuk kolom data spesifik, serta blind index untuk NIK (ADR-013) `[KEPUTUSAN-28]`.
 - **ERD dan data dictionary**: `docs/04-erd.md`, `docs/04-data-dictionary.md`.

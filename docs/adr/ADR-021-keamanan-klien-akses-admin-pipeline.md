@@ -29,7 +29,7 @@ Rujukan tambahan:
 **2. Aplikasi mobile: kendali SDK dan lalu lintas jaringan** (APP-05, M-02) `[KEPUTUSAN-71]`:
 - Inventaris dependensi dan plugin kedua aplikasi disusun per rilis.
 - Setiap dependensi mobile baru direview perilaku jaringannya dan data yang dikumpulkannya sebelum dipakai.
-- Daftar izin host tujuan jaringan: backend Rumah Sehat, Keycloak, server media video, dan layanan crash di Indonesia.
+- Daftar izin host tujuan jaringan: backend Ruang Sehat, Keycloak, server media video, dan layanan crash di Indonesia.
 - Uji lalu lintas jaringan build rilis membuktikan tidak ada koneksi ke host di luar daftar izin. Uji ini menjadi syarat rilis (Tahap 12) dan butir Definition of Done. Metode ujinya ditetapkan di Tahap 5.
 
 **3. Akses administratif manusia ke production** (KMS-01, M-08) `[KEPUTUSAN-71]`:

@@ -1,4 +1,4 @@
-# Design Guideline: Rumah Sehat
+# Design Guideline: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 0.1 (draf Tahap 6, menunggu Checkpoint 2)
@@ -17,7 +17,7 @@ Wireframe: `docs/wireframes/index.html` (HTML statis, satu CSS bersama `docs/wir
 | `[SRC-xx]` | Fakta eksternal terverifikasi, tercatat di `docs/sources.md` |
 | `[KEPUTUSAN-xx]` | Keputusan desain/teknis penyusun, tercatat di `docs/decision-log.md` (KEPUTUSAN-160–177) |
 | `[UP-xx]` | Usulan penyusun yang menyangkut preferensi bisnis atau merek dan **wajib** disetujui user di Checkpoint 2 (§11, UP-58–UP-64) |
-| `[TIDAK DIKETAHUI]` | Belum ada informasi, masuk pertanyaan terbuka (§12, PT-40–PT-44) |
+| `[TIDAK DIKETAHUI]` | Belum ada informasi, masuk pertanyaan terbuka (§12, PT-40–PT-46) |
 
 Semua nilai visual di dokumen ini (warna, font, logo) berstatus **usulan** sampai Checkpoint 2. Arah visual adalah preferensi bisnis/merek, sehingga tidak diputuskan penyusun `[UP-58]`.
 
@@ -39,9 +39,9 @@ Semua nilai visual di dokumen ini (warna, font, logo) berstatus **usulan** sampa
 | --- | --- | --- | --- | --- |
 | Aplikasi pasien | Pasien | Flutter 3.50.0 | `mobile/packages/rs_design` | `[DOK: 05-stack.md]` §1.3, `[DOK: coding-standards.md]` §1.6 |
 | Aplikasi tenaga kesehatan | Dokter, psikolog, fisioterapis, tenaga medis | Flutter 3.50.0 | `mobile/packages/rs_design` | sama |
-| Backoffice Rumah Sehat | Admin RS (7 sub-peran) | Next.js 16.4.6 | `web/packages/ui` | `[DOK: 05-stack.md]` §1.2, `[DOK: coding-standards.md]` §1.5 |
+| Backoffice Ruang Sehat | Admin RS (7 sub-peran) | Next.js 16.4.6 | `web/packages/ui` | `[DOK: 05-stack.md]` §1.2, `[DOK: coding-standards.md]` §1.5 |
 | Portal rekanan | Admin klinik, lab, outlet | Next.js 16.4.6 | `web/packages/ui` | sama |
-| Web RME minimalis | Pengguna RME | Next.js 16.4.6 | `web/packages/ui` | sama; aplikasi terpisah dari Rumah Sehat (BR-120) |
+| Web RME minimalis | Pengguna RME | Next.js 16.4.6 | `web/packages/ui` | sama; aplikasi terpisah dari Ruang Sehat (BR-120) |
 | Halaman login, OTP, atur ulang password, aktivasi undangan, login ulang | Semua populasi | Tema login Keycloak (extend tema bawaan, stylesheet dan template sendiri) | Tema di konfigurasi realm | ADR-011 butir 7 dan konsekuensi `[SRC-233]` |
 | Halaman verifikasi resep publik | Apotek (anonim) | HTML dari backend Rust | Stylesheet statis dari token yang sama | US-309 AC6–AC8 (CR-008) |
 | Email notifikasi | Pasien, tenaga kesehatan, admin rekanan | Template email lewat Amazon SES API | Template HTML dengan CSS inline | `[DOK: 05-stack.md]` (SES), AB-73 |
@@ -164,7 +164,7 @@ Aturan: tinggi baris ≥ 1,3 kali ukuran; kontainer teks tidak bertinggi tetap, 
 - **Ikon web**: SVG sebaris yang disimpan di `web/packages/ui` `[KEPUTUSAN-166]`. Sumber gambar SVG dan lisensinya `[TIDAK DIKETAHUI]`; dipilih dan dicatat di `docs/sources.md` saat Tahap 8. Emoji di wireframe hanya penanda posisi ikon.
 - Ikon tanpa teks wajib punya label untuk pembaca layar. Ikon dekoratif disembunyikan dari pembaca layar.
 - **Ilustrasi**: lingkaran mint dengan satu ikon (pola "state", §5). Ilustrasi bergambar orang seperti di pamflet tidak dipakai sampai ada aset berlisensi.
-- **Logo**: simbol rumah dengan daun dari pamflet menjadi **arah** logo; wordmark dan slogan "RuangSehat" tidak dipakai (T5-Q12) `[DOK: 05-catatan-stack.md]`. Logo bertulisan "Rumah Sehat" di wireframe hanya **placeholder** bertanda "draf logo", bukan desain final. Logo final dan ikon aplikasi dibuat desainer dan disetujui user `[UP-60]` (PT-40).
+- **Logo**: simbol rumah dengan daun dari pamflet menjadi **arah** logo. Nama resmi aplikasi "Ruang Sehat" `[USER]` (CR-016, menggantikan T5-Q12 yang menetapkan "Rumah Sehat"). Pemakaian wordmark pamflet "RuangSehat" (tanpa spasi) dan slogan "Satu ruang untuk kesehatan Anda." belum diputuskan (UP-60, PT-45) `[DOK: input/Rumah Sehat Apps.jpeg]`. Logo bertulisan "Ruang Sehat" di wireframe hanya **placeholder** bertanda "draf logo", bukan desain final. Logo final dan ikon aplikasi dibuat desainer dan disetujui user `[UP-60]` (PT-40).
 
 ## 4. Komponen dasar dan state
 
@@ -264,7 +264,7 @@ Refund berstatus "Perlu dicek" tampil ke pasien sebagai "Diproses", karena hasil
 - NIK dan nomor rekening: hanya 4 digit terakhir terlihat (`************0001`), kecuali NIK lengkap di panel Verifikator (§3.1, §7.3 PRD).
 - Nomor pesanan/resep/permintaan sesuai format KEPUTUSAN-107; kode check-in ditampilkan dalam kelompok 4-4.
 - **Notifikasi di aplikasi dan email** tidak memuat diagnosis, nama obat, nilai hasil lab, atau isi chat (AB-73). Kotak notifikasi menandai "Baru" dengan teks (US-1001 AC4).
-- **Email**: satu kolom, lebar baca nyaman, CSS inline, logo sebagai teks (tanpa gambar jarak jauh dan tanpa piksel pelacak), tombol tautan "Buka aplikasi Rumah Sehat", kaki email berisi pernyataan bahwa Rumah Sehat berperan sebagai platform dan kontak layanan pelanggan `[KEPUTUSAN-175]`. Isi per kejadian mengikuti matriks EP-10.
+- **Email**: satu kolom, lebar baca nyaman, CSS inline, logo sebagai teks (tanpa gambar jarak jauh dan tanpa piksel pelacak), tombol tautan "Buka aplikasi Ruang Sehat", kaki email berisi pernyataan bahwa Ruang Sehat berperan sebagai platform dan kontak layanan pelanggan `[KEPUTUSAN-175]`. Isi per kejadian mengikuti matriks EP-10.
 
 ## 7. Aksesibilitas
 
@@ -322,7 +322,7 @@ Pembaca layar membacakan isi yang tampil. Karena itu layar yang memuat data klin
 
 | Area | Aturan | Sumber |
 | --- | --- | --- |
-| Autentikasi | Masuk selalu di browser sistem dengan tema Rumah Sehat, bukan webview. Pesan galat masuk dan atur ulang password bersifat umum. Tidak ada tombol Google/Apple | ADR-011 butir 4, 7; US-103; CR-007 |
+| Autentikasi | Masuk selalu di browser sistem dengan tema Ruang Sehat, bukan webview. Pesan galat masuk dan atur ulang password bersifat umum. Tidak ada tombol Google/Apple | ADR-011 butir 4, 7; US-103; CR-007 |
 | Pendaftaran pasien | Formulir native dua langkah; akun dibuat hanya setelah persetujuan (A01) | ADR-011 butir 6; US-101 AC4 |
 | MFA (tenaga kesehatan, admin, RME) | Layar kode TOTP + tautan kode pemulihan; aktivasi pertama menampilkan QR dan kunci teks | ADR-011 butir 5 |
 | Autentikasi ulang | Mengajukan hak data, mengunduh salinan data, mengubah email/password: diberi tahu lebih dulu bahwa password akan diminta lagi | ADR-011 butir 9; US-1602 AC1; US-1604 AC2 |
@@ -410,19 +410,19 @@ Format: tujuan · aktor · layar berurutan · kondisi khusus · rujukan. Semua m
 
 **D-D02 Profil dan keluhan di portal** · Admin rekanan · (1) Profil baca-saja: nama, jenis, alamat, zona waktu, kontak, rekening termasking, sumber sistem, status integrasi, dan petunjuk "Hubungi Layanan Pelanggan untuk perubahan"; (2) Keluhan: daftar tiket yang diteruskan + riwayat tanggapan, tanpa kotak balas. · US-1202, US-1203.
 
-**D-E02 Onboarding dan pengguna RME** · Operator RME, Admin Fasyankes · (1) Operator: daftarkan fasyankes (hanya rekanan terverifikasi bersumber sistem "RME minimalis" dan perjanjian tercatat) + akun Admin Fasyankes pertama; Operator tidak punya menu data pasien; (2) Admin Fasyankes: daftar pengguna, undang (peran Tenaga Kesehatan Fasyankes, Petugas Lab, Admin Fasyankes), nonaktifkan/ubah peran dengan alasan, hubungkan akun tenaga kesehatan Rumah Sehat; (3) Ekspor rekam medis saat berhenti. · Admin Fasyankes terakhir tidak dapat dinonaktifkan (US-1302 AC5). Identitas profesi SATUSEHAT wajib untuk Tenaga Kesehatan Fasyankes (rincian `[TIDAK DIKETAHUI]`). · US-1301, US-1302.
+**D-E02 Onboarding dan pengguna RME** · Operator RME, Admin Fasyankes · (1) Operator: daftarkan fasyankes (hanya rekanan terverifikasi bersumber sistem "RME minimalis" dan perjanjian tercatat) + akun Admin Fasyankes pertama; Operator tidak punya menu data pasien; (2) Admin Fasyankes: daftar pengguna, undang (peran Tenaga Kesehatan Fasyankes, Petugas Lab, Admin Fasyankes), nonaktifkan/ubah peran dengan alasan, hubungkan akun tenaga kesehatan Ruang Sehat; (3) Ekspor rekam medis saat berhenti. · Admin Fasyankes terakhir tidak dapat dinonaktifkan (US-1302 AC5). Identitas profesi SATUSEHAT wajib untuk Tenaga Kesehatan Fasyankes (rincian `[TIDAK DIKETAHUI]`). · US-1301, US-1302.
 
 **D-E03 Jadwal, layanan, harga (RME)** · Admin Fasyankes · (1) Daftar layanan (layanan klinik, pemeriksaan lab, paket MCU, home visit + area) dengan harga rekanan; (2) Formulir layanan; (3) Jadwal: hari, jam, kuota per slot, hari libur. · Perubahan yang menyentuh slot terbayar ditolak dengan pesan (US-1303 AC3–AC4). Catatan "tampil di aplikasi pasien paling lambat 15 menit" (NFR-INT-02). Butir vaksinasi/infus tidak ditambahkan sampai CR-015 diputuskan. · US-1303.
 
 **D-E04 Hasil lab (RME)** · Petugas Lab · (1) Daftar pemeriksaan yang sudah check-in; (2) Formulir nilai per pemeriksaan (nilai, satuan, nilai rujukan) dan/atau unggah PDF ≤ 10 MB → Finalkan; (3) Koreksi dengan alasan. · Validasi penanggung jawab lab `[TIDAK DIKETAHUI]` (L-05). · US-1307.
 
-**D-E05 Penugasan home visit (RME)** · Admin Fasyankes · (1) Daftar pesanan home visit terbayar: jadwal, alamat, layanan, nama pasien, status; (2) Pilih tenaga kesehatan dari daftar tenaga kesehatan aktif klinik di Rumah Sehat → simpan; (3) Status kunjungan dari aplikasi tenaga kesehatan tampil di daftar. · Penugasan ulang mengganti penugasan lama (US-502 AC3). Klinik dengan sistem sendiri menugaskan di sistemnya (tanpa layar Rumah Sehat). · US-1308, US-502.
+**D-E05 Penugasan home visit (RME)** · Admin Fasyankes · (1) Daftar pesanan home visit terbayar: jadwal, alamat, layanan, nama pasien, status; (2) Pilih tenaga kesehatan dari daftar tenaga kesehatan aktif klinik di Ruang Sehat → simpan; (3) Status kunjungan dari aplikasi tenaga kesehatan tampil di daftar. · Penugasan ulang mengganti penugasan lama (US-502 AC3). Klinik dengan sistem sendiri menugaskan di sistemnya (tanpa layar Ruang Sehat). · US-1308, US-502.
 
-**D-E06 Riwayat dan log akses (RME)** · Tenaga Kesehatan Fasyankes, Admin Fasyankes · (1) Cari pasien yang pernah datang lewat Rumah Sehat → riwayat rekam medis di fasyankes itu (urut terbaru, per versi); (2) Admin Fasyankes: log akses rekam medis (siapa, kapan, pasien). · Data Rumah Sehat (chat, catatan konsultasi online, hasil fasyankes lain) tidak tersedia (US-1310 AC2). · US-1310.
+**D-E06 Riwayat dan log akses (RME)** · Tenaga Kesehatan Fasyankes, Admin Fasyankes · (1) Cari pasien yang pernah datang lewat Ruang Sehat → riwayat rekam medis di fasyankes itu (urut terbaru, per versi); (2) Admin Fasyankes: log akses rekam medis (siapa, kapan, pasien). · Data Ruang Sehat (chat, catatan konsultasi online, hasil fasyankes lain) tidak tersedia (US-1310 AC2). · US-1310.
 
 **D-F01 Verifikasi resep publik** · Pemeriksa anonim (apotek) · (1) Halaman dengan isian kode verifikasi (atau terbuka langsung dari QR); (2) Hasil: status Terbit/Dibatalkan (badge bertulisan), tanggal terbit, dokter dan nomor SIP, klinik, daftar obat, nama pasien disamarkan; (3) "Resep tidak ditemukan" untuk kode tidak valid; (4) Pesan batas laju "Terlalu banyak percobaan, coba lagi nanti". · Satu kolom ≤ 400 px, token yang sama, tanpa skrip pihak ketiga. Isi final menunggu L-05/L-08. · US-309 AC6–AC8.
 
-**D-F02 Email notifikasi** · Sistem · Satu template dasar (§6) dengan variasi per kejadian matriks EP-10 dan US-1003: judul kejadian, satu kalimat tanpa data klinis, nomor pesanan, tombol "Buka aplikasi Rumah Sehat". Pengingat jadwal (US-1002) memuat waktu dengan label zona. · AB-73.
+**D-F02 Email notifikasi** · Sistem · Satu template dasar (§6) dengan variasi per kejadian matriks EP-10 dan US-1003: judul kejadian, satu kalimat tanpa data klinis, nomor pesanan, tombol "Buka aplikasi Ruang Sehat". Pengingat jadwal (US-1002) memuat waktu dengan label zona. · AB-73.
 
 ### 10.3 Story tanpa layar sendiri
 
@@ -443,23 +443,25 @@ Format: tujuan · aktor · layar berurutan · kondisi khusus · rujukan. Semua m
 
 | ID | Usulan | Alasan | Alternatif |
 | --- | --- | --- | --- |
-| UP-58 | Arah visual memakai palet pamflet (#087F78, #DFF4ED, #FAFBF7, #FFFFFF) sebagai warna dasar, sudut membulat 16, nuansa terang dan bersih, dengan warna turunan §3.1 untuk teks dan status. Nama tampil "Rumah Sehat"; web RME memakai nama permukaan "RME" dengan identitas visual yang sama | Pamflet adalah satu-satunya masukan merek dari user `[DOK: input/Rumah Sehat Apps.jpeg]`; T5-Q12 menyebut palet dan simbol dapat menjadi masukan Tahap 6 | Palet lain dari desainer; RME dengan identitas visual terpisah |
+| UP-58 | Arah visual memakai palet pamflet (#087F78, #DFF4ED, #FAFBF7, #FFFFFF) sebagai warna dasar, sudut membulat 16, nuansa terang dan bersih, dengan warna turunan §3.1 untuk teks dan status. Nama tampil "Ruang Sehat"; web RME memakai nama permukaan "RME" dengan identitas visual yang sama | Pamflet adalah satu-satunya masukan merek dari user `[DOK: input/Rumah Sehat Apps.jpeg]`; T5-Q12 menyebut palet dan simbol dapat menjadi masukan Tahap 6 | Palet lain dari desainer; RME dengan identitas visual terpisah |
 | UP-59 | Rilis 1 memakai font sistem; Plus Jakarta Sans (OFL 1.1 `[SRC-259]`) sebagai opsi font merek yang dibundel lokal | Font sistem tanpa beban berkas dan lisensi; Plus Jakarta Sans berlisensi terbuka bila merek menginginkan font khas | Font berlisensi lain pilihan desainer |
-| UP-60 | Logo bertulisan "Rumah Sehat" dan ikon aplikasi dibuat desainer dengan arah simbol rumah-daun pamflet; wireframe hanya memakai placeholder | Logo adalah aset merek; penyusun tidak membuat logo final | User menyediakan logo sendiri |
+| UP-60 | Logo bertulisan "Ruang Sehat" dan ikon aplikasi dibuat desainer dengan arah simbol rumah-daun pamflet; wordmark pamflet "RuangSehat" dan slogannya menjadi titik awal bila user menyetujui (CR-016, PT-45); wireframe hanya memakai placeholder | Logo adalah aset merek; penyusun tidak membuat logo final | User menyediakan logo sendiri |
 | UP-61 | Mode gelap tidak dirancang di rilis 1 | Menghemat waktu desain dan uji kontras ganda menjelang 1 Maret 2027 | Rancang mode gelap sejak rilis 1 |
 | UP-62 | Navigasi aplikasi pasien empat tab: Beranda, Pesanan (aktif + riwayat semua layanan), Kesehatan (catatan konsultasi, resep, hasil lab), Profil; notifikasi di ikon lonceng. Aplikasi tenaga kesehatan: Sesi, Home visit, Jadwal, Profil | Mengelompokkan story PRD per kebutuhan pengguna; mengikuti pola empat tab pamflet dengan label disesuaikan scope | Label pamflet apa adanya (Beranda, Jadwal, Riwayat, Profil) |
 | UP-63 | Beranda menampilkan enam ubin untuk tujuh layanan rilis 1: Konsultasi Online, Pendaftaran Klinik, Pendaftaran Lab, Home Visit, Biaya MCU & Lab, Belanja Produk (obat bebas, kecantikan, kesehatan lain di dalamnya). Ubin pamflet "Vaksinasi" dan "Suntik & Infus Vitamin" tidak tampil (CR-015 belum diputuskan) | Mengikuti scope PRD §2.1; CR-015 hanya boleh tampil sebagai butir katalog lab | Ubin terpisah untuk obat bebas dan produk lain; ubin terpisah psikolog |
-| UP-64 | Pengingat tetap di detail pesanan dan ruang tunggu: "Buka aplikasi pada jadwal; Rumah Sehat tidak mengirim notifikasi ke layar ponsel" | Mengurangi risiko produk CR-007 (pasien melewatkan jadwal tanpa push) | Tanpa pengingat di layar |
+| UP-64 | Pengingat tetap di detail pesanan dan ruang tunggu: "Buka aplikasi pada jadwal; Ruang Sehat tidak mengirim notifikasi ke layar ponsel" | Mengurangi risiko produk CR-007 (pasien melewatkan jadwal tanpa push) | Tanpa pengingat di layar |
 
 ## 12. Pertanyaan terbuka baru
 
 | ID | Pertanyaan | Pemilik | Tenggat |
 | --- | --- | --- | --- |
-| PT-40 | Siapa membuat logo final "Rumah Sehat", ikon aplikasi, dan aset toko aplikasi (desainer internal, eksternal, atau user)? | User | Sebelum pengajuan ke toko aplikasi (Tahap 12); arah logo di Checkpoint 2 |
+| PT-40 | Siapa membuat logo final "Ruang Sehat", ikon aplikasi, dan aset toko aplikasi (desainer internal, eksternal, atau user)? | User | Sebelum pengajuan ke toko aplikasi (Tahap 12); arah logo di Checkpoint 2 |
 | PT-41 | Di pamflet, contoh warna kedua tampak lebih gelap dari nilai `#DFF4ED` yang tertulis. Nilai mana yang dimaksud (tulisan heksadesimal atau warna yang tampak)? | User / desainer | Checkpoint 2 |
 | PT-42 | Apakah catatan konsultasi dan rekam medis yang belum difinalkan perlu disimpan sebagai draf di server agar tidak hilang saat aplikasi ditutup? Data dictionary belum memuat status draf | Tech Lead (Claude) bersama user | Tahap 7, sebelum EP-03 |
 | PT-43 | Dua batas waktu tidak dapat diperpanjang pengguna: sesi web mutlak 12 jam (ADR-011) dan batas pembayaran PB-07 (30 menit, menahan slot/stok). Apakah keduanya diterima sebagai pengecualian SC 2.2.1 (alasan keamanan dan keadilan slot), atau perlu jalur perpanjangan (misalnya login ulang tanpa kehilangan isian; memilih slot lagi dengan isian tersimpan)? | User + security reviewer | Tahap 8 Fase 1 |
 | PT-44 | Pesan apa yang tampil saat akun terkunci sementara (US-103 AC3): pesan umum yang sama dengan AC2 (tidak membuka status akun) atau pesan khusus terkunci? Draf wireframe A01 layar 5 ditandai menunggu keputusan (temuan QA N2) | Tech Lead + security reviewer, disetujui user | Tahap 7 |
+| PT-45 | Nama resmi kini "Ruang Sehat" (CR-016). Apakah wordmark pamflet "RuangSehat" (ditulis tanpa spasi) dan slogan "Satu ruang untuk kesehatan Anda." dipakai di aplikasi, atau nama ditulis "Ruang Sehat" dengan spasi di semua tempat? | User | Checkpoint 2 |
+| PT-46 | Apakah nama "Ruang Sehat" sudah dicek ketersediaannya sebagai merek (DJKI) dan nama domain, serta apakah nama aplikasi di toko aplikasi mengikuti nama ini? | User, legal (PT-20) | Sebelum pengajuan ke toko aplikasi (Tahap 12) |
 
 Pertanyaan yang sudah ada dan memengaruhi layar: L-08 dan PT-24 (teks persetujuan), PT-28 (baris pajak), AB-25 (metode pembayaran), L-03 (informasi produk BPOM), L-05 (resep, rekam medis), batas usia anak (US-108 AC6), CR-015.
 

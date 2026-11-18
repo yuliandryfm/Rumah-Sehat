@@ -1,4 +1,4 @@
-# Checklist ASVS 5.0.0 Level 2: Rumah Sehat
+# Checklist ASVS 5.0.0 Level 2: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
@@ -54,7 +54,7 @@ Butir yang memerlukan keputusan user atau change request ditulis di kolom "Celah
 
 | Nama | Isi | Sumber |
 | --- | --- | --- |
-| `rs-backend` | Binary Rust Rumah Sehat: `api`, `realtime`, `worker`, `audit-relay` | KEPUTUSAN-74 |
+| `rs-backend` | Binary Rust Ruang Sehat: `api`, `realtime`, `worker`, `audit-relay` | KEPUTUSAN-74 |
 | `rme-backend` | Binary Rust RME: `api`, `worker` | KEPUTUSAN-74 |
 | crate bersama | `audit`, `crypto`, `authz`, `envelope`, `platform-jobs`, `integration-contract` | KEPUTUSAN-74, -89 |
 | BFF Next.js | Server tiga aplikasi Next.js (backoffice, portal, web RME), modul T1 autentikasi/sesi | KEPUTUSAN-75 |
@@ -222,7 +222,7 @@ Tidak ada bab yang seluruhnya "Tidak berlaku": setiap bab punya sasaran di stack
 | --- | --- | --- | --- | --- |
 | Model dan titik kebijakan | RBAC + relasi (kepemilikan, penugasan berbatas waktu, tenant, sub-peran); default deny; satu modul kebijakan (ADR-012 butir 1) di crate `authz` (KEPUTUSAN-74); pemeriksaan per objek `[SRC-80]` | crate `authz`, `rs-backend`, `rme-backend` | VS-1 (test penolakan per endpoint, DoD), RK | Dirancang |
 | Data sensitif | Fungsi akses yang menulis E-05 sebelum data dikirim (ADR-012 butir 2, ADR-009 butir 2) | crate `authz`, crate `audit` | VS-1 | Dirancang |
-| Isolasi Rumah Sehat | `partner_id` dari sesi lewat repository ber-tenant; test isolasi otomatis setiap endpoint portal dan Partner Integration API (ADR-012 butir 5, H-08) | `rs-backend` | VS-1 | Dirancang; H-08 terbuka |
+| Isolasi Ruang Sehat | `partner_id` dari sesi lewat repository ber-tenant; test isolasi otomatis setiap endpoint portal dan Partner Integration API (ADR-012 butir 5, H-08) | `rs-backend` | VS-1 | Dirancang; H-08 terbuka |
 | Isolasi RME | RLS `FORCE`, role aplikasi bukan pemilik dan tanpa `BYPASSRLS` `[SRC-34]`; role operator tanpa `SELECT` klinis (ADR-012 butir 6); RLS gagal-tertutup bila konteks kosong dan test kebocoran konteks di pool (H-12); batas hak operator di database (M-24) | PG (c), `rme-backend` | VS-2 (test RLS FORCE, KEPUTUSAN-82), VS-1 | Dirancang; H-12, M-24 terbuka |
 | Isolasi log akses audit RME | `audit_tenant_reader` ber-RLS per `tenant_id`, atau fungsi baca per tenant bila RLS pada tabel terpartisi tidak memadai (ADR-012 butir 9); H-13 | PG (b) | VS-2 | Tertunda Tahap 8 (verifikasi RLS tabel terpartisi) |
 | Pemisahan tugas | Larangan ubah peran sendiri, Super Admin/Admin Fasyankes terakhir, persetujuan rekening oleh Verifikator (ADR-012 butir 7); pemberitahuan pemberian sub-peran sensitif (M-16) | `rs-backend` | VS-1 | Dirancang; M-16 terbuka |

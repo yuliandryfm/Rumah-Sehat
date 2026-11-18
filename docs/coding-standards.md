@@ -1,4 +1,4 @@
-# Coding Standards: Rumah Sehat
+# Coding Standards: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
@@ -43,7 +43,7 @@ Semua blok kode di dokumen ini adalah **ilustrasi pola**. Nama fungsi, tipe, dan
 Struktur puncak mengikuti `[KEPUTUSAN-89]`:
 
 ```
-apps/rs-backend/        crate binary Rumah Sehat: subcommand api | realtime | worker | audit-relay |
+apps/rs-backend/        crate binary Ruang Sehat: subcommand api | realtime | worker | audit-relay |
                         audit-verify | privacy-worker
 apps/rme-backend/       crate binary RME minimalis: subcommand api | worker | audit-relay | audit-verify |
                         privacy-worker
@@ -56,8 +56,8 @@ web/packages/           klien API bertipe, BFF auth, komponen UI
 mobile/apps/pasien/     aplikasi Flutter pasien
 mobile/apps/nakes/      aplikasi Flutter tenaga kesehatan
 mobile/packages/        paket Dart/Flutter bersama (pub workspace)
-db/migrations/app/      migrasi SQL database aplikasi Rumah Sehat
-db/migrations/audit/    migrasi SQL database audit (Rumah Sehat dan RME)
+db/migrations/app/      migrasi SQL database aplikasi Ruang Sehat
+db/migrations/audit/    migrasi SQL database audit (Ruang Sehat dan RME)
 db/migrations/rme/      migrasi SQL database RME
 db/roles/               bootstrap klaster idempoten oleh superuser: role, atribut, keanggotaan, skema,
                         ekstensi, pencabutan PUBLIC; tanpa password (hak per tabel ada di migrasi, §5.3)
@@ -71,7 +71,7 @@ docs/
 Aturan:
 
 - Rust memakai satu Cargo workspace dengan toolchain dipin di `rust-toolchain.toml` (Rust stable 1.100.0, edisi 2024) `[KEPUTUSAN-74]` `[SRC-161]`.
-- Pustaka bersama dipakai RME lewat workspace, **tanpa ketergantungan runtime** antara Rumah Sehat dan RME (ADR-006 butir 2) `[KEPUTUSAN-74]`. `apps/rme-backend` **dilarang** bergantung pada `apps/rs-backend`, dan sebaliknya.
+- Pustaka bersama dipakai RME lewat workspace, **tanpa ketergantungan runtime** antara Ruang Sehat dan RME (ADR-006 butir 2) `[KEPUTUSAN-74]`. `apps/rme-backend` **dilarang** bergantung pada `apps/rs-backend`, dan sebaliknya.
 - Crate `foundation` adalah tambahan dari dokumen ini untuk tipe dasar lintas crate: `Clock`, pembuat ID UUIDv7, `Idr`, `CorrelationId`, dan `Sensitive<T>` `[KEPUTUSAN-110]`. Tanpa crate ini, tipe dasar itu akan tersebar di crate yang tidak sesuai tanggung jawabnya.
 
 | Crate bersama | Tanggung jawab | Modul kritis |
@@ -108,7 +108,7 @@ Tanggung jawab per lapis:
 
 Dependensi hanya mengalir ke bawah: handler → service → repository. Repository tidak tahu service, service tidak tahu handler.
 
-### 1.3 Modul bisnis Rumah Sehat
+### 1.3 Modul bisnis Ruang Sehat
 
 Setiap modul bisnis di `docs/04-arsitektur.md` §3 menjadi satu modul Rust di `apps/rs-backend/src/modules/`. Nama modul bahasa Inggris snake_case `[KEPUTUSAN-111]`:
 
@@ -243,7 +243,7 @@ Aturan data di perangkat (ADR-021 butir 1, T1 untuk `rs_auth`):
 - **Dilarang** menyimpan isi klinis (chat, keluhan awal, catatan, resep, hasil lab, lampiran) di penyimpanan persisten aplikasi. Pengecualian: berkas yang sengaja diunduh pasien dan kode/QR appointment (US-403 AC2). Antrean pesan keluar yang belum terkirim disimpan terenkripsi dengan kunci dari penyimpanan aman, lalu dihapus setelah terkirim atau saat keluar.
 - Pengecualian dari cadangan perangkat dan penyembunyian layar di latar belakang wajib diterapkan; mekanisme platformnya diverifikasi di Tahap 8 `[KEPUTUSAN-76]`.
 - Kunci aplikasi tenaga kesehatan setelah 15 menit tidak aktif memakai local_auth `[SRC-137]` (CR-009).
-- **Dilarang** memanggil host di luar daftar izin ADR-021 butir 2 (backend Rumah Sehat, Keycloak, server media video, layanan crash di Indonesia).
+- **Dilarang** memanggil host di luar daftar izin ADR-021 butir 2 (backend Ruang Sehat, Keycloak, server media video, layanan crash di Indonesia).
 
 ---
 
@@ -451,7 +451,7 @@ tracing::info!(
 
 ### 4.4 Memanggil audit trail
 
-Audit trail dibuat aplikasi lewat **satu pustaka**, crate `audit`, yang dipakai semua modul Rumah Sehat dan RME (ADR-009 butir 1). Aturan pemanggilan:
+Audit trail dibuat aplikasi lewat **satu pustaka**, crate `audit`, yang dipakai semua modul Ruang Sehat dan RME (ADR-009 butir 1). Aturan pemanggilan:
 
 1. **Aksi yang mengubah data**: event ditulis ke `audit_outbox` **di transaksi yang sama** dengan perubahan bisnisnya. Kalau penulisan event gagal, seluruh transaksi batal dan pengguna menerima galat (ADR-009 butir 2, KEPUTUSAN-15).
 2. **Akses baca data sensitif (E-05)**: event ditulis dan di-commit **sebelum** data didekripsi dan dikirim. Kalau gagal, akses ditolak (ADR-009 butir 2, ADR-012 butir 2).
@@ -552,7 +552,7 @@ Aturan khusus:
 - **Default deny** (ADR-012 butir 1): setiap endpoint menyatakan kebijakannya; permintaan tanpa kebijakan ditolak. Route hanya dapat didaftarkan lewat pembungkus router yang mewajibkan kebijakan, dan test saat start memeriksa bahwa setiap route terdaftar punya kebijakan `[KEPUTUSAN-127]`.
 - Kebijakan dievaluasi di crate `authz`, **tidak tersebar di handler** (ADR-012 butir 1). Modul mendaftarkan kebijakannya di `policy.rs`.
 - Relasi yang diperiksa: kepemilikan, penugasan (dalam batas waktunya), tenant, dan sub-peran admin (ADR-012 butir 1).
-- **Validasi token** di backend: tanda tangan dengan daftar izin algoritma, issuer per realm, audience, masa berlaku (RFC 8725 `[SRC-79]`), dengan jsonwebtoken 12.0.0 `[SRC-169]`; JWKS realm di-cache `[KEPUTUSAN-74]`. Backend Rumah Sehat **menolak** token realm `rme`, dan backend RME hanya menerima realm `rme` (ADR-011 butir 3 dan 11). Backend juga memeriksa status akun dan daftar sesi yang dicabut; aksi berisiko membaca status langsung dari database (ADR-011 butir 8).
+- **Validasi token** di backend: tanda tangan dengan daftar izin algoritma, issuer per realm, audience, masa berlaku (RFC 8725 `[SRC-79]`), dengan jsonwebtoken 12.0.0 `[SRC-169]`; JWKS realm di-cache `[KEPUTUSAN-74]`. Backend Ruang Sehat **menolak** token realm `rme`, dan backend RME hanya menerima realm `rme` (ADR-011 butir 3 dan 11). Backend juga memeriksa status akun dan daftar sesi yang dicabut; aksi berisiko membaca status langsung dari database (ADR-011 butir 8).
 - **Cakupan tenant dari sesi, bukan dari permintaan** (ADR-012 butir 5, ADR-014 butir 3): tipe `PartnerScope` dan `FasyankesScope` hanya dapat dibangun oleh crate `authz` dari konteks autentikasi yang sudah divalidasi. Fungsi repository untuk data per tenant **wajib** menerima tipe ini, bukan `Uuid` mentah, sehingga lupa membatasi tenant menjadi galat compile `[KEPUTUSAN-128]`. `partner_id` di body atau query **diabaikan** untuk otorisasi.
 - **RME**: selain pemeriksaan aplikasi, setiap transaksi memasang pengaturan sesi database `fasyankes_id` untuk RLS (ADR-012 butir 6). Mekanisme pengaturan lokal-transaksi diverifikasi ke dokumentasi PostgreSQL di Tahap 8. Jalur Operator RME memakai role database terpisah tanpa `SELECT` atas tabel klinis.
 - **Respons penolakan**: objek terlarang → 404 `4040001`; aksi dikenal tetapi tidak diizinkan → 403 `4030001` (ADR-012 butir 4). Penolakan atas data sensitif dicatat dengan hasil gagal (ADR-012 butir 2) dan masuk security log.
@@ -596,7 +596,7 @@ Mengikuti `[KEPUTUSAN-88]`, ADR-013 butir 8, ADR-021 butir 4:
 
 - **Dilarang** ada rahasia di kode, repositori, image, berkas Compose, variabel CI, atau log. Satu-satunya pengecualian adalah kunci privat cosign sebagai secret GitHub berakses minimum `[KEPUTUSAN-81]` `[KEPUTUSAN-88]`.
 - **Lokal**: berkas `.env.local` berisi nilai **sintetis**, tidak di-commit (masuk `.gitignore`); OpenBao mode dev di Compose lokal `[KEPUTUSAN-88]`. `.env.example` di-commit berisi nama variabel dan nilai contoh sintetis saja `[DOK: .claude/skills/runbook/references/tahap-08-development.md]`.
-- **Staging dan production**: semua rahasia di OpenBao 2.7.2 `[SRC-185]`; proses mengambil rahasia saat start dan saat rotasi. Setiap deployment punya identitas OpenBao sendiri dengan policy minimum (`api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker` untuk Rumah Sehat dan RME, rotasi kunci, BFF Next.js) `[KEPUTUSAN-79]` (§1.4). Kredensial database dinamis berumur pendek `[SRC-224]`.
+- **Staging dan production**: semua rahasia di OpenBao 2.7.2 `[SRC-185]`; proses mengambil rahasia saat start dan saat rotasi. Setiap deployment punya identitas OpenBao sendiri dengan policy minimum (`api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker` untuk Ruang Sehat dan RME, rotasi kunci, BFF Next.js) `[KEPUTUSAN-79]` (§1.4). Kredensial database dinamis berumur pendek `[SRC-224]`.
 - **Konfigurasi non-rahasia** lewat variabel lingkungan di berkas Compose per lingkungan di `infra/` `[KEPUTUSAN-88]`.
 - **Konfigurasi bertipe dan gagal cepat**: setiap proses memuat konfigurasi ke satu struct bertipe saat start dan berhenti dengan galat yang jelas (tanpa mencetak nilai) bila ada yang hilang atau tidak valid; kode lain menerima konfigurasi lewat struct itu, tidak membaca variabel lingkungan langsung `[KEPUTUSAN-132]`. Field rahasia bertipe `Sensitive<T>`.
 - **Keycloak**: konfigurasi realm hanya sebagai kode di `infra/` lewat keycloak-config-cli 6.5.1 `[SRC-122]` `[KEPUTUSAN-85]`; perubahan manual lewat konsol admin dilarang. Perubahan ini termasuk modul kritis T1.
@@ -643,7 +643,7 @@ Semua jenis di atas dijalankan oleh `scripts/verify.sh` sesuai rancangan `[KEPUT
 
 | Modul T1 | Skenario negatif minimum |
 | --- | --- |
-| Autentikasi, sesi, MFA (Keycloak, validasi token, BFF) | Kombinasi token tidak sah di atas; token realm `rme` ke backend Rumah Sehat dan sebaliknya; autentikasi ulang wajib untuk aksi berisiko (ADR-011 butir 9); cookie tanpa CSRF ditolak; token tidak pernah muncul di respons browser; penguncian setelah 5 gagal (ADR-011 butir 4) |
+| Autentikasi, sesi, MFA (Keycloak, validasi token, BFF) | Kombinasi token tidak sah di atas; token realm `rme` ke backend Ruang Sehat dan sebaliknya; autentikasi ulang wajib untuk aksi berisiko (ADR-011 butir 9); cookie tanpa CSRF ditolak; token tidak pernah muncul di respons browser; penguncian setelah 5 gagal (ADR-011 butir 4) |
 | Otorisasi dan isolasi (RLS, role RME) | Endpoint tanpa kebijakan ditolak; isolasi tenant; admin mengubah perannya sendiri ditolak; Super Admin/Admin Fasyankes terakhir tidak dapat dinonaktifkan; Operator RME tidak dapat membaca tabel klinis |
 | Harga, pembayaran, jurnal, refund, klaim, kewajiban | Notifikasi ganda hanya mengonfirmasi sekali; tanda tangan notifikasi tidak valid; nominal berbeda → RF-14; refund ganda ditolak; refund melebihi dana diterima ditolak; kegagalan dan habis waktu penyedia; jurnal tidak seimbang ditolak; luapan aritmetika uang (ADR-015 konsekuensi) |
 | Pustaka audit, relay, DB audit | Field terlarang tidak pernah masuk event (US-1501 AC2); gagal tulis outbox membatalkan aksi; gagal E-05 menolak akses; `UPDATE`/`DELETE`/`TRUNCATE` di `audit_event` ditolak; perubahan satu event terdeteksi verifikasi hash berantai; dua relay tidak berjalan bersamaan |

@@ -1,4 +1,4 @@
-# Business Case: Rumah Sehat
+# Business Case: Ruang Sehat
 
 Tanggal: 2026-11-17
 Versi: 1.0 (disetujui di gate Tahap 1, 2026-11-17)
@@ -12,7 +12,7 @@ Sesuai prinsip PRINCE2 *continued business justification*, dokumen ini dicek ula
 
 ## 1. Ringkasan untuk Executive
 
-- **Apa:** aplikasi mobile kesehatan (Flutter, Android dan iOS) dengan tujuh layanan. Rumah Sehat berperan sebagai gateway ke sistem klinik, lab, dan outlet rekanan `[DOK] P1.1, PS6, PS6a, P6.1, P7.4`.
+- **Apa:** aplikasi mobile kesehatan (Flutter, Android dan iOS) dengan tujuh layanan. Ruang Sehat berperan sebagai gateway ke sistem klinik, lab, dan outlet rekanan `[DOK] P1.1, PS6, PS6a, P6.1, P7.4`.
 - **Pemilik:** PT. Arunika, perusahaan IT berbadan hukum, dengan pembiayaan sendiri `[USER] T1-Q6` `[DOK] P2.2, P5.2a`.
 - **Opsi terpilih:** membangun sendiri. Opsi beli/sewa solusi jadi sudah dipertimbangkan dan ditolak `[USER] T1-Q7, T1-Q7a`.
 - **Manfaat terukur:** 10.000 pasien aktif bulanan, 70 dokter dan psikolog, 20 klinik rekanan, dan 10 lab rekanan pada 1 Maret 2028 `[DOK] P8.1, P8.1a` `[USER] T1-Q3`.
@@ -36,8 +36,8 @@ Diambil dari Project Brief `[DOK]`:
 
 | Opsi | Uraian | Biaya | Manfaat | Status | Sumber |
 | --- | --- | --- | --- | --- | --- |
-| A. Tidak melakukan apa-apa | Rumah Sehat tidak dibangun | Tidak ada biaya proyek | Tidak ada; masalah di bagian 2 tetap ada | Tidak dipilih | `[DOK] P1.4` |
-| B. Beli atau sewa solusi jadi | Misalnya platform telemedis *white-label* yang diberi merek Rumah Sehat | `[TIDAK DIKETAHUI]` (tidak ada penawaran vendor yang tercatat) | Tidak dinilai lebih jauh | Sudah dipertimbangkan perusahaan dan ditolak | `[USER] T1-Q7` |
+| A. Tidak melakukan apa-apa | Ruang Sehat tidak dibangun | Tidak ada biaya proyek | Tidak ada; masalah di bagian 2 tetap ada | Tidak dipilih | `[DOK] P1.4` |
+| B. Beli atau sewa solusi jadi | Misalnya platform telemedis *white-label* yang diberi merek Ruang Sehat | `[TIDAK DIKETAHUI]` (tidak ada penawaran vendor yang tercatat) | Tidak dinilai lebih jauh | Sudah dipertimbangkan perusahaan dan ditolak | `[USER] T1-Q7` |
 | C. Membangun sendiri | Aplikasi Flutter pasien dan tenaga kesehatan, portal web admin, dan backend, dibangun lewat runbook ini bersama 1 mobile developer | Bagian 6 | Bagian 4 | **Dipilih** | `[USER] T1-Q7` `[DOK] P7.3, P7.4` |
 
 **Alasan memilih opsi C** `[USER] T1-Q7a`:
@@ -58,7 +58,7 @@ Tenggat KPI 1 Maret 2028 adalah 12 bulan setelah go-live 1 Maret 2027 `[DOK] P8.
 | ID | KPI | Target | Tenggat | Cara mengukur | Sumber |
 | --- | --- | --- | --- | --- | --- |
 | KPI-01 | Pasien aktif bulanan (MAU) | 10.000 | 1 Maret 2028 | Jumlah pasien unik yang memakai aplikasi dalam satu bulan kalender. Kriteria "memakai" masih terbuka (PT-16), ditetapkan sebelum Tahap 3 supaya bisa diukur sistem | `[DOK] P8.1` `[USER] T1-Q3` |
-| KPI-02 | Dokter dan psikolog (gabungan) | 70 | 1 Maret 2028 | Jumlah akun dokter dan psikolog di Rumah Sehat | `[DOK] P8.1` `[USER] T1-Q3` |
+| KPI-02 | Dokter dan psikolog (gabungan) | 70 | 1 Maret 2028 | Jumlah akun dokter dan psikolog di Ruang Sehat | `[DOK] P8.1` `[USER] T1-Q3` |
 | KPI-03 | Klinik rekanan | 20 | 1 Maret 2028 | Jumlah klinik rekanan yang bergabung | `[DOK] P8.1` |
 | KPI-04 | Lab rekanan | 10 | 1 Maret 2028 | Jumlah lab rekanan yang bergabung | `[DOK] P8.1` |
 
@@ -87,7 +87,7 @@ Target pendapatan, titik impas, atau masa balik modal belum ditetapkan `[TIDAK D
 | Komisi produk | Potongan dari penjualan produk outlet sebelum dana diteruskan ke outlet | `[USER] T1-Q1` `[DOK] PS4` |
 | Biaya dari rekanan | Langganan atau biaya per pendaftaran yang ditagihkan ke klinik dan lab rekanan. Bentuk yang dipakai belum dipilih | `[USER] T1-Q1` |
 
-Pembayaran klinik, lab, dan home visit dilakukan langsung ke mitra, tidak lewat aplikasi `[DOK] P3.3`, sehingga untuk layanan itu Rumah Sehat tidak memegang dana pasien yang bisa dipotong komisi. Dari ketiga sumber di atas, yang berlaku untuk pendaftaran klinik dan lab adalah biaya dari rekanan `[USER] T1-Q1`. Klinik rekanan tetap bisa menghasilkan komisi produk sebagai penjual obat bebas `[DOK] PS2a, PS4`.
+Pembayaran klinik, lab, dan home visit dilakukan langsung ke mitra, tidak lewat aplikasi `[DOK] P3.3`, sehingga untuk layanan itu Ruang Sehat tidak memegang dana pasien yang bisa dipotong komisi. Dari ketiga sumber di atas, yang berlaku untuk pendaftaran klinik dan lab adalah biaya dari rekanan `[USER] T1-Q1`. Klinik rekanan tetap bisa menghasilkan komisi produk sebagai penjual obat bebas `[DOK] PS2a, PS4`.
 
 ### 5.2 Simulasi
 
@@ -139,7 +139,7 @@ Anggaran total `[TIDAK DIKETAHUI]` `[DOK] P7.1` (PT-11). Periode pembangunan sam
 | Kurir pihak ketiga | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Penyedia dan siapa yang menanggung ongkir belum diketahui `[DOK] PS5` | Tahap 2–5 |
 | Audit keamanan eksternal | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Syarat go-live 6 `[DOK] P8.2`; auditor eksternal `[DOK] P5.3` | Tahap 10 |
 | Perizinan, legal, dan kepatuhan | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Izin belum diketahui `[DOK] P5.2` (PT-02, PT-03) | Tahap 2 |
-| Staf operasional admin Rumah Sehat (verifikasi KTP manual, layanan pelanggan, CMS) | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Fungsi wajib `[DOK] P4.6b, P8.2a`; jumlah staf tidak disebut (PT-18) | PT-18 |
+| Staf operasional admin Ruang Sehat (verifikasi KTP manual, layanan pelanggan, CMS) | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Fungsi wajib `[DOK] P4.6b, P8.2a`; jumlah staf tidak disebut (PT-18) | PT-18 |
 | Pemasaran | `[TIDAK DIKETAHUI]` | `[TIDAK DIKETAHUI]` | Ada rencana pemasaran `[USER] T1-Q4`; apakah masuk anggaran proyek `[TIDAK DIKETAHUI]` (PT-11) | PT-11 |
 
 **Total yang sudah bernilai:** Rp34–68 juta ditambah US$25 sampai go-live, dan Rp120–240 juta untuk 12 bulan operasi. Total ini **bukan total biaya proyek**, karena sebagian besar komponen belum bernilai.
@@ -173,7 +173,7 @@ Penilaian kemungkinan dan dampak (Tinggi/Sedang/Rendah) adalah penilaian penyusu
 
 | # | Risiko | Dasar | Kemungkinan | Dampak | Usulan respons |
 | --- | --- | --- | --- | --- | --- |
-| R-01 | Lima dari tujuh layanan (klinik, lab, home visit, informasi biaya MCU/lab, pembelian produk) bergantung pada integrasi dengan rekanan yang belum ada dan belum diketahui kemampuan integrasinya. Dua layanan konsultasi online berjalan di Rumah Sehat sendiri | `[DOK] PS6, PS6a, PS6b, P4.3, P8.2` | Tinggi | Tinggi | Rekrut rekanan paralel dan jawab PT-05 sebelum Tahap 4. Kalau scope harus dikurangi (P8.3), urutan layanan yang dipertahankan diputuskan Executive di Tahap 3 atau 7 |
+| R-01 | Lima dari tujuh layanan (klinik, lab, home visit, informasi biaya MCU/lab, pembelian produk) bergantung pada integrasi dengan rekanan yang belum ada dan belum diketahui kemampuan integrasinya. Dua layanan konsultasi online berjalan di Ruang Sehat sendiri | `[DOK] PS6, PS6a, PS6b, P4.3, P8.2` | Tinggi | Tinggi | Rekrut rekanan paralel dan jawab PT-05 sebelum Tahap 4. Kalau scope harus dikurangi (P8.3), urutan layanan yang dipertahankan diputuskan Executive di Tahap 3 atau 7 |
 | R-02 | Jadwal 104 hari untuk 7 layanan, 9 peran, 2 aplikasi mobile, portal web, dan banyak integrasi, dengan toleransi waktu 0 | `[DOK] P7.2, P7.3, P6.1, P6.2, P8.3` | Tinggi | Tinggi | Pakai mekanisme pengurangan scope P8.3 dengan prioritas eksplisit di PRD. Pantau di setiap gate |
 | R-03 | Kebutuhan badan usaha terpisah dan izin belum diketahui, padahal izin adalah syarat go-live yang tidak bisa dikurangi. Penjualan obat bebas oleh klinik lewat aplikasi juga belum dipastikan boleh (PT-04) | `[DOK] P5.2, P8.2, P8.3, PS2a` | `[TIDAK DIKETAHUI]` (belum diriset) | Tinggi | Jadikan PT-02 dan PT-04 prioritas pertama compliance-reviewer di awal Tahap 2. Kalau hasilnya mengubah biaya atau jadwal secara besar, Business Case ditinjau ulang |
 | R-04 | Kapasitas tim (PM, Claude, 1 mobile developer) terhadap scope. Peran QA manusia, DevOps, dan UI/UX tidak disebut | `[DOK] P7.3` | Tinggi | Tinggi | Tinjau ulang setelah arsitektur (Tahap 4) dan phase plan (Tahap 7), ketika volume pekerjaan sudah terukur |
@@ -203,7 +203,7 @@ Kolom Pemilik dan Tenggat adalah usulan penyusun, dikonfirmasi user di gate Taha
 | --- | --- | --- | --- |
 | PT-16 | Kriteria "pasien aktif" untuk KPI-01 (cukup membuka aplikasi/login, atau harus bertransaksi) dan status yang dihitung untuk KPI-02 sampai KPI-04 (terdaftar, terverifikasi, atau terintegrasi) | CEO | Sebelum Tahap 3 |
 | PT-17 | Besaran komisi konsultasi, komisi produk, dan bentuk serta besaran biaya rekanan | CEO | Sebelum Tahap 2 |
-| PT-18 | Biaya tim selain mobile developer: PM, langganan Claude, dan staf operasional admin Rumah Sehat (verifikasi KTP, layanan pelanggan, CMS) | User (PM) dan CEO | Sebelum gate Tahap 4 |
+| PT-18 | Biaya tim selain mobile developer: PM, langganan Claude, dan staf operasional admin Ruang Sehat (verifikasi KTP, layanan pelanggan, CMS) | User (PM) dan CEO | Sebelum gate Tahap 4 |
 | PT-19 | Apakah mobile developer dibayar penuh waktu selama periode pembangunan, dan apakah tetap dipertahankan setelah go-live? | User (PM) | Gate Tahap 1 |
 
 ## 9. Rencana tinjauan ulang Business Case

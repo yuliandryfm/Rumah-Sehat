@@ -13,7 +13,7 @@ Tanggal: 2026-11-18
   - verifikasi email sebelum akun aktif;
   - penguncian 15 menit setelah 5 kali gagal berturut-turut;
   - tautan atur ulang password sekali pakai 60 menit;
-  - MFA wajib untuk admin Rumah Sehat, admin rekanan, dan pengguna RME;
+  - MFA wajib untuk admin Ruang Sehat, admin rekanan, dan pengguna RME;
   - sesi web berakhir setelah 30 menit tanpa aktivitas.
 - Akun nonaktif harus ditolak termasuk pada sesi yang masih terbuka (KU-10). Untuk pengguna RME, akses berakhir seketika (US-1302 AC4). Keluar mengakhiri sesi di server (US-103 AC5). Akun tidak dibuat sebelum pasien menyetujui persetujuan pemrosesan data (US-101 AC1, AC4; US-104) `[DOK: 03-prd.md]`.
 - Kemampuan Keycloak yang terverifikasi (versi 26.8.2, lisensi Apache 2.0 `[SRC-64]`):
@@ -29,12 +29,12 @@ Tanggal: 2026-11-18
 
 **1. Target verifikasi ASVS 5.0.0 Level 2** untuk semua komponen, termasuk konfigurasi Keycloak. Pemetaan kontrol disusun di Tahap 5 sebagai checklist dan diverifikasi di Tahap 10 `[KEPUTUSAN-26]`.
 
-**2. Keycloak sebagai identity provider** untuk semua akun manusia Rumah Sehat dan RME, serta untuk klien integrasi rekanan `[USER] T4-Q4` `[KEPUTUSAN-24]`:
+**2. Keycloak sebagai identity provider** untuk semua akun manusia Ruang Sehat dan RME, serta untuk klien integrasi rekanan `[USER] T4-Q4` `[KEPUTUSAN-24]`:
 - dijalankan sendiri di cloud Indonesia, minimal 2 instans terklaster `[SRC-66]`;
-- memakai database PostgreSQL tersendiri `[SRC-65]` di instans database aplikasi Rumah Sehat, ikut PITR (ADR-019);
+- memakai database PostgreSQL tersendiri `[SRC-65]` di instans database aplikasi Ruang Sehat, ikut PITR (ADR-019);
 - versi yang dipakai ditetapkan di Tahap 5.
 - **Hanya endpoint OIDC realm pengguna yang publik** (login, token, logout, dan halaman yang diperlukan). Konsol admin, realm master, dan Admin REST API hanya dapat dicapai dari jaringan internal (proses backend dan jalur administrasi ber-MFA, ADR-021 butir 3). Cara pemisahan endpoint diverifikasi ke dokumentasi Keycloak di Tahap 5 (threat model KC-06, M-05).
-- Akun admin realm master seminimal mungkin dan ber-MFA. Backend Rumah Sehat dan backend RME memakai klien Admin REST API terpisah per realm, dengan peran admin minimum. Backend Rumah Sehat tidak punya hak di realm `rme`, dan sebaliknya.
+- Akun admin realm master seminimal mungkin dan ber-MFA. Backend Ruang Sehat dan backend RME memakai klien Admin REST API terpisah per realm, dengan peran admin minimum. Backend Ruang Sehat tidak punya hak di realm `rme`, dan sebaliknya.
 - Admin event yang mengubah konfigurasi realm memicu peringatan di security log.
 
 **3. Realm terpisah per populasi.** Realm terisolasi satu sama lain `[SRC-70]`. Pembagiannya `[KEPUTUSAN-24]`:
@@ -43,7 +43,7 @@ Tanggal: 2026-11-18
 | --- | --- | --- |
 | `pasien` | Pasien | Pendaftaran lewat backend (butir 6), verifikasi email, tanpa MFA |
 | `nakes` | Dokter, psikolog, fisioterapis, tenaga medis | Pendaftaran lewat backend (US-202), MFA TOTP wajib `[KEPUTUSAN-25]` |
-| `admin` | Admin Rumah Sehat dan admin rekanan | Hanya undangan, MFA TOTP wajib |
+| `admin` | Admin Ruang Sehat dan admin rekanan | Hanya undangan, MFA TOTP wajib |
 | `rme` | Pengguna RME minimalis, termasuk Operator RME | Hanya undangan, MFA TOTP wajib. Backend RME hanya menerima token realm ini |
 | `integrasi` | Klien sistem rekanan dan fasyankes RME | Client credentials, satu klien per rekanan/fasyankes (ADR-014) |
 
@@ -70,7 +70,7 @@ Tanggal: 2026-11-18
 - Perubahan email mandiri di konsol akun Keycloak dinonaktifkan. Email hanya diubah lewat API aplikasi (US-105 AC4), yang memperbarui Keycloak lewat Admin REST API `[SRC-72]`, sehingga salinan email di aplikasi tidak tertinggal.
 
 **7. Alur login** `[KEPUTUSAN-24]`:
-- **Aplikasi mobile**: OIDC Authorization Code dengan PKCE lewat browser sistem, bukan webview di dalam aplikasi, sesuai RFC 8252 `[SRC-77]` `[SRC-71]`. Halaman login memakai tema Rumah Sehat; kemampuan tema diverifikasi di Tahap 5 dan desainnya di Tahap 6. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).
+- **Aplikasi mobile**: OIDC Authorization Code dengan PKCE lewat browser sistem, bukan webview di dalam aplikasi, sesuai RFC 8252 `[SRC-77]` `[SRC-71]`. Halaman login memakai tema Ruang Sehat; kemampuan tema diverifikasi di Tahap 5 dan desainnya di Tahap 6. Token disimpan di penyimpanan aman platform perangkat (pustaka ditetapkan Tahap 5).
 - **Web** (backoffice, portal, RME): pola *backend-for-frontend* (BFF). Backend menjalankan Authorization Code sebagai klien rahasia, sehingga token tidak pernah sampai ke browser. Browser memegang cookie sesi `HttpOnly`, `Secure`, dan `SameSite`, dengan perlindungan CSRF. Data sesi BFF disimpan di Redis (ADR-007). Token di dalamnya dienkripsi dengan kunci dari secret manager dan diikat ke ID sesi, sehingga pembaca Redis tidak memperoleh token yang dapat dipakai (M-06).
 - **Batas sesi (nilai awal)**: diatur lewat SSO Session Idle/Max dan Access Token Lifespan per realm `[SRC-70]`.
   - Web: tidak aktif 30 menit (NFR-SEC-04), mutlak 12 jam.
@@ -98,7 +98,7 @@ Tanggal: 2026-11-18
 - Keterlambatan pengambilan lebih dari 5 menit memicu peringatan keamanan.
 - Pembuatan akun aplikasi, perubahan peran, dan penonaktifan dicatat langsung oleh aplikasi (E-04, E-10, E-11).
 
-**11. Satu deployment Keycloak untuk Rumah Sehat dan RME**, dengan realm dan admin realm terpisah. Backend Rumah Sehat tidak menerima token realm `rme`, dan sebaliknya `[KEPUTUSAN-24]`.
+**11. Satu deployment Keycloak untuk Ruang Sehat dan RME**, dengan realm dan admin realm terpisah. Backend Ruang Sehat tidak menerima token realm `rme`, dan sebaliknya `[KEPUTUSAN-24]`.
 
 ## Alternatif yang ditolak
 

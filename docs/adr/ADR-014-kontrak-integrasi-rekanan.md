@@ -6,7 +6,7 @@ Tanggal: 2026-11-18
 ## Konteks
 
 - Data klinik, lab, home visit, dan produk berasal dari sistem rekanan lewat integrasi (AB-60). Kontrak yang sama berlaku untuk sistem milik rekanan dan RME minimalis, tanpa jalur khusus (AB-61, US-1401 AC3). Mekanisme teknis (API, format, keamanan) ditetapkan di Tahap 4 `[DOK: 03-prd.md]` EP-14.
-- Arah data per jenis rekanan tercantum di tabel EP-14. Sebagian data mengalir dari rekanan ke Rumah Sehat (katalog, jadwal, status, hasil lab), sebagian dari Rumah Sehat ke rekanan (pesanan terbayar, pembatalan, daftar tenaga kesehatan aktif, status home visit), dan ada pemeriksaan harga serta ketersediaan sebelum bayar (AB-15) `[DOK: 03-prd.md]`.
+- Arah data per jenis rekanan tercantum di tabel EP-14. Sebagian data mengalir dari rekanan ke Ruang Sehat (katalog, jadwal, status, hasil lab), sebagian dari Ruang Sehat ke rekanan (pesanan terbayar, pembatalan, daftar tenaga kesehatan aktif, status home visit), dan ada pemeriksaan harga serta ketersediaan sebelum bayar (AB-15) `[DOK: 03-prd.md]`.
 - Pesan diproses idempoten dan dicoba ulang (NFR-INT-01). Perubahan data rekanan tampil paling lambat 15 menit (NFR-INT-02). Integrasi yang gagal terus selama 30 menit memicu peringatan (NFR-INT-03). Pesan tidak valid ditolak seluruhnya (US-1402 AC2). Rekanan dengan kredensial salah dicatat sebagai kejadian keamanan (US-1402 AC3) `[DOK: 03-prd.md]`.
 - Batas waktu tunggu ke rekanan saat pemeriksaan ulang sebelum bayar ditetapkan di Tahap 4 (PRD §9). Batas waktu percobaan ulang pengiriman pesanan ditetapkan di Tahap 4 (US-402 AC3) `[DOK: 03-prd.md]`.
 - Kemampuan sistem rekanan `[TIDAK DIKETAHUI]` (PT-05) `[DOK: 02-brd.md]`.
@@ -19,9 +19,9 @@ Tanggal: 2026-11-18
 
 | Pola | Isi (sesuai tabel EP-14) |
 | --- | --- |
-| Rekanan memanggil Rumah Sehat (masuk) | Unggah dan ubah layanan, harga, paket MCU, jadwal, slot, kuota, area home visit, katalog, stok; status check-in, selesai, antrean, penugasan home visit, status pesanan produk; hasil lab (nilai terstruktur dan/atau PDF lewat URL unggah bertanda tangan, ADR-018); pembatalan oleh rekanan |
-| Rumah Sehat mengirim webhook ke rekanan (keluar) | Pesanan terbayar beserta status lunas dan data penerima minimal; pembatalan oleh pasien atau sistem; perubahan daftar tenaga kesehatan aktif klinik; status kunjungan home visit |
-| Rumah Sehat memanggil rekanan secara sinkron | Pemeriksaan harga dan ketersediaan sekaligus penahanan slot atau stok sebelum pembayaran dibuat (AB-15, KU-09). Rekanan mengembalikan ID penahanan dan masa berlakunya, minimal PB-07 |
+| Rekanan memanggil Ruang Sehat (masuk) | Unggah dan ubah layanan, harga, paket MCU, jadwal, slot, kuota, area home visit, katalog, stok; status check-in, selesai, antrean, penugasan home visit, status pesanan produk; hasil lab (nilai terstruktur dan/atau PDF lewat URL unggah bertanda tangan, ADR-018); pembatalan oleh rekanan |
+| Ruang Sehat mengirim webhook ke rekanan (keluar) | Pesanan terbayar beserta status lunas dan data penerima minimal; pembatalan oleh pasien atau sistem; perubahan daftar tenaga kesehatan aktif klinik; status kunjungan home visit |
+| Ruang Sehat memanggil rekanan secara sinkron | Pemeriksaan harga dan ketersediaan sekaligus penahanan slot atau stok sebelum pembayaran dibuat (AB-15, KU-09). Rekanan mengembalikan ID penahanan dan masa berlakunya, minimal PB-07 |
 
 **3. Keamanan** `[KEPUTUSAN-30]`:
 - Panggilan masuk: setiap rekanan, dan setiap fasyankes di RME minimalis, punya klien sendiri di realm Keycloak `integrasi` dengan OAuth 2.0 client credentials `[SRC-45]` `[SRC-71]` dan token akses berumur pendek (ADR-011, `[USER] T4-Q4`). Database aplikasi memetakan `client_id` ke rekanan. Lapisan mTLS dipertimbangkan di Tahap 5.
@@ -46,7 +46,7 @@ Tanggal: 2026-11-18
 
 **5. Pemeriksaan sebelum bayar.** Panggilan sinkron ke rekanan memakai batas waktu 5 detik tanpa percobaan ulang di dalam permintaan pasien. Bila gagal atau habis waktu, pasien diberi tahu bahwa data sementara tidak tersedia, dan pembayaran tidak dibuat (KU-08). Kalau harga atau ketersediaan berbeda, berlaku AB-15 `[KEPUTUSAN-30]`.
 
-**6. Kesegaran data.** Rekanan wajib mengirim perubahan katalog, harga, dan jadwal begitu terjadi. Rumah Sehat menyediakan endpoint untuk pengiriman snapshot penuh sebagai rekonsiliasi berkala. Setiap data salinan rekanan menyimpan waktu sinkron terakhir untuk tampilan KU-08 `[KEPUTUSAN-30]`.
+**6. Kesegaran data.** Rekanan wajib mengirim perubahan katalog, harga, dan jadwal begitu terjadi. Ruang Sehat menyediakan endpoint untuk pengiriman snapshot penuh sebagai rekonsiliasi berkala. Setiap data salinan rekanan menyimpan waktu sinkron terakhir untuk tampilan KU-08 `[KEPUTUSAN-30]`.
 
 **7. Pemantauan per rekanan** (US-1405): status Belum, Uji, Aktif, Terganggu, Nonaktif; waktu sinkron terakhir yang berhasil; dan jumlah galat 24 jam. Bila tidak ada pesan berhasil selama 30 menit sementara ada percobaan yang gagal, status menjadi Terganggu dan admin diberi peringatan (NFR-INT-03) `[KEPUTUSAN-30]`.
 
@@ -56,12 +56,12 @@ Tanggal: 2026-11-18
 
 ## Alternatif yang ditolak
 
-- **Rumah Sehat menarik data dari sistem setiap rekanan (polling) dengan adaptor per rekanan**: setiap rekanan baru menambah kode khusus, dan RME tidak lagi lulus "tanpa jalur khusus". Rumah Sehat yang menetapkan kontrak.
+- **Ruang Sehat menarik data dari sistem setiap rekanan (polling) dengan adaptor per rekanan**: setiap rekanan baru menambah kode khusus, dan RME tidak lagi lulus "tanpa jalur khusus". Ruang Sehat yang menetapkan kontrak.
 - **Pertukaran berkas terjadwal (CSV atau SFTP)**: tidak memenuhi kebutuhan status real-time (check-in, antrean 30 detik) dan pemeriksaan sinkron sebelum bayar.
 - **Kunci API statis tanpa token**: rahasia jangka panjang ikut terkirim di setiap permintaan, dan rotasinya sulit.
 
 ## Konsekuensi
 
-- Rekanan dengan sistem sendiri harus mampu memanggil API, menerima webhook, dan menyediakan endpoint pemeriksaan sinkron. Kalau sistem rekanan tidak mampu (PT-05), pilihannya rekanan memakai RME minimalis, atau Rumah Sehat membangun adaptor khusus. Pilihan itu keputusan bisnis yang dibawa ke user saat PT-05 terjawab (risk register).
+- Rekanan dengan sistem sendiri harus mampu memanggil API, menerima webhook, dan menyediakan endpoint pemeriksaan sinkron. Kalau sistem rekanan tidak mampu (PT-05), pilihannya rekanan memakai RME minimalis, atau Ruang Sehat membangun adaptor khusus. Pilihan itu keputusan bisnis yang dibawa ke user saat PT-05 terjawab (risk register).
 - Kontrak ini dirancang sekali dan dipakai RME minimalis sebagai klien pertama, sehingga RME menjadi uji kontrak sejak awal.
 - Spesifikasi OpenAPI menjadi artefak yang dijaga versinya, dan perubahan kontrak memerlukan review.

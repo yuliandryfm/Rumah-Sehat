@@ -1,4 +1,4 @@
-# Stack Teknologi dan Platform: Rumah Sehat
+# Stack Teknologi dan Platform: Ruang Sehat
 
 Tanggal: 2026-11-18
 Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
@@ -17,9 +17,9 @@ Dokumen terkait: ADR-024 (stack aplikasi) dan ADR-025 (hosting VPS, OpenBao, obs
 
 ## 1. Ringkasan stack
 
-### 1.1 Backend Rumah Sehat dan RME minimalis (Rust)
+### 1.1 Backend Ruang Sehat dan RME minimalis (Rust)
 
-Bahasa backend dipilih user: Rust untuk backend Rumah Sehat dan backend RME minimalis `[USER] T5-Q1`.
+Bahasa backend dipilih user: Rust untuk backend Ruang Sehat dan backend RME minimalis `[USER] T5-Q1`.
 
 | Komponen | Pilihan | Versi | Lisensi | Alasan singkat | Sumber |
 | --- | --- | --- | --- | --- | --- |
@@ -44,10 +44,10 @@ Bahasa backend dipilih user: Rust untuk backend Rumah Sehat dan backend RME mini
 | Antrean job (ADR-007) | Implementasi tipis sendiri di modul Platform | — | — | Tabel job + `SELECT ... FOR UPDATE SKIP LOCKED`. Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi, sehingga hanya satu instans yang aktif. Ini menjawab "mekanisme penguncinya ditetapkan di Tahap 5" (ADR-007) | `[SRC-36]` `[SRC-234]` `[KEPUTUSAN-74]` |
 
 **Struktur workspace Cargo** `[KEPUTUSAN-74]` `[KEPUTUSAN-89]`:
-- `apps/rs-backend`: satu binary Rumah Sehat dengan subcommand `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`; `apps/rme-backend`: `api`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`. Setiap subcommand adalah deployment dengan identitas OpenBao sendiri (ADR-025, review DBA Tahap 5).
-- `crates/`: pustaka bersama `audit`, `crypto`, `authz`, `envelope` (format respons ADR-023), `platform-jobs`, `integration-contract`, `test-support`. RME memakai pustaka ini lewat workspace, tanpa ketergantungan runtime ke Rumah Sehat (ADR-006 butir 2).
+- `apps/rs-backend`: satu binary Ruang Sehat dengan subcommand `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`; `apps/rme-backend`: `api`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker`. Setiap subcommand adalah deployment dengan identitas OpenBao sendiri (ADR-025, review DBA Tahap 5).
+- `crates/`: pustaka bersama `audit`, `crypto`, `authz`, `envelope` (format respons ADR-023), `platform-jobs`, `integration-contract`, `test-support`. RME memakai pustaka ini lewat workspace, tanpa ketergantungan runtime ke Ruang Sehat (ADR-006 butir 2).
 
-**Batas modul** (konsekuensi ADR-006) `[KEPUTUSAN-74]`: setiap modul bisnis Rumah Sehat (arsitektur §3) adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Batas ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul (§6).
+**Batas modul** (konsekuensi ADR-006) `[KEPUTUSAN-74]`: setiap modul bisnis Ruang Sehat (arsitektur §3) adalah modul Rust yang hanya mengekspos antarmuka publiknya. Tabel milik modul hanya diakses dari repository modul itu. Batas ini ditegakkan dengan visibilitas Rust (`pub(crate)`), checklist code review, dan test arsitektur di `scripts/verify.sh` yang memeriksa nama tabel di SQL per modul (§6).
 
 ### 1.2 Web: backoffice, portal rekanan, web RME (Next.js)
 
@@ -107,7 +107,7 @@ Pengecualian data aplikasi dari cadangan perangkat dan penyembunyian layar di la
 | Komponen | Pilihan | Versi | Lisensi | Alasan singkat | Sumber |
 | --- | --- | --- | --- | --- | --- |
 | Database | PostgreSQL, dijalankan sendiri di VPS | 18.7 | PostgreSQL License (belum diverifikasi di SRC-118) | Didukung sampai 2030-11-14. Keycloak 26.8.2 mendukung PostgreSQL 14.x–18.x dan diuji dengan 18. Ekstensi `pg_trgm` untuk pencarian | `[SRC-118]` `[SRC-121]` `[SRC-42]` `[KEPUTUSAN-77]` |
-| Cache, sesi BFF, Pub/Sub, batas laju | Valkey, dua instans terpisah (Rumah Sehat, RME) | 9.1.3 | BSD-3-Clause | Implementasi komponen "Redis" ADR-007. Redis 8+ memakai tri-lisensi RSALv2/SSPLv1/AGPLv3, sedangkan Valkey BSD-3 dan memuat kode Redis berlisensi BSD-3. **Perlu konfirmasi user di gate** (§14) | `[SRC-124]` `[SRC-247]` `[SRC-125]` `[SRC-76]` `[KEPUTUSAN-77]` |
+| Cache, sesi BFF, Pub/Sub, batas laju | Valkey, dua instans terpisah (Ruang Sehat, RME) | 9.1.3 | BSD-3-Clause | Implementasi komponen "Redis" ADR-007. Redis 8+ memakai tri-lisensi RSALv2/SSPLv1/AGPLv3, sedangkan Valkey BSD-3 dan memuat kode Redis berlisensi BSD-3. **Perlu konfirmasi user di gate** (§14) | `[SRC-124]` `[SRC-247]` `[SRC-125]` `[SRC-76]` `[KEPUTUSAN-77]` |
 | Identity provider | Keycloak, 2 node terklaster | 26.8.2 | Apache-2.0 | Keputusan T4-Q4. Rincian konfigurasi di §7 | `[SRC-121]` `[SRC-64]` `[KEPUTUSAN-85]` |
 | Konfigurasi realm sebagai kode | keycloak-config-cli | 6.5.1 | Apache-2.0 | Tanpa berkas state. Rilis terakhir sekitar 6 bulan lalu, dipantau | `[SRC-122]` `[KEPUTUSAN-85]` |
 | KMS dan secret manager | OpenBao, Raft 3 node | 2.7.2 | MPL-2.0 | Pengganti KMS dan secret manager penyedia cloud (CR-012). Rincian di §5 | `[SRC-185]` `[KEPUTUSAN-79]` |
@@ -221,10 +221,10 @@ Ukuran host adalah estimasi awal penyusun dan divalidasi uji beban NFR-CAP-04. H
 | Host | Paket | Spesifikasi (vCPU / RAM / disk) | Harga per bulan | Isi | Sumber |
 | --- | --- | --- | --- | --- | --- |
 | app-1, app-2 | NEO Lite Pro MM.8.4 | 4 / 8 GB / 80 GB NVMe | Rp999.000 × 2 | Caddy, `api`, `realtime`, `worker`, `audit-relay`, `audit-verify`, `privacy-worker` (masing-masing satu aktif lewat advisory lock), 3 server Next.js, RME `api`/`worker`/`audit-relay`/`audit-verify`/`privacy-worker`, Keycloak (1 node per host, klaster 2 node), agen metrik dan log | `[SRC-94]` |
-| db-app | NEO Lite Pro ML.16.8 | 8 / 16 GB / 90 GB | Rp1.799.000 | PostgreSQL instans (a): DB aplikasi Rumah Sehat + DB `keycloak`; pgBackRest | `[SRC-94]` |
+| db-app | NEO Lite Pro ML.16.8 | 8 / 16 GB / 90 GB | Rp1.799.000 | PostgreSQL instans (a): DB aplikasi Ruang Sehat + DB `keycloak`; pgBackRest | `[SRC-94]` |
 | db-rme | NEO Lite Pro MM.4.4 | 4 / 4 GB / 60 GB | Rp699.000 | PostgreSQL instans (c): RME; pgBackRest | `[SRC-94]` |
-| db-audit | NEO Lite Pro MS.4.2 | 2 / 4 GB / 60 GB | Rp559.000 | PostgreSQL instans (b): audit Rumah Sehat + audit RME; tanpa standby (ADR-019 butir 3); pgBackRest | `[SRC-94]` |
-| cache | NEO Lite MS 4.4 | 4 / 4 GB / 60 GB SSD | Rp179.000 | Valkey Rumah Sehat + Valkey RME (instans terpisah) | `[SRC-93]` |
+| db-audit | NEO Lite Pro MS.4.2 | 2 / 4 GB / 60 GB | Rp559.000 | PostgreSQL instans (b): audit Ruang Sehat + audit RME; tanpa standby (ADR-019 butir 3); pgBackRest | `[SRC-94]` |
+| cache | NEO Lite MS 4.4 | 4 / 4 GB / 60 GB SSD | Rp179.000 | Valkey Ruang Sehat + Valkey RME (instans terpisah) | `[SRC-93]` |
 | video | NEO Lite Pro MM.8.4 | 4 / 8 GB / 80 GB NVMe | Rp999.000 | LiveKit + TURN. Kebutuhan CPU dan bandwidth untuk 100 sesi `[TIDAK DIKETAHUI]`, diukur uji beban | `[SRC-94]` |
 | bao-1, bao-2 | NEO Lite MS 4.2 | 2 / 4 GB / 60 GB | Rp139.000 × 2 | OpenBao, node Raft 1 dan 2 | `[SRC-93]` |
 | ops | NEO Lite MM 8.4 | 4 / 8 GB / 60 GB | Rp269.000 | Prometheus, Alertmanager, Grafana, Loki, GlitchTip | `[SRC-93]` |
@@ -369,7 +369,7 @@ Tanggal mulai sewa adalah estimasi penyusun dan dikonfirmasi user di gate `[KEPU
 
 ### 2.10 Butir gate: Cloudflare Magic Transit
 
-Biznet Gio menyebut perlindungan anti-DDoS-nya "Cloudflare Magic Transit premium anti-DDoS" `[SRC-95]`. Artinya lalu lintas jaringan dapat dirutekan lewat jaringan Cloudflare. TLS diterminasi di Caddy milik Rumah Sehat, sehingga isi permintaan tetap terenkripsi saat melewati jalur itu, tetapi lokasi perutean `[TIDAK DIKETAHUI]` `[KEPUTUSAN-78]`. Karena T4-Q1 menetapkan semua penyedia memproses dan menyimpan data di Indonesia tanpa kecuali `[USER] T4-Q1`, butir ini **dibawa ke user di gate** dan ditanyakan ke Biznet Gio (PT-39): apakah Magic Transit dapat dimatikan, di mana lalu lintas dirutekan, dan apakah perutean terenkripsi tanpa penyimpanan dianggap memenuhi T4-Q1.
+Biznet Gio menyebut perlindungan anti-DDoS-nya "Cloudflare Magic Transit premium anti-DDoS" `[SRC-95]`. Artinya lalu lintas jaringan dapat dirutekan lewat jaringan Cloudflare. TLS diterminasi di Caddy milik Ruang Sehat, sehingga isi permintaan tetap terenkripsi saat melewati jalur itu, tetapi lokasi perutean `[TIDAK DIKETAHUI]` `[KEPUTUSAN-78]`. Karena T4-Q1 menetapkan semua penyedia memproses dan menyimpan data di Indonesia tanpa kecuali `[USER] T4-Q1`, butir ini **dibawa ke user di gate** dan ditanyakan ke Biznet Gio (PT-39): apakah Magic Transit dapat dimatikan, di mana lalu lintas dirutekan, dan apakah perutean terenkripsi tanpa penyimpanan dianggap memenuhi T4-Q1.
 
 ### 2.11 Waktu server, provisioning, dan kontainer
 

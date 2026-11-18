@@ -15,7 +15,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-1. **PostgreSQL** adalah database untuk penyimpanan data berikut (ditambah database Keycloak, ADR-011): database aplikasi Rumah Sehat, database audit Rumah Sehat, database aplikasi RME minimalis, dan database audit RME minimalis. Versi major stabil tertinggi saat ini adalah 18 `[SRC-30]`; versi yang dipakai ditetapkan di Tahap 5 `[KEPUTUSAN-20]`.
+1. **PostgreSQL** adalah database untuk penyimpanan data berikut (ditambah database Keycloak, ADR-011): database aplikasi Ruang Sehat, database audit Ruang Sehat, database aplikasi RME minimalis, dan database audit RME minimalis. Versi major stabil tertinggi saat ini adalah 18 `[SRC-30]`; versi yang dipakai ditetapkan di Tahap 5 `[KEPUTUSAN-20]`.
 2. Kemampuan PostgreSQL yang menjadi dasar desain, semuanya terverifikasi di dokumentasi resmi:
    - tipe `uuid` native 128-bit `[SRC-31]`;
    - partial unique index `[SRC-33]`;
@@ -35,7 +35,7 @@ Tanggal: 2026-11-18
    - data sesi BFF web (ADR-011 butir 7);
    - batas laju API dan integrasi, dengan pola penghitung INCR/EXPIRE yang dijalankan atomik (skrip Lua) untuk menghindari kondisi balapan yang disebut dokumentasi `[SRC-75]`.
 
-   **Rumah Sehat dan RME memakai instans Redis terpisah.** Autentikasi wajib, Redis hanya dapat dicapai dari subnet proses aplikasi, koneksi memakai TLS (ADR-013), dan cache status ber-TTL pendek (threat model RD-02, M-06). Bila Redis tidak tersedia, batas laju beralih ke batas laju di penyeimbang beban (M-15).
+   **Ruang Sehat dan RME memakai instans Redis terpisah.** Autentikasi wajib, Redis hanya dapat dicapai dari subnet proses aplikasi, koneksi memakai TLS (ADR-013), dan cache status ber-TTL pendek (threat model RD-02, M-06). Bila Redis tidak tersedia, batas laju beralih ke batas laju di penyeimbang beban (M-15).
 
    Redis tidak menyimpan data pribadi selain ID internal. Data di Redis boleh hilang: setelah Redis pulih, cache dibangun ulang dari PostgreSQL. Satu-satunya akibatnya, pengguna web harus login ulang. Redis dijalankan sebagai layanan terkelola di region Indonesia atau dijalankan sendiri di cloud Indonesia `[USER] T4-Q1`. Pilihan distribusi dan lisensinya ditetapkan di Tahap 5: Redis 8 ke atas memakai pilihan RSALv2/SSPLv1/AGPLv3, sedangkan 7.2.x ke bawah BSD3 `[SRC-76]`.
 7. **Tanpa message broker di rilis 1** `[USER] T4-Q4`. Kecukupan antrean di PostgreSQL dibuktikan lewat uji beban NFR-CAP-04. Kalau uji beban gagal karena antrean, broker diusulkan lewat ADR baru `[KEPUTUSAN-20]`.
