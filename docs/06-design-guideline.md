@@ -1,7 +1,7 @@
 # Design Guideline: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 0.1 (draf Tahap 6, menunggu Checkpoint 2)
+Versi: 1.1 (2026-11-18, tindak lanjut Checkpoint 2): alur baru A15 (pendaftaran TOTP pasien, kode pemulihan, perangkat hilang) dan G01 (perangkat dan sesi aktif) sebagai deskripsi terstruktur; §9 MFA mencakup pasien; D-C05 reset MFA pasien; PT-43 dan PT-44 terjawab. Versi 0.1 (draf Tahap 6) disetujui di Checkpoint 2: arah visual, font, logo, navigasi, ubin, mode gelap, pengingat jadwal (UP-58–UP-64) dan KEPUTUSAN-160–177 `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`. PT-40, PT-41, dan sisa PT-45 tetap terbuka
 Penyusun: Claude (persona UI/UX Designer / Design System Lead), Mode Otomatis
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, stack v1.0 `[DOK: 05-stack.md]`, coding standards `[DOK: coding-standards.md]`, backlog CR-007, CR-009, CR-012, CR-013, CR-015 `[DOK: backlog.md]`, pamflet `[DOK: input/Rumah Sehat Apps.jpeg]`, catatan T5-Q12 `[DOK: 05-catatan-stack.md]`
@@ -106,7 +106,7 @@ Luminance per warna (dihitung dengan rumus di atas, dibulatkan 4 desimal): `#FFF
 | K1 | `text.primary` #1A2B2E | #FFFFFF / #FAFBF7 / #DFF4ED | 14,70 / 14,14 / 12,81 | 4,5 | Lulus |
 | K2 | `text.secondary` #5C6B6F | #FFFFFF / #FAFBF7 / #DFF4ED / #EEF1F0 | 5,54 / 5,33 / 4,83 / 4,88 | 4,5 | Lulus |
 | K3 | `brand.primary` #087F78 sebagai teks | #FFFFFF / #FAFBF7 | 4,86 / 4,68 | 4,5 | Lulus |
-| K4 | `brand.primary` #087F78 sebagai teks | #DFF4ED (mint) | **4,24** | 4,5 | **Gagal untuk teks.** Teks di atas mint memakai `primaryStrong` (K6) |
+| K4 | `brand.primary` #087F78 sebagai teks | #DFF4ED (mint) | **4,24** | 4,5 | **Gagal untuk teks.** Teks di atas mint memakai `primaryStrong` #065F59 (K6); aturan ini disetujui di Checkpoint 2 `[USER] C2-B15` (KEPUTUSAN-163) dan sudah diterapkan di komponen §4 (ubin, navigasi samping, badge info, tab, chip) |
 | K5 | #FFFFFF di atas `brand.primary` (tombol utama) | #087F78 | 4,86 | 4,5 | Lulus |
 | K6 | `primaryStrong` #065F59 (tautan, badge info, teks merek) | #FFFFFF / #FAFBF7 / #DFF4ED | 7,53 / 7,25 / 6,56 | 4,5 | Lulus |
 | K7 | #FFFFFF di atas `primaryStrong` (tombol ditekan, chip terpilih) | #065F59 | 7,53 | 4,5 | Lulus |
@@ -324,8 +324,9 @@ Pembaca layar membacakan isi yang tampil. Karena itu layar yang memuat data klin
 | --- | --- | --- |
 | Autentikasi | Masuk selalu di browser sistem dengan tema Ruang Sehat, bukan webview. Pesan galat masuk dan atur ulang password bersifat umum. Tidak ada tombol Google/Apple | ADR-011 butir 4, 7; US-103; CR-007 |
 | Pendaftaran pasien | Formulir native dua langkah; akun dibuat hanya setelah persetujuan (A01) | ADR-011 butir 6; US-101 AC4 |
-| MFA (tenaga kesehatan, admin, RME) | Layar kode TOTP + tautan kode pemulihan; aktivasi pertama menampilkan QR dan kunci teks | ADR-011 butir 5 |
-| Autentikasi ulang | Mengajukan hak data, mengunduh salinan data, mengubah email/password: diberi tahu lebih dulu bahwa password akan diminta lagi | ADR-011 butir 9; US-1602 AC1; US-1604 AC2 |
+| MFA (semua populasi: pasien, tenaga kesehatan, admin, RME) | Layar kode TOTP + tautan kode pemulihan; aktivasi pertama menampilkan QR dan kunci teks, lalu 12 kode pemulihan sekali tampil. Kode boleh ditempel (aturan §7.2 A14). Pasien: alur A15 (D-A15) | ADR-011 butir 5 revisi Checkpoint 2 `[USER] C2-Q9`; US-101 AC5, US-103 AC1, AC7, AC8 |
+| Pesan login gagal | Satu pesan seragam untuk password salah, akun tidak ada, terkunci, dan nonaktif, dengan petunjuk tetap "Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan"; tanpa pesan khusus terkunci | US-103 AC2 `[USER] C2-B4` (UP-73) |
+| Autentikasi ulang | Mengajukan hak data, mengunduh salinan data, mengubah email/password, mendaftarkan ulang TOTP, mengakhiri sesi dari daftar sesi: diberi tahu lebih dulu bahwa login akan diminta lagi | ADR-011 butir 9; US-1602 AC1; US-1604 AC2; US-103 AC6, AC7; US-110 AC2 |
 | Persetujuan data | Tujuh informasi Pasal 21 ayat (1) UU PDP tampil sebagai bagian yang dapat dibuka; versi teks tampil; kotak tidak tercentang otomatis; penarikan menampilkan akibat dan pesanan terdampak sebelum konfirmasi | US-104, US-1601 `[SRC-15]` |
 | Anggota keluarga | Alur KTP/KK ditentukan sistem dari tanggal lahir; pernyataan/persetujuan orang tua wajib dicentang | US-108 AC1–AC3, AC6 |
 | Identitas | NIK hanya angka; foto JPG/PNG ≤ 5 MB; status AB-05 selalu terlihat; pemesanan layanan berbatas dihentikan sebelum pembayaran dengan tautan ke langkah berikutnya | US-106, US-107 |
@@ -356,6 +357,8 @@ Alur utama diturunkan dari epic PRD §5. Setiap alur punya wireframe HTML (`docs
 | A12 | Pembatalan layanan terjadwal, klaim, status refund | EP-08 US-805–US-808 | Pasien | HTML | `a12-batal-klaim-refund.html` |
 | A13 | Persetujuan, penarikan, hak subjek data, salinan, versi baru persetujuan | EP-16 US-1601, US-1602, US-1604; US-104 AC4 | Pasien | HTML | `a13-privasi-hak-data.html` |
 | A14 | Ajukan dan pantau keluhan | EP-11 US-1103 | Pasien | Deskripsi | §10.2 D-A14 |
+| A15 | Pendaftaran TOTP pasien, kode pemulihan, masuk dengan kode, ubah password, daftar ulang TOTP, perangkat hilang (Checkpoint 2) | EP-01 US-101 AC5, US-103 AC1, AC1b, AC6–AC8 | Pasien + tema login | Deskripsi | §10.2 D-A15 |
+| G01 | Perangkat dan sesi aktif (Checkpoint 2) | EP-01 US-110; NFR-SEC-11 | Semua aplikasi (pasien, tenaga kesehatan, ketiga web) | Deskripsi | §10.2 D-G01 |
 | B01 | Pendaftaran tenaga kesehatan, status verifikasi, masuk MFA, kunci aplikasi, layar privasi | EP-02 US-202, US-204; NFR-SEC-10 | Tenaga kesehatan | HTML | `b01-nakes-akun-kunci.html` |
 | B02 | Jadwal praktik, daftar sesi, ruang sesi, catatan, resep, pembatalan | EP-03 US-302, US-305–US-309, US-311; EP-10 US-1003 | Tenaga kesehatan | HTML | `b02-nakes-sesi-jadwal.html` |
 | B03 | Tugas dan status home visit | EP-05 US-503 | Tenaga kesehatan | HTML | `b03-nakes-home-visit.html` |
@@ -382,7 +385,7 @@ Alur utama diturunkan dari epic PRD §5. Setiap alur punya wireframe HTML (`docs
 | F01 | Halaman verifikasi resep publik | EP-03 US-309 AC6–AC8 (CR-008) | Web publik | Deskripsi | D-F01 |
 | F02 | Template email notifikasi | EP-10 US-1001, US-1002, US-1003 | Email | Deskripsi | §6, D-F02 |
 
-Ringkasan: 21 alur dengan wireframe HTML (semua alur aplikasi pasien kecuali keluhan, ketiga alur tenaga kesehatan, dan alur kunci web), 18 alur dengan deskripsi terstruktur.
+Ringkasan: 21 alur dengan wireframe HTML (semua alur aplikasi pasien kecuali keluhan, ketiga alur tenaga kesehatan, dan alur kunci web), 20 alur dengan deskripsi terstruktur (18 dari Tahap 6, ditambah A15 dan G01 dari Checkpoint 2). A15 menyentuh modul T1 sehingga menurut KEPUTUSAN-173 semestinya berwireframe HTML. Pada tindak lanjut ini A15 sengaja hanya dideskripsikan (instruksi orkestrator: tanpa wireframe HTML baru). Wireframe A01 belum menampilkan langkah TOTP; D-A15 melengkapinya sampai wireframe diperbarui di pekerjaan UI Tahap 8 (UI-03).
 
 ### 10.2 Deskripsi terstruktur
 
@@ -390,9 +393,45 @@ Format: tujuan · aktor · layar berurutan · kondisi khusus · rujukan. Semua m
 
 **D-A14 Keluhan pasien** · Pasien · (1) Profil → Bantuan dan keluhan: daftar tiket (nomor, kategori, status Baru/Diproses/Menunggu pasien/Selesai); (2) Formulir: kategori (layanan, pembayaran, akun, lainnya), pesanan terkait opsional, deskripsi, foto opsional → nomor tiket tampil; (3) Detail tiket: utas balasan + kotak balas. · Memilih kategori klaim refund atau hak data mengarahkan ke A12/A13 (US-1103 AC3). Tiket yang ditutup dibuka lagi bila dibalas dalam 7 hari (US-1104 AC3). Kosong: "Belum ada keluhan". · US-1103.
 
+**D-A15 MFA pasien (Checkpoint 2)** · Pasien · Layar 1–4 berada di tema login Keycloak (browser sistem); layar 5–8 di aplikasi pasien.
+1. Pendaftaran TOTP saat masuk pertama setelah email terverifikasi: judul "Lindungi akun Anda dengan kode masuk", penjelasan singkat bahwa aplikasi authenticator diperlukan, QR, kunci teks yang dapat disalin, dan isian kode 6 digit.
+2. Kode pemulihan: 12 kode dalam daftar bernomor, tombol "Salin semua", peringatan bahwa kode hanya tampil sekali dan setiap kode hanya berlaku sekali, dan centang "Saya sudah menyimpan kode" sebelum lanjut.
+3. Masuk berikutnya: setelah password benar, layar kode TOTP dengan tautan "Pakai kode pemulihan".
+4. Petunjuk perangkat hilang di layar kode: "Kehilangan ponsel? Pakai kode pemulihan, atau hubungi Layanan Pelanggan".
+5. Profil → Keamanan akun: "Ubah password" (password lama, password baru, opsi "Keluar dari perangkat lain" tercentang).
+6. Profil → Keamanan akun: "Daftar ulang kode masuk" (QR dan kode baru, kode pemulihan baru, opsi keluar dari perangkat lain tercentang).
+7. Setelah masuk dengan kode pemulihan: spanduk anjuran mendaftarkan ulang kode masuk.
+8. Profil → Keamanan akun: "Perangkat dan sesi aktif" (D-G01).
+
+Kondisi khusus:
+- Kode salah memakai pesan umum per isian (KU-01).
+- Menutup layar 1 atau 2 tidak membuat pasien masuk ke beranda.
+- Aksi di layar 5 dan 6 didahului pemberitahuan bahwa login akan diminta lagi (§9).
+- Pembaca layar membaca kunci teks per kelompok 4 karakter. Kode pemulihan tidak dimasukkan ke notifikasi atau tangkapan layar privasi (§5.5).
+- Teks final adalah pekerjaan T3 Tahap 8.
+
+Rujukan: US-101 AC5, US-103 AC1, AC1b, AC6–AC8, ADR-011 butir 5, KEPUTUSAN-202–KEPUTUSAN-204.
+
+**D-G01 Perangkat dan sesi aktif (Checkpoint 2)** · Pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, pengguna RME · Mobile di Profil → Keamanan akun; web di menu akun (kepala halaman).
+1. Daftar sesi berupa item daftar dua baris: nama aplikasi, alamat IP, "Mulai Sen, 1 Mar 2027 10.00 WIB", "Terakhir aktif …". Sesi yang sedang dipakai di urutan teratas dengan badge info bertulisan "Sesi ini" (simbol + teks, bukan warna saja).
+2. Tombol teks "Akhiri" per sesi.
+3. Tombol sekunder "Akhiri semua sesi lain".
+4. Dialog konfirmasi destruktif: menyebut sesi yang diakhiri dan bahwa login akan diminta lagi.
+5. Setelah login ulang: daftar diperbarui dan pesan status "Sesi diakhiri" diumumkan (aturan §7.2 A15).
+
+Kondisi khusus:
+- Nama perangkat hanya tampil bila tersedia (KEPUTUSAN-205).
+- Kosong (hanya "Sesi ini"): teks "Tidak ada sesi lain".
+- Galat jaringan mengikuti KU-02.
+- Mengakhiri "Sesi ini" sama dengan Keluar.
+- Web: tabel atau daftar mengikuti §8 responsivitas.
+- Tidak ada batas jumlah sesi, sehingga tidak ada pesan "batas sesi tercapai" (NFR-SEC-11).
+
+Rujukan: US-110, ADR-011 butir 12, KEPUTUSAN-205.
+
 **D-C04 Onboarding rekanan dan admin mitra** · Verifikator · (1) Daftar rekanan dengan status (Menunggu verifikasi, Aktif, Nonaktif) dan tiga syarat tampil (dokumen disetujui, markup diatur, integrasi Aktif) sebagai daftar centang bertulisan; (2) Formulir rekanan: nama, jenis (klinik, lab, toko kecantikan, toko alat kesehatan, apotek; klinik dapat sekaligus outlet), alamat dan zona waktu, dokumen izin, rekening penerima (termasking setelah disimpan), sumber sistem; (3) Panel akun admin mitra: undang lewat email. · Perubahan rekening hanya berlaku setelah disetujui Verifikator (US-1202 AC3). Daftar dokumen wajib menunggu L-02/L-03. · US-205, US-206.
 
-**D-C05 Kelola akun** · Super Admin, Verifikator, Layanan Pelanggan sesuai hak · (1) Cari akun (pasien, tenaga kesehatan, rekanan, admin); (2) Detail akun + tombol Nonaktifkan/Aktifkan dengan alasan wajib; (3) Admin RS: centang sub-peran. · Ditolak dengan pesan bila pasien punya pesanan aktif (US-207 AC3), bila mencabut Super Admin terakhir (US-208 AC2), atau mengubah peran sendiri (AC3). Dialog menyebut dampak penonaktifan rekanan/tenaga kesehatan ke pesanan (US-207 AC2). · US-207, US-208.
+**D-C05 Kelola akun** · Super Admin, Verifikator, Layanan Pelanggan sesuai hak · (1) Cari akun (pasien, tenaga kesehatan, rekanan, admin); (2) Detail akun + tombol Nonaktifkan/Aktifkan dengan alasan wajib; (3) Admin RS: centang sub-peran; (4) detail akun pasien (hanya Layanan Pelanggan): tombol "Reset kode masuk (MFA)" dengan alasan wajib → status "Menunggu konfirmasi pasien lewat email" sampai pasien membuka tautan dan masuk dengan password; tidak ada kolom untuk melihat atau mengisi kredensial (US-207 AC5, Checkpoint 2). · Ditolak dengan pesan bila pasien punya pesanan aktif (US-207 AC3), bila mencabut Super Admin terakhir (US-208 AC2), mengubah peran sendiri (AC3), menonaktifkan akun sendiri (AC5), menggabungkan Auditor dengan sub-peran lain (AC6), atau mencabut Auditor terakhir (AC7). Dialog menyebut dampak penonaktifan rekanan/tenaga kesehatan ke pesanan (US-207 AC2). · US-207, US-208.
 
 **D-C06 Markup, biaya rekanan, parameter** · Keuangan (markup, biaya), Super Admin (parameter) · (1) Pilih rekanan → riwayat markup (jenis, nilai, berlaku mulai) + tombol "Atur markup"; (2) Formulir: jenis persen/nominal, nilai, berlaku segera atau tanggal mendatang, ringkasan konfirmasi; (3) Biaya rekanan dengan pola sama; (4) Parameter PB-01–PB-10, PB-14–PB-20: tabel nilai, satuan, riwayat. · Nilai tidak valid ditolak per isian (US-812 AC3). Teks penjelas bahwa perubahan tidak memengaruhi pesanan yang pembayarannya sudah dibuat (AB-17). Tarif pajak menjadi parameter Keuangan setelah CR-013 diterapkan. · US-809, US-810, US-812.
 
@@ -458,8 +497,8 @@ Format: tujuan · aktor · layar berurutan · kondisi khusus · rujukan. Semua m
 | PT-40 | Siapa membuat logo final "Ruang Sehat", ikon aplikasi, dan aset toko aplikasi (desainer internal, eksternal, atau user)? | User | Sebelum pengajuan ke toko aplikasi (Tahap 12); arah logo di Checkpoint 2 |
 | PT-41 | Di pamflet, contoh warna kedua tampak lebih gelap dari nilai `#DFF4ED` yang tertulis. Nilai mana yang dimaksud (tulisan heksadesimal atau warna yang tampak)? | User / desainer | Checkpoint 2 |
 | PT-42 | Apakah catatan konsultasi dan rekam medis yang belum difinalkan perlu disimpan sebagai draf di server agar tidak hilang saat aplikasi ditutup? Koreksi 2026-11-18 (Tahap 7): data dictionary **sudah** memuat tabel draf di server, A9.6 `consultation_note_draft` dan C4.1 `rme_medical_record_draft` `[DOK: 04-data-dictionary.md]`; premis awal "belum memuat status draf" keliru. Usulan perlakuan: UP-72 (`docs/07-catatan-phase-plan.md`) | Tech Lead (Claude) bersama user | Tahap 7, sebelum EP-03 |
-| PT-43 | Dua batas waktu tidak dapat diperpanjang pengguna: sesi web mutlak 12 jam (ADR-011) dan batas pembayaran PB-07 (30 menit, menahan slot/stok). Apakah keduanya diterima sebagai pengecualian SC 2.2.1 (alasan keamanan dan keadilan slot), atau perlu jalur perpanjangan (misalnya login ulang tanpa kehilangan isian; memilih slot lagi dengan isian tersimpan)? | User + security reviewer | Tahap 8 Fase 1 |
-| PT-44 | Pesan apa yang tampil saat akun terkunci sementara (US-103 AC3): pesan umum yang sama dengan AC2 (tidak membuka status akun) atau pesan khusus terkunci? Draf wireframe A01 layar 5 ditandai menunggu keputusan (temuan QA N2) | Tech Lead + security reviewer, disetujui user | Tahap 7 |
+| PT-43 | Dua batas waktu tidak dapat diperpanjang pengguna: sesi web mutlak 12 jam (ADR-011) dan batas pembayaran PB-07 (30 menit, menahan slot/stok). Apakah keduanya diterima sebagai pengecualian SC 2.2.1 (alasan keamanan dan keadilan slot), atau perlu jalur perpanjangan (misalnya login ulang tanpa kehilangan isian; memilih slot lagi dengan isian tersimpan)? **Terjawab di Checkpoint 2:** keduanya pengecualian essential SC 2.2.1 dengan mitigasi §5.5 (UP-71) `[USER] C2-B15` | User + security reviewer | Terjawab |
+| PT-44 | Pesan apa yang tampil saat akun terkunci sementara (US-103 AC3): pesan umum yang sama dengan AC2 (tidak membuka status akun) atau pesan khusus terkunci? Draf wireframe A01 layar 5 ditandai menunggu keputusan (temuan QA N2). **Terjawab di Checkpoint 2:** pesan seragam yang identik untuk semua kegagalan login, termasuk terkunci dan nonaktif (UP-73 opsi B, US-103 AC2); tanpa email pemberitahuan penguncian `[USER] C2-B4`. Wireframe A01 layar 5 disesuaikan di Tahap 8 (UI-03) | Tech Lead + security reviewer, disetujui user | Terjawab |
 | PT-45 | ~~Wordmark pamflet "RuangSehat" atau "Ruang Sehat" dengan spasi?~~ **Terjawab 2026-11-18:** "Ruang Sehat" dengan spasi di semua tempat; wordmark pamflet tidak dipakai `[USER] "dengan spasi"`. Sisa: slogan pamflet dipakai atau tidak (Checkpoint 2, UP-60) | User | Terjawab (slogan: Checkpoint 2) |
 | PT-46 | Apakah nama "Ruang Sehat" sudah dicek ketersediaannya sebagai merek (DJKI) dan nama domain, serta apakah nama aplikasi di toko aplikasi mengikuti nama ini? | User, legal (PT-20) | Sebelum pengajuan ke toko aplikasi (Tahap 12). Status 2026-11-18: belum dicek `[USER] "belum dicek"` |
 
@@ -471,5 +510,5 @@ Pertanyaan yang sudah ada dan memengaruhi layar: L-08 dan PT-24 (teks persetujua
 | --- | --- |
 | Semua alur utama di PRD punya wireframe | Terpenuhi: 39 alur di §10.1 (21 HTML, 18 deskripsi); story tanpa layar dijelaskan di §10.3. Dicek QA: semua story PRD terpetakan kecuali US-102 (dihapus CR-007) |
 | Komponen dasar dan design token terdefinisi | Terpenuhi: §3, §4 |
-| User menyetujui arah desain | Menunggu Checkpoint 2 (UP-58–UP-64) |
+| User menyetujui arah desain | Disetujui di Checkpoint 2, 2026-11-18 (UP-58–UP-64) `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`; PT-40, PT-41, sisa PT-45 tetap terbuka |
 | Gate anti-halu | Fact-checker LULUS (docs/fact-check/tahap-06.md); QA LULUS DENGAN CATATAN (docs/qa/tahap-06-review-wireframe.md). SRC-256–SRC-260 tercatat; KEPUTUSAN-160–177 tercatat; traceability story → wireframe diperbarui |

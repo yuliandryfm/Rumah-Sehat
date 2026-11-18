@@ -1,7 +1,7 @@
 # PRD (Product Requirements Document): Ruang Sehat
 
-Tanggal: 2026-11-17
-Versi: 1.2 (draf revisi CR-013 di Tahap 7, 2026-11-18: pajak dihitung dari harga rekanan + markup dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`; teks revisi menunggu Checkpoint 2. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4). Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
+Tanggal: 2026-11-18
+Versi: **1.2 final** (Checkpoint 2, 2026-11-18): revisi CR-013 (pajak) disetujui `[USER] C2-B15`; klarifikasi AC Fase 1 diterapkan; MFA wajib untuk pasien (CR-018) `[USER] C2-Q9`; ubah password saat login (CR-017) `[USER] C2-B14`; story baru US-110 "Perangkat dan sesi aktif" `[USER] C2-Q10`. Rincian per bagian ada di §14 Riwayat versi. Versi 1.2 draf (Tahap 7, 2026-11-18): revisi CR-013, pajak dihitung dari harga rekanan + markup dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4. Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: BRD v1.3 `[DOK: 02-brd.md]` (v1.2 disetujui bersama PRD v1.0 di gate Tahap 3; v1.3 revisi CR-007).
@@ -20,7 +20,9 @@ PRD menetapkan *apa* yang dibangun dan bagaimana mengujinya. *Bagaimana* membang
 | `BR-xxx` | Kebutuhan bisnis di BRD v1.3 (dokumen yang lulus gate atau diajukan bersama PRD ini; v1.3 memuat CR-007). Di tabel dan baris "Rujukan" story, penanda ini berfungsi sebagai label `[DOK: 02-brd.md]` |
 | `[USER] T3-Qx` | Jawaban user di wawancara Tahap 3, tercatat di `docs/03-catatan-prd.md`. `[USER] T2-Qx` merujuk ke `docs/02-catatan-brd.md` |
 | `[DOK] Px.x` | Project Brief dan catatan intake (`docs/00-project-brief.md`, `docs/00-catatan-intake.md`) |
-| `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5 |
+| `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5. UP-58–UP-78 (Tahap 6–7) terdaftar di `docs/06-design-guideline.md` §11 dan `docs/07-catatan-phase-plan.md`, dan disetujui di Checkpoint 2 (lihat baris berikut) |
+| `[USER] C2-Qx`, `[USER] C2-Bn` | Jawaban user di Checkpoint 2, 2026-11-18 (`docs/checkpoint-2.md` bagian "Jawaban user"). `C2-Qx` adalah jawaban langsung (C2-Q1–C2-Q11). `C2-Bn` adalah butir n yang didelegasikan user ke usulan penyusun ("jawab sesuai dengan rekomendasimu"), sehingga usulan default butir itu berlaku sebagai keputusan user |
+| `T-xx` | Temuan QA test plan §9 yang klarifikasinya disetujui di Checkpoint 2 (`docs/07-klarifikasi-ac-fase-1.md`). Penanda ini menunjukkan asal rumusan AC, bukan label sumber tersendiri |
 | `[KEPUTUSAN-xx]` | Keputusan teknis penyusun, tercatat di `docs/decision-log.md` |
 | `[SRC-xx]` | Fakta eksternal yang sudah diverifikasi, tercatat di `docs/sources.md` |
 | `[TIDAK DIKETAHUI]` | Belum ada informasi. Masuk pertanyaan terbuka (§12) beserta pemiliknya |
@@ -97,6 +99,11 @@ Semua butir non-scope BRD §4.2 tetap berlaku. Tambahan:
 | Pembatalan pesanan produk oleh pasien setelah membayar | BR-045 `[UP-08]` |
 | Login dengan akun Google atau Apple (US-102 dihapus) | BR-001 `[USER] T4-Q1, T4-Q2` (CR-007) |
 | Notifikasi push dan WhatsApp | BR-050 `[USER] T4-Q1, T4-Q2` (CR-007) |
+| Email pemberitahuan ke pemilik akun saat akun terkunci sementara (dapat diajukan lewat change request) | `[USER] C2-B4` (UP-73 butir 9) |
+| Faktor kedua selain TOTP dan kode pemulihan (WebAuthn, SMS, OTP email) | `[USER] C2-Q9`; ADR-011 butir 5 |
+| Onboarding mandiri calon rekanan dan langganan berbayar RME (CR-011), ditempatkan di rilis berikutnya | `[USER] C2-B5` (UP-68) |
+| Vaksinasi dan suntik/infus vitamin sebagai layanan lab (CR-015), ditempatkan di rilis berikutnya; ubin vaksinasi/infus tidak tampil | `[USER] C2-B6` (UP-69, UP-63) |
+| Layar backoffice untuk mengelola versi teks persetujuan dan daftar alasan penolakan identitas (keduanya lewat migrasi data) | `[USER] C2-B14` (UP-75) |
 
 ### 2.3 Urutan pengurangan scope
 
@@ -145,6 +152,7 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 | AB-03 | Anggota keluarga dewasa diverifikasi dengan NIK dan foto KTP. Anak diverifikasi dengan NIK dan foto Kartu Keluarga yang memuat pemilik akun sebagai orang tua/wali. Semuanya diverifikasi manual oleh admin | BR-008 `[USER] T3-Q3a` |
 | AB-04 | Saat menambah anggota keluarga, pemilik akun wajib menyatakan telah mendapat persetujuan anggota keluarga dewasa, atau memberi persetujuan sebagai orang tua/wali untuk anak. Pernyataan disimpan sebagai bukti. Kecukupan cara ini menunggu konfirmasi legal (L-08) | BR-008, BR-104 `[USER] T3-Q3a` |
 | AB-05 | Status verifikasi identitas: Belum diunggah, Menunggu verifikasi, Disetujui, Ditolak (dengan alasan). Identitas yang ditolak dapat diunggah ulang | BR-004 `[UP-10]` |
+| AB-05a | Siklus status identitas pemilik akun: (a) pengajuan NIK dan KTP baru juga dapat dibuat dari status "Disetujui", lalu status menjadi "Menunggu verifikasi" (UP-39); (b) pengajuan dokumen yang dibatalkan pasien mengembalikan status ke status sebelum pengajuan itu, sedangkan pengajuan karena perubahan nama atau tanggal lahir tidak dapat dibatalkan; (c) persetujuan yang gagal karena NIK sudah dipakai pemilik akun lain diselesaikan Verifikator dengan penolakan beralasan `nik_unavailable` (US-106 AC1, AC5; US-201 AC7) | BR-004 `[USER] C2-B14` (UP-74; T-14, T-15, T-18) |
 
 ### 3.3 Harga (T1)
 
@@ -356,6 +364,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-19 | Batas refund berstatus Diproses tanpa konfirmasi penyedia sebelum menjadi "Perlu dicek" (AB-35) | 2 x 24 jam | Super Admin | `[UP-55]` |
 | PB-20 | Batas Keuangan menetapkan penyebab RF-18 sebelum berlaku penyebab platform | 3 hari kerja | Super Admin | `[UP-56]` |
 | PB-21 | Tarif pajak atas (harga rekanan + markup), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[DOK: backlog.md CR-013]` |
+| PB-22 | Usia minimum pemilik akun pasien (US-105 AC1b) | `[TIDAK DIKETAHUI]`: nilai dari jawaban legal L-08, atau diisi user sebelum go-live. Fase 1 memakai nilai uji | Super Admin | `[USER] C2-B14` (UP-77; T-12) `[SRC-15]` (Pasal 25, data anak) |
 
 "Hari kerja" mengikuti kalender hari kerja yang diatur Super Admin. Batas berbasis hari kerja (PB-05, PB-16, PB-20) dihitung dari waktu kejadian dan berakhir pukul 23.59 WIB pada hari kerja ke-N setelah hari kejadian; hari libur tidak dihitung `[UP-37]`.
 
@@ -408,7 +417,7 @@ Kriteria ini berlaku di setiap story tanpa ditulis ulang `[KEPUTUSAN-04]`. Story
 | ID | Kriteria |
 | --- | --- |
 | KU-01 | **Validasi.** Given field wajib kosong atau formatnya salah, When pengguna menyimpan atau mengirim, Then aksi ditolak, pesan kesalahan tampil di setiap field yang salah, dan isian yang sudah benar tidak hilang |
-| KU-02 | **Gagal jaringan.** Given koneksi terputus atau server tidak merespons dalam batas waktu, When pengguna melakukan aksi, Then pesan "gagal terhubung" dan tombol coba lagi tampil, dan percobaan ulang tidak menghasilkan aksi ganda (idempoten), terutama untuk pembayaran, refund, dan pemesanan |
+| KU-02 | **Gagal jaringan.** Given koneksi terputus, atau server tidak merespons dalam 15 detik (unggah berkas: 60 detik), When pengguna melakukan aksi, Then pesan "gagal terhubung" dan tombol coba lagi tampil, dan percobaan ulang tidak menghasilkan aksi ganda (idempoten, KU-05), terutama untuk pembayaran, refund, dan pemesanan. Angka ini batas sisi klien; target server tetap NFR-PERF-01/02 `[KEPUTUSAN-196]` (T-20) |
 | KU-03 | **Akses ditolak.** Given pengguna tidak berhak atas suatu data atau aksi, When ia mencoba mengaksesnya (termasuk dengan mengganti ID di permintaan), Then akses ditolak tanpa membocorkan keberadaan data, dan percobaan akses ke data sensitif (§3.1) dicatat di audit trail dengan hasil "gagal" |
 | KU-04 | **Data terhapus.** Data master yang di-soft delete tidak tampil di daftar dan pencarian default, dan tidak bisa dipilih untuk transaksi baru (ADR-003) |
 | KU-05 | **Kiriman ganda.** Given pengguna menekan kirim dua kali atau permintaan terkirim ulang, When server menerimanya, Then hanya satu entitas yang dibuat |
@@ -416,7 +425,7 @@ Kriteria ini berlaku di setiap story tanpa ditulis ulang `[KEPUTUSAN-04]`. Story
 | KU-07 | **Waktu.** Semua waktu tampil mengikuti AB-40–AB-42 |
 | KU-08 | **Rekanan atau pihak ketiga tidak tersedia.** Given sistem rekanan atau penyedia pihak ketiga tidak merespons, When pasien membuka data atau memesan, Then aplikasi menyatakan data sementara tidak tersedia, tidak menampilkan data lama seolah terbaru (menampilkan waktu pembaruan terakhir bila ada), dan tidak membuat pembayaran untuk layanan yang tidak bisa dikonfirmasi ke rekanan |
 | KU-09 | **Rebutan slot atau stok.** Given dua pasien memilih slot atau stok terakhir yang sama, When keduanya melanjutkan ke pembayaran, Then hanya satu yang berhasil, dan yang lain diberi tahu bahwa slot/stok tidak tersedia sebelum membayar |
-| KU-10 | **Akun nonaktif.** Given akun pasien, tenaga kesehatan, rekanan, atau admin berstatus nonaktif, When pemiliknya masuk atau memakai sesi yang masih terbuka, Then akses ditolak dengan pesan akun nonaktif |
+| KU-10 | **Akun nonaktif.** Given akun pasien, tenaga kesehatan, rekanan, atau admin berstatus nonaktif: (a) When pemiliknya masuk, Then akses ditolak dengan pesan seragam login gagal (US-103 AC2), tanpa kalimat atau tanda tambahan apa pun; (b) When pemiliknya memakai sesi yang masih terbuka, Then permintaan berikutnya ditolak dan aplikasi menampilkan layar "Akun nonaktif" dengan kontak Layanan Pelanggan. "Berikutnya" berarti setiap permintaan yang mulai diproses setelah aksi penonaktifan mengembalikan sukses ke pelakunya; koneksi WebSocket sesi itu diputus `[USER] C2-B4` (UP-73 butir 4–5) `[KEPUTUSAN-193]` (T-09). Kode respons khusus "akun nonaktif" didaftarkan di `docs/05-response-codes.md` saat task terkait (klarifikasi §5 S-05) |
 
 ## 5. Fitur per modul dan user story
 
@@ -435,16 +444,45 @@ Setiap story mencantumkan rujukan BR (induk), prioritas, event audit (§7.1), da
 | US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must |
 | US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should |
 | US-109 | Ubah dan hapus anggota keluarga | BR-008, BR-106 | Should |
+| US-110 | Perangkat dan sesi aktif (lintas aplikasi: pasien, tenaga kesehatan, backoffice, portal rekanan, web RME) | BR-001, BR-108 | Must |
+
+Catatan Checkpoint 2: AC story EP-01 Fase 1 di bawah memuat rumusan klarifikasi AC Fase 1 yang disetujui `[USER] C2-B4, C2-B14, C2-B15` (`docs/07-klarifikasi-ac-fase-1.md`), MFA wajib untuk pasien `[USER] C2-Q9` (CR-018), dan ubah password saat login `[USER] C2-B14` (CR-017). US-110 ditempatkan di EP-01 karena dimulai dari akun, tetapi berlaku di semua aplikasi.
 
 #### US-101 Registrasi dengan email dan password
 
 Sebagai pasien, saya ingin mendaftar dengan email dan password, agar dapat memakai layanan Ruang Sehat.
-Rujukan: BR-001, BR-103 · Audit: E-04
+Rujukan: BR-001, BR-103, ADR-011 butir 4–6 · Audit: E-04
 
 - AC1. Given email belum terdaftar dan password memenuhi kebijakan NFR-SEC-03, When pasien mengisi formulir, menyetujui persetujuan pemrosesan data (US-104), dan mengirim, Then akun dibuat berstatus "email belum diverifikasi" dan tautan verifikasi dikirim ke email itu `[KEPUTUSAN-06]`.
-- AC2. Given tautan verifikasi masih berlaku, When pasien membukanya, Then email berstatus terverifikasi dan pasien dapat masuk. Given tautan sudah kedaluwarsa atau sudah dipakai, Then pasien diminta mengirim ulang tautan.
-- AC3. Given email sudah terdaftar, When pasien mendaftar dengan email itu, Then akun baru tidak dibuat dan pasien diarahkan untuk masuk atau mengatur ulang password.
+- AC1a. Given password tidak memenuhi NFR-SEC-03, When formulir dikirim, Then pendaftaran ditolak, pesan menyebut aturan yang dilanggar (panjang, kata sandi umum atau bocor, kata konteks, sama dengan email), dan isian lain tidak hilang (KU-01). Rumusan ini juga berlaku untuk atur ulang password (US-103 AC4b), aktivasi akun admin (US-206, US-208), dan ubah password (US-103 AC6) `[KEPUTUSAN-188]` (T-02).
+- AC1b. Given salah satu langkah pembuatan akun gagal (user Keycloak, akun aplikasi, atau bukti persetujuan), When pendaftaran diproses, Then:
+  - tidak ada akun setengah jadi, dan user Keycloak yang dibuat oleh permintaan itu dihapus kembali berdasarkan ID-nya, bukan berdasarkan email;
+  - user Keycloak, akun aplikasi, dan bukti persetujuan milik akun lain yang sudah ada tidak berubah;
+  - pasien melihat pesan gagal dengan tombol coba lagi (KU-02);
+  - setelah kompensasi selesai, pendaftaran ulang dengan email yang sama berhasil;
+  - bila penghapusan kompensasi gagal, penghapusan diulang dari antrean job sampai berhasil dan memicu entri security log;
+  - event E-04 dengan hasil gagal dicoba dicatat (KU-06).
+  `[KEPUTUSAN-189]` `[KEPUTUSAN-201]` (T-04)
+- AC1c. Given akun berhasil dibuat tetapi email verifikasi gagal terkirim, Then akun tetap berstatus "email belum diverifikasi" dan pendaftaran tidak dibatalkan; pengiriman dicoba ulang otomatis dari antrean job; pasien tetap dapat meminta kirim ulang (AC2b) `[KEPUTUSAN-189]` (T-04).
+- AC2. Given tautan verifikasi dibuka paling lambat 24 jam sejak tautan itu dikirim dan belum pernah dipakai, When pasien membukanya, Then email berstatus terverifikasi dan pasien dapat masuk (AC5). Given tautan sudah lewat 24 jam atau sudah dipakai, Then status email tidak berubah dan pasien diminta mengirim ulang tautan. Given email akun sudah terverifikasi, When tautan verifikasi lain untuk akun itu dibuka, Then tidak ada perubahan dan pasien diarahkan ke halaman masuk `[KEPUTUSAN-187]` (T-01).
+- AC2b. Given pasien meminta kirim ulang tautan untuk sebuah email, When permintaan dikirim, Then respons sama, terdaftar atau tidak.
+  - Email hanya dikirim bila akun ada dan belum terverifikasi, paling banyak 1 kali per 60 detik dan 5 kali per 60 menit per email (dinormalisasi huruf kecil). Permintaan di atas batas itu tidak mengirim email, tanpa respons yang berbeda.
+  - Lebih dari 30 permintaan per 60 menit dari satu alamat IP dijawab `4290001`.
+  - Tautan yang terkirim lebih dulu tidak dijamin batal sebelum kedaluwarsa.
+  `[KEPUTUSAN-192]` (T-01)
+- AC3. Given email sudah terdaftar, When pasien mendaftar dengan email itu, Then akun baru tidak dibuat, layar yang tampil sama dengan pendaftaran berhasil ("Cek email Anda untuk melanjutkan"), dan email berisi petunjuk masuk atau atur ulang password dikirim ke alamat itu.
+  - Kode dan isi respons API tidak dapat dibedakan dari pendaftaran baru, dan waktu respons kedua kasus ditahan sampai batas tetap 900 ms sejak permintaan diterima.
+  - Pendaftaran ini tidak mengubah akun yang ada dan tidak menulis bukti persetujuan baru.
+  - Email itu dibatasi 1 kali per 60 detik dan 5 kali per 60 menit per alamat tujuan, tanpa respons berbeda.
+  `[USER] C2-B4` (UP-73 butir 1) `[KEPUTUSAN-192]` `[KEPUTUSAN-201]` (T-03)
 - AC4. Given kotak persetujuan belum dipilih, When pasien mengirim formulir, Then pendaftaran ditolak dan pasien diberi tahu bahwa persetujuan wajib (BR-103).
+- AC5. **Pendaftaran TOTP dan kode pemulihan (CR-018).** Given email pasien sudah terverifikasi dan pasien belum mendaftarkan TOTP, When ia masuk pertama kali dengan email dan password yang benar, Then sebelum masuk ke beranda:
+  - halaman login bertema menampilkan kode QR dan kunci teks untuk aplikasi authenticator, lalu meminta satu kode TOTP;
+  - kode yang benar menyimpan TOTP, lalu 12 kode pemulihan sekali pakai ditampilkan sekali beserta petunjuk menyimpannya;
+  - kode TOTP yang salah tidak menyimpan apa pun, dan pasien dapat mencoba lagi;
+  - bila pasien menutup atau membatalkan langkah ini, ia tidak masuk ke beranda, dan masuk berikutnya meminta pendaftaran TOTP lagi;
+  - event E-04 tercatat tanpa rahasia TOTP maupun kode pemulihan (§7.3).
+  `[USER] C2-Q9` `[KEPUTUSAN-202]` `[KEPUTUSAN-203]`. Mekanisme Keycloak untuk mewajibkan kode pemulihan `[TIDAK DIKETAHUI]`, diverifikasi di Tahap 8 (KEPUTUSAN-203).
 
 #### US-102 (dihapus oleh CR-007)
 
@@ -452,14 +490,50 @@ Login dengan akun Google atau Apple tidak dibangun di rilis 1. Lokasi pemrosesan
 
 #### US-103 Masuk, keluar, dan atur ulang password
 
-Sebagai pasien, saya ingin masuk, keluar, dan mengatur ulang password, agar akun saya aman dan tetap bisa diakses.
-Rujukan: BR-001 · Audit: E-01, E-02, E-03, E-04
+Sebagai pasien, saya ingin masuk, keluar, mengatur ulang dan mengubah password, serta mengelola faktor kedua (MFA), agar akun saya aman dan tetap bisa diakses.
+Rujukan: BR-001, BR-108, ADR-011 butir 4, 5, 8, 9 · Audit: E-01, E-02, E-03, E-04
 
-- AC1. Given email dan password benar dan email terverifikasi, When pasien masuk, Then ia masuk ke beranda dan event login berhasil tercatat.
-- AC2. Given email atau password salah, When pasien masuk, Then muncul pesan umum yang tidak menyebut bagian mana yang salah, dan event login gagal tercatat.
-- AC3. Given terjadi 5 percobaan gagal berturut-turut untuk satu akun, When percobaan berikutnya dilakukan dalam 15 menit, Then akun terkunci sementara sampai 15 menit berlalu, walaupun password benar `[KEPUTUSAN-06]`.
+- AC1. Given email dan password benar, email terverifikasi, dan TOTP sudah terdaftar, When pasien masuk lalu memasukkan kode TOTP yang benar (atau satu kode pemulihan yang belum dipakai), Then ia masuk ke beranda dan event login berhasil tercatat (E-01). Pasien yang belum mendaftarkan TOTP mengikuti US-101 AC5 `[USER] C2-Q9` (CR-018).
+- AC1a. Given email dan password benar tetapi email belum terverifikasi, When pasien masuk, Then pasien tidak masuk ke beranda, layar meminta verifikasi email dengan tombol kirim ulang tautan (US-101 AC2b), dan event login tercatat sesuai pemetaan event Keycloak (ADR-011 butir 10). Given password salah, Then berlaku AC2, tanpa petunjuk status verifikasi. Urutan pemeriksaan di Keycloak diverifikasi di Tahap 8 (T-05).
+- AC1b. Given password benar tetapi kode TOTP atau kode pemulihan salah, When pasien mengirim kode, Then pasien tidak masuk, layar kode menampilkan pesan umum dan dapat dicoba lagi, kegagalan dihitung untuk penguncian AC3, dan event login gagal tercatat (E-02). Deteksi brute force Keycloak berlaku untuk password, OTP, dan kode pemulihan `[SRC-273]` (CR-018).
+- AC2. **Pesan seragam login gagal.** Given masuk gagal karena email atau password salah, akun tidak ada, akun terkunci sementara (AC3), atau akun nonaktif (KU-10), When pasien masuk, Then tampil **satu pesan seragam yang identik kata per kata** untuk keempat kondisi. Pesan itu tidak menyebut bagian mana yang salah dan memuat petunjuk tetap "Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan". Event login gagal tercatat (E-02). Teks keempat kondisi diuji identik di realm `pasien`, `nakes`, `admin`, dan `rme` `[USER] C2-B4` (UP-73 butir 2, 4).
+- AC3. Given 5 percobaan masuk gagal berturut-turut untuk satu akun, When percobaan berikutnya dilakukan, Then akun terkunci sementara selama 15 menit sejak percobaan gagal ke-5, walaupun password benar `[KEPUTUSAN-06]`.
+  - "Berturut-turut" berarti tanpa login berhasil di antaranya, dan setiap kegagalan terjadi tidak lebih dari 12 jam sejak kegagalan sebelumnya.
+  - Percobaan selama akun terkunci tidak menambah hitungan dan tidak memperpanjang penguncian. Bila uji Tahap 8 menunjukkan Keycloak memperpanjangnya, rumusan ini disesuaikan lewat keputusan yang dibawa ke user.
+  - Setelah 15 menit, password benar dapat dipakai masuk dan hitungan kembali nol. Penguncian kedua dan seterusnya juga 15 menit.
+  - Pesan yang tampil adalah pesan seragam AC2, dan atur ulang password tetap dapat dipakai saat akun terkunci.
+  - Email pemberitahuan penguncian ke pemilik akun tidak dikirim (PRD §2.2).
+  `[KEPUTUSAN-190]` `[USER] C2-B4` (UP-73 butir 2, 3, 9) (T-06)
 - AC4. Given pasien meminta atur ulang password, When ia memasukkan email, Then pesan yang sama tampil, terdaftar atau tidak. Kalau terdaftar, tautan sekali pakai yang berlaku 60 menit dikirim `[KEPUTUSAN-06]`.
-- AC5. Given pasien memilih keluar, When proses selesai, Then sesi di server diakhiri, dan memakai token lama ditolak (KU-10).
+- AC4a. Given tautan atur ulang sudah lewat 60 menit sejak dikirim atau sudah dipakai, When dibuka, Then password tidak dapat diubah dan pasien diminta meminta tautan baru (T-08).
+- AC4b. Given password baru tidak memenuhi NFR-SEC-03, When disimpan, Then ditolak dengan pesan aturan yang dilanggar, dan pasien dapat mencoba lagi selama tautan masih berlaku (T-08).
+- AC4c. Given lebih dari 5 permintaan atur ulang untuk email yang sama (dinormalisasi huruf kecil) dalam 60 menit, Then permintaan berikutnya tidak mengirim email dan pesan tetap sama dengan AC4. Given lebih dari 30 permintaan per 60 menit dari satu alamat IP, Then permintaan dijawab HTTP 429 oleh proxy di depan Keycloak atau ditampilkan halaman galat bertema; kode `4290001` tidak dipakai di jalur halaman Keycloak `[KEPUTUSAN-192]` `[USER] C2-B4` (UP-73 butir 6) (T-08).
+- AC4d. Given password berhasil diatur ulang, Then:
+  - event E-04 tercatat tanpa nilai kredensial, dan password lama tidak dapat dipakai;
+  - semua sesi pengguna diakhiri, yaitu sesi Keycloak dan catatan `session_revocation` aplikasi, paling lambat 2 menit setelah atur ulang berhasil;
+  - pengguna tidak otomatis masuk, dan masuk lewat alur biasa (termasuk TOTP);
+  - email pemberitahuan "password Anda telah diatur ulang", beserta kontak Layanan Pelanggan, dikirim ke email akun.
+  `[KEPUTUSAN-198]` `[KEPUTUSAN-200]` (T-08)
+- AC4e. **Atur ulang tidak melewati MFA.** Given akun memakai MFA (semua realm pengguna, termasuk `pasien`), When password diatur ulang lewat tautan email, Then kode TOTP atau kode pemulihan tetap diminta sebelum password baru berlaku dan sebelum akses diberikan (ASVS 6.4.3 L2) `[SRC-265]` `[KEPUTUSAN-199]` `[USER] C2-Q9`. Bila uji Tahap 8 menunjukkan alur Reset Credentials Keycloak tidak dapat dikonfigurasi begitu, temuannya dibawa ke user sebelum task ditutup.
+- AC5. Given pasien memilih keluar, When proses keluar selesai, Then sesi di server diakhiri, dan setiap permintaan API berikutnya yang memakai token akses atau token penyegar sesi itu ditolak dengan `4010001`, walaupun token belum kedaluwarsa (ADR-011 butir 8). "Berikutnya" mengikuti definisi KU-10 `[KEPUTUSAN-193]` (T-09).
+- AC6. **Ubah password saat login (CR-017).** Given pasien sudah login, When ia mengubah password, Then:
+  - password lama dan password baru wajib diisi (ASVS 6.2.3 L1) `[SRC-276]`;
+  - autentikasi ulang berlaku (ADR-011 butir 9, jendela 5 menit `[KEPUTUSAN-195]`);
+  - password baru mengikuti NFR-SEC-03, dan pelanggaran ditolak seperti US-101 AC1a;
+  - opsi "keluar dari perangkat lain" tampil dan tercentang secara bawaan; sesi yang sedang dipakai tetap berjalan `[KEPUTUSAN-198]`;
+  - event E-04 tercatat tanpa nilai kredensial.
+  Berlaku juga untuk realm `nakes`, `admin`, dan `rme` di aplikasi masing-masing. Mekanisme Keycloak (required action atau konsol akun) `[TIDAK DIKETAHUI]`, diverifikasi di Tahap 8 `[USER] C2-B14` (CR-017).
+- AC7. **Mendaftarkan ulang TOTP (ganti perangkat).** Given pasien sudah login, When ia memilih mendaftarkan ulang TOTP, Then:
+  - autentikasi ulang berlaku (ADR-011 butir 9);
+  - TOTP baru didaftarkan seperti US-101 AC5, dan TOTP lama tidak berlaku lagi setelah TOTP baru tersimpan;
+  - kode pemulihan baru dibuat dan kode lama tidak berlaku;
+  - opsi "keluar dari perangkat lain" tampil dan tercentang secara bawaan (ASVS 7.4.3 L2 `[SRC-266]`);
+  - event E-04 tercatat tanpa rahasia.
+  Berlaku juga untuk realm `nakes`, `admin`, dan `rme`. Mekanisme Keycloak `[TIDAK DIKETAHUI]`, diverifikasi di Tahap 8 `[USER] C2-Q9` `[KEPUTUSAN-204]` (CR-018).
+- AC8. **Perangkat MFA hilang.** Given pasien kehilangan perangkat authenticator:
+  - When ia masuk dengan password dan satu kode pemulihan yang belum dipakai, Then ia masuk ke beranda, kode itu tidak dapat dipakai lagi, dan aplikasi mengarahkannya ke pendaftaran ulang TOTP (AC7);
+  - When kode pemulihan juga hilang, Then layar kode TOTP menampilkan petunjuk menghubungi Layanan Pelanggan, dan pemulihan berjalan lewat US-207 AC5.
+  `[USER] C2-Q9` `[KEPUTUSAN-204]` (ASVS 6.4.4 L2 `[SRC-276]`; CR-018)
 
 #### US-104 Persetujuan pemrosesan data
 
@@ -468,7 +542,7 @@ Rujukan: BR-103, BR-104, BR-107 `[SRC-15]` · Audit: E-13
 
 - AC1. Given pasien mendaftar, When layar persetujuan tampil, Then layar memuat ketujuh informasi Pasal 21 ayat (1) UU PDP: (a) legalitas pemrosesan, (b) tujuan pemrosesan, (c) jenis dan relevansi data yang diproses termasuk data kesehatan, (d) jangka waktu retensi dokumen yang memuat data pribadi, (e) rincian informasi yang dikumpulkan, (f) jangka waktu pemrosesan, dan (g) hak subjek data, ditambah kontak Ruang Sehat `[SRC-15]`. Teks legalitas menunggu L-08; teks retensi dan jangka waktu pemrosesan menunggu PT-24. Semuanya wajib terisi sebelum go-live.
 - AC2. Given pasien menyetujui, When ia melanjutkan, Then bukti persetujuan tersimpan: versi teks, butir yang disetujui, waktu, dan kanal.
-- AC3. Given layar mendukung lebih dari satu butir persetujuan, When legal menetapkan dasar pemrosesan per jenis data (L-08), Then butir baru dapat ditambahkan tanpa mengubah aplikasi `[KEPUTUSAN-12]`.
+- AC3. Given legal menetapkan butir atau teks versi baru (L-08), When versi dan butirnya dimasukkan lewat migrasi data yang direview dan dijalankan pipeline, tanpa rilis baru aplikasi mobile atau web, Then layar persetujuan menampilkan teks dan butir baru mulai `effective_from`, dan versi yang sudah terbit tidak dapat diubah (percobaan mengubahnya ditolak trigger). Isi teks disetujui legal dan Petugas PDP sebelum migrasi dibuat `[KEPUTUSAN-12]` `[USER] C2-B14` (UP-75 a; T-11).
 - AC4. Given teks persetujuan akan diperbarui ke versi baru dengan tanggal berlaku, When versi baru dijadwalkan, Then pemberitahuan perubahan beserta tanggal berlakunya dikirim ke pasien sebelum tanggal itu (Pasal 21 ayat (2) `[SRC-15]`). Setelah tanggal berlaku, pasien diminta menyetujui versi baru sebelum dapat memesan layanan.
 - AC5. Given pasien tidak menyetujui, When ia mencoba melanjutkan, Then akun tidak dibuat (registrasi) atau layanan tidak dapat dipesan (versi baru).
 
@@ -478,20 +552,51 @@ Sebagai pasien, saya ingin mengisi dan mengubah data diri, agar data layanan dan
 Rujukan: BR-002 · Audit: E-10 (perubahan data identitas)
 
 - AC1. Given pasien membuka profil, When ia mengisi nama, tanggal lahir, jenis kelamin, nomor HP, email, dan alamat, Then data tersimpan.
+- AC1a. **Aturan validasi profil.** Field wajib mengikuti kolom `NOT NULL` data dictionary A2.1–A2.3. Setiap pelanggaran ditolak dengan `4220001` dan pesan per field (KU-01) `[KEPUTUSAN-194]` (T-12):
+
+  | Field | Wajib | Aturan |
+  | --- | --- | --- |
+  | Nama lengkap | Ya | 1–100 karakter setelah spasi di awal dan akhir dipangkas; tidak boleh hanya spasi; huruf (aksara apa pun), spasi, titik, koma, apostrof, dan tanda hubung |
+  | Tanggal lahir | Ya | Tanggal sah; tidak di masa depan (tanggal WIB); tidak lebih dari 120 tahun sebelum hari ini; usia minimum mengikuti AC1b |
+  | Jenis kelamin | Ya | Laki-laki atau Perempuan |
+  | Nomor HP (profil) | Tidak | Spasi dan tanda hubung dibuang; awalan "+62" atau "0"; disimpan dalam bentuk +62; 8–13 digit setelah kode negara. Kepemilikan nomor tidak diverifikasi |
+  | Alamat: nama penerima, nomor HP penerima, alamat lengkap, provinsi, kota | Ya | Nama penerima seperti aturan nama; nomor HP seperti aturan di atas; alamat lengkap 5–500 karakter; provinsi dan kota berupa teks 2–100 karakter sampai sistem kode wilayah ditetapkan |
+  | Alamat: label, kode pos, patokan | Tidak | Label ≤ 30 karakter; kode pos hanya angka; patokan ≤ 200 karakter |
+  | Alamat utama | — | Tepat satu alamat utama per pasien |
+
+- AC1b. **Usia minimum pemilik akun.** Given tanggal lahir yang diisi saat pendaftaran atau pengisian profil menghasilkan usia di bawah PB-22, When disimpan, Then ditolak dengan pesan usia minimum (KU-01). Nilai PB-22 `[TIDAK DIKETAHUI]` (L-08); Fase 1 memakai nilai uji `[USER] C2-B14` (UP-77; T-12).
 - AC2. Given pasien menambah lebih dari satu alamat, When ia menyimpannya, Then alamat tersimpan di daftar alamat dan dapat dipilih saat pengiriman produk atau home visit `[UP-38]`.
 - AC3. Given identitas pasien sudah disetujui, When ia mengubah nama atau tanggal lahir (perubahan NIK lewat US-106), Then status identitas kembali ke "Menunggu verifikasi", dan layanan yang mewajibkan identitas tidak dapat dipesan sampai disetujui lagi. Pesanan yang sudah dibayar tetap berlaku `[UP-39]`.
-- AC4. Given pasien mengubah email, When ia menyimpan, Then email baru baru berlaku setelah diverifikasi lewat tautan, dan email lama diberi tahu `[KEPUTUSAN-06]`.
+- AC4. Given pasien mengubah email, When ia menyimpan, Then email baru baru berlaku setelah diverifikasi lewat tautan, dan email lama diberi tahu `[KEPUTUSAN-06]`. Rinciannya AC4a–AC4e (T-13).
+- AC4a. Given autentikasi terakhir pasien lebih dari 5 menit sebelum permintaan, When ia mengajukan perubahan email, Then ia diminta masuk ulang di Keycloak sebelum permintaan diproses. Permintaan tanpa autentikasi ulang ditolak (ADR-011 butir 9) `[KEPUTUSAN-195]`.
+- AC4b. Given perubahan email diajukan, Then tautan verifikasi dikirim ke email baru, berlaku 24 jam, dan sekali pakai; email lama tetap dipakai untuk masuk dan notifikasi sampai tautan dibuka; hanya tautan dari permintaan terakhir yang berlaku, dan permintaan baru membatalkan tautan sebelumnya `[KEPUTUSAN-187]` `[KEPUTUSAN-200]`.
+- AC4c. Given tautan kedaluwarsa, sudah dipakai, atau sudah digantikan, When dibuka, Then email tidak berubah dan pasien diminta mengajukan ulang `[KEPUTUSAN-187]`.
+- AC4d. Given tautan yang berlaku dibuka, Then email untuk masuk dan notifikasi berganti ke email baru di Keycloak dan di aplikasi; email lama menerima pemberitahuan perubahan beserta kontak Layanan Pelanggan; semua sesi lain pengguna diakhiri; event E-04 tercatat `[KEPUTUSAN-198]` `[KEPUTUSAN-200]`.
+- AC4e. Given email baru sudah dipakai akun lain, Then respons ke pasien sama dengan AC4b, alamat tujuan menerima pemberitahuan bahwa alamat itu sudah terdaftar, dan email akun pasien tidak berubah. Email pemberitahuan itu dibatasi 1 kali per 60 detik dan 5 kali per 60 menit per alamat tujuan `[USER] C2-B4` (UP-73 butir 7) `[KEPUTUSAN-192]`.
 
 #### US-106 Unggah NIK dan foto KTP
 
 Sebagai pasien, saya ingin mengunggah NIK dan foto KTP, agar dapat memakai konsultasi, home visit, serta pendaftaran klinik dan lab.
 Rujukan: BR-003, BR-004 · Audit: E-07 (saat diputuskan), E-10
 
-- AC1. Given identitas berstatus "Belum diunggah" atau "Ditolak", When pasien mengisi NIK dan mengunggah foto KTP dari kamera atau galeri, Then status menjadi "Menunggu verifikasi" dan pasien diberi tahu bahwa verifikasi dilakukan manual oleh admin.
-- AC2. Given NIK berisi karakter selain angka, When dikirim, Then ditolak (KU-01). Validasi panjang dan format NIK ditetapkan di Tahap 4 dari sumber resmi `[TIDAK DIKETAHUI]`.
-- AC3. Given berkas bukan JPG/PNG atau melebihi batas ukuran, When diunggah, Then ditolak dengan pesan jenis dan ukuran yang diizinkan `[KEPUTUSAN-08]`.
-- AC4. Given NIK sudah disetujui sebagai **pemilik akun** di akun lain, When pasien mengirim NIK itu, Then pengiriman ditolak dan pasien diarahkan ke layanan pelanggan. NIK anggota keluarga boleh tercatat di lebih dari satu akun, misalnya anak yang didaftarkan kedua orang tuanya `[UP-40]`.
-- AC5. Given status "Menunggu verifikasi", When pasien membuka profil, Then foto tidak dapat diganti sampai diputuskan, kecuali pasien membatalkan pengiriman.
+- AC1. Given identitas berstatus "Belum diunggah", "Ditolak", atau "Disetujui", When pasien mengisi NIK dan mengunggah foto KTP dari kamera atau galeri, Then status menjadi "Menunggu verifikasi" dan pasien diberi tahu bahwa verifikasi dilakukan manual oleh admin. Bila status sebelumnya "Disetujui":
+  - dialog konfirmasi lebih dulu menjelaskan bahwa layanan yang mewajibkan identitas tidak dapat dipesan sampai disetujui lagi;
+  - pesanan yang sudah dibayar tetap berlaku (UP-39);
+  - NIK lama tetap tercatat sebagai NIK pemilik akun ini sampai NIK baru disetujui.
+  `[USER] C2-B14` (UP-74 a; T-14)
+- AC2. Given NIK bukan tepat 16 digit angka, When dikirim, Then ditolak dengan `4220001` dan pesan "NIK harus 16 digit angka" (KU-01). Tidak ada validasi struktur lain `[DOK: 04-data-dictionary.md]` (A2.4) `[SRC-63]` (T-15).
+- AC3. Given berkas bukan JPG/PNG atau melebihi batas ukuran, When diunggah, Then ditolak dengan pesan jenis dan ukuran yang diizinkan `[KEPUTUSAN-08]`. Rinciannya (T-07) `[KEPUTUSAN-191]`:
+  - berkas berukuran tepat 5.242.880 byte dan bertipe JPG/PNG menurut isinya diterima;
+  - berkas berukuran 5.242.881 byte ditolak dengan `4130001`;
+  - berkas yang jenisnya menurut isi bukan JPG/PNG, termasuk ekstensi palsu, ditolak dengan `4150001`.
+- AC4. Given NIK sudah disetujui sebagai **pemilik akun** di akun lain, When pasien mengirim NIK itu sebagai pemilik akun, Then:
+  - pengajuan tidak disimpan dan status identitas tidak berubah;
+  - pesan umum tampil: "NIK ini tidak dapat dipakai untuk akun Anda. Hubungi Layanan Pelanggan bila ini NIK Anda.";
+  - pemeriksaan registri hanya dilakukan saat pengajuan lengkap (NIK dan foto), bukan saat NIK diketik;
+  - batas berlapis berlaku: per akun 3 penolakan per 24 jam, lalu pengajuan NIK akun itu ditahan 24 jam; per NIK lintas akun 3 penolakan untuk NIK yang sama dari akun mana pun per 24 jam, lalu pengajuan NIK itu dari akun mana pun ditolak dengan pesan umum yang sama selama 24 jam; per alamat IP 10 penolakan per 24 jam; lebih dari 20 penolakan per jam di seluruh sistem memicu peringatan di security log;
+  - setiap penahanan tercatat sebagai kejadian keamanan.
+  NIK anggota keluarga boleh tercatat di lebih dari satu akun, misalnya anak yang didaftarkan kedua orang tuanya `[UP-40]` `[USER] C2-B4` (UP-73 butir 8; T-16).
+- AC5. Given status "Menunggu verifikasi" dari pengajuan dokumen, When pasien membuka profil, Then foto tidak dapat diganti sampai diputuskan, kecuali pasien membatalkan pengiriman. Bila dibatalkan, status kembali seperti sebelum pengajuan itu ("Belum diunggah"; "Ditolak" dengan alasan terakhir; atau "Disetujui" dengan NIK lama), dan foto dapat diganti. Pengajuan karena perubahan nama atau tanggal lahir (US-105 AC3) tidak dapat dibatalkan. Bila pembatalan dan keputusan Verifikator terjadi bersamaan, transisi yang tersimpan lebih dulu berlaku dan pihak lain diberi tahu (UP-10, US-201 AC5) `[USER] C2-B14` (UP-74 b; T-15).
 
 #### US-107 Pembatasan layanan berdasarkan status verifikasi
 
@@ -524,6 +629,30 @@ Rujukan: BR-008, BR-106 · Audit: E-15, E-16
 - AC3. Given tidak ada pesanan aktif, When pasien menghapus anggota keluarga, Then anggota keluarga tidak lagi tampil (soft delete). Riwayat transaksi dan rekam medis yang terkait tetap tersimpan mengikuti ketentuan retensi (PT-24, L-06).
 - AC4. Given anggota keluarga dengan NIK yang sama pernah dihapus, When pasien menambahkannya kembali, Then data dibuat sebagai entri baru berstatus "Menunggu verifikasi", dan riwayat layanan entri lama tetap dapat dilihat (US-310 AC3).
 
+#### US-110 Perangkat dan sesi aktif
+
+Sebagai pengguna yang sudah masuk (pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, atau pengguna RME), saya ingin melihat dan mengakhiri sesi aktif akun saya, agar dapat menghentikan akses dari perangkat yang hilang atau tidak saya kenali.
+Rujukan: BR-001, BR-108, ADR-011 butir 8, 9, 12 `[USER] C2-Q10, C2-Q11` · Audit: E-03
+Fase: 2 untuk aplikasi pasien, aplikasi tenaga kesehatan, backoffice, dan portal rekanan; bagian web RME diverifikasi di Fase 3 bersama EN-22 (`docs/backlog.md`)
+
+- AC1. Given pengguna sudah masuk, When ia membuka "Perangkat dan sesi aktif", Then tampil semua sesi aktif akunnya sendiri. Setiap sesi menampilkan:
+  - nama aplikasi (aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal rekanan, atau web RME);
+  - alamat IP, waktu mulai, dan waktu terakhir aktif (KU-07);
+  - penanda "Sesi ini" untuk sesi yang sedang dipakai;
+  - nama perangkat bila tersedia `[KEPUTUSAN-205]`.
+  Daftar bersumber dari Keycloak `[SRC-275]`.
+- AC2. Given pengguna memilih mengakhiri satu sesi selain "Sesi ini", When autentikasi terakhirnya lebih dari 5 menit sebelumnya, Then ia diminta masuk ulang lebih dulu (ADR-011 butir 9) `[KEPUTUSAN-195]`. Setelah autentikasi ulang berhasil:
+  - sesi itu diakhiri di Keycloak dan dicatat di `session_revocation`;
+  - setiap permintaan berikutnya yang memakai token sesi itu ditolak dengan `4010001`, dan WebSocket sesi itu diputus (definisi "berikutnya" di KU-10) `[KEPUTUSAN-193]`;
+  - sesi itu tidak lagi tampil di daftar.
+  Bila autentikasi ulang gagal atau dibatalkan, tidak ada sesi yang diakhiri (ASVS 7.5.2 L2 `[SRC-277]`).
+- AC3. Given pengguna memilih "Akhiri semua sesi lain", When autentikasi ulang berhasil (seperti AC2), Then semua sesi akun itu kecuali "Sesi ini" diakhiri dengan perilaku AC2, dan "Sesi ini" tetap berjalan.
+- AC4. Given pengguna memilih mengakhiri "Sesi ini", When dikonfirmasi, Then perilakunya sama dengan keluar (US-103 AC5).
+- AC5. Given permintaan mengakhiri sesi memakai ID sesi milik akun lain, When diproses, Then permintaan ditolak tanpa membocorkan keberadaan sesi itu (KU-03), dan sesi akun lain tidak berubah.
+- AC6. Given sesi web (backoffice, portal rekanan, atau web RME) diakhiri dari perangkat lain, When browser sesi itu mengirim permintaan berikutnya, Then BFF menolak permintaan itu dan menampilkan halaman masuk. Mekanisme pengakhiran sesi BFF diverifikasi di Tahap 8 `[KEPUTUSAN-205]`.
+- AC7. Given pengguna sudah punya sesi aktif di perangkat lain, When ia masuk di perangkat baru, Then sesi lama tetap aktif dan tampil di daftar. Jumlah sesi paralel tidak dibatasi (NFR-SEC-11) `[USER] C2-Q11`.
+- AC8. Given sesi diakhiri lewat layar ini, Then event E-03 tercatat untuk setiap sesi yang diakhiri, dengan keterangan "diakhiri dari daftar sesi", tanpa nilai token (§7.3).
+
 ### EP-02 Verifikasi dan pengelolaan akun
 
 | Story | Fitur | BR | Prioritas |
@@ -545,10 +674,17 @@ Rujukan: BR-004, BR-008, AB-03, AB-05 · Audit: E-05 (membuka foto), E-07
 - AC1. Given ada pengajuan "Menunggu verifikasi", When Verifikator membuka antrean, Then pengajuan tampil urut dari yang terlama, dengan data diri, NIK, dan foto dokumen.
 - AC2. Given Verifikator menyetujui, When keputusan disimpan, Then status menjadi "Disetujui" dan pasien diberi tahu (US-1001).
 - AC3. Given Verifikator menolak, When ia memilih alasan dari daftar dan dapat menambah keterangan, Then status menjadi "Ditolak", alasan tampil ke pasien, dan pasien dapat mengunggah ulang. Penolakan tanpa alasan tidak dapat disimpan.
+  - Daftar alasan awal dikelola lewat migrasi data, tanpa layar admin `[USER] C2-B14` (UP-75 b; T-17): `photo_unreadable` (foto dokumen buram atau tidak terbaca), `document_invalid` (dokumen bukan KTP/KK, tidak utuh, atau tidak sesuai jenis yang diminta), `nik_mismatch` (NIK yang diisi tidak sama dengan NIK di dokumen), `profile_mismatch` (nama atau tanggal lahir di profil tidak sama dengan dokumen), `guardian_not_listed` (pemilik akun tidak tercantum sebagai orang tua/wali di KK, AC4), `nik_unavailable` (teks umum US-106 AC4), `other` (lainnya; keterangan wajib). Label final diselaraskan dengan pedoman teks UI.
+- AC3a. Given Verifikator memilih alasan "Lainnya", When keterangan kosong, Then penolakan tidak dapat disimpan. Keterangan paling panjang 500 karakter dan tampil ke pasien (T-17).
 - AC4. Given pengajuan anak memakai KK, When Verifikator memeriksa, Then ia dapat memastikan pemilik akun tercantum sebagai orang tua/wali. Kalau tidak tercantum, pengajuan ditolak dengan alasan itu.
 - AC5. Given dua Verifikator membuka pengajuan yang sama, When keduanya memutuskan, Then hanya keputusan pertama yang tersimpan, dan yang kedua diberi tahu bahwa pengajuan sudah diputuskan.
 - AC6. Given pengguna bukan Verifikator, When ia mencoba membuka foto dokumen, Then akses ditolak dan tercatat (KU-03).
-- AC7. Given NIK sudah disetujui sebagai pemilik akun di akun lain, When Verifikator menyetujui pengajuan pemilik akun dengan NIK yang sama, Then persetujuan ditolak dengan alasan NIK sudah dipakai `[UP-40]`.
+- AC7. Given NIK sudah disetujui sebagai pemilik akun di akun lain, When Verifikator menyetujui pengajuan pemilik akun dengan NIK yang sama, Then:
+  - persetujuan ditolak dengan pesan konflik ke Verifikator;
+  - formulir penolakan terbuka dengan alasan `nik_unavailable` terpilih;
+  - setelah disimpan, status menjadi "Ditolak" dengan teks umum US-106 AC4 (E-07 dengan aktor Verifikator).
+  Pemberitahuan ke pasien di Fase 2 bersama US-1001 `[UP-40]` `[USER] C2-B14` (UP-74 c; T-18).
+- AC8. Given Verifikator juga pemilik akun pasien, When ia membuka pengajuan identitas milik akunnya sendiri (termasuk anggota keluarga di akunnya), Then tombol setuju/tolak tidak tersedia, API menolak keputusan itu dengan pesan pemisahan tugas, dan percobaan tercatat (E-07). Pengajuan tersebut diputuskan Verifikator lain (klarifikasi T-19 butir d, usulan default UP-76 yang disetujui lewat delegasi) `[USER]` checkpoint-2 butir 7 (PT-56).
 
 #### US-202 Pendaftaran tenaga kesehatan
 
@@ -609,6 +745,15 @@ Rujukan: BR-060 · Audit: E-10
 - AC2. Given tenaga kesehatan atau rekanan punya pesanan terbayar yang belum selesai, When akunnya dinonaktifkan, Then: sesi konsultasi dan pendaftaran/home visit rekanan itu yang belum mulai menjadi "Dibatalkan rekanan" (RF-05); home visit yang ditugaskan ke tenaga kesehatan itu kembali ke "Terkonfirmasi" untuk ditugaskan ulang; pesanan produk outlet itu yang belum Dikirim menjadi "Ditolak outlet" (RF-08), sedangkan yang sudah Dikirim tetap berjalan.
 - AC3. Given pasien punya pesanan terbayar yang belum selesai, When admin mencoba menonaktifkannya, Then penonaktifan ditolak sampai pesanan selesai atau dibatalkan `[UP-41]`.
 - AC4. Given akun nonaktif, When admin mengaktifkannya kembali dengan alasan, Then akun dapat dipakai lagi.
+- AC5. **Reset MFA pasien oleh Layanan Pelanggan (CR-018, Fase 2).** Given pasien melaporkan perangkat authenticator dan kode pemulihannya hilang, When Layanan Pelanggan memulai reset MFA untuk akun itu di backoffice dan mengisi alasan, Then:
+  - sistem mengirim tautan konfirmasi sekali pakai yang berlaku 60 menit ke email akun, bukan ke kanal tempat permintaan diajukan;
+  - reset baru berlaku setelah pasien membuka tautan itu dan memasukkan password yang benar; sebelum itu TOTP lama tetap berlaku. Mekanisme pemeriksaan password tanpa meminta TOTP lama `[TIDAK DIKETAHUI]`, dirancang di Tahap 8 (KEPUTUSAN-204);
+  - tautan yang kedaluwarsa atau sudah dipakai tidak mengubah apa pun;
+  - Layanan Pelanggan tidak dapat melihat, memilih, atau menetapkan password, rahasia TOTP, maupun kode pemulihan pasien;
+  - setelah reset berlaku, semua sesi pasien diakhiri, email pemberitahuan beserta kontak Layanan Pelanggan dikirim ke email akun, dan pasien wajib mendaftarkan TOTP baru saat masuk berikutnya (US-101 AC5);
+  - event E-04 tercatat dengan aktor Layanan Pelanggan dan alasan, tanpa nilai kredensial;
+  - sub-peran selain Layanan Pelanggan, termasuk Super Admin, tidak dapat memulai reset MFA pasien (KU-03). Super Admin tidak ditambahkan karena keputusan user hanya menyebut Layanan Pelanggan (review keamanan `docs/review/checkpoint-2-security.md` B-01).
+  `[USER] C2-Q9` `[KEPUTUSAN-198]` `[KEPUTUSAN-204]` (ASVS 6.4.4 L2 `[SRC-276]`; prosedur H-05). Pasien yang juga kehilangan akses email atau password tidak tercakup AC ini; bukti identitas penggantinya `[TIDAK DIKETAHUI]` (KEPUTUSAN-204 butir 3).
 
 #### US-208 Akun dan sub-peran admin Ruang Sehat
 
@@ -618,6 +763,16 @@ Rujukan: BR-060, BR-080 butir 8 `[UP-18]` · Audit: E-10, E-11
 - AC1. Given Super Admin membuat akun admin, When ia memilih satu atau lebih sub-peran (Super Admin, Verifikator, Layanan Pelanggan, Keuangan, Konten, Auditor, Petugas PDP), Then akses akun mengikuti §3.1 dan MFA wajib diaktifkan saat pertama masuk.
 - AC2. Given hanya tersisa satu Super Admin aktif, When peran Super Admin-nya akan dicabut atau akunnya dinonaktifkan, Then aksi ditolak.
 - AC3. Given admin mencoba mengubah peran akunnya sendiri, When ia menyimpan, Then aksi ditolak.
+- AC4. **Bootstrap Super Admin pertama.** Given belum ada Super Admin aktif maupun yang menunggu aktivasi, When operator menjalankan perintah bootstrap lewat jalur administrasi production, dengan kredensial yang terbit setelah persetujuan orang kedua (Control Group OpenBao), dan dengan email calon Super Admin yang sudah disetujui, Then:
+  - satu akun admin dengan sub-peran Super Admin dibuat berstatus menunggu aktivasi;
+  - undangan aktivasi (password dan MFA) dikirim, sekali pakai, dan berlaku 24 jam;
+  - E-10 dan E-11 tercatat dengan aktor "sistem (bootstrap)" beserta identitas operator dan penyetuju.
+  Given sudah ada Super Admin aktif atau yang menunggu aktivasi, When perintah bootstrap dijalankan, Then perintah ditolak tanpa perubahan. Given dua perintah dijalankan bersamaan, Then hanya satu akun yang dibuat. Undangan yang kedaluwarsa dibuat ulang lewat perintah yang sama dengan persetujuan orang kedua. File migrasi tidak memuat data pribadi `[USER] C2-B7` (UP-76 a; T-19) `[SRC-253]`. Siapa Super Admin pertama dan orang kedua penyetujunya `[TIDAK DIKETAHUI]` (PT-52, tenggat sebelum EN-26 production 2027-02-01).
+- AC5. Given admin mencoba menonaktifkan akunnya sendiri, When disimpan, Then aksi ditolak `[USER] C2-B7` (UP-76 b).
+- AC6. Given akun memegang sub-peran Auditor, When sub-peran lain ditambahkan (atau sebaliknya, Auditor ditambahkan ke akun yang memegang sub-peran lain), Then aksi ditolak dengan pesan pemisahan tugas `[USER] C2-B7` (UP-76 c).
+- AC7. Given hanya tersisa satu Auditor aktif, When sub-perannya akan dicabut atau akunnya dinonaktifkan, Then aksi ditolak `[USER] C2-B7` (UP-76 d-3).
+- AC8. **Pemberitahuan sub-peran sensitif (Fase 2, bersama US-1003).** Given sub-peran Super Admin, Auditor, Verifikator, Keuangan, atau Petugas PDP diberikan ke sebuah akun, When perubahan disimpan, Then semua Super Admin dan Auditor aktif menerima pemberitahuan lewat kanal notifikasi admin US-1003 (siapa memberi, kepada siapa, sub-peran apa, kapan). Tinjauan akses berkala dijalankan menurut prosedur operasi; frekuensinya `[TIDAK DIKETAHUI]`, ditetapkan sebelum go-live `[USER] C2-B7` (UP-76 d-2; risiko WEB-07/M-16).
+- Checklist go-live (bukan AC): minimal dua Super Admin aktif sebelum go-live `[USER] C2-B7` (UP-76 a').
 
 ### EP-03 Konsultasi online
 
@@ -1475,7 +1630,9 @@ Rujukan: BR-080, BR-081, BR-107, ADR-005 `[KEPUTUSAN-07]` `[KEPUTUSAN-15]` · Au
 
 - AC1. Given aksi yang termasuk event §7.1 terjadi di komponen mana pun (aplikasi pasien, aplikasi tenaga kesehatan, backoffice, portal, RME minimalis, proses otomatis, integrasi), When aksi selesai atau gagal, Then satu event tercatat dengan semua field wajib §7.2 terisi, dan field bersyarat terisi bila kondisinya berlaku.
 - AC2. Given event dicatat, When isinya diperiksa, Then tidak memuat data terlarang §7.3.
-- AC3. Given event audit untuk suatu aksi §7.1 tidak dapat dicatat, When aksi dijalankan, Then: aksi pengguna dibatalkan dan pesan gagal tampil; aksi sistem atau integrasi tidak dianggap selesai dan dicoba ulang dari antrean sampai event tercatat (pesan integrasi masuk dibalas galat sementara agar dikirim ulang); efek eksternal yang sudah terjadi (misalnya refund yang sudah dieksekusi penyedia) dicatat dari antrean dan tidak boleh hilang. Kegagalan mencatat event memicu peringatan keamanan. Event aksi gagal (misalnya login gagal) tetap dicoba dicatat tanpa mengubah hasil aksinya `[KEPUTUSAN-15]`.
+- AC3. Given event audit untuk suatu aksi §7.1 tidak dapat dicatat, When aksi dijalankan, Then: aksi pengguna dibatalkan dan pesan gagal tampil; aksi sistem atau integrasi tidak dianggap selesai dan dicoba ulang dari antrean sampai event tercatat (pesan integrasi masuk dibalas galat sementara agar dikirim ulang); efek eksternal yang sudah terjadi (misalnya refund yang sudah dieksekusi penyedia) dicatat dari antrean dan tidak boleh hilang. Kegagalan mencatat event memicu peringatan keamanan. Event aksi gagal (misalnya login gagal) tetap dicoba dicatat tanpa mengubah hasil aksinya `[KEPUTUSAN-15]`. Peringatan keamanan itu (T-21) `[KEPUTUSAN-197]`:
+  - Fase 1: setiap kegagalan menghasilkan satu entri security log berkategori kegagalan audit, tanpa data terlarang §7.3, dan menaikkan metrik penghitung;
+  - mulai Fase 2 (setelah EN-16): Alertmanager mengirim peringatan ke email tim teknis paling lambat 5 menit setelah kegagalan pertama. Daftar alamat penerima `[TIDAK DIKETAHUI]`, diisi user sebelum staging.
 
 #### US-1502 Halaman Audit Log
 
@@ -1501,7 +1658,11 @@ Rujukan: BR-080, ADR-005 · Audit: kejadian keamanan
 
 - AC1. Given pengguna mana pun, termasuk Super Admin, When mencari fitur ubah atau hapus audit log, Then fitur tidak tersedia di aplikasi maupun API.
 - AC2. Given ada permintaan langsung ke API untuk mengubah atau menghapus event, When diterima, Then ditolak dan tercatat sebagai kejadian keamanan.
-- AC3. Mekanisme penyimpanan append-only dan deteksi manipulasi ditetapkan di Tahap 4 (ADR-005).
+- AC3. **Deteksi manipulasi** (pengganti rumusan "ditetapkan di Tahap 4", mengikuti ADR-009 butir 5; T-22):
+  - Given satu event di `audit_event` diubah, dihapus, atau disisipkan langsung di database (di lingkungan uji, dengan trigger penolak dilewati superuser), When job verifikasi berjalan (terjadwal harian atau dipicu manual), Then ketidakcocokan terdeteksi, hasil verifikasi menyebut `seq` pertama yang tidak cocok, dan peringatan keamanan dikirim (Fase 1 berupa entri security log; peringatan email mulai Fase 2 seperti US-1501 AC3);
+  - Given kepala rantai di jangkar WORM berbeda dengan hasil hitung ulang, Then hasilnya sama: terdeteksi dan diperingatkan;
+  - Given tidak ada perubahan, Then verifikasi lulus dan hasilnya tercatat.
+  `[DOK: adr/ADR-009-mekanisme-audit-trail.md]` (butir 5)
 
 ### EP-16 Persetujuan dan hak subjek data (T1)
 
@@ -1632,15 +1793,16 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | ID | Kebutuhan | Sumber |
 | --- | --- | --- |
 | NFR-SEC-01 | Kontrol keamanan aplikasi diverifikasi terhadap OWASP ASVS 5.0.0. Level dan pemetaan kontrol ditetapkan di Tahap 4, verifikasi di Tahap 10 | `[SRC-29]` `[KEPUTUSAN-05]` |
-| NFR-SEC-02 | MFA wajib untuk akun admin Ruang Sehat, admin rekanan, dan pengguna RME minimalis. MFA untuk tenaga kesehatan ditetapkan di Tahap 4 | `[KEPUTUSAN-06]` |
-| NFR-SEC-03 | Kebijakan password mengikuti NFR-SEC-01. Akun terkunci 15 menit setelah 5 percobaan masuk gagal berturut-turut | `[KEPUTUSAN-06]` |
+| NFR-SEC-02 | MFA wajib untuk semua akun manusia: pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, dan pengguna RME minimalis. Faktor kedua berupa TOTP dengan kode pemulihan sekali pakai; SMS, OTP email, dan WebAuthn tidak dipakai di rilis 1. Atur ulang password tidak melewati MFA, dan faktor yang hilang dipulihkan dengan pembuktian identitas setara saat pendaftaran (ADR-011 butir 5) | `[KEPUTUSAN-06]` (admin, admin rekanan, RME); `[KEPUTUSAN-25]` (tenaga kesehatan, Tahap 4); `[USER] C2-Q9` (pasien, CR-018) |
+| NFR-SEC-03 | Kebijakan password untuk password yang dibuat atau diubah pengguna, sama di semua jalur (pendaftaran, atur ulang, aktivasi, ubah password):<br>1. panjang 8–128 karakter;<br>2. semua karakter diizinkan, termasuk spasi, tanpa aturan komposisi;<br>3. diperiksa persis seperti dimasukkan, tanpa dipangkas atau diubah hurufnya;<br>4. ditolak bila ada di daftar minimal 3.000 kata sandi paling umum, di daftar kata sandi bocor, atau di daftar kata konteks ("ruang sehat", "ruangsehat", "rumah sehat", "rumahsehat", "arunika", beserta variasinya), dan bila sama dengan email pengguna. Ketiga daftar berupa berkas lokal, tanpa layanan eksternal;<br>5. tanpa kewajiban mengganti password berkala;<br>6. tempel dan pengelola password diizinkan; isian bermasker dengan opsi menampilkan.<br>Akun terkunci 15 menit setelah 5 percobaan masuk gagal berturut-turut (US-103 AC3). Daftar kata sandi bocor beserta lisensinya `[TIDAK DIKETAHUI]`, diverifikasi di Tahap 8 sebelum dipakai | `[KEPUTUSAN-06]` `[KEPUTUSAN-188]` `[SRC-265]` `[SRC-270]` (T-02) |
 | NFR-SEC-04 | Sesi web (backoffice, portal, RME minimalis) berakhir setelah 30 menit tanpa aktivitas | `[KEPUTUSAN-06]` |
 | NFR-SEC-05 | Data dienkripsi saat dikirim dan saat disimpan. Data pribadi spesifik (AB-70) mendapat perlindungan tambahan yang ditetapkan di Tahap 4 | BR-105, BR-108 |
 | NFR-SEC-06 | Isolasi data antar-rekanan dan antar-fasyankes diuji, termasuk percobaan mengakses data lain lewat ID (KU-03) | BR-105, BR-108 |
 | NFR-SEC-07 | Hak akses mengikuti prinsip hak minimum per peran dan sub-peran (§3.1) | BR-105 `[UP-17]` |
-| NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MB; dokumen PDF ≤ 10 MB) dan hanya dapat diakses pihak yang berhak | `[KEPUTUSAN-08]` |
+| NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MiB = 5.242.880 byte; dokumen PDF ≤ 10 MiB = 10.485.760 byte, berlaku untuk berkas seperti diunggah, sebelum dikode ulang) dan hanya dapat diakses pihak yang berhak | `[KEPUTUSAN-08]` `[KEPUTUSAN-191]` (T-07) |
 | NFR-SEC-09 | Lulus audit keamanan sebelum go-live | `[DOK] P8.2` (syarat go-live 6) |
 | NFR-SEC-10 | Aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biometrik atau PIN perangkat) saat dibuka kembali setelah 15 menit tidak aktif (CR-009) | `[USER] T4-Q6` |
+| NFR-SEC-11 | Jumlah sesi paralel per akun tidak dibatasi di semua jenis akun (pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, pengguna RME). Setiap sesi dapat dilihat dan diakhiri pemiliknya (US-110), dan batas idle serta mutlak sesi per jenis akun tetap berlaku (ADR-011 butir 7). Kebijakan ini adalah dokumentasi ASVS 7.1.2 (L2) `[SRC-277]` | `[USER] C2-Q11` |
 
 ### 6.5 Privasi dan lokasi data (T1)
 
@@ -1705,8 +1867,8 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 | --- | --- | --- | --- |
 | E-01 | Login berhasil | Semua jenis akun dan komponen | BR-080 butir 1 |
 | E-02 | Login gagal, termasuk akun terkunci | | BR-080 butir 1 |
-| E-03 | Logout | | BR-080 butir 1 |
-| E-04 | Pembuatan akun dan perubahan kredensial (nilai tidak dicatat) | Registrasi, atur ulang password, aktivasi MFA | ADR-005 `[KEPUTUSAN-07]` |
+| E-03 | Logout | Keluar, sesi diakhiri dari daftar sesi (US-110) | BR-080 butir 1 |
+| E-04 | Pembuatan akun dan perubahan kredensial (nilai tidak dicatat) | Registrasi, atur ulang dan ubah password, aktivasi dan pendaftaran ulang MFA, pembuatan kode pemulihan, reset MFA oleh admin | ADR-005 `[KEPUTUSAN-07]` |
 | E-05 | Akses ke data pasien sensitif oleh pihak selain subjek data, termasuk pemilik akun yang membuka data klinis anggota keluarga (dewasa maupun anak) | Tenaga kesehatan membuka riwayat chat, Verifikator membuka foto KTP/KK, Tenaga Kesehatan Fasyankes membuka rekam medis, admin membuka bukti klaim | BR-080 butir 2 `[KEPUTUSAN-07]` |
 | E-06 | Pembuatan dan perubahan catatan tenaga kesehatan, resep, rekam medis RME, dan hasil lab | | BR-080 butir 3, BR-123 |
 | E-07 | Verifikasi identitas disetujui atau ditolak | | BR-080 butir 4 |
@@ -1742,7 +1904,7 @@ Field minimum mengikuti ADR-005: siapa, apa, kapan, dari mana, nilai before/afte
 
 | Data | Perlakuan | Sumber |
 | --- | --- | --- |
-| Password, PIN, OTP, token (sesi, refresh, API, payment gateway), rahasia MFA | Tidak pernah dicatat | BR-081, ADR-005 |
+| Password, PIN, OTP, token (sesi, refresh, API, payment gateway), rahasia MFA, kode pemulihan, tautan konfirmasi reset MFA | Tidak pernah dicatat | BR-081, ADR-005 |
 | Nomor kartu dan nomor rekening | Tidak pernah lengkap; hanya 4 digit terakhir | BR-081, ADR-005 |
 | NIK | Hanya 4 digit terakhir | `[KEPUTUSAN-07]` |
 | Isi chat, catatan, resep, rekam medis, nilai hasil lab, foto KTP/KK, foto bukti klaim | Tidak disalin ke audit trail; hanya referensi objek dan versi | BR-105 `[KEPUTUSAN-07]` |
@@ -1998,6 +2160,25 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 
 PT-05 (kemampuan sistem rekanan), PT-17 (markup dan biaya rekanan), dan PT-24 (retensi; memblokir US-1605 dan US-1606) tetap terbuka sesuai BRD §10. PT-28 (pajak) terjawab sebagian lewat CR-013 (arah rumus, AB-10a); sisanya tetap terbuka dan menjadi gerbang sebelum perhitungan pajak di EP-08 (`docs/07-phase-plan.md` §9 G-10). PT-22 terjawab di Tahap 4: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia `[USER] T4-Q1`, dengan akibat CR-007 `[USER] T4-Q2`.
 
+### 12.5 Pertanyaan terbuka dari Checkpoint 2 yang menyentuh PRD
+
+| # | Pertanyaan | Pemilik | Tenggat |
+| --- | --- | --- | --- |
+| PT-52 | Siapa Super Admin pertama dan orang kedua penyetuju bootstrap (US-208 AC4) | User/CEO | Sebelum EN-26 (2027-02-01) |
+| PT-54 | Bukti identitas pengganti untuk pasien yang kehilangan perangkat authenticator, kode pemulihan, dan akses ke email atau password sekaligus (KEPUTUSAN-204 butir 3; US-207 AC5) `[TIDAK DIKETAHUI]` | User (PM), Petugas PDP; usulan teknis dari Tech Lead | Sebelum prosedur H-05 final, sebelum go-live |
+| PT-55 | Frekuensi tinjauan akses berkala admin (US-208 AC8) `[TIDAK DIKETAHUI]` | User (PM) | Sebelum go-live |
+| PT-56 | ~~Larangan Verifikator memutuskan pengajuan identitas akunnya sendiri~~ **Terjawab 2026-11-18**: termasuk usulan default klarifikasi T-19 butir d yang disetujui lewat delegasi `[USER]` checkpoint-2; diterapkan sebagai US-201 AC8 | — | Selesai |
+
 ## 13. Keterlacakan
 
 Pemetaan lengkap BR → story ada di `docs/traceability.md`. Setiap story di PRD ini punya minimal satu induk BR. Kebutuhan kepatuhan non-perangkat lunak dipetakan ke §10.
+
+## 14. Riwayat versi
+
+| Versi | Tanggal | Perubahan | Sumber |
+| --- | --- | --- | --- |
+| 1.0 | 2026-11-17 | Disetujui di gate Tahap 3 | `[USER] T3-Gate` |
+| 1.1 | 2026-11-18 | CR-007, CR-008, CR-009, CR-010; disetujui di gate Tahap 4 | `[USER] T4-Q2, T4-Q5, T4-Q6, T4-G3, T4-G5` |
+| 1.2 draf | 2026-11-18 | CR-013 (pajak): AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4 | `[USER] T5-Q11, T5-Q11a` |
+| **1.2 final** | 2026-11-18 | **Checkpoint 2.** (1) Teks CR-013 disetujui. (2) Klarifikasi AC Fase 1 diterapkan: KU-02 (T-20), KU-10 (UP-73, T-09), US-101 AC1a–AC1c, AC2, AC2b, AC3 (T-01–T-04), US-103 AC1a, AC2, AC3, AC4a–AC4e, AC5 (T-05, T-06, T-08, T-09), US-104 AC3 (T-11), US-105 AC1a, AC1b, AC4a–AC4e (T-12, T-13), US-106 AC1–AC5 (T-07, T-14–T-16), US-201 AC3 daftar alasan, AC3a, AC7 (T-17, T-18), US-208 AC4–AC8 (T-19), US-1501 AC3 (T-21), US-1504 AC3 (T-22), NFR-SEC-03 (T-02), NFR-SEC-08 (T-07), AB-05a (UP-74), PB-22 (UP-77). Batas NIK berlapis 3/24 jam per akun, 3/24 jam per NIK lintas akun, 10/24 jam per IP, peringatan > 20/jam global (US-106 AC4). (3) CR-018 MFA wajib pasien: NFR-SEC-02, US-101 AC5, US-103 AC1, AC1b, AC4e, AC7, AC8, US-207 AC5. (4) CR-017 ubah password saat login: US-103 AC6. (5) Story baru US-110 "Perangkat dan sesi aktif" (Fase 2) dan NFR-SEC-11 sesi paralel tidak dibatasi. (6) §2.2 Won't: email pemberitahuan penguncian, faktor kedua selain TOTP/kode pemulihan, CR-011 dan CR-015 ke rilis berikutnya, layar pengelolaan data rujukan. (7) §7.1 contoh E-03 dan E-04, §7.3 kode pemulihan. (8) §12.5 pertanyaan terbuka | `[USER] C2-Q9, C2-Q10, C2-Q11`, `[USER] C2-B4, C2-B5, C2-B6, C2-B7, C2-B14, C2-B15` (`docs/checkpoint-2.md`); `docs/07-klarifikasi-ac-fase-1.md` v0.2; KEPUTUSAN-187–205 |
+| 1.2 final (koreksi orkestrator) | 2026-11-18 | US-201 AC8 baru: Verifikator tidak dapat memutuskan pengajuan identitas akunnya sendiri (klarifikasi T-19 butir d, usulan default UP-76, PT-56). US-207 AC5: pemula reset MFA pasien hanya Layanan Pelanggan (review keamanan B-01) | `[USER]` checkpoint-2 butir 7 (delegasi); `docs/review/checkpoint-2-security.md` |

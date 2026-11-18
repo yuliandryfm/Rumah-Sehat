@@ -1,7 +1,7 @@
 # Klarifikasi Acceptance Criteria Fase 1 (temuan QA test plan §9)
 
 Tanggal: 2026-11-18
-Versi: 0.2 (draf putaran perbaikan gate Tahap 7; perbaikan atas review keamanan putaran 1 `docs/review/tahap-07-security.md`; menunggu cek ulang dan Checkpoint 2)
+Versi: 0.3 (disetujui di Checkpoint 2, 2026-11-18, `docs/checkpoint-2.md`; teks AC sudah diterapkan di PRD v1.2. Pilihan user yang berbeda dari opsi di sini: MFA pasien M1 dan US-103 AC6 diambil sebagai CR-017)
 Penyusun: Claude (persona Product Manager, dengan tinjauan Tech Lead), Mode Otomatis
 Pemutus: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1** untuk butir autentikasi, sesi, data identitas, dan pemisahan tugas admin (modul kritis di `CLAUDE.md`): T-01–T-09, T-12 (hanya bagian usia pemilik akun), T-13–T-16, T-18, T-19, T-21, T-22, dan §2. **T2** untuk butir lain.
