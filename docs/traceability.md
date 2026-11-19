@@ -2,7 +2,7 @@
 
 Menghubungkan setiap kebutuhan bisnis sampai ke kode dan test-nya. Fitur atau story tanpa induk BR adalah tanda ada yang dikarang dan harus dihapus atau dikonfirmasi user.
 
-Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, file kode/test di Tahap 8.
+Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, file kode/test di Tahap 8. Pembaruan 2026-11-19 (CR-021): BR-130–BR-145 dan EP-18/EP-19 (BRD v1.4, PRD v1.3, phase plan v0.3 `[USER] C21-P4`); test case story CR-021 belum dibuat dan disusun QA dari PRD v1.3 sebelum task terkait. File kode story mobile merujuk repositori mobile (CR-019).
 
 | BR | Kebutuhan bisnis | Sumber BR | Story | Test case | File kode / test | Status |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -82,6 +82,22 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-124 | RME minimalis menyediakan pengisian dan unggah hasil pemeriksaan lab | `[USER] T3-Q1b` | US-1307 | TC-US-1307-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-125 | RME minimalis menyediakan penerimaan appointment dari Ruang Sehat, check-in pasien, antrean real-time kl… | `[USER] T3-Q1b, T2-Q13` | US-1304, US-1305, US-1308 | TC-US-1304-1–4; TC-US-1305-1–3; TC-US-1308-1–3 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Ruang Sehat | `[USER] T3-Q1c` | US-1306, US-1310 | TC-US-1306-1–9; TC-US-1310-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
+| BR-130 | Situs web company profile sembilan halaman | `[USER] C21-P1-1` | US-1801 | — (dibuat QA dari PRD v1.3) |  | BRD v1.4 (CR-021) |
+| BR-131 | Konten situs lewat CMS backoffice | `[USER] C21-P3-4` | US-1101, US-1801, US-1802 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-132 | Member area korporat: HR di web, peserta di aplikasi pasien | `[USER] C21-P0-2, C21-P4` | US-1904 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-133 | Layanan korporat: vaksinasi, MCU, lab massal | `[USER] C21-P1-2, C21-P4` | US-1905 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-134 | Pelaksana klinik/lab rekanan, Ruang Sehat perantara | `[USER] C21-P1-3` | US-1917 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-135 | Lokasi on-site atau di rekanan per pesanan | `[USER] C21-P3-2` | US-1906, US-1911 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-136 | Perusahaan daftar sendiri + verifikasi (NIB/NPWP, bukti kewenangan, Verifikator) atau dibuatkan Verifikator; NIB ganda ditolak | `[USER] C21-P2-1, C21-P4` | US-1901, US-1902, US-1903, US-1916 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-137 | Pesan dari katalog harga tetap | `[USER] C21-P2-2` | US-1905, US-1906 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-138 | Harga korporat = harga rekanan (lewat integrasi) + markup | `[USER] C21-P3-1, C21-P4` | US-1905 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-139 | HR unggah peserta Excel/CSV; NIK hanya bila wajib | `[USER] C21-P2-3` | US-1907 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-140 | Undangan email; akun pasien yang sama | `[USER] C21-P2-3` | US-1908 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-141 | Invoice B2B tanpa payment gateway (pengecualian BR-040) | `[USER] C21-P1-4, C21-P4` | US-1909, US-1910 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-142 | Invoice saat konfirmasi, jatuh tempo 14 hari, jadwal setelah lunas | `[USER] C21-P3-3` | US-1906, US-1909, US-1911 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-143 | Hasil lengkap hanya untuk peserta | `[USER] C21-P2-4` | US-1915 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-144 | HR: rekap kehadiran; ringkasan hanya dengan persetujuan | `[USER] C21-P2-4` | US-1912, US-1913, US-1914 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-145 | Data peserta dan hasil sebagai data pribadi (spesifik); isolasi per perusahaan; audit | BR-105, BR-080, BR-107 `[SRC-440]` | US-1904, US-1907, US-1908, US-1913, NFR-SEC-06 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 
 ## NFR → arsitektur (Tahap 4)
 
@@ -151,7 +167,7 @@ Pembagian fase `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-
 
 | BR | Story (fase) | Enabler / UI terkait (fase) |
 | --- | --- | --- |
-| BR-001 | US-101 (F1), US-103 (F1; jalur Layanan Pelanggan AC8 di F2), US-110 (F2; web RME F3) | EN-06, EN-13, UI-03 (F1) |
+| BR-001 | US-101 (F1), US-103 (F1; jalur Layanan Pelanggan AC8 di F2; v0.3: AC6, AC7 realm `pasien`/`admin` di F2), US-110 (F2; web RME F3) | EN-06, EN-13, UI-03 (F1) |
 | BR-002 | US-105 (F1), US-108 (F4) | — |
 | BR-003 | US-106 (F1), US-107 (F2) | EN-10, EN-14 (F1) |
 | BR-004 | US-106 (F1), US-201 (F1), US-107 (F2) | EN-14 (F1) |
@@ -191,7 +207,7 @@ Pembagian fase `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-
 | BR-046 | US-811, US-1201 (F3) | — |
 | BR-050 | US-1001, US-1002 (F2), US-902 (F3) | EN-13 (F1), UI-04 (F2) |
 | BR-060 | US-208 (F1; AC8 di F2), US-207 (F2; termasuk AC5 reset MFA pasien, CR-018) | EN-06, EN-07, EN-11, UI-01 (F1) |
-| BR-061 | US-1101, US-1102 (F3) | — |
+| BR-061 | US-1101 (F1 sejak v0.3, CR-021), US-1102 (F3) | — |
 | BR-062 | US-1003 (F2), US-1103, US-1104 (F3) | — |
 | BR-063 | US-809, US-812 (F2), US-810 (F3) | — |
 | BR-064 | US-301 (F2), US-1104, US-1201, US-1202, US-1203 (F3) | EN-20 (F2) |
@@ -222,8 +238,20 @@ Pembagian fase `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-
 | BR-124 | US-1307 (F3) | — |
 | BR-125 | US-1304 (F3), US-1305, US-1308 (F4) | — |
 | BR-126 | US-1306, US-1310 (F3) | — |
+| BR-130 | US-1801 (F1) | F1-T83, F1-T89, F1-T111 (F1) |
+| BR-131 | US-1101, US-1801, US-1802 (F1) | F1-T91–F1-T95 (F1) |
+| BR-132 | US-1904 (F1; AC7–AC9 di F2) | F1-T85–F1-T90 (F1) |
+| BR-133, BR-137, BR-138 | US-1905 (F3), US-1906 (F3) | EN-21 (F3) |
+| BR-134 | US-1917 (F3) | EN-21 (F3) |
+| BR-135 | US-1906, US-1911 (F3) | — |
+| BR-136 | US-1901, US-1902, US-1903, US-1916 (F1; pesanan dan invoice US-1916 di F3) | F1-T98, F1-T101–F1-T106 (F1) |
+| BR-139, BR-140 | US-1907, US-1908 (F3) | — |
+| BR-141, BR-142 | US-1909, US-1910, US-1911 (F3) | Gerbang G-25 |
+| BR-143 | US-1915 (F3) | — |
+| BR-144 | US-1912, US-1913, US-1914 (F3) | Gerbang G-26 |
+| BR-145 | US-1904 (F1), US-1907, US-1908, US-1913 (F3), NFR-SEC-06 | F1-T100, F1-T109 (F1) |
 
-Hitungan story per fase: F1 9, F2 32, F3 41, F4 15 (total 97 story aktif; US-102 dihapus CR-007; US-110 ditambahkan di Checkpoint 2 dan dihitung di F2, dengan bagian web RME diverifikasi di F3). Fase 4 tetap bersyarat; dengan baseline Opsi B `[USER] C2-Q1`, pemindahan story Fase 4 mengikuti `docs/07-phase-plan.md`. Enabler EN-01–EN-27 dan story UI UI-01–UI-05 beserta induk ADR/KEPUTUSAN ada di `docs/backlog.md`.
+Hitungan v0.3 (CR-021, S3 `[USER] C21-P4`): F1 17 (9 + US-1101 dari F3 + US-1801, US-1802, US-1901–US-1904, US-1916), F2 32, F3 52 (41 − US-1101 + US-1905–US-1915, US-1917), F4 15; total 116 story aktif. Hitungan v0.2 (sebelum CR-021): F1 9, F2 32, F3 41, F4 15 (total 97 story aktif; US-102 dihapus CR-007; US-110 ditambahkan di Checkpoint 2 dan dihitung di F2, dengan bagian web RME diverifikasi di F3). Fase 4 tetap bersyarat; dengan baseline Opsi B `[USER] C2-Q1`, pemindahan story Fase 4 mengikuti `docs/07-phase-plan.md`. Enabler EN-01–EN-27 dan story UI UI-01–UI-05 beserta induk ADR/KEPUTUSAN ada di `docs/backlog.md`.
 
 ## Story → test case (Tahap 7)
 

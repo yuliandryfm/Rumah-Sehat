@@ -1,6 +1,7 @@
 # ADR-024: Stack aplikasi, yaitu backend Rust, web Next.js dengan server Next.js sebagai BFF, mobile Flutter, dan satu monorepo
 
 Status: Diterima (gate Tahap 5, 2026-11-18 `[USER] T5-G4`)
+Perubahan: butir 2 direvisi CR-021 (2026-11-19, `[USER] C21-P4`, K-07): lima aplikasi Next.js. Butir 5 (satu monorepo) terdampak CR-019 (kode mobile di repositori terpisah, disetujui user 2026-11-19); teksnya diperbarui di task tersendiri. Riwayat di akhir dokumen.
 Tanggal: 2026-11-18
 
 ## Konteks
@@ -32,6 +33,7 @@ Tanggal: 2026-11-18
 
 **2. Tiga web (backoffice, portal rekanan, web RME) memakai Next.js** `[USER] T5-Q1` `[KEPUTUSAN-75]`:
 - Next.js 16.4.6 App Router `[SRC-156]`, React 19.3.1 `[SRC-160]`, TypeScript 7.0.2 `[SRC-112]`, pnpm 12.21.0 `[SRC-113]`, dan runtime Node.js 26 LTS (Active LTS, EOL 2029-04-30) `[SRC-107]`.
+- **Revisi CR-021:** ditambah `web/situs` (situs publik tanpa sesi, tanpa identitas OpenBao) dan `web/korporat` (member area HR, BFF T1), sehingga menjadi lima aplikasi; pengerasan butir ini berlaku untuk keduanya (ADR-027).
 - Tiga aplikasi terpisah, masing-masing dibangun dengan `output: 'standalone'` `[SRC-157]` dan dijalankan di kontainer sendiri secara self-hosted `[SRC-158]` di server Indonesia (ADR-025), tidak di Vercel. Pemisahan ini mengikuti ADR-006 butir 2 dan 5.
 - **Pengerasan karena riwayat advisory** `[SRC-246]`: image optimization dimatikan (`images.unoptimized: true`) `[SRC-159]`. `next/og`, Edge runtime, `use cache`/Cache Components, dan middleware untuk keputusan otorisasi tidak dipakai. Versi dipin. Patch keamanan Next.js berderajat Critical atau High dipasang paling lambat 7 hari setelah terbit `[KEPUTUSAN-75]`.
 - Klien API bertipe dibangkitkan dari OpenAPI dengan openapi-typescript 7.13.0 dan openapi-fetch 0.17.0 (masih 0.x, dipantau) `[SRC-131]` `[SRC-132]`. Pengambilan data dengan TanStack Query 5.108.0 `[SRC-130]`. Test end-to-end dengan Playwright 1.65.1 `[SRC-133]`.
@@ -106,3 +108,10 @@ Batas antara Ruang Sehat dan RME di monorepo hanya berupa kode bersama di `crate
 - **Kompatibilitas klien Valkey** (crate `redis` dan ioredis) belum dibuktikan. Klaim kompatibilitas di beranda Valkey berasal dari pihak ketiga yang dikutip `[SRC-247]`, sehingga kompatibilitas dibuktikan lewat test integrasi Tahap 8.
 - **Pustaka 0.x atau yang jarang dirilis** (openapi-fetch, web_socket_channel, keycloak-config-cli) dipantau. Penggantinya diajukan lewat change request bila pemeliharaannya berhenti.
 - **Yang ditunda ke Tahap 8**: generator klien API Dart, ESLint dan test unit web, mekanisme pengecualian cadangan perangkat dan penyembunyian layar (ADR-021 butir 1 semula menyebut Tahap 5), dan versi pasti paket mobile yang belum dipin di sini.
+
+## Riwayat revisi
+
+| Tanggal | Revisi | Sumber |
+| --- | --- | --- |
+| 2026-11-18 | Diterima di gate Tahap 5 | `[USER] T5-G4` |
+| 2026-11-19 | Butir 2: `web/situs` dan `web/korporat` ditambahkan (lima aplikasi Next.js); status tetap Diterima | `[USER] C21-P4` (K-07); ADR-027 |

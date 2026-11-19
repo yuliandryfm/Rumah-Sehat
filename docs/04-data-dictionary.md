@@ -1,7 +1,7 @@
 # Data Dictionary: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
+Versi: 1.1 (2026-11-19, CR-021: bagian A20 "Layanan korporat" ditambahkan sebagai **rancangan**, beserta usulan perubahan A1.1, A13.1, A15.4, A19.7, B3; rincian kolom, index, dan hak role final ditetapkan di task migrasi dengan review DBA dan keamanan; keputusan user `[USER] C21-P4`, PRD v1.3 EP-19, ADR-028, ADR-029). Versi 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis** (model data, data pribadi spesifik, uang, audit)
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-021 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).
@@ -2329,6 +2329,44 @@ Penanda pemilik akun membuka aplikasi dalam keadaan masuk minimal sekali di suat
 Index: `UQ (patient_id, activity_month)`.
 
 ---
+
+### A20. Layanan korporat (CR-021, rancangan)
+
+Status: **rancangan** (data dictionary v1.1). Sumber: PRD v1.3 EP-19, AB-80–AB-87; ADR-028 (Diterima); ADR-029 (Diusulkan, arah dana menunggu PT-59/L-21); `docs/cr/CR-021-analisis.md` §5 `[KEPUTUSAN-262]`. Konvensi §0.2–§0.7 berlaku: PK UUIDv7, kolom standar STD-x, uang `bigint _idr`, PII di Master yang dapat dianonimkan ("Anonimkan"), isi spesifik terenkripsi per wadah. Rincian kolom, constraint, index, hak role (§0.6), dan kebijakan retensi (PT-24) ditetapkan di task migrasi: F1-T98/F1-T99 untuk tabel K1 (Fase 1), task K2 untuk sisanya (Fase 3), keduanya dengan review DBA dan keamanan. Tabel K1 dibangun di Fase 1; tabel K2/K3 di Fase 3 (phase plan v0.3, skenario S3 `[USER] C21-P4`).
+
+| Tabel | Kelas | Isi utama (rancangan) | Sensitivitas | Fase |
+| --- | --- | --- | --- | --- |
+| `corporate_client` | M | `legal_name`, `nib`, `npwp`, alamat, telepon kantor, `status` CHECK (`pending_verification`, `active`, `rejected`, `inactive`), `origin` CHECK (`self_registered`, `created_by_admin`). UQp `nib WHERE deleted_at IS NULL` (NIB ganda ditolak, `[USER] C21-P4` 4c) | — (badan usaha) | 1 |
+| `corporate_client_document` | M | `corporate_client_id`, `document_kind` CHECK (`nib`, `npwp`, `authority_proof`), `stored_file_id` (bukti kewenangan pendaftar wajib, `[USER] C21-P4` 4b) | Dokumen dapat memuat PII pengurus | 1 |
+| `corporate_verification_decision` | T | `corporate_client_id`, keputusan, `reason_code`, pemutus (Verifikator); UQ satu keputusan per pengajuan (keputusan pertama menang) | — | 1 |
+| `corporate_member` | M | `account_id` (jenis `corporate_admin`), `corporate_client_id`, `job_title`; UQp satu keanggotaan aktif per akun (M-51) | PII lewat akun | 1 |
+| `corporate_package` | M (salinan rekanan) | `partner_id`, `external_id`, `package_kind` CHECK (`mass_vaccination`, `mass_mcu`, `mass_lab`), nama, isi, `location_options`, `partner_price_idr`, `requires_nik`, `synced_at`. Masuk lewat Partner Integration API (K-04 opsi a) | — | 3 |
+| `corporate_order` | T | `corporate_client_id`, `corporate_package_id`, `partner_id`, `location_kind` CHECK (`onsite`, `partner_site`), alamat on-site, jumlah peserta | — | 3 |
+| `corporate_order_status_event` / `corporate_order_state` | R / P | Status UP-80 | — | 3 |
+| `corporate_order_price_lock` | T | Harga rekanan per satuan, `markup_rule_id` dan nilainya, markup per satuan, jumlah, tarif dan nominal pajak, total (AB-81) | — | 3 |
+| `corporate_participant` | M | `corporate_client_id`, `full_name`, `email`, `phone`, `birth_date` (Anonimkan); `nik_enc`, `nik_bidx`, `nik_bidx_key_version`, `nik_last4` opsional | PII; NIK Spesifik, Enc (wadah `corporate_participant_identity`) | 3 |
+| `corporate_order_participant` | T | Keikutsertaan peserta dalam pesanan; pencabutan lewat baris pembalik | Keikutsertaan diperlakukan sensitif sampai L-08/L-18 | 3 |
+| `participant_import_batch` | L | Pesanan, pengunggah, jumlah valid/galat/ganda, status; tanpa isi baris | — | 3 |
+| `participant_import_row` | O (berumur) | Baris pratinjau terenkripsi, hasil validasi; dihapus saat konfirmasi, pembatalan, atau kedaluwarsa | PII, Enc (wadah `corporate_import_preview`) | 3 |
+| `corporate_invitation` / `corporate_invitation_response` | T / T | Hash token (bukan token), `expires_at` (PB-24); respons diterima/ditolak dan `care_recipient_id` yang ditautkan | — | 3 |
+| `corporate_attendance_record` | T | Status hadir, sumber (PT-64), pencatat, konfirmasi identitas di lokasi (UP-87) | Diperlakukan sensitif sampai L-08/L-18 | 3 |
+| `b2b_invoice`, `b2b_invoice_line`, `b2b_invoice_status_event`, `b2b_invoice_state` | T / T / R / P | Nomor invoice (format Tahap 8, KEPUTUSAN-57), jatuh tempo (PB-25), total, pembatalan dan invoice pengganti; baris tidak menyebut peserta (AB-87) | — | 3 |
+| `bank_statement_entry` | T | Satu baris per transfer masuk: rekening tujuan, tanggal valuta, referensi bank, nominal, `stored_file_id` bukti, pencatat, penyetuju (UP-84); kunci unik global `[KEPUTUSAN-268]` | Nomor rekening pembayar hanya 4 digit terakhir di kolom; berkas bukti hanya Keuangan, tidak pernah masuk log/audit | 3 |
+| `b2b_payment_allocation` | T | `bank_statement_entry_id`, `b2b_invoice_id`, nominal alokasi, penyetuju, pembalik; jumlah alokasi per mutasi ≤ nominal mutasi (aplikasi dan database) | — | 3 |
+| `corporate_share_consent_record` | L | Peserta tertaut, perusahaan, pesanan, `consent_text_version_id`, aksi (beri/tarik) | Merujuk orang lewat ID (KEPUTUSAN-42) | 3 |
+| `corporate_result_summary` | T | Peserta, pesanan, `summary_enc`, `data_key_id`, versi | Spesifik, Enc (wadah `corporate_result_summary`) | 3 |
+
+**Catatan untuk DBA (review keamanan CR-021 putaran 2, R2-01)** atas `bank_statement_entry`, diputuskan di task migrasinya:
+1. Nominal ikut menjadi bagian kunci unik, sehingga salah ketik nominal untuk referensi yang sama lolos sebagai mutasi kedua. Pilih kunci tanpa nominal, atau peringatan bila referensi sama muncul dengan nominal berbeda.
+2. Mutasi yang dibalik lalu dicatat ulang dengan kunci identik akan ditolak UQ. Pilih UQ parsial yang mengecualikan mutasi yang sudah dibalik, atau koreksi lewat alokasi pembalik tanpa mencatat ulang mutasi.
+Komposisi kunci juga diverifikasi terhadap format mutasi bank yang dipakai.
+
+**Usulan perubahan tabel lain** (migrasi *expand*, ADR-019 butir 2):
+- A1.1 `account`: `account_type` + `corporate_admin`; `idp_realm` + `korporat`; CHECK pasangan `corporate_admin`→`korporat` (F1-T99, Fase 1).
+- A15.4 `cms_content`: kanal (`app`, `site`) dan halaman tujuan situs (F1-T91, Fase 1).
+- A19.7 `data_key.container_type`: + `corporate_participant_identity`, `corporate_import_preview`, `corporate_result_summary` `[KEPUTUSAN-258]` (Fase 3).
+- A13.1 `journal_account`: piutang korporat per perusahaan, pendapatan markup korporat, dan (bila L-21 memilih penerimaan penuh oleh PT. Arunika) kewajiban kepada rekanan atas pesanan korporat (ADR-029, Fase 3).
+- B3 `audit_event_subject`: subjek dapat berupa `corporate_participant` sebelum peserta tertaut ke `care_recipient` (ADR-028 butir 7).
 
 ## B. Database audit
 

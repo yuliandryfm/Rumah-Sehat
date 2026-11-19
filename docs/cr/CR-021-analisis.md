@@ -1,7 +1,7 @@
 # CR-021: Analisis — Web Ruang Sehat (company profile) dan member area layanan korporat
 
 Tanggal: 2026-11-19
-Versi: 0.2 (perbaikan review putaran 1: `docs/review/CR-021-kepatuhan.md` B-1 dan `docs/review/CR-021-security.md` B-01–B-05 beserta sebagian catatan non-blokir; draf untuk persetujuan user; belum mengubah dokumen gate kecuali threat model v1.3). Versi 0.1: draf awal
+Versi: 0.3 (2026-11-19: keputusan user putaran 4 `[USER] C21-P4` — S3, K-01–K-12 sesuai usulan, UP-79–UP-87 disetujui, PT-67 Verifikator, PT-79 bukti kewenangan wajib, PT-72 tolak NIB ganda; ADR-027/028 Diterima; koreksi fact-check N-2, N-5; isi diterapkan ke BRD v1.4, PRD v1.3, data dictionary, phase plan v0.3. Dokumen gate kini menjadi sumber kebenaran; berkas ini catatan CR). Versi 0.2 (perbaikan review putaran 1: `docs/review/CR-021-kepatuhan.md` B-1 dan `docs/review/CR-021-security.md` B-01–B-05 beserta sebagian catatan non-blokir; draf untuk persetujuan user; belum mengubah dokumen gate kecuali threat model v1.3). Versi 0.1: draf awal
 Penyusun: Claude (persona Business Analyst + Product Manager + Solution Architect + Project Manager), Mode Otomatis
 Pemilik dan pemutus: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Tingkat ketelitian: **T1** untuk data karyawan dan hasil kesehatan (§3 BR-143–BR-145, §4 US-1907, US-1908, US-1912–US-1915, §5, §6.3–§6.4), autentikasi dan otorisasi akun korporat (US-1901–US-1904, §6.2–§6.3), dan penagihan (US-1905, US-1906, US-1909, US-1910, §6.5). **T2** untuk bagian lain.
@@ -91,7 +91,7 @@ Penomoran melanjutkan pola blok BRD §5: BR-130 dst. untuk area baru "Situs web 
 | BR-141 | Pesanan korporat dibayar lewat invoice B2B (transfer bank, dengan jatuh tempo), tanpa payment gateway. Ini pengecualian atas BR-040 untuk layanan korporat. Rekening penerima dan hubungannya dengan BR-041 `[TIDAK DIKETAHUI]` (PT-59, L-21) | `[USER] P1-4` |
 | BR-142 | Syarat invoice bawaan: invoice terbit saat pesanan dikonfirmasi, jatuh tempo 14 hari, dan layanan dijadwalkan setelah lunas. Apakah "14 hari" hari kalender atau hari kerja, dan apakah syarat dapat diubah per perusahaan, `[TIDAK DIKETAHUI]` (PT-63) | `[USER] P3-3` |
 | BR-143 | Hasil lengkap MCU dan lab hanya dapat diakses peserta yang bersangkutan | `[USER] P2-4` |
-| BR-144 | HR melihat rekap kehadiran peserta. Ringkasan hasil (misalnya fit/unfit) hanya tampil bagi HR bila peserta memberi persetujuan; tanpa persetujuan, HR hanya melihat rekap kehadiran. Persetujuan dapat ditarik peserta (hak penarikan persetujuan, BR-106) | `[USER] P2-4`; BR-106 `[SRC-15]` |
+| BR-144 | HR melihat rekap kehadiran peserta. Ringkasan hasil (misalnya fit/unfit) hanya tampil bagi HR bila peserta memberi persetujuan; tanpa persetujuan, HR hanya melihat rekap kehadiran (kalimat ini tafsiran penyusun atas P2-4, konfirmasi PT-65). Persetujuan dapat ditarik peserta (hak penarikan persetujuan, BR-106) | `[USER] P2-4`; BR-106 `[SRC-15]` |
 | BR-145 | Data peserta dan hasil layanan korporat diperlakukan sebagai data pribadi, dan hasil serta ringkasannya sebagai data pribadi spesifik (BR-105). Data setiap perusahaan terisolasi dari perusahaan lain, dan setiap aksi sensitif tercatat di audit trail (BR-080, BR-107) | BR-105, BR-080, BR-107 `[DOK: 02-brd.md]`; `[USER] P2-4` |
 
 **Usulan perubahan BRD lain** (diterapkan setelah persetujuan):
@@ -539,7 +539,7 @@ Konsekuensi opsi A: HR yang juga karyawan peserta memegang dua identitas (realm 
 
 - Jenis baru: CSV dan XLSX untuk impor peserta. Validasi isi (bukan ekstensi atau header `Content-Type`), batas ukuran dan baris (PB-23), penolakan berkas terenkripsi, dan pembatasan sumber daya saat membaca XLSX. Pustaka pembaca XLSX diverifikasi di registry resmi saat task (aturan anti-halu §5), belum dipilih.
 - Gambar konten situs publik disajikan lewat endpoint publik backend yang hanya melayani gambar milik konten Tayang, bukan bucket publik `[KEPUTUSAN-252]`. Koreksi v0.2: ADR-018 butir 1 sebenarnya **membolehkan** bucket konten CMS dan katalog dibaca publik `[DOK: adr/ADR-018-berkas-unggahan.md]`. Keputusan ini lebih ketat (draf dan gambar konten yang belum atau tidak lagi tayang tidak pernah dapat dibaca publik), sehingga ADR-018 butir 1, H-11 threat model, dan checklist ASVS yang menyebut bucket publik diusulkan direvisi agar tidak tersisa izin bucket publik untuk konten CMS.
-- Impor XLSX (review keamanan N-04, M-53–M-55) `[KEPUTUSAN-269]`: penguraian di worker dengan batas waktu dan memori; batas ukuran setelah dekompresi, jumlah entri, dan rasio kompresi diperiksa sebelum mengurai `[SRC-409]`; pemrosesan DTD dimatikan `[SRC-405]` `[SRC-406]`; `.xlsm`, wadah OLE, dan `vbaProject.bin` ditolak; berkas mentah di bucket impor tanpa versi objek dengan aturan kedaluwarsa siklus hidup, dikecualikan dari backup object storage atau berumur sama; pesan galat tidak menggemakan isi sel; penetralan karakter awal rumus (`=`, `+`, `-`, `@`, tab, CR, LF) di semua ekspor CSV `[SRC-407]`.
+- Impor XLSX (review keamanan N-04, M-53–M-55) `[KEPUTUSAN-269]`: penguraian di worker dengan batas waktu dan memori; batas ukuran setelah dekompresi, jumlah entri, dan rasio kompresi diperiksa sebelum mengurai `[SRC-409]`; pemrosesan DTD dimatikan `[SRC-405]` `[SRC-406]`; `.xlsm`, wadah OLE, dan `vbaProject.bin` ditolak; berkas mentah di bucket impor tanpa versi objek dengan aturan kedaluwarsa siklus hidup, dikecualikan dari backup object storage atau berumur sama; pesan galat tidak menggemakan isi sel; penetralan karakter awal rumus (`=`, `+`, `-`, `@`, tab, CR, LF, termasuk varian lebar penuhnya) di semua ekspor CSV `[SRC-407]`.
 
 ### 6.8 Email dan notifikasi
 
@@ -601,8 +601,8 @@ Metode `[KEPUTUSAN-178]`, diterapkan `[KEPUTUSAN-260]`:
 
 ### 9.1 Kondisi Fase 1 saat ini
 
-- Fase 1 berjalan sejak 2026-11-18, lebih awal dari kalender 2026-11-23 `[DOK: STATUS.md]`. Menurut catatan Fase 1 dan riwayat git branch `tahap-08-fase-1`, task yang sudah ter-commit atau ter-merge per 2026-11-19: F1-T01, T02 (ADR-026 diterima), T03, T04, T05, T07, T08, T09, T10, T11, T12, T13, yaitu 12 task, **±37 jam-task** dari 277 (ukuran §7.3) `[DOK: fase-1-catatan.md]`. F1-T11 disimpulkan dari merge sebelum KEPUTUSAN-243/246 yang bertahap F1-T11 dan dari F1-T12 yang bergantung padanya; review beberapa task belum tercatat lengkap di catatan. Angka ini **indikatif** dan bukan `v` gerbang re-plan, yang dirata-rata atas 10 hari kerja terakhir Fase 1 (§6.5) `[KEPUTUSAN-261]`.
-- Sisa baseline Fase 1: **240 jam-task** (backend/web 196, mobile 44). Sisa hari kerja di jendela Fase 1, 2026-11-20 – 2026-12-11, tanpa libur `[DOK: 07-phase-plan.md]` §6.2a: **16 hari kerja**.
+- Fase 1 berjalan sejak 2026-11-18, lebih awal dari kalender 2026-11-23 `[DOK: STATUS.md]`. Menurut catatan Fase 1 dan riwayat git branch `tahap-08-fase-1`, task yang sudah ter-commit atau ter-merge per 2026-11-19: F1-T01, T02 (ADR-026 diterima), T03, T04, T05, T07, T08, T09, T10, T11, T12, T13, T14, T15, yaitu 14 task, **±45 jam-task** dari 277 (ukuran §7.3) `[DOK: fase-1-catatan.md]` (v0.3, koreksi fact-check N-2: v0.2 menulis 12 task dan ±37 jam-task, terlewat F1-T14 dan F1-T15 yang sudah di-merge di commit 2487775). F1-T11 disimpulkan dari merge sebelum KEPUTUSAN-243/246 yang bertahap F1-T11 dan dari F1-T12 yang bergantung padanya; review beberapa task belum tercatat lengkap di catatan. Angka ini **indikatif** dan bukan `v` gerbang re-plan, yang dirata-rata atas 10 hari kerja terakhir Fase 1 (§6.5) `[KEPUTUSAN-261]`.
+- Sisa baseline Fase 1: **232 jam-task** (backend/web 188, mobile 44). Sisa hari kerja di jendela Fase 1, 2026-11-20 – 2026-12-11, tanpa libur `[DOK: 07-phase-plan.md]` §6.2a: **16 hari kerja**.
 - Arahan user: backend dulu, lalu web; Flutter dikerjakan terpisah di laptop dan di repositori terpisah `[USER]` (CR-019, `fase-1-catatan.md`). Seluruh K1 ada di jalur backend/web.
 - Laju rencana (bukan laju terukur), sebagai pembanding: Fase 1 18,5 jam-task/hari kerja (backend/web 15,5; mobile 2,9), Fase 2 43,0 (30,8; 12,2), Fase 3 Opsi B 50,3 (≤ 42,3; ≥ 8,0) `[DOK: 07-phase-plan.md]` §6.4–§6.5.
 
@@ -627,7 +627,7 @@ F1-T80 (uji end-to-end CR-018) didefinisikan ulang tanpa langkah ubah password d
 
 Semua angka dalam jam-task per hari kerja, dengan hari libur dikurangi (§6.2a: 24–25 Desember 2026, 1 dan 5 Januari 2027 di Fase 2). Tanggal pembekuan fitur 2027-01-29 dan go-live tetap `[DOK: 01-business-case.md]` §7.1 (toleransi waktu 0).
 
-**S1 — Fase 1 diperpanjang.** Seluruh K1 masuk Fase 1, tidak ada task Fase 1 yang dipindah. Dengan laju backend/web rencana 15,5, sisa backend/web 196 + 109 = 305 butuh 19,7 hari kerja, sehingga **Fase 1 diperpanjang 4 hari kerja sampai 2026-12-17**. Fase 2 menyusut menjadi 12 hari kerja (2026-12-18 – 2027-01-08) dan menampung K2 dan K1-F2. K3 di Fase 3.
+**S1 — Fase 1 diperpanjang.** Seluruh K1 masuk Fase 1, tidak ada task Fase 1 yang dipindah. Dengan laju backend/web rencana 15,5, sisa backend/web 188 + 109 = 297 butuh 19,2 hari kerja, sehingga **Fase 1 diperpanjang 4 hari kerja sampai 2026-12-17**. Fase 2 menyusut menjadi 12 hari kerja (2026-12-18 – 2027-01-08) dan menampung K2 dan K1-F2. K3 di Fase 3.
 
 **S2 — Fase 1 tetap selesai 2026-12-11, task dipindah, K2 di Fase 2.** K1 masuk Fase 1; tujuh task §9.2 pindah ke Fase 2; K2 di Fase 2; K3 di Fase 3.
 
@@ -636,8 +636,8 @@ Semua angka dalam jam-task per hari kerja, dengan hari libur dikurangi (§6.2a: 
 | Ukuran | Baseline Opsi B | S1 | S2 | S3 |
 | --- | --- | --- | --- | --- |
 | Akhir Fase 1 | 2026-12-11 | **2026-12-17** (+4 hari kerja) | 2026-12-11 | 2026-12-11 |
-| Fase 1, backend/web per hari kerja | 15,5 (sisa: 196 ÷ 16 = 12,3) | 15,3 (305 ÷ 20) | **17,9** (196 − 18 + 109 = 287 ÷ 16) | 17,9 |
-| Fase 1, total per hari kerja | 18,5 | 17,5 ((305 + 44) ÷ 20) | 20,3 ((287 + 37) ÷ 16) | 20,3 |
+| Fase 1, backend/web per hari kerja | 15,5 (sisa: 188 ÷ 16 = 11,8) | 14,9 (297 ÷ 20) | **17,4** (188 − 18 + 109 = 279 ÷ 16) | 17,4 |
+| Fase 1, total per hari kerja | 18,5 | 17,1 ((297 + 44) ÷ 20) | 19,8 ((279 + 37) ÷ 16) | 19,8 |
 | Hari kerja Fase 2 | 16 | 12 | 16 | 16 |
 | Fase 2, total per hari kerja | 43,0 (688 ÷ 16) | **74,6** ((688 + 195 + 12) ÷ 12) | **57,5** ((688 + 25 + 195 + 12) ÷ 16) | **45,3** ((688 + 25 + 12) ÷ 16) |
 | Fase 2, backend/web / mobile | 30,8 / 12,2 | 56,8 / 17,8 | 43,8 / 13,8 | 32,7 / 12,6 |
@@ -681,7 +681,7 @@ Kolom mengikuti phase plan §7.3. **Jam** = ukuran 2/3/4 jam-task. **Kelas** T1 
 | F1-T82 | Dokumen gate (2): data dictionary A20 dan perubahan A1.1, A13.1, A15.4, A19.7, B3; skema fisik; ADR-027/ADR-028 ke status Diterima; revisi ADR-011 butir 5 dan ADR-018 butir 1; daftar modul kritis `CLAUDE.md` | CR-021 | 4 | F1-T81, persetujuan ADR | T1 | DBA, Sec |
 | F1-T83 | Desain: deskripsi terstruktur dan wireframe sembilan halaman situs (responsif, aksesibilitas guideline §7) | US-1801 | 3 | F1-T81 | T2 | qa-engineer |
 | F1-T84 | Desain: member area HR (daftar, menunggu verifikasi, dasbor, kelola HR) dan layar backoffice verifikasi perusahaan serta CMS kanal situs | US-1901–US-1904, US-1802 | 3 | F1-T81 | T2 | qa-engineer |
-| F1-T85 | Realm `korporat` sebagai kode: MFA TOTP wajib + kode pemulihan (pola F1-T72), brute force 5/15 menit, sesi web 30 menit/12 jam, Revoke Refresh Token, klien rahasia BFF. Test negatif: login tanpa OTP tidak menerbitkan token, kode pemulihan bekas ditolak; masuk dengan kode pemulihan mengarah ke daftar ulang TOTP (US-1904 AC7, mekanisme dari F1-T72/F1-T75 atau padanannya di Fase 2 bila F1-T75 dipindah) | US-1904, EN-06 | 4 | F1-T31, F1-T72, F1-T82 | T1 | Sec |
+| F1-T85 | Realm `korporat` sebagai kode: MFA TOTP wajib + kode pemulihan (pola F1-T72), brute force 5/15 menit, sesi web 30 menit/12 jam, Revoke Refresh Token, klien rahasia BFF. Test negatif: login tanpa OTP tidak menerbitkan token, kode pemulihan bekas ditolak; daftar ulang TOTP setelah masuk dengan kode pemulihan (US-1904 AC7) memakai mekanisme F1-T75 dan ikut pindah ke Fase 2 (v0.3, S3) | US-1904, EN-06 | 4 | F1-T31, F1-T72, F1-T82 | T1 | Sec |
 | F1-T86 | Validasi token realm `korporat` di backend (issuer, audience namespace `/v1/corporate`), ekstraktor konteks HR. Test: token realm lain dan audience lain ditolak di dua arah | US-1904 | 3 | F1-T32, F1-T85 | T1 | Sec |
 | F1-T87 | Tema login realm `korporat` (memakai ulang tema F1-T35/F1-T73), pesan galat seragam UP-73 | US-1904, UI-03 | 2 | F1-T35, F1-T73, F1-T85 | T1 | Sec |
 | F1-T88 | Atur ulang password ber-OTP dan uji penguncian di realm `korporat` (pola F1-T55/F1-T74), test negatif | US-1904 | 3 | F1-T55, F1-T74, F1-T85 | T1 | Sec |

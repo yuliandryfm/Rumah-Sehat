@@ -18,7 +18,7 @@ Tanggal: 2026-11-18
 2. **RME minimalis adalah sistem terpisah**: backend, frontend web, dan database sendiri, dengan deployment terpisah. RME tidak berbagi database atau proses dengan Ruang Sehat, dan berbicara dengan Ruang Sehat hanya lewat Partner Integration API (ADR-014), dengan satu kredensial rekanan per fasyankes. Kode pustaka bersama (misalnya pustaka audit) boleh dipakai ulang lewat monorepo, tetapi tidak ada ketergantungan runtime `[KEPUTUSAN-18]`.
 3. **Dua aplikasi Flutter terpisah**: Aplikasi Pasien dan Aplikasi Tenaga Kesehatan, masing-masing dengan listing toko sendiri. Komponen desain, klien API, dan utilitas dibagi sebagai paket di monorepo yang sama `[KEPUTUSAN-19]`, dikonfirmasi user `[USER] T4-Q3`.
 4. **Komponen platform bersama**: Keycloak sebagai identity provider (ADR-011) dan Redis sebagai komponen pendukung (ADR-007), keduanya dijalankan di cloud Indonesia `[USER] T4-Q4`. Keduanya infrastruktur, bukan tempat logika bisnis. RME dan Ruang Sehat memakai realm Keycloak yang terpisah dan instans Redis yang terpisah (ADR-007). Relay audit berjalan sebagai deployment `worker` tersendiri yang hanya memegang kredensial audit (ADR-009).
-5. **Dua web frontend terpisah**: Backoffice (admin Ruang Sehat) dan Portal Rekanan. Keduanya memakai backend Ruang Sehat dengan namespace API dan audience sesi yang terpisah, sehingga sesi portal tidak dapat memanggil API backoffice `[KEPUTUSAN-18]`.
+5. **Dua web frontend terpisah**: Backoffice (admin Ruang Sehat) dan Portal Rekanan. Keduanya memakai backend Ruang Sehat dengan namespace API dan audience sesi yang terpisah, sehingga sesi portal tidak dapat memanggil API backoffice `[KEPUTUSAN-18]`. **Revisi CR-021 (2026-11-19):** ditambah dua web Ruang Sehat, yaitu situs publik `web/situs` (tanpa sesi) dan member area korporat `web/korporat` (BFF realm `korporat`, namespace `/v1/corporate/*` dengan audience sendiri), sehingga web Ruang Sehat menjadi empat. Alasan pemisahan dan rinciannya di ADR-027 `[USER] C21-P4` (K-07).
 
 ## Alternatif yang ditolak
 
@@ -34,3 +34,10 @@ Tanggal: 2026-11-18
 - Batas modul harus dijaga. Aturan impor antar-modul ditegakkan lewat lint arsitektur atau checklist code review, ditetapkan di Tahap 5.
 - Ada dua aplikasi yang wajib tayang di Play Store dan App Store (syarat go-live 4), dan dua web yang diuji kompatibilitas (NFR-COMP-03).
 - RME minimalis menambah biaya operasional sendiri (database dan deployment terpisah). Biayanya dihitung di Tahap 5.
+
+## Riwayat revisi
+
+| Tanggal | Revisi | Sumber |
+| --- | --- | --- |
+| 2026-11-18 | Diterima di gate Tahap 4 | `[USER] T4-G5` |
+| 2026-11-19 | Butir 5: ditambah `web/situs` dan `web/korporat` (CR-021); status tetap Diterima | `[USER] C21-P4` (K-07); ADR-027 |

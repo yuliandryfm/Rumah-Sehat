@@ -45,6 +45,8 @@ Jawaban `[USER]` Telegram 2026-11-19 15:35 UTC: "1S3 2Y 3Y 4aV 4bY4cT".
 | 1 | **Skenario S3**: Fase 1 tetap selesai 2026-12-11; 7 task Fase 1 pindah ke Fase 2; pemesanan, peserta, dan invoice korporat di Fase 3. Fase 1 memuat website, CMS, pendaftaran dan verifikasi perusahaan, akun HR |
 | 2 | Semua usulan kontradiksi disetujui: K-01 (a) peserta memakai aplikasi mobile; K-02 menunggu L-21, bila (a) butuh izin BI maka (b) dua tagihan + pengecualian AB-13; K-03 BR-141 pengecualian korporat dari pembayaran lewat PG; K-04 (a) harga lewat integrasi; K-05 hanya vaksinasi korporat yang maju, vaksinasi pasien tetap CR-015; K-12 dasar unggah HR ditetapkan legal (L-17); K-06–K-11 disetujui (CMS ke Fase 1, revisi ADR-006/011/018/024, unggah CSV/XLSX, tafsiran on-site, BR-126 lewat PT-74) |
 | 3 | UP-79–UP-87 disetujui semua (termasuk UP-83, UP-84, UP-87 sebagai syarat keamanan) |
-| 4a | PT-67: **Verifikator** yang memverifikasi/membuat akun perusahaan dan memulai reset MFA HR |
-| 4b | PT-79: **wajib** bukti kewenangan pendaftar (surat kuasa/penunjukan dari perusahaan) |
-| 4c | PT-72: NIB sudah terdaftar → **tolak** dan arahkan menghubungi Layanan Pelanggan |
+| 4a | PT-67: **Verifikator** yang memverifikasi/membuat akun perusahaan dan memulai reset MFA HR. Sub-pertanyaan PT-67 lain (perlu sub-peran baru? persetujuan orang kedua untuk perusahaan buatan admin, M-49) **belum terjawab** dan tetap terbuka |
+| 4b | PT-79: **wajib** bukti kewenangan pendaftar (jawaban "Y"). Bentuk bukti (misalnya surat kuasa atau surat penunjukan dari perusahaan) adalah **tafsiran penyusun**; opsi §17 hanya menyebut "bukti kewenangan pendaftar" dan contoh di PT-79 "surat penunjukan atau konfirmasi lewat telepon kantor". Bentuk final dikonfirmasi user |
+| 4c | PT-72: NIB sudah terdaftar → **tolak** (jawaban "T"). "Arahkan menghubungi Layanan Pelanggan" adalah **tafsiran penyusun** (pola M-52: tanggapan generik, konflik diselesaikan admin di luar layar), dikonfirmasi user |
+
+Catatan fact-check `docs/fact-check/CR-021.md` N-3: jawaban putaran 4 berupa kode singkat; rincian di luar teks opsi §17 ditandai tafsiran.

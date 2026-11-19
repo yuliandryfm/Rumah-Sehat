@@ -1,7 +1,7 @@
 # PRD (Product Requirements Document): Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: **1.2 final** (Checkpoint 2, 2026-11-18): revisi CR-013 (pajak) disetujui `[USER] C2-B15`; klarifikasi AC Fase 1 diterapkan; MFA wajib untuk pasien (CR-018) `[USER] C2-Q9`; ubah password saat login (CR-017) `[USER] C2-B14`; story baru US-110 "Perangkat dan sesi aktif" `[USER] C2-Q10`. Rincian per bagian ada di §14 Riwayat versi. Versi 1.2 draf (Tahap 7, 2026-11-18): revisi CR-013, pajak dihitung dari harga rekanan + markup dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4. Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
+Versi: **1.3** (CR-021, 2026-11-19): situs web company profile dan layanan korporat; EP-18 dan EP-19 baru (US-1801, US-1802, US-1901–US-1917), AB-80–AB-87, PB-23–PB-25, E-18, UP-79–UP-87, perubahan §1.1, §1.2, §2.1, §2.2, §3.1, AB-13, AB-17, AB-20, NFR-SEC-02/04/06/08, NFR-PERF-04, NFR-COMP-03, §8.1, §12.3, §12.6; keputusan user `[USER] C21-P0–P4` (`docs/cr/CR-021-wawancara.md`), BRD v1.4. Rincian di §14. Versi **1.2 final** (Checkpoint 2, 2026-11-18): revisi CR-013 (pajak) disetujui `[USER] C2-B15`; klarifikasi AC Fase 1 diterapkan; MFA wajib untuk pasien (CR-018) `[USER] C2-Q9`; ubah password saat login (CR-017) `[USER] C2-B14`; story baru US-110 "Perangkat dan sesi aktif" `[USER] C2-Q10`. Rincian per bagian ada di §14 Riwayat versi. Versi 1.2 draf (Tahap 7, 2026-11-18): revisi CR-013, pajak dihitung dari harga rekanan + markup dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4. Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: BRD v1.3 `[DOK: 02-brd.md]` (v1.2 disetujui bersama PRD v1.0 di gate Tahap 3; v1.3 revisi CR-007).
@@ -23,6 +23,7 @@ PRD menetapkan *apa* yang dibangun dan bagaimana mengujinya. *Bagaimana* membang
 | `[UP-xx]` | **Usulan penyusun** untuk detail produk yang belum diputuskan user, terdaftar di §11. **Seluruh UP-01–UP-57 disetujui user di gate Tahap 3, 2026-11-17 `[USER] T3-Gate`**, termasuk penyesuaian G2–G5. UP-58–UP-78 (Tahap 6–7) terdaftar di `docs/06-design-guideline.md` §11 dan `docs/07-catatan-phase-plan.md`, dan disetujui di Checkpoint 2 (lihat baris berikut) |
 | `[USER] C2-Qx`, `[USER] C2-Bn` | Jawaban user di Checkpoint 2, 2026-11-18 (`docs/checkpoint-2.md` bagian "Jawaban user"). `C2-Qx` adalah jawaban langsung (C2-Q1–C2-Q11). `C2-Bn` adalah butir n yang didelegasikan user ke usulan penyusun ("jawab sesuai dengan rekomendasimu"), sehingga usulan default butir itu berlaku sebagai keputusan user |
 | `T-xx` | Temuan QA test plan §9 yang klarifikasinya disetujui di Checkpoint 2 (`docs/07-klarifikasi-ac-fase-1.md`). Penanda ini menunjukkan asal rumusan AC, bukan label sumber tersendiri |
+| `[USER] C21-Px-y`, `[USER] C21-P4` | Jawaban wawancara CR-021 putaran 0–3 dan keputusan putaran 4 di `docs/cr/CR-021-wawancara.md`. UP-79–UP-87 disetujui di putaran 4 |
 | `[KEPUTUSAN-xx]` | Keputusan teknis penyusun, tercatat di `docs/decision-log.md` |
 | `[SRC-xx]` | Fakta eksternal yang sudah diverifikasi, tercatat di `docs/sources.md` |
 | `[TIDAK DIKETAHUI]` | Belum ada informasi. Masuk pertanyaan terbuka (§12) beserta pemiliknya |
@@ -57,6 +58,8 @@ Tujuan bisnis dan KPI tidak berubah dari BRD §1 (TB-01–TB-04, KPI-01–KPI-04
 | Portal rekanan | Admin klinik, admin lab, admin outlet | Web. Isinya pelaporan dan rekap, ditambah satu menu pengaturan konsultasi online untuk klinik | BR-064, BR-065 `[USER] T3-Q4, T3-Q14, T3-Q16` |
 | Aplikasi RME minimalis | Staf klinik dan lab rekanan yang belum punya sistem | Web, terpisah dari aplikasi dan portal Ruang Sehat, terhubung lewat integrasi | BR-120, BR-121 `[USER] T3-Q15` |
 | Backend, integrasi, dan audit trail | Semua komponen | Server di Indonesia | BR-070, BR-071, BR-080, BR-113 |
+| Situs web publik (CR-021) | Pengunjung tanpa login | Web (`web/situs`), tanpa sesi | BR-130, BR-131; ADR-027 |
+| Member area korporat (CR-021) | HR/admin perusahaan | Web (`web/korporat`), BFF realm `korporat` | BR-132, BR-136; ADR-027 |
 
 Apakah aplikasi tenaga kesehatan dibuat terpisah atau digabung dengan aplikasi pasien diputuskan di Tahap 4 `[USER] T3-Q9`.
 
@@ -69,6 +72,9 @@ Sembilan peran Ruang Sehat mengikuti BRD §2.2. Tambahan dari PRD ini:
 | Sub-peran admin Ruang Sehat: Super Admin, Verifikator, Layanan Pelanggan, Keuangan, Konten, Auditor, Petugas PDP | Backoffice | `[UP-18]` |
 | Admin Fasyankes, Tenaga Kesehatan Fasyankes, Petugas Lab | Aplikasi RME minimalis, untuk klinik/lab rekanan pengguna RME | BR-120 `[UP-26]` |
 | Operator RME (staf PT. Arunika untuk onboarding fasyankes ke RME minimalis; tidak dapat melihat isi rekam medis) | Aplikasi RME minimalis | BR-120 `[UP-26]` |
+| HR/admin perusahaan (CR-021). Semua HR satu perusahaan berperan sama sampai PT-68 dijawab | Member area korporat | BR-132, BR-136 |
+| Karyawan peserta (CR-021): pasien biasa yang tertaut ke pesanan korporat | Aplikasi pasien | BR-132, BR-140 `[USER] C21-P4` (K-01 opsi a) |
+| Sub-peran Verifikator juga memverifikasi dan membuat akun perusahaan serta memulai reset MFA HR (CR-021) | Backoffice | BR-136 `[USER] C21-P4` (PT-67) |
 
 ## 2. Scope rilis 1
 
@@ -81,6 +87,8 @@ Layanan S-01 sampai S-16 mengikuti BRD §4.1. Tambahan CR-006 dan Tahap 3:
 | S-17 | Aplikasi RME minimalis untuk klinik dan lab rekanan yang belum punya sistem, terpisah dari Ruang Sehat dan terhubung lewat integrasi | BR-120–BR-126 `[USER] T3-Q1a, T3-Q1b, T3-Q1c, T3-Q14, T3-Q15` |
 | S-18 | Antrean real-time klinik | BR-027 `[USER] T3-Q1a` |
 | S-19 | Pemesanan layanan untuk anggota keluarga | BR-008 `[USER] T3-Q3, T3-Q3a` |
+| S-20 | Situs web company profile dengan konten dari CMS (EP-18) | BR-130, BR-131 `[USER] C21-P1-1, C21-P3-4` |
+| S-21 | Layanan korporat lewat member area: vaksinasi, MCU, dan lab massal, invoice B2B (EP-19) | BR-132–BR-145 `[USER] C21-P0-1–P3-3, C21-P4` |
 
 ### 2.2 Won't (tidak dibangun di rilis 1)
 
@@ -102,7 +110,8 @@ Semua butir non-scope BRD §4.2 tetap berlaku. Tambahan:
 | Email pemberitahuan ke pemilik akun saat akun terkunci sementara (dapat diajukan lewat change request) | `[USER] C2-B4` (UP-73 butir 9) |
 | Faktor kedua selain TOTP dan kode pemulihan (WebAuthn, SMS, OTP email) | `[USER] C2-Q9`; ADR-011 butir 5 |
 | Onboarding mandiri calon rekanan dan langganan berbayar RME (CR-011), ditempatkan di rilis berikutnya | `[USER] C2-B5` (UP-68) |
-| Vaksinasi dan suntik/infus vitamin sebagai layanan lab (CR-015), ditempatkan di rilis berikutnya; ubin vaksinasi/infus tidak tampil | `[USER] C2-B6` (UP-69, UP-63) |
+| Vaksinasi dan suntik/infus vitamin sebagai layanan lab (CR-015), ditempatkan di rilis berikutnya; ubin vaksinasi/infus tidak tampil di aplikasi pasien. Vaksinasi massal korporat (EP-19, BR-133) adalah layanan terpisah dan masuk rilis 1 (K-05) | `[USER] C2-B6` (UP-69, UP-63) `[USER] C21-P4` |
+| Member area web untuk karyawan peserta (peserta memakai aplikasi pasien, K-01 opsi a); agregat hasil peserta untuk HR (AB-87); pengisian harga paket korporat lewat portal rekanan (K-04 opsi a) | `[USER] C21-P4` |
 | Layar backoffice untuk mengelola versi teks persetujuan dan daftar alasan penolakan identitas (keduanya lewat migrasi data) | `[USER] C2-B14` (UP-75) |
 
 ### 2.3 Urutan pengurangan scope
@@ -141,6 +150,17 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 | Permintaan hak subjek data | Miliknya | Tidak | Tidak | Petugas PDP; Super Admin (baca) | Tidak | Tidak (dicatat sebagai E-13) | BR-106 `[UP-18]` |
 | Audit log | Tidak di rilis 1 | Tidak | Tidak | Auditor (baca dan export), Super Admin (baca) | Admin Fasyankes: log akses rekam medis fasyankesnya | Tidak | BR-080 `[UP-18]` `[UP-26]` |
 
+**Tambahan CR-021 (T1).** Kolom HR perusahaan ditambahkan untuk data korporat. "Pasien" di sini adalah karyawan peserta yang tertaut. HR hanya mengakses data perusahaannya (AB-86).
+
+| Data | Pasien (peserta) | HR perusahaan | Admin klinik/lab (portal) | Admin RS | Sensitif | Sumber |
+| --- | --- | --- | --- | --- | --- | --- |
+| Data perusahaan, dokumen NIB/NPWP, bukti kewenangan pendaftar | — | Perusahaannya (baca) | — | Verifikator | Tidak (dokumen dapat memuat PII pengurus) | BR-136 `[USER] C21-P4` |
+| Data peserta (nama, kontak, tanggal lahir, NIK bila ada), termasuk keikutsertaan dalam pesanan korporat | Dirinya | Peserta perusahaannya; NIK termasking | Peserta pesanan yang dilaksanakannya, data minimal (L-17) | Layanan Pelanggan (baca, tiket terkait); NIK lengkap tidak ada peran | NIK: Ya. Data lain: perlu konfirmasi legal (L-08, L-18); sampai dijawab diperlakukan Ya | BR-139, BR-145 `[SRC-440]` |
+| Rekap kehadiran | Dirinya | Perusahaannya | Pesanannya | Layanan Pelanggan (baca) | Perlu konfirmasi legal (L-08, L-18); sampai dijawab diperlakukan Ya | BR-144, BR-145 |
+| Ringkasan hasil (misalnya fit/unfit) | Dirinya | Hanya dengan persetujuan aktif (AB-84, AB-87) | — | Tidak ada peran | Ya | BR-144 |
+| Hasil lengkap layanan korporat | Dirinya | Tidak | Pemeriksa di rekanan (seperti baris hasil lab) | Tidak ada peran | Ya | BR-143 |
+| Invoice B2B, mutasi bank, alokasi | — | Invoice perusahaannya | — | Keuangan; Super Admin (baca). Berkas bukti transfer hanya Keuangan | Tidak (data keuangan badan usaha); bukti transfer dapat memuat rekening lengkap pembayar | BR-141 |
+
 **Data sensitif** untuk KU-03 dan E-05 adalah data bertanda "Ya" di kolom Sensitif: data pribadi spesifik (AB-70: data kesehatan termasuk keluhan awal, data anak, data keuangan pribadi), NIK lengkap, dokumen identitas, dan foto bukti klaim. E-05 dicatat saat detail data itu dibuka oleh pihak selain subjek data, bukan saat daftar ringkas tampil. Akses yang ditolak ke data sensitif dicatat dengan hasil "gagal" (KU-03, §7) `[KEPUTUSAN-07]`.
 
 ### 3.2 Verifikasi identitas dan pembatasan layanan
@@ -163,17 +183,17 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 | AB-11 | Untuk produk, total = jumlah harga produk (harga rekanan + markup, per unit dikali jumlah) + pajak (AB-10a, CR-013) + ongkos kirim | BR-034, BR-042 `[USER] T5-Q11a` (CR-013) |
 | AB-11a | Markup dihitung per unit layanan atau produk atas harga rekanan per unit. Markup persen dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Markup nominal berlaku per unit. Markup tidak dikenakan pada ongkos kirim dan biaya transaksi | `[UP-51]` |
 | AB-12 | Untuk metode pembayaran non-QRIS, biaya transaksi ditambahkan ke total dan ditampilkan sebelum pasien membayar. Untuk QRIS, pasien tidak dikenai biaya transaksi, dan MDR dipotong dari bagian rekanan. Pembebanan per metode menunggu L-12 | BR-044 `[SRC-24]` |
-| AB-13 | Pasien melihat harga layanan sebagai **satu angka** (harga rekanan + markup). Pajak (CR-013), ongkos kirim, dan biaya transaksi tampil sebagai baris terpisah. Markup tidak ditampilkan sebagai baris tersendiri | `[UP-07]` (sejalan dengan T2-Q20); baris pajak `[USER] T5-Q11a` (CR-013); keterbukaan rincian harga menunggu L-14 |
+| AB-13 | Pasien melihat harga layanan sebagai **satu angka** (harga rekanan + markup). Pajak (CR-013), ongkos kirim, dan biaya transaksi tampil sebagai baris terpisah. Markup tidak ditampilkan sebagai baris tersendiri. Berlaku juga untuk katalog dan invoice korporat (AB-80), kecuali bila L-21 membuat penagihan korporat memakai dua tagihan (K-02 opsi b): markup lalu tampil terpisah bagi perusahaan sebagai pengecualian korporat | `[UP-07]` (sejalan dengan T2-Q20); baris pajak `[USER] T5-Q11a` (CR-013); keterbukaan rincian harga menunggu L-14; pengecualian korporat `[USER] C21-P4` |
 | AB-14 | Informasi biaya MCU dan lab menampilkan harga yang sama dengan harga bayar di aplikasi | BR-023 `[USER] T2-Q20` |
 | AB-15 | Sebelum pembayaran dibuat, harga dan ketersediaan (slot atau stok) diperiksa ulang ke sistem rekanan. Kalau berbeda, pasien diberi tahu nilai terbaru dan harus menyetujuinya sebelum membayar | `[UP-25]` |
 | AB-16 | Layar ringkasan pesanan klinik, lab, dan home visit menyatakan bahwa harga hanya mencakup layanan yang tercantum, dan tindakan tambahan diselesaikan serta dibayar di luar aplikasi | BR-024 (L-14) |
-| AB-17 | Harga (harga rekanan atau tarif + markup), tarif dan nominal pajak (CR-013), dan nilai parameter bisnis yang berlaku untuk suatu pesanan dikunci saat pembayaran dibuat di payment gateway. Perubahan sesudahnya tidak memengaruhi pesanan itu, walaupun pembayaran diselesaikan setelah perubahan berlaku. Perubahan markup atau tarif antara ringkasan harga dan pembuatan pembayaran ditangani seperti AB-15 | ADR-004 `[UP-32]` |
+| AB-17 | Harga (harga rekanan atau tarif + markup), tarif dan nominal pajak (CR-013), dan nilai parameter bisnis yang berlaku untuk suatu pesanan dikunci saat pembayaran dibuat di payment gateway. Perubahan sesudahnya tidak memengaruhi pesanan itu, walaupun pembayaran diselesaikan setelah perubahan berlaku. Perubahan markup atau tarif antara ringkasan harga dan pembuatan pembayaran ditangani seperti AB-15. Pesanan korporat tanpa payment gateway mengunci harga saat konfirmasi (AB-81) | ADR-004 `[UP-32]` |
 
 ### 3.4 Pembayaran dan pembagian dana (T1)
 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
-| AB-20 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi lewat payment gateway berizin Bank Indonesia | BR-040, BR-115 |
+| AB-20 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi lewat payment gateway berizin Bank Indonesia. Pengecualian: pesanan korporat lewat invoice B2B (AB-82) | BR-040, BR-115, BR-141 |
 | AB-21 | Setiap pembayaran dibagi langsung oleh payment gateway: bagian rekanan ke rekening rekanan, markup ke rekening PT. Arunika. PT. Arunika tidak menampung bagian rekanan. Penerima dan cara penyaluran komponen pajak (CR-013) dalam pembagian dana `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-041 |
 | AB-22 | Bagian rekanan = harga rekanan, dikurangi MDR bila dibayar dengan QRIS | BR-041, BR-044 |
 | AB-23 | Penerima dana ongkos kirim (outlet atau kurir) dan cara penyalurannya dalam pembagian dana `[TIDAK DIKETAHUI]` (PT-31). Ditetapkan di Tahap 4–5 bersama pemilihan kurir dan payment gateway | BR-034, BR-041 |
@@ -365,6 +385,9 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-20 | Batas Keuangan menetapkan penyebab RF-18 sebelum berlaku penyebab platform | 3 hari kerja | Super Admin | `[UP-56]` |
 | PB-21 | Tarif pajak atas (harga rekanan + markup), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[DOK: backlog.md CR-013]` |
 | PB-22 | Usia minimum pemilik akun pasien (US-105 AC1b) | `[TIDAK DIKETAHUI]`: nilai dari jawaban legal L-08, atau diisi user sebelum go-live. Fase 1 memakai nilai uji | Super Admin | `[USER] C2-B14` (UP-77; T-12) `[SRC-15]` (Pasal 25, data anak) |
+| PB-23 | Batas berkas unggahan peserta: ukuran dan jumlah baris per berkas (CR-021) | `[TIDAK DIKETAHUI]`; nilai teknis awal diusulkan di task K2 | Super Admin | `[UP-82]` |
+| PB-24 | Masa berlaku tautan undangan peserta (CR-021) | `[TIDAK DIKETAHUI]` | Super Admin | `[UP-83]` |
+| PB-25 | Jatuh tempo invoice B2B bawaan (CR-021) | 14 hari; hari kalender atau hari kerja `[TIDAK DIKETAHUI]` (PT-63) | Keuangan | `[USER] C21-P3-3` |
 
 "Hari kerja" mengikuti kalender hari kerja yang diatur Super Admin. Batas berbasis hari kerja (PB-05, PB-16, PB-20) dihitung dari waktu kejadian dan berakhir pukul 23.59 WIB pada hari kerja ke-N setelah hari kejadian; hari libur tidak dihitung `[UP-37]`.
 
@@ -409,6 +432,19 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | AB-73 | Isi notifikasi email dan notifikasi di dalam aplikasi tidak memuat data kesehatan rinci (diagnosis, nama obat, nilai hasil lab, isi chat) | BR-105 `[UP-23]` |
 | AB-74 | Panggilan video tidak direkam dan tidak disimpan | BR-016 |
 | AB-75 | Data yang dikirim ke payment gateway dibatasi pada yang diperlukan untuk pembayaran. Batas datanya menunggu L-08 | BR-105 (L-08) |
+
+### 3.12 Layanan korporat (CR-021, T1)
+
+| ID | Aturan | Sumber |
+| --- | --- | --- |
+| AB-80 | Harga paket korporat yang dibayar perusahaan = harga rekanan + markup Ruang Sehat, dihitung server per satuan dengan pembulatan AB-11a. Pajak mengikuti AB-10a. Harga rekanan masuk lewat integrasi (K-04 opsi a) | BR-138 `[USER] C21-P3-1, C21-P4` |
+| AB-81 | Harga, markup, tarif pajak, dan parameter yang berlaku untuk pesanan korporat dikunci saat HR mengonfirmasi pesanan (saat invoice terbit) | BR-142 `[UP-81]` |
+| AB-82 | Pesanan korporat tidak memakai payment gateway. Pelunasan dicatat dari mutasi bank oleh Keuangan, dengan pemisahan tugas UP-84. Arah dana menunggu L-21 (PT-59) | BR-141 `[USER] C21-P1-4, C21-P4` |
+| AB-83 | Layanan korporat hanya dapat dijadwalkan setelah invoice lunas | BR-142 `[USER] C21-P3-3` |
+| AB-84 | HR tidak pernah dapat mengakses hasil lengkap (nilai, PDF, catatan pemeriksa). Ringkasan hanya dapat dibaca HR selama persetujuan peserta untuk pesanan itu aktif | BR-143, BR-144 `[USER] C21-P2-4` |
+| AB-85 | Peserta ditautkan ke akun pasien hanya oleh peserta sendiri, lewat tautan undangan yang dibuka setelah masuk di aplikasi pasien, dan hanya bila email terverifikasi akun sama dengan email undangan (UP-83). Tidak ada penautan otomatis berdasarkan kecocokan email | BR-140 `[UP-83]` `[KEPUTUSAN-255]` `[KEPUTUSAN-267]` |
+| AB-86 | Setiap HR hanya dapat mengakses data perusahaannya. ID perusahaan diambil dari sesi, bukan dari parameter permintaan | BR-145 `[KEPUTUSAN-254]` |
+| AB-87 | HR hanya menerima data yang berasal dari hasil (nilai, ringkasan, ketersediaan hasil, status tindak lanjut, agregat, atau baris tagihan yang bergantung pada hasil) untuk peserta yang persetujuannya aktif saat permintaan. Rilis ini tidak menyediakan agregat hasil bagi HR | BR-144 `[KEPUTUSAN-266]` |
 
 ## 4. Kriteria umum (berlaku untuk semua story)
 
@@ -1340,7 +1376,7 @@ Rujukan: BR-013, BR-102, BR-062 `[UP-23]` · Audit: tidak ada aksi sensitif
 #### US-1101 Pengelolaan konten (CMS)
 
 Sebagai admin Konten, saya ingin membuat dan menayangkan banner, halaman info, artikel edukasi kesehatan, dan promo, agar pasien mendapat informasi.
-Rujukan: BR-061 · Audit: E-16 (hapus dan pulihkan)
+Rujukan: BR-061, BR-131 · Audit: E-16 (hapus dan pulihkan). Sejak CR-021 juga melayani kanal situs (US-1802) dan dibangun di Fase 1 (`docs/07-phase-plan.md` v0.3) `[USER] C21-P4`
 
 - AC1. Given admin Konten membuat banner, halaman info, artikel (judul, isi, gambar, kategori), atau promo, When ia menyimpan, Then konten berstatus "Draf" dan dapat dipratinjau.
 - AC2. Given konten dijadwalkan, When waktu tayang tiba, Then status menjadi "Tayang". When waktu selesai tiba atau konten diarsipkan, Then konten tidak tampil lagi.
@@ -1750,6 +1786,277 @@ Rujukan: BR-090, KPI-01–KPI-04, AB-54, AB-64 `[UP-24]` · Audit: E-12 (export)
 - AC4. Given dasbor tampil, When KPI-03 dan KPI-04 dilihat, Then tampil jumlah klinik dan lab berstatus integrasi "Aktif", termasuk pengguna RME minimalis (AB-64).
 - AC5. Given Super Admin mengekspor, When file dibuat, Then CSV berisi angka agregat tanpa data pribadi, dan event export tercatat.
 
+### EP-18 Situs web Ruang Sehat (CR-021)
+
+| Story | Fitur | BR | Prioritas |
+| --- | --- | --- | --- |
+| US-1801 | Halaman company profile publik | BR-130, BR-131 | Must |
+| US-1802 | Konten situs di CMS | BR-131, BR-061 | Must |
+
+Prioritas Must untuk EP-18 dan EP-19: user menyatakan fitur ini harus masuk `[USER] C21-P0-1`. Posisi di urutan pengurangan scope §2.3 `[TIDAK DIKETAHUI]` (PT-69).
+
+#### US-1801 Halaman company profile publik
+
+Sebagai pengunjung, saya ingin membaca profil, layanan, dan informasi Ruang Sehat di web, agar mengenal Ruang Sehat dan layanan korporatnya.
+Rujukan: BR-130, BR-131, ADR-027 · Audit: tidak ada aksi sensitif
+
+- AC1. Given konten berstatus "Tayang" untuk kanal situs, When pengunjung tanpa login membuka salah satu dari sembilan halaman BR-130, Then halaman tampil dari konten CMS yang sedang tayang.
+- AC2. Given halaman Layanan, When tampil, Then isi dan urutan layanan berasal dari konten CMS, tidak ditulis tetap di kode.
+- AC3. Given konten berstatus Draf, terjadwal, berakhir, diarsipkan, atau terhapus, When URL-nya dibuka, Then halaman "tidak ditemukan" tampil tanpa membocorkan isi atau keberadaan draf.
+- AC4. Given halaman Kebijakan privasi dan syarat, When tampil, Then versi dan tanggal berlaku tercantum. Teks final menunggu L-08, L-20, dan PT-24, dan sampai itu ditandai draf.
+- AC5. Given pengunjung membuka halaman situs mana pun, When respons diperiksa, Then tidak ada cookie sesi dibuat dan tidak ada data pribadi dimuat `[KEPUTUSAN-251]`.
+- AC6. Given halaman situs, When pemeriksaan aksesibilitas otomatis dijalankan, Then lulus aturan design guideline §7.
+- AC7. Given layanan konten backend tidak tersedia, When pengunjung membuka halaman, Then halaman galat umum tampil tanpa jejak teknis.
+
+#### US-1802 Konten situs di CMS
+
+Sebagai admin Konten, saya ingin mengelola konten halaman situs dari CMS yang sama dengan aplikasi, agar situs selalu mutakhir tanpa perubahan kode.
+Rujukan: BR-131, BR-061, US-1101, ADR-027 butir 5 · Audit: E-16 (hapus dan pulihkan)
+
+- AC1. Given admin Konten membuat konten, When memilih kanal (aplikasi, situs, atau keduanya) dan untuk situs memilih halaman tujuan, Then konten hanya tampil di kanal terpilih setelah berstatus Tayang (US-1101 AC2).
+- AC2. Given halaman situs bertipe halaman tetap, When versi baru ditayangkan, Then hanya satu versi yang tayang untuk halaman itu dan versi sebelumnya berakhir.
+- AC3. Given promo di situs, When tampil, Then hanya berupa informasi dan tidak mengubah harga di aplikasi maupun katalog korporat (US-1101 AC4).
+- AC4. (negatif) Given akun admin tanpa sub-peran Konten, When mencoba membuat, mengubah, atau menayangkan konten situs, Then ditolak (403) dan percobaan tercatat.
+- AC5. Given konten memuat gambar tanpa teks alternatif, When admin menayangkannya, Then penayangan ditolak dengan pesan per field (KU-01).
+- AC6. (negatif, XSS) Given isi konten memuat HTML mentah (misalnya `<script>`, `<iframe>`, atribut `on*`), tautan berskema selain `https`, `mailto`, atau relatif, atau gambar dari sumber selain endpoint gambar publik backend, When admin menyimpan, Then backend menolak atau menetralkan bagian itu, sehingga tidak ada markup aktif yang tersimpan sebagai konten siap tayang `[KEPUTUSAN-264]`.
+- AC7. Given konten tersimpan, When dirender di situs dan di pratinjau backoffice, Then keduanya memakai aturan render aman yang sama, dan test payload XSS gagal dieksekusi di keduanya.
+- AC8. Given admin membuka pratinjau, When pratinjau tampil, Then isinya dirender di iframe `sandbox` tanpa `allow-same-origin`, sehingga skrip di pratinjau tidak dapat memakai sesi backoffice.
+- AC9. Given halaman `web/situs` atau backoffice dimuat, When header respons diperiksa, Then Content Security Policy melarang skrip inline dan sumber pihak ketiga; situs tidak memuat skrip, font, atau sematan pihak ketiga.
+
+### EP-19 Layanan korporat (CR-021, T1 untuk autentikasi, data karyawan, dan penagihan)
+
+HR memakai member area web (`web/korporat`, realm Keycloak `korporat`, ADR-027). Karyawan peserta memakai aplikasi pasien (K-01 opsi a `[USER] C21-P4`). Aturan lintas story di §3.12; matriks akses di §3.1 bagian CR-021.
+
+| Story | Fitur | BR | Prioritas |
+| --- | --- | --- | --- |
+| US-1901 | Pendaftaran perusahaan mandiri | BR-136 | Must |
+| US-1902 | Verifikasi perusahaan oleh Verifikator | BR-136 | Must |
+| US-1903 | Perusahaan dibuatkan Verifikator | BR-136 | Must |
+| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must |
+| US-1905 | Katalog paket korporat | BR-133, BR-137, BR-138 | Must |
+| US-1906 | Pesan layanan korporat | BR-135, BR-137, BR-142 | Must |
+| US-1907 | Unggah daftar peserta | BR-139, BR-145 | Must |
+| US-1908 | Undangan peserta dan penautan akun pasien | BR-140, BR-145 | Must |
+| US-1909 | Invoice B2B | BR-141, BR-142 | Must |
+| US-1910 | Pencatatan mutasi bank dan pelunasan | BR-141 | Must |
+| US-1911 | Penjadwalan setelah lunas | BR-142, BR-135 | Must |
+| US-1912 | Rekap kehadiran untuk HR | BR-144 | Must |
+| US-1913 | Persetujuan berbagi ringkasan oleh peserta | BR-144, BR-145 | Must |
+| US-1914 | Ringkasan hasil untuk HR dengan persetujuan | BR-144 | Must |
+| US-1915 | Hasil lengkap untuk peserta | BR-143 | Must |
+| US-1916 | Pengelolaan perusahaan di backoffice | BR-136, BR-060 | Must |
+| US-1917 | Penerusan pesanan korporat ke rekanan pelaksana | BR-134, BR-070 | Must |
+
+#### US-1901 Pendaftaran perusahaan mandiri (T1)
+
+Sebagai HR perusahaan, saya ingin mendaftarkan perusahaan saya di web, agar dapat memesan layanan korporat setelah diverifikasi.
+Rujukan: BR-136, BR-103 `[UP-79]` · Audit: E-04, E-10, E-13
+
+- AC1. Given calon HR mengisi data perusahaan (nama badan usaha, NIB, NPWP, alamat kantor, telepon kantor) dan data dirinya (nama, jabatan, email, password), mengunggah dokumen NIB, NPWP, dan bukti kewenangan pendaftar, serta menyetujui teks pemrosesan data, When mengirim, Then perusahaan berstatus "Menunggu verifikasi", akun HR dibuat di realm `korporat` dengan verifikasi email wajib, dan bukti persetujuan tersimpan per versi teks. Bentuk bukti kewenangan (misalnya surat kuasa atau surat penunjukan dari perusahaan) dikonfirmasi user; teks persetujuan HR menunggu L-20.
+- AC2. Given salah satu dokumen wajib tidak diunggah, atau jenis/ukurannya di luar NFR-SEC-08, When mengirim, Then pengiriman ditolak per field (KU-01).
+- AC3. Given format NIB atau NPWP salah, When mengirim, Then ditolak per field. Format resmi keduanya `[TIDAK DIKETAHUI]` dan diverifikasi ke sumber resmi sebelum task dimulai.
+- AC4. (negatif) Given email sudah terdaftar di realm `korporat`, When mendaftar, Then layar yang tampil sama dengan pendaftaran berhasil dan petunjuk dikirim ke email itu (pola US-101 AC3).
+- AC5. (negatif) Given salah satu langkah pendaftaran gagal, When kegagalan terjadi, Then tidak ada akun HR tanpa perusahaan dan persetujuan (kompensasi, ADR-011 butir 6).
+- AC6. Given perusahaan berstatus Menunggu verifikasi atau Ditolak, When HR masuk, Then HR hanya melihat status verifikasi, alasan penolakan bila ada, dan profil perusahaannya.
+- AC7. (negatif) Given NIB yang sama sudah dipakai perusahaan terdaftar, When mendaftar, Then pendaftaran ditolak dengan pesan generik yang tidak membocorkan nama perusahaan lain, dan pendaftar diarahkan menghubungi Layanan Pelanggan `[USER] C21-P4` (4c; arahan ke Layanan Pelanggan adalah tafsiran penyusun yang dikonfirmasi user).
+
+#### US-1902 Verifikasi perusahaan oleh Verifikator (T1)
+
+Sebagai Verifikator, saya ingin memeriksa data dan dokumen perusahaan, agar hanya badan usaha yang sah dan pendaftar yang berwenang dapat memesan.
+Rujukan: BR-136 `[USER] C21-P4` (4a, 4b) · Audit: E-05 (dokumen dibuka), E-10 (keputusan)
+
+- AC1. Given antrean verifikasi perusahaan, When Verifikator membukanya, Then pengajuan tampil urut dari yang terlama, dengan data perusahaan, dokumen NIB/NPWP, dan bukti kewenangan pendaftar yang hanya dibuka lewat URL berumur pendek setelah otorisasi (ADR-018).
+- AC2. Given Verifikator menyetujui, When disimpan, Then perusahaan berstatus Aktif dan akun HR pertama dapat memakai menu pesanan.
+- AC3. Given Verifikator menolak dengan kode alasan (termasuk bukti kewenangan tidak memadai), When disimpan, Then perusahaan berstatus Ditolak, HR melihat alasannya saat masuk, dan dapat memperbaiki serta mengajukan ulang. Email pemberitahuan menyusul bersama US-1001 (Fase 2).
+- AC4. (negatif) Given dua Verifikator memutuskan pengajuan yang sama hampir bersamaan, When keputusan kedua disimpan, Then ditolak dan tercatat (pola US-201 AC5).
+- AC5. (negatif) Given admin tanpa sub-peran Verifikator atau akun HR, When memanggil endpoint verifikasi, Then ditolak (403 untuk admin, 404 untuk HR) dan tercatat.
+
+#### US-1903 Perusahaan dibuatkan Verifikator (T1)
+
+Sebagai Verifikator, saya ingin membuat akun perusahaan setelah kesepakatan, agar HR langsung dapat masuk tanpa mendaftar sendiri.
+Rujukan: BR-136 `[USER] C21-P4` (4a) · Audit: E-10, E-04
+
+- AC1. Given Verifikator mengisi data perusahaan, dokumen, bukti kewenangan, dan email HR pertama, When menyimpan, Then perusahaan berstatus Aktif dan HR menerima undangan aktivasi (password dan TOTP) di realm `korporat`. Perlu-tidaknya persetujuan orang kedua `[TIDAK DIKETAHUI]` (PT-67 sisa, M-49).
+- AC2. (negatif) Given tautan undangan kedaluwarsa atau sudah dipakai, When dibuka, Then ditolak.
+- AC3. Given perusahaan dibuat admin, When dicatat, Then E-10 memuat pelaku dan sumber "dibuat admin".
+- AC4. (negatif) Given NIB sudah terdaftar, When Verifikator membuat perusahaan, Then ditolak seperti US-1901 AC7.
+
+#### US-1904 Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR (T1)
+
+Sebagai HR perusahaan, saya ingin masuk dengan aman dan mengelola rekan HR di perusahaan saya, agar member area dipakai orang yang berhak.
+Rujukan: BR-132, BR-145, NFR-SEC-02, NFR-SEC-04, ADR-027 butir 3 · Audit: E-01–E-04, E-10, E-11
+
+- AC1. Given HR dengan akun aktif, When masuk, Then halaman login realm `korporat` meminta password dan TOTP; pendaftaran TOTP dan kode pemulihan wajib saat login pertama `[KEPUTUSAN-253]`.
+- AC2. Given HR aktif, When mengundang HR lain, Then undangan aktivasi terkirim dan akun baru terikat ke perusahaan pengundang. HR dapat menonaktifkan HR lain di perusahaannya; HR aktif terakhir tidak dapat dinonaktifkan. Semua HR berperan sama sampai PT-68 dijawab.
+- AC3. (negatif, isolasi) Given HR perusahaan A, When mengakses perusahaan, anggota HR, pesanan, peserta, batch impor, invoice, atau rekap milik perusahaan B, termasuk dengan mengganti ID, Then dijawab 404, dan percobaan ke data peserta tercatat gagal (KU-03).
+- AC4. (negatif) Given token realm `korporat`, When dipakai ke API pasien, backoffice, atau portal, Then ditolak; token realm lain ditolak di API korporat.
+- AC5. Given akun HR atau perusahaannya dinonaktifkan, When HR memakai sesi terbuka, Then permintaan berikutnya ditolak (KU-10).
+- AC6. Given HR tidak aktif 30 menit, When kembali, Then sesi web berakhir (NFR-SEC-04).
+- AC7. Given HR kehilangan perangkat TOTP tetapi memegang kode pemulihan, When masuk dengan kode pemulihan, Then HR diarahkan mendaftarkan TOTP baru setelah autentikasi ulang. Diverifikasi di Fase 2 bersama mekanisme daftar ulang TOTP (F1-T75, dipindah ke Fase 2 di phase plan v0.3); di Fase 1 kode pemulihan sudah dapat dipakai untuk masuk.
+- AC8. Given HR kehilangan TOTP dan kode pemulihan, When meminta reset, Then reset hanya dapat dimulai **Verifikator** `[USER] C21-P4` (4a) setelah konfirmasi lewat kanal berbeda (HR aktif lain atau kontak resmi perusahaan); reset berlaku setelah HR membuka tautan sekali pakai di email akun dan memasukkan password (pola KEPUTUSAN-204); TOTP lama berlaku sampai TOTP baru dan kode pemulihan baru tersimpan; semua sesi HR dicabut; semua HR aktif perusahaan diberi tahu; E-04 tercatat. Super Admin tidak punya jalur reset `[KEPUTUSAN-265]`. Diverifikasi di Fase 2 bersama US-207 AC5.
+- AC9. (negatif) Given admin selain Verifikator, atau permintaan tanpa konfirmasi kanal kedua, When reset dimulai, Then ditolak dan tercatat; reset atas akun milik staf sendiri ditolak.
+
+#### US-1905 Katalog paket korporat (T1, harga)
+
+Sebagai HR perusahaan aktif, saya ingin melihat paket vaksinasi, MCU, dan lab massal beserta harganya, agar dapat memilih paket.
+Rujukan: BR-133, BR-137, BR-138, AB-80 · Audit: tidak ada aksi sensitif
+
+- AC1. Given perusahaan Aktif, When HR membuka katalog, Then paket tampil per jenis dan rekanan pelaksana, dengan isi paket, lokasi yang tersedia, dan harga sebagai satu angka (AB-13). Satuan harga dan jumlah peserta minimum `[TIDAK DIKETAHUI]` (PT-62).
+- AC2. Given harga rekanan dan aturan markup berlaku, When harga tampil, Then dihitung server sesuai AB-80, dan markup tidak tampil sebagai baris tersendiri (kecuali pengecualian AB-13 bila L-21 memilih dua tagihan).
+- AC3. Given paket dihapus rekanan atau rekanan nonaktif, When katalog dibuka, Then paket tidak tampil (KU-04); data yang tidak dapat dikonfirmasi mengikuti KU-08.
+- AC4. (negatif) Given perusahaan Menunggu verifikasi, Ditolak, atau Nonaktif, When HR memanggil endpoint katalog, Then ditolak.
+- AC5. Given rekanan mengirim paket dan harga lewat Partner Integration API, When diterima, Then katalog diperbarui; harga tidak dapat diisi lewat portal rekanan (K-04 opsi a `[USER] C21-P4`).
+
+#### US-1906 Pesan layanan korporat (T1, harga)
+
+Sebagai HR, saya ingin memesan paket dengan lokasi dan jumlah peserta, agar layanan dapat dijadwalkan.
+Rujukan: BR-135, BR-137, BR-142, AB-81 · Audit: E-09
+
+- AC1. Given HR memilih paket, lokasi (on-site dengan alamat kantor, atau di rekanan), dan jumlah peserta, When membuka ringkasan, Then rincian tampil: harga per satuan, jumlah, pajak sebagai baris terpisah (AB-10a), dan total.
+- AC2. Given HR mengonfirmasi, When disimpan, Then harga, markup, dan tarif pajak dikunci (AB-81), pesanan berstatus "Menunggu pembayaran", dan invoice terbit (US-1909). Status pesanan: Menunggu pembayaran, Lunas–menunggu jadwal, Terjadwal, Selesai, Dibatalkan `[UP-80]`; transisi lengkap setelah PT-63.
+- AC3. (negatif) Given konfirmasi terkirim dua kali, When diterima server, Then hanya satu pesanan dan satu invoice dibuat (KU-05).
+- AC4. (negatif) Given harga atau ketersediaan berubah antara ringkasan dan konfirmasi, When HR mengonfirmasi, Then nilai terbaru ditampilkan dan harus disetujui ulang (pola AB-15).
+- AC5. Given alamat on-site di luar area layanan rekanan, When dipilih, Then perilakunya `[TIDAK DIKETAHUI]` (PT-74).
+- AC6. Penetapan tanggal, perubahan jumlah peserta setelah invoice, dan pembatalan oleh perusahaan `[TIDAK DIKETAHUI]` (PT-63).
+
+#### US-1907 Unggah daftar peserta (T1, data karyawan)
+
+Sebagai HR, saya ingin mengunggah daftar peserta dari Excel/CSV, agar tidak mengetik peserta satu per satu.
+Rujukan: BR-139, BR-145, NFR-SEC-08, ADR-028 butir 6 `[UP-82]` · Audit: E-18
+
+- AC1. Given HR membuka pesanan miliknya, When mengunggah berkas CSV atau XLSX berkolom nama, email dan/atau nomor HP, tanggal lahir, serta NIK hanya bila paket menandai NIK wajib, Then pratinjau validasi per baris tampil sebelum ada data yang tersimpan.
+- AC2. Given pratinjau, When HR mengonfirmasi, Then hanya baris valid yang diimpor; jumlah baris valid, galat, dan ganda tercatat (E-18) tanpa isi baris.
+- AC3. (negatif, berkas rusak) Given berkas bukan CSV/XLSX asli, rusak, terkunci password, melebihi PB-23, atau header tidak dikenali, When diunggah, Then seluruh berkas ditolak dan tidak ada baris tersimpan.
+- AC4. (negatif, baris rusak) Given field wajib kosong, email atau nomor HP tidak valid, tanggal lahir tidak valid atau di masa depan, atau NIK bukan 16 digit padahal wajib, When divalidasi, Then baris ditandai galat per field dan tidak diimpor.
+- AC5. (negatif, ganda) Given dua baris dalam satu berkas, atau satu baris dan peserta yang sudah terdaftar di pesanan yang sama, punya email, nomor HP, atau NIK (blind index) yang sama, When divalidasi, Then baris kedua ditandai ganda dan tidak diimpor dua kali.
+- AC6. (negatif) Given sel diawali karakter rumus (`=`, `+`, `-`, `@`, tab, CR, LF, termasuk varian lebar penuh), When disimpan dan diekspor, Then diperlakukan sebagai teks dan dinetralkan di semua ekspor `[SRC-407]`.
+- AC7. Given impor selesai, dibatalkan, atau kedaluwarsa, When dicek, Then berkas asli dan baris pratinjau terhapus; log tidak memuat isi baris.
+- AC8. (negatif, isolasi) Given HR perusahaan lain, When membuka batch atau pratinjau, Then 404.
+- AC9. Given jumlah peserta valid berbeda dari jumlah di pesanan, When dikonfirmasi, Then perilakunya `[TIDAK DIKETAHUI]` (PT-63).
+- AC10. Given kolom di luar skema, When diproses, Then dibuang saat pratinjau, tidak pernah disimpan, dan HR diberi tahu (Pasal 16 ayat (2) huruf a `[SRC-440]`).
+- AC11. (negatif) Given XLSX bermakro, wadah OLE, DTD atau entitas eksternal, atau melebihi batas setelah dekompresi, jumlah entri, atau rasio kompresi, When diproses, Then ditolak sebelum diurai penuh; penguraian di worker berbatas waktu dan memori `[SRC-405]` `[SRC-406]` `[SRC-409]`.
+- AC12. Given baris ditolak, When pesan galat tampil, Then menyebut nomor baris, field, dan kode alasan tanpa menggemakan isi sel.
+- AC13. Given tanggal lahir peserta di bawah batas usia anak, When divalidasi, Then perlakuannya `[TIDAK DIKETAHUI]` (PT-77, L-08).
+
+#### US-1908 Undangan peserta dan penautan akun pasien (T1, data karyawan)
+
+Sebagai peserta, saya ingin menerima undangan dan menautkannya ke akun pasien saya, agar jadwal dan hasil saya tersedia di akun saya sendiri.
+Rujukan: BR-140, BR-145, AB-73, AB-85, ADR-028 butir 2 `[UP-83]` · Audit: E-18, E-10, E-13
+
+- AC1. Given peserta diimpor, When undangan dikirim (waktu pengiriman PT-63; usulan keamanan setelah lunas), Then peserta menerima email berisi tautan sekali pakai yang berlaku PB-24, tanpa data kesehatan, dan berisi pemberitahuan pemrosesan data (siapa mengirim data, tujuan, cara mengajukan hak subjek data; teks menunggu L-17 dan PT-76).
+- AC1a. Given tautan undangan, When dibuka di perangkat, Then memakai App Links/Universal Links terverifikasi untuk domain resmi, bukan skema URL kustom; token ditukar hanya setelah peserta masuk di aplikasi pasien `[KEPUTUSAN-267]`.
+- AC1b. Given HR mengirim ulang undangan, When dikirim, Then jumlah undangan aktif tidak melebihi jumlah peserta pesanan, kirim ulang dibatasi laju per peserta dan per perusahaan per hari, templat tidak memuat teks bebas dari HR, dan nama peserta dikodekan sebagai teks.
+- AC2. Given peserta belum punya akun pasien, When membuka tautan, Then diarahkan mendaftar (US-101, termasuk US-104 dan MFA CR-018) lalu kembali ke undangan.
+- AC3. Given peserta yang sudah masuk membuka tautannya, When menerima undangan, Then peserta tertaut ke akun itu. Penautan tidak pernah terjadi tanpa tindakan peserta.
+- AC4. (negatif) Given akun pasien dengan email terverifikasi berbeda dari email undangan, When menerima, Then penautan ditolak dengan pesan netral dan peserta diminta meminta HR mengirim ulang ke email akunnya (UP-83, syarat keamanan).
+- AC4a. Bila user menyetujui PT-78: Given peserta menerima undangan, When diminta mengetik tanggal lahir, Then penautan hanya terjadi bila cocok dengan data unggahan, percobaan dibatasi, dan setelah batas habis undangan terkunci dengan status netral bagi HR.
+- AC5. (negatif) Given tautan kedaluwarsa, sudah dipakai, atau dibatalkan, When dibuka, Then ditolak tanpa membocorkan nama perusahaan atau pesanan.
+- AC6. Given peserta menolak undangan, When disimpan, Then HR melihat status "ditolak" tanpa alasan dan tanpa data akun pasien.
+- AC7. Given email gagal terkirim, When terjadi, Then dicoba ulang dan HR melihat status "gagal kirim".
+- AC8. (negatif) Given HR, When mencoba melihat data akun pasien peserta, Then tidak tersedia; HR hanya melihat data unggahannya dan status undangan.
+
+#### US-1909 Invoice B2B (T1, penagihan)
+
+Sebagai HR, saya ingin menerima invoice saat pesanan dikonfirmasi, agar perusahaan dapat membayar lewat transfer.
+Rujukan: BR-141, BR-142, AB-81, AB-82, PB-25, ADR-029 (Diusulkan) · Audit: E-08, E-12
+
+- AC1. Given HR mengonfirmasi pesanan, When invoice terbit, Then memuat nomor unik, data perusahaan, paket, harga per satuan, jumlah, pajak (sisa PT-28), total, tanggal terbit, jatuh tempo PB-25, dan rekening tujuan (PT-59, L-21).
+- AC2. Given invoice terbit, When perlu koreksi, Then invoice lama dibatalkan dan invoice pengganti terbit; baris tidak pernah diubah atau dihapus (ADR-004).
+- AC3. Given HR mengunduh invoice, When berkas dibuat, Then hanya berisi data perusahaannya dan E-12 tercatat.
+- AC4. (negatif, isolasi) Given HR perusahaan lain, When membuka invoice dengan ID atau nomornya, Then 404.
+- AC5. Given jatuh tempo lewat tanpa pelunasan, When dicek, Then invoice berstatus "Lewat jatuh tempo" `[UP-80]`; akibatnya bagi pesanan `[TIDAK DIKETAHUI]` (PT-63).
+- AC6. (negatif, kanal turunan) Given layanan tambahan yang muncul karena hasil seorang peserta (ada atau tidaknya PT-63), When invoice terbit, Then baris invoice tidak menyebut peserta dan tidak dapat dikaitkan ke peserta tanpa persetujuan aktif (AB-87).
+- AC7. Given rekening tujuan invoice, When ditampilkan, Then berasal dari konfigurasi yang perubahannya tercatat E-14 dan disetujui orang kedua (UP-84); email invoice tanpa lampiran dan mengarah ke member area.
+
+#### US-1910 Pencatatan mutasi bank dan pelunasan (T1, uang)
+
+Sebagai Keuangan, saya ingin mencatat transfer masuk dan mengalokasikannya ke invoice, agar pesanan dapat dijadwalkan dan pembukuan seimbang.
+Rujukan: BR-141, AB-82, ADR-015 butir 4, ADR-029 butir 3 `[UP-84]` · Audit: E-08
+
+- AC1. Given Keuangan mencatat satu transfer masuk (rekening tujuan, tanggal valuta, referensi bank, nominal, bukti), When disimpan, Then mutasi tercatat immutable dengan kunci unik global `[KEPUTUSAN-268]`. Komposisi kunci ditetapkan DBA saat task (catatan R2-01 di data dictionary A20).
+- AC1a. Given mutasi tercatat, When dialokasikan ke satu atau beberapa invoice, Then alokasi tercatat immutable dan jurnal berpasangan seimbang terbentuk; jumlah alokasi dari satu mutasi tidak pernah melebihi nominal mutasi, ditegakkan di aplikasi dan database.
+- AC2. Given total alokasi ke invoice sama dengan total invoice, When tersimpan dan disetujui orang kedua (AC6), Then invoice Lunas dan pesanan berstatus "Lunas, menunggu jadwal".
+- AC3. (negatif) Given total alokasi kurang atau lebih dari sisa tagihan, When tersimpan, Then invoice tidak Lunas otomatis dan ditandai untuk tindak lanjut. Perlakuan bayar sebagian dan kelebihan bayar `[TIDAK DIKETAHUI]` (PT-63).
+- AC4. (negatif, transfer ganda) Given mutasi dengan kunci yang sama sudah tercatat, When dicatat lagi, Then ditolak. Given sisa nominal mutasi habis dialokasikan, When dialokasikan ke invoice lain, Then ditolak.
+- AC5. Given pencatatan atau alokasi salah, When dikoreksi, Then berupa entri pembalik termasuk jurnal pembalik.
+- AC6. Given mutasi atau alokasi dicatat satu Keuangan, When berlaku, Then harus disetujui orang kedua (Keuangan lain atau Super Admin); rekonsiliasi harian terhadap rekening koran dilakukan orang selain pencatat; status Lunas hanya dari mutasi yang diperiksa terhadap rekening koran, bukan dari bukti transfer kiriman perusahaan `[UP-84]` `[USER] C21-P4`.
+- AC7. (negatif) Given akun tanpa sub-peran Keuangan, When mencatat, mengalokasikan, membalik, atau menyetujui, Then ditolak (403) dan tercatat; penyetuju tidak boleh sama dengan pencatat.
+- AC8. Given berkas bukti transfer, When disimpan atau dibuka, Then hanya Keuangan yang dapat membuka lewat URL berumur pendek, dan isinya tidak pernah masuk log maupun audit trail.
+
+#### US-1911 Penjadwalan setelah lunas
+
+Sebagai HR, saya ingin layanan dijadwalkan setelah invoice lunas, agar peserta tahu kapan dan di mana layanan berlangsung.
+Rujukan: BR-142, BR-135, AB-83 · Audit: E-09
+
+- AC1. Given invoice Lunas, When jadwal ditetapkan (pihak dan cara konfirmasi rekanan: PT-63), Then pesanan Terjadwal, dan HR serta peserta tertaut melihat tanggal, jam (zona waktu lokasi, AB-40), dan lokasi.
+- AC2. (negatif) Given invoice belum Lunas, When jadwal ditetapkan, Then ditolak (AB-83).
+- AC3. Given peserta tertaut, When membuka aplikasi pasien, Then jadwal layanan korporatnya tampil.
+
+#### US-1912 Rekap kehadiran untuk HR (T1, data karyawan)
+
+Sebagai HR, saya ingin melihat siapa yang sudah dan belum dilayani, agar dapat mengatur karyawan.
+Rujukan: BR-144, AB-84, AB-87 · Audit: E-05 (detail, selama klasifikasi L-18 belum dijawab), E-12 (ekspor)
+
+- AC1. Given pesanan Terjadwal atau Selesai, When HR membuka rekap, Then setiap peserta tampil dengan status undangan dan status kehadiran (hadir, tidak hadir, belum dicatat). Sumber data kehadiran `[TIDAK DIKETAHUI]` (PT-64).
+- AC2. Given rekap tampil, When diperiksa, Then tidak ada nilai hasil, PDF, atau catatan pemeriksa, dan ringkasan hanya sesuai US-1914.
+- AC3. Given HR mengekspor rekap, When berkas dibuat, Then berkas CSV hanya berisi peserta perusahaannya, sel rumus dinetralkan, dan E-12 tercatat.
+- AC4. (negatif, isolasi) Given HR perusahaan lain, When membuka atau mengekspor rekap, Then 404.
+- AC5. (negatif, kanal turunan) Given peserta tanpa persetujuan aktif, When HR membuka rekap, mengekspornya, atau memanggil endpoint daftar dan detail peserta, Then tidak ada data yang berasal dari hasil (status "hasil tersedia", "perlu tindak lanjut", "jadwal ulang karena hasil", atau penanda serupa).
+- AC6. Given rekap ditampilkan atau diekspor, When respons dikirim, Then BFF dan browser tidak menyimpan respons di cache (`no-store`), dan berkas ekspor tidak disimpan di server.
+
+#### US-1913 Persetujuan berbagi ringkasan oleh peserta (T1, persetujuan, EP-16)
+
+Sebagai peserta, saya ingin memutuskan sendiri apakah ringkasan hasil saya dibagikan ke perusahaan, dan dapat menariknya kapan saja.
+Rujukan: BR-144, BR-145, BR-103, BR-106, NFR-PRIV-05 · Audit: E-13
+
+- AC1. Given peserta tertaut ke pesanan korporat, When membuka pesanan di aplikasi pasien, Then pertanyaan persetujuan tampil dengan jenis ringkasan (PT-65), nama perusahaan penerima, dan tujuannya; kotak tidak tercentang otomatis dan bawaannya tidak berbagi.
+- AC2. Given peserta memberi atau menarik persetujuan, When tersimpan, Then bukti tersimpan per versi teks; penarikan berlaku ke depan.
+- AC3. (negatif) Given HR, admin, atau akun pasien lain, When memanggil endpoint persetujuan untuk peserta itu, Then ditolak.
+- AC4. Teks persetujuan final menunggu L-18 dan sampai itu ditandai draf. Teks menyatakan bahwa penarikan tidak menarik ekspor yang sudah diunduh HR.
+
+#### US-1914 Ringkasan hasil untuk HR dengan persetujuan (T1, data kesehatan)
+
+Sebagai HR, saya ingin melihat ringkasan hasil peserta yang setuju membagikannya, agar dapat menindaklanjuti sesuai kebijakan perusahaan.
+Rujukan: BR-144, AB-84, AB-87 `[UP-85]` · Audit: E-05
+
+- AC1. Given persetujuan aktif dan ringkasan tersedia, When HR membuka rekap atau detail peserta, Then ringkasan tampil dan E-05 tercatat.
+- AC2. (negatif, tanpa persetujuan) Given peserta belum memberi atau sudah menarik persetujuan, When HR membuka rekap, detail, ekspor, atau endpoint ringkasan langsung, Then ringkasan tidak dikembalikan, HR melihat teks seragam "Ringkasan tidak tersedia" yang sama dengan saat ringkasan belum ada, dan percobaan lewat endpoint langsung tercatat gagal.
+- AC3. (negatif) Given persetujuan aktif, When HR meminta hasil lengkap, Then tetap ditolak.
+- AC4. (negatif) Given admin Ruang Sehat sub-peran apa pun, When membaca ringkasan, Then ditolak.
+- AC5. Given HR mengekspor rekap, When berkas dibuat, Then ringkasan hanya untuk peserta yang persetujuannya aktif saat ekspor.
+- AC6. Sumber, format, dan penetap ringkasan `[TIDAK DIKETAHUI]` (PT-65), lewat kontrak integrasi (US-1917).
+- AC7. (negatif, agregat) Given layar atau endpoint HR, When diperiksa, Then tidak ada jumlah, persentase, atau statistik dari hasil peserta tanpa persetujuan aktif. Agregat yang ditambahkan lewat CR hanya atas data yang terlihat HR, dengan ambang kelompok minimum.
+- AC8. (negatif, persetujuan ditarik) Given HR sudah membuka ringkasan lalu persetujuan ditarik, When HR memuat ulang atau memakai URL lama, Then ringkasan tidak tampil lagi; tidak ada salinan di cache BFF, browser, atau server.
+
+#### US-1915 Hasil lengkap untuk peserta (T1, data kesehatan)
+
+Sebagai peserta, saya ingin melihat dan mengunduh hasil MCU atau lab saya, agar dapat memakainya.
+Rujukan: BR-143, US-901, US-902 `[UP-87]` · Audit: E-05, E-12 (pola US-902)
+
+- AC1. Given rekanan mengirim hasil peserta lewat alur US-901, When diterima, Then hasil tampil hanya di akun pasien peserta yang tertaut, dengan perilaku US-902.
+- AC2. (negatif) Given HR, perusahaan, atau akun pasien lain, When membuka hasil, Then ditolak (KU-03).
+- AC3. Given hasil untuk peserta yang belum tertaut, When diterima, Then perlakuannya `[TIDAK DIKETAHUI]` (PT-71).
+- AC4. Given hasil tersedia, When akan dirilis ke akun tertaut, Then hasil hanya dirilis bila kehadiran peserta tercatat dengan konfirmasi identitas di lokasi layanan (cara pencocokan mengikuti PT-64 dan PT-66); bila tidak, hasil ditahan dan Layanan Pelanggan menindaklanjuti `[UP-87]` `[USER] C21-P4`.
+
+#### US-1916 Pengelolaan perusahaan di backoffice
+
+Sebagai Verifikator, saya ingin melihat dan mengelola perusahaan member, agar dapat melayani klien korporat.
+Rujukan: BR-136, BR-060 · Audit: E-10, E-12
+
+- AC1. Given Verifikator, When membuka daftar perusahaan, Then tampil status verifikasi, anggota HR, dan (setelah pemesanan tersedia) pesanan dan invoice, tanpa ringkasan maupun hasil peserta.
+- AC2. Given perusahaan dinonaktifkan, When tersimpan, Then semua akun HR perusahaan itu ditolak seketika (KU-10). Nasib pesanan berjalan `[TIDAK DIKETAHUI]` (PT-63).
+- AC3. (negatif) Given sub-peran tanpa hak, When mengakses, Then 403.
+
+#### US-1917 Penerusan pesanan korporat ke rekanan pelaksana (T1, integrasi)
+
+Sebagai Ruang Sehat, saya ingin meneruskan pesanan korporat terjadwal ke rekanan pelaksana, agar rekanan menyiapkan layanan.
+Rujukan: BR-134, BR-070, ADR-014 · Audit: E-17
+
+- AC1. Given pesanan Terjadwal, When dikirim ke sistem rekanan atau RME minimalis lewat Partner Integration API, Then pesan memuat data peserta minimal (L-17) dan E-17 tercatat tanpa isi.
+- AC2. Given rekanan menolak atau tidak menerima sampai batas waktu, When terjadi, Then perilakunya `[TIDAK DIKETAHUI]` (PT-63).
+- AC3. (negatif) Given rekanan lain, When meminta data peserta pesanan itu, Then ditolak (ADR-014 butir 3).
+- AC4. Kehadiran (PT-64), ringkasan (PT-65), dan hasil (US-901) diterima kembali lewat kontrak yang sama. Penerimaan pesanan korporat oleh rekanan pengguna RME menunggu PT-74 (BR-126).
+
 ## 6. Kebutuhan non-fungsional (NFR)
 
 ### 6.1 Performa
@@ -1761,7 +2068,7 @@ Diukur di sisi server pada beban NFR-CAP, tanpa waktu panggilan ke pihak ketiga 
 | NFR-PERF-01 | Waktu respons API untuk membaca data | p95 ≤ 500 ms | `[USER] T3-Q13` |
 | NFR-PERF-02 | Waktu respons API untuk menulis data | p95 ≤ 1 detik | `[USER] T3-Q13` |
 | NFR-PERF-03 | Pesan chat sampai ke penerima yang sedang online | p95 ≤ 2 detik | `[USER] T3-Q13` |
-| NFR-PERF-04 | Halaman web tampil: portal rekanan; juga backoffice dan RME minimalis | p95 ≤ 3 detik | `[USER] T3-Q13` (portal) `[UP-48]` (backoffice, RME minimalis) |
+| NFR-PERF-04 | Halaman web tampil: portal rekanan; juga backoffice, RME minimalis, situs publik, dan member area korporat (CR-021) | p95 ≤ 3 detik | `[USER] T3-Q13` (portal) `[UP-48]` (backoffice, RME minimalis); perluasan ke situs dan member area mengikuti UP-48 |
 | NFR-PERF-05 | Notifikasi diserahkan ke penyedia kanal setelah kejadian | ≤ 1 menit | `[USER] T3-Q13` |
 
 Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggilan video dan waktu sampainya notifikasi di perangkat `[USER] T3-Q13`.
@@ -1793,13 +2100,13 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | ID | Kebutuhan | Sumber |
 | --- | --- | --- |
 | NFR-SEC-01 | Kontrol keamanan aplikasi diverifikasi terhadap OWASP ASVS 5.0.0. Level dan pemetaan kontrol ditetapkan di Tahap 4, verifikasi di Tahap 10 | `[SRC-29]` `[KEPUTUSAN-05]` |
-| NFR-SEC-02 | MFA wajib untuk semua akun manusia: pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, dan pengguna RME minimalis. Faktor kedua berupa TOTP dengan kode pemulihan sekali pakai; SMS, OTP email, dan WebAuthn tidak dipakai di rilis 1. Atur ulang password tidak melewati MFA, dan faktor yang hilang dipulihkan dengan pembuktian identitas setara saat pendaftaran (ADR-011 butir 5) | `[KEPUTUSAN-06]` (admin, admin rekanan, RME); `[KEPUTUSAN-25]` (tenaga kesehatan, Tahap 4); `[USER] C2-Q9` (pasien, CR-018) |
+| NFR-SEC-02 | MFA wajib untuk semua akun manusia: pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, pengguna RME minimalis, dan HR perusahaan (CR-021, `[KEPUTUSAN-253]`). Faktor kedua berupa TOTP dengan kode pemulihan sekali pakai; SMS, OTP email, dan WebAuthn tidak dipakai di rilis 1. Atur ulang password tidak melewati MFA, dan faktor yang hilang dipulihkan dengan pembuktian identitas setara saat pendaftaran (ADR-011 butir 5) | `[KEPUTUSAN-06]` (admin, admin rekanan, RME); `[KEPUTUSAN-25]` (tenaga kesehatan, Tahap 4); `[USER] C2-Q9` (pasien, CR-018) |
 | NFR-SEC-03 | Kebijakan password untuk password yang dibuat atau diubah pengguna, sama di semua jalur (pendaftaran, atur ulang, aktivasi, ubah password):<br>1. panjang 8–128 karakter;<br>2. semua karakter diizinkan, termasuk spasi, tanpa aturan komposisi;<br>3. diperiksa persis seperti dimasukkan, tanpa dipangkas atau diubah hurufnya;<br>4. ditolak bila ada di daftar minimal 3.000 kata sandi paling umum, di daftar kata sandi bocor, atau di daftar kata konteks ("ruang sehat", "ruangsehat", "rumah sehat", "rumahsehat", "arunika", beserta variasinya), dan bila sama dengan email pengguna. Ketiga daftar berupa berkas lokal, tanpa layanan eksternal;<br>5. tanpa kewajiban mengganti password berkala;<br>6. tempel dan pengelola password diizinkan; isian bermasker dengan opsi menampilkan.<br>Akun terkunci 15 menit setelah 5 percobaan masuk gagal berturut-turut (US-103 AC3). Daftar kata sandi bocor beserta lisensinya `[TIDAK DIKETAHUI]`, diverifikasi di Tahap 8 sebelum dipakai | `[KEPUTUSAN-06]` `[KEPUTUSAN-188]` `[SRC-265]` `[SRC-270]` (T-02) |
-| NFR-SEC-04 | Sesi web (backoffice, portal, RME minimalis) berakhir setelah 30 menit tanpa aktivitas | `[KEPUTUSAN-06]` |
+| NFR-SEC-04 | Sesi web (backoffice, portal, RME minimalis, member area korporat) berakhir setelah 30 menit tanpa aktivitas | `[KEPUTUSAN-06]`; member area `[KEPUTUSAN-250]` |
 | NFR-SEC-05 | Data dienkripsi saat dikirim dan saat disimpan. Data pribadi spesifik (AB-70) mendapat perlindungan tambahan yang ditetapkan di Tahap 4 | BR-105, BR-108 |
-| NFR-SEC-06 | Isolasi data antar-rekanan dan antar-fasyankes diuji, termasuk percobaan mengakses data lain lewat ID (KU-03) | BR-105, BR-108 |
+| NFR-SEC-06 | Isolasi data antar-rekanan, antar-fasyankes, dan antar-perusahaan klien (CR-021) diuji, termasuk percobaan mengakses data lain lewat ID (KU-03), ekspor, unduhan berkas, dan endpoint ID anak | BR-105, BR-108, BR-145 `[KEPUTUSAN-254]` |
 | NFR-SEC-07 | Hak akses mengikuti prinsip hak minimum per peran dan sub-peran (§3.1) | BR-105 `[UP-17]` |
-| NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MiB = 5.242.880 byte; dokumen PDF ≤ 10 MiB = 10.485.760 byte, berlaku untuk berkas seperti diunggah, sebelum dikode ulang) dan hanya dapat diakses pihak yang berhak | `[KEPUTUSAN-08]` `[KEPUTUSAN-191]` (T-07) |
+| NFR-SEC-08 | Berkas unggahan dibatasi jenis dan ukurannya (foto JPG/PNG ≤ 5 MiB = 5.242.880 byte; dokumen PDF ≤ 10 MiB = 10.485.760 byte, berlaku untuk berkas seperti diunggah, sebelum dikode ulang) dan hanya dapat diakses pihak yang berhak. CR-021: daftar peserta CSV/XLSX dengan batas PB-23 dan pengerasan ADR-028 butir 6; berkas asli dihapus setelah impor | `[KEPUTUSAN-08]` `[KEPUTUSAN-191]` (T-07); CSV/XLSX `[USER] C21-P2-3` `[KEPUTUSAN-256]` `[KEPUTUSAN-269]` |
 | NFR-SEC-09 | Lulus audit keamanan sebelum go-live | `[DOK] P8.2` (syarat go-live 6) |
 | NFR-SEC-10 | Aplikasi tenaga kesehatan meminta verifikasi pemilik perangkat (biometrik atau PIN perangkat) saat dibuka kembali setelah 15 menit tidak aktif (CR-009) | `[USER] T4-Q6` |
 | NFR-SEC-11 | Jumlah sesi paralel per akun tidak dibatasi di semua jenis akun (pasien, tenaga kesehatan, admin Ruang Sehat, admin rekanan, pengguna RME). Setiap sesi dapat dilihat dan diakhiri pemiliknya (US-110), dan batas idle serta mutlak sesi per jenis akun tetap berlaku (ADR-011 butir 7). Kebijakan ini adalah dokumentasi ASVS 7.1.2 (L2) `[SRC-277]` | `[USER] C2-Q11` |
@@ -1827,7 +2134,7 @@ Tidak dijadikan target karena bergantung pada penyedia: waktu tersambung panggil
 | --- | --- | --- |
 | NFR-COMP-01 | Aplikasi pasien dan aplikasi tenaga kesehatan berjalan di Android dan iOS | BR-007 `[USER] T3-Q9` |
 | NFR-COMP-02 | Versi OS minimum ditetapkan di Tahap 5 dari dokumentasi resmi Flutter | `[TIDAK DIKETAHUI]` |
-| NFR-COMP-03 | Web (backoffice, portal, RME minimalis) mendukung dua versi stabil terakhir Chrome, Edge, Firefox, dan Safari | `[KEPUTUSAN-09]` |
+| NFR-COMP-03 | Web (backoffice, portal, RME minimalis, situs publik, member area korporat) mendukung dua versi stabil terakhir Chrome, Edge, Firefox, dan Safari | `[KEPUTUSAN-09]` |
 
 ### 6.8 Lokalisasi
 
@@ -1882,6 +2189,7 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 | E-15 | Penambahan, perubahan, dan penghapusan anggota keluarga beserta pernyataan persetujuannya | | BR-104 |
 | E-16 | Soft delete dan pemulihan data master; penghapusan dan anonimisasi atas permintaan atau retensi | | ADR-003, BR-112 |
 | E-17 | Pengiriman data pribadi ke pihak luar: sistem rekanan, SATUSEHAT, payment gateway (jenis data dan tujuan, tanpa isi) | | BR-107 |
+| E-18 | Impor data peserta korporat dan pengiriman undangan (jumlah baris dan hasil, tanpa isi baris) (CR-021) | HR mengonfirmasi impor; undangan dikirim ulang | BR-107, BR-145 `[UP-86]` |
 
 ### 7.2 Field per event
 
@@ -1970,6 +2278,14 @@ Daftar entitas bisnis dan relasinya, tanpa detail teknis. Klasifikasi master/tra
 | Permintaan hak subjek data | | Transaksi | BR-106 |
 | Event audit | | Log append-only | BR-080 |
 | Status integrasi dan galat integrasi | | Log | BR-070 |
+| Perusahaan klien, dokumen, keputusan verifikasi (CR-021) | | Master; keputusan Transaksi | BR-136 |
+| Anggota HR perusahaan (CR-021) | | Master | BR-132 |
+| Paket korporat (salinan dari rekanan) (CR-021) | | Master | BR-133, BR-138 |
+| Pesanan korporat, status, harga terkunci (CR-021) | | Transaksi | BR-137, BR-142 |
+| Peserta korporat, keikutsertaan, impor, undangan, kehadiran (CR-021) | | Master (peserta); Transaksi; Log (impor) | BR-139, BR-140, BR-144 |
+| Invoice B2B, mutasi bank, alokasi (CR-021) | | Transaksi | BR-141, BR-142 |
+| Persetujuan berbagi ringkasan (CR-021) | | Log | BR-144 |
+| Ringkasan hasil korporat (berversi) (CR-021) | | Transaksi | BR-144 |
 
 ### 8.2 RME minimalis
 
@@ -2118,6 +2434,20 @@ Usulan ini mengisi detail produk yang belum diputuskan user. **Seluruhnya disetu
 | UP-56 | RF-18: refund ke pasien otomatis saat jadwal mulai; penyebab (rekanan atau platform) ditetapkan Keuangan dari log integrasi dalam PB-20 = 3 hari kerja; bila tidak ditetapkan, berlaku penyebab platform | Review QA QA-B19: pasien tidak menunggu penetapan penyebab; Ruang Sehat sebagai operator integrasi menanggung bila penyebab tidak dapat dipastikan |
 | UP-57 | Tiga tafsiran penyusun: (a) reschedule tidak dibangun di rilis 1 karena opsinya tidak dipilih di T2-Q17 dan T3-Q6; (b) satu tenaga kesehatan hanya dinaungi satu klinik rekanan (AB-50); (c) pembatalan akibat penonaktifan akun oleh admin atau SIP berakhir digolongkan penyebab rekanan (RF-05) | Fact-check FC3-N01: tafsiran perlu persetujuan eksplisit |
 
+**UP-79–UP-87 (CR-021), semuanya disetujui `[USER] C21-P4`.**
+
+| UP | Usulan | Alasan |
+| --- | --- | --- |
+| UP-79 | Formulir pendaftaran perusahaan: nama badan usaha, NIB, NPWP, alamat kantor, telepon kantor; data HR: nama, jabatan, email, password (ditambah bukti kewenangan, PT-79) | Data minimal untuk verifikasi |
+| UP-80 | Status pesanan korporat: Menunggu pembayaran, Lunas–menunggu jadwal, Terjadwal, Selesai, Dibatalkan; status invoice: Terbit, Lunas, Lewat jatuh tempo, Dibatalkan | Turunan BR-142; transisi lengkap setelah PT-63 |
+| UP-81 | Harga dikunci saat konfirmasi pesanan (AB-81) | Tanpa payment gateway, titik "pembayaran dibuat" AB-17 tidak ada |
+| UP-82 | Impor dua langkah: pratinjau validasi, lalu impor baris valid setelah HR mengonfirmasi | Data rusak tidak tersimpan tanpa sepengetahuan HR |
+| UP-83 | Syarat keamanan: undangan hanya dapat diterima akun pasien yang email terverifikasinya sama dengan email undangan | Mencegah tautan yang diteruskan atau disadap menautkan peserta ke akun lain (KOR-12) |
+| UP-84 | Pemisahan tugas uang manual: pencatatan mutasi dan alokasi disetujui orang kedua; rekonsiliasi harian oleh orang selain pencatat; Lunas hanya dari mutasi yang diperiksa terhadap rekening koran; perubahan rekening tujuan invoice disetujui orang kedua | Pola ADR-012 butir 7; B2B-01 |
+| UP-85 | Peserta tanpa persetujuan aktif: HR melihat teks seragam "Ringkasan tidak tersedia", sama dengan saat ringkasan belum ada | Mengurangi tekanan dan kebocoran status persetujuan dalam relasi kerja |
+| UP-86 | Event audit E-18 untuk impor peserta dan undangan | Masuknya data pribadi pihak ketiga dalam jumlah besar adalah aksi sensitif |
+| UP-87 | Hasil lengkap baru dirilis ke akun tertaut setelah kehadiran peserta tercatat dengan konfirmasi identitas di lokasi layanan | Menutup jalur salah tautan yang lolos UP-83 |
+
 ## 12. Ketergantungan, konfirmasi legal, dan pertanyaan terbuka
 
 ### 12.1 Status pertanyaan terbuka yang bertenggat Tahap 3
@@ -2155,6 +2485,12 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 | L-04, L-12 | Mekanisme refund dan penarikan dana rekanan; biaya transaksi per metode; *merchant of record* di bukti bayar | Menunggu tim legal; sebelum Tahap 4 |
 | L-02 (meluas) | Pendaftaran PSE untuk aplikasi RME minimalis (apakah satu pendaftaran cukup untuk dua sistem) dan perizinan berusaha PT. Arunika sebagai penyedia sistem RME. Bagian PSE diusulkan dimajukan ke Tahap 4, karena menjadi prasyarat PT-32 | Usulan review kepatuhan, dimintakan persetujuan di gate |
 | L-15 (usulan baru) | Perjanjian pemrosesan data antara PT. Arunika dan setiap fasyankes pengguna RME minimalis, serta antara PT. Arunika dan klinik rekanan untuk data konsultasi (UP-49) | Usulan review kepatuhan, dimintakan persetujuan di gate; sebelum Tahap 4 |
+| L-16 (diperluas, CR-021) | Email undangan ke karyawan pihak ketiga (US-1908) | Menunggu tim legal |
+| L-17 (CR-021) | Dasar pemrosesan data unggahan HR dan peran PT. Arunika, perusahaan, serta rekanan pelaksana; kanal hak subjek peserta tak tertaut; teks pemberitahuan di undangan (US-1907, US-1908, US-1917) | Menunggu tim legal; sebelum data peserta nyata (G-26) |
+| L-18 (CR-021) | Persetujuan berbagi ringkasan (US-1913, US-1914); klasifikasi keikutsertaan dan kehadiran (§3.1, US-1912); benturan BR-143 dengan pelaporan hasil pemeriksaan tenaga kerja `[SRC-441]` | Menunggu tim legal |
+| L-19 (CR-021) | Vaksinasi massal dan layanan on-site (US-1905 isi katalog) | Menunggu tim legal; sebelum katalog berisi layanan nyata |
+| L-20 (CR-021) | PSE situs dan member area; teks kebijakan privasi situs (US-1801 AC4) dan persetujuan HR (US-1901 AC1) | Menunggu tim legal |
+| L-21 (CR-021) | Invoice B2B tanpa payment gateway dan arah dana (US-1909, US-1910, AB-82, pengecualian AB-13) | Menunggu tim legal; sebelum penagihan korporat (Fase 3) |
 
 ### 12.4 Ketergantungan lain
 
@@ -2169,6 +2505,34 @@ PT-05 (kemampuan sistem rekanan), PT-17 (markup dan biaya rekanan), dan PT-24 (r
 | PT-55 | Frekuensi tinjauan akses berkala admin (US-208 AC8) `[TIDAK DIKETAHUI]` | User (PM) | Sebelum go-live |
 | PT-56 | ~~Larangan Verifikator memutuskan pengajuan identitas akunnya sendiri~~ **Terjawab 2026-11-18**: termasuk usulan default klarifikasi T-19 butir d yang disetujui lewat delegasi `[USER]` checkpoint-2; diterapkan sebagai US-201 AC8 | — | Selesai |
 
+### 12.6 Pertanyaan terbuka CR-021
+
+Rincian dan opsi di `docs/cr/CR-021-analisis.md` §13.1.
+
+| # | Pertanyaan | Story | Pemilik | Tenggat |
+| --- | --- | --- | --- | --- |
+| PT-59 | Arah dana invoice B2B (K-02; menunggu L-21) | US-1909, US-1910 | User + CEO + legal | Sebelum penagihan (Fase 3) |
+| PT-60 | **Terjawab:** peserta memakai aplikasi pasien `[USER] C21-P4` (K-01 opsi a) | — | — | Selesai |
+| PT-61 | **Terjawab:** harga paket lewat integrasi `[USER] C21-P4` (K-04 opsi a) | — | — | Selesai |
+| PT-62 | Besaran markup korporat, satuan harga, peserta minimum | US-1905, US-1906 | CEO | Sebelum Fase 3 |
+| PT-63 | Penetapan jadwal, jenis hari jatuh tempo, syarat per perusahaan, lewat jatuh tempo, bayar sebagian/lebih, perubahan jumlah peserta, pembatalan dan refund, penolakan rekanan, perusahaan dinonaktifkan, waktu kirim undangan, layanan tambahan karena hasil | US-1906–US-1911, US-1916, US-1917 | User | Sebelum Fase 3 |
+| PT-64 | Pencatat dan definisi kehadiran | US-1912, US-1915 | User | Sebelum Fase 3 |
+| PT-65 | Isi, cakupan, dan penetap ringkasan; konfirmasi tafsiran BR-144 | US-1913, US-1914 | User + konsultan medis | Sebelum Fase 3 |
+| PT-66 | Layanan yang mewajibkan NIK; perlu-tidaknya verifikasi KTP peserta (AB-01) | US-1905, US-1907, US-1915 | User + legal | Sebelum Fase 3 |
+| PT-67 | **Terjawab sebagian:** Verifikator memverifikasi, membuat perusahaan, dan memulai reset MFA HR `[USER] C21-P4`. Terbuka: perlu sub-peran baru? persetujuan orang kedua untuk perusahaan buatan admin (M-49)? | US-1903 AC1 | User | Sebelum F1-T105 |
+| PT-68 | Peran di dalam perusahaan (bawaan: semua HR sama) | US-1904 AC2 | User | Sebelum Fase 3 |
+| PT-69 | Posisi layanan korporat di urutan pengurangan scope | §2.3 | User/CEO | Gerbang re-plan 2026-12-11 |
+| PT-70 | Isi company profile, rekanan yang boleh tampil, formulir kontak, domain | US-1801 | User | Sebelum UAT |
+| PT-71 | Data peserta tak tertaut, hasil untuk peserta tak tertaut, satu email di beberapa perusahaan, kategori retensi | US-1908, US-1915 | User + legal | Sebelum Fase 3 |
+| PT-72 | **Terjawab:** NIB terdaftar ditolak `[USER] C21-P4` (US-1901 AC7). Cabang perusahaan masih terbuka | US-1901 | User | — |
+| PT-73 | Faktur dan pemotongan pajak invoice B2B | US-1909 | CEO | Sebelum Fase 3 |
+| PT-74 | Area on-site rekanan; rekanan pengguna RME dan pesanan korporat (BR-126) | US-1906, US-1917 | User | Sebelum Fase 3 |
+| PT-75 | **Terjawab:** K-05 dan K-10 sesuai tafsiran `[USER] C21-P4` | — | — | Selesai |
+| PT-76 | Kanal hak subjek data peserta tak tertaut dan teks pemberitahuan undangan | US-1908 | User + legal | G-26 |
+| PT-77 | Peserta di bawah batas usia anak | US-1907 AC13 | User + legal | Sebelum Fase 3 |
+| PT-78 | Konfirmasi tanggal lahir saat menerima undangan (belum diputuskan; kontrol tambahan KOR-12) | US-1908 AC4a | User | Sebelum Fase 3 |
+| PT-79 | **Terjawab:** bukti kewenangan pendaftar wajib `[USER] C21-P4`; bentuk bukti dikonfirmasi user | US-1901, US-1902 | User | Sebelum F1-T101 |
+
 ## 13. Keterlacakan
 
 Pemetaan lengkap BR → story ada di `docs/traceability.md`. Setiap story di PRD ini punya minimal satu induk BR. Kebutuhan kepatuhan non-perangkat lunak dipetakan ke §10.
@@ -2181,4 +2545,5 @@ Pemetaan lengkap BR → story ada di `docs/traceability.md`. Setiap story di PRD
 | 1.1 | 2026-11-18 | CR-007, CR-008, CR-009, CR-010; disetujui di gate Tahap 4 | `[USER] T4-Q2, T4-Q5, T4-Q6, T4-G3, T4-G5` |
 | 1.2 draf | 2026-11-18 | CR-013 (pajak): AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4 | `[USER] T5-Q11, T5-Q11a` |
 | **1.2 final** | 2026-11-18 | **Checkpoint 2.** (1) Teks CR-013 disetujui. (2) Klarifikasi AC Fase 1 diterapkan: KU-02 (T-20), KU-10 (UP-73, T-09), US-101 AC1a–AC1c, AC2, AC2b, AC3 (T-01–T-04), US-103 AC1a, AC2, AC3, AC4a–AC4e, AC5 (T-05, T-06, T-08, T-09), US-104 AC3 (T-11), US-105 AC1a, AC1b, AC4a–AC4e (T-12, T-13), US-106 AC1–AC5 (T-07, T-14–T-16), US-201 AC3 daftar alasan, AC3a, AC7 (T-17, T-18), US-208 AC4–AC8 (T-19), US-1501 AC3 (T-21), US-1504 AC3 (T-22), NFR-SEC-03 (T-02), NFR-SEC-08 (T-07), AB-05a (UP-74), PB-22 (UP-77). Batas NIK berlapis 3/24 jam per akun, 3/24 jam per NIK lintas akun, 10/24 jam per IP, peringatan > 20/jam global (US-106 AC4). (3) CR-018 MFA wajib pasien: NFR-SEC-02, US-101 AC5, US-103 AC1, AC1b, AC4e, AC7, AC8, US-207 AC5. (4) CR-017 ubah password saat login: US-103 AC6. (5) Story baru US-110 "Perangkat dan sesi aktif" (Fase 2) dan NFR-SEC-11 sesi paralel tidak dibatasi. (6) §2.2 Won't: email pemberitahuan penguncian, faktor kedua selain TOTP/kode pemulihan, CR-011 dan CR-015 ke rilis berikutnya, layar pengelolaan data rujukan. (7) §7.1 contoh E-03 dan E-04, §7.3 kode pemulihan. (8) §12.5 pertanyaan terbuka | `[USER] C2-Q9, C2-Q10, C2-Q11`, `[USER] C2-B4, C2-B5, C2-B6, C2-B7, C2-B14, C2-B15` (`docs/checkpoint-2.md`); `docs/07-klarifikasi-ac-fase-1.md` v0.2; KEPUTUSAN-187–205 |
+| 1.3 | 2026-11-19 | **CR-021.** (1) EP-18 Situs web (US-1801, US-1802) dan EP-19 Layanan korporat (US-1901–US-1917) dengan AC termasuk negatif isolasi antar-perusahaan, akses HR tanpa persetujuan, kanal turunan, unggahan rusak/ganda, transfer ganda. (2) §3.12 AB-80–AB-87; PB-23–PB-25; E-18; UP-79–UP-87 disetujui. (3) §1.1 komponen situs dan member area; §1.2 peran HR, peserta, Verifikator untuk perusahaan; §2.1 S-20, S-21; §2.2 Won't (vaksinasi korporat vs CR-015, web peserta, agregat, harga lewat portal). (4) §3.1 matriks CR-021 (keikutsertaan dan kehadiran perlu konfirmasi legal, diperlakukan sensitif); AB-13 pengecualian korporat bila dua tagihan; AB-17, AB-20 catatan. (5) NFR-PERF-04, NFR-SEC-02, NFR-SEC-04, NFR-SEC-06, NFR-SEC-08, NFR-COMP-03. (6) US-1101 juga kanal situs dan dibangun di Fase 1. (7) §8.1 entitas, §12.3 L-16–L-21, §12.6 PT-59–PT-79 | `[USER] C21-P0–P4` (`docs/cr/CR-021-wawancara.md`); `docs/cr/CR-021-analisis.md` v0.3; ADR-027, ADR-028 (Diterima), ADR-029 (Diusulkan); review `docs/review/CR-021-security.md`, `docs/review/CR-021-kepatuhan.md`; fact-check `docs/fact-check/CR-021.md` |
 | 1.2 final (koreksi orkestrator) | 2026-11-18 | US-201 AC8 baru: Verifikator tidak dapat memutuskan pengajuan identitas akunnya sendiri (klarifikasi T-19 butir d, usulan default UP-76, PT-56). US-207 AC5: pemula reset MFA pasien hanya Layanan Pelanggan (review keamanan B-01) | `[USER]` checkpoint-2 butir 7 (delegasi); `docs/review/checkpoint-2-security.md` |

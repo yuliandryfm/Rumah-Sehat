@@ -30,7 +30,7 @@ Diisi mulai Tahap 3 (PRD). Format story dan change request: lihat `.claude/skill
 
 ## Epic dan Story
 
-Sumber: `docs/03-prd.md` v1.2 final (v1.0 Tahap 3, revisi CR-007 Tahap 4, revisi CR-013 dan klarifikasi AC Fase 1 di Checkpoint 2, CR-017, CR-018, US-110). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7 sebagai usulan `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-Q6`, dengan Opsi B sebagai baseline sampai gerbang re-plan 2026-12-11 `[USER] C2-Q1`; rincian fase, tanggal, dan task Fase 1 ada di `docs/07-phase-plan.md`. Fase 4 bersifat bersyarat (dikerjakan hanya bila gerbang re-plan 2026-12-11 memilih Opsi A; di Opsi B, US-108 dan US-109 pindah ke Fase 3). Enabler (EN-xx) dan story UI (UI-xx) ada di bagian tersendiri di bawah `[KEPUTUSAN-179]`.
+Sumber: `docs/03-prd.md` v1.3 (CR-021: EP-18, EP-19; fase dari phase plan v0.3 `[USER] C21-P4`); sebelumnya v1.2 final (v1.0 Tahap 3, revisi CR-007 Tahap 4, revisi CR-013 dan klarifikasi AC Fase 1 di Checkpoint 2, CR-017, CR-018, US-110). Acceptance criteria, audit event, dan rujukan lengkap setiap story ada di PRD bagian 5 (`[KEPUTUSAN-03]`). Prioritas adalah usulan penyusun `[UP-01]` yang disetujui di gate Tahap 3, 2026-11-17 (T3-Gate). Kolom Fase diisi di Tahap 7 sebagai usulan `[UP-65]` `[UP-66]`, disetujui di Checkpoint 2 `[USER] C2-Q5, C2-Q6`, dengan Opsi B sebagai baseline sampai gerbang re-plan 2026-12-11 `[USER] C2-Q1`; rincian fase, tanggal, dan task Fase 1 ada di `docs/07-phase-plan.md`. Fase 4 bersifat bersyarat (dikerjakan hanya bila gerbang re-plan 2026-12-11 memilih Opsi A; di Opsi B, US-108 dan US-109 pindah ke Fase 3). Enabler (EN-xx) dan story UI (UI-xx) ada di bagian tersendiri di bawah `[KEPUTUSAN-179]`.
 
 **Definition of Ready story Fase 1 (Checkpoint 2, 2026-11-18).** Klarifikasi AC Fase 1 disetujui `[USER] C2-B4, C2-B14, C2-B15` dan teksnya sudah diterapkan di PRD v1.2 final. Karena itu butir DoR "AC jelas dan bisa diuji" untuk US-101, US-103–US-106, US-201, US-208, US-1501, dan US-1504 berstatus **terpenuhi**. Butir DoR lain (task, dependensi, gerbang eksternal) tetap mengikuti `docs/07-phase-plan.md`. Bagian AC yang masih memuat `[TIDAK DIKETAHUI]` (mekanisme Keycloak, PB-22, daftar kata sandi bocor) diverifikasi di task terkait dan tidak menghalangi dimulainya task. Test case story terdampak diperbarui QA sebelum task dimulai (`docs/checkpoint-2.md` tindak lanjut 4).
 
@@ -42,9 +42,9 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 | --- | --- | --- | --- | --- | --- |
 | US-101 | Registrasi dengan email dan password | BR-001, BR-103 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; AC5 pendaftaran TOTP dan kode pemulihan pasien dari CR-018) | Backlog |
 | US-102 | Dihapus oleh CR-007 (sebelumnya: masuk dengan akun Google atau Apple) | BR-001 | Won't | — | Dihapus |
-| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; AC3 diputuskan lewat UP-73; AC6 dari CR-017; AC1, AC1b, AC4e, AC7, AC8 dari CR-018; jalur Layanan Pelanggan di AC8 diverifikasi di Fase 2 bersama US-207 AC5) | Backlog |
+| US-103 | Masuk, keluar, dan atur ulang password | BR-001 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; AC3 diputuskan lewat UP-73; AC6 dari CR-017; AC1, AC1b, AC4e, AC7, AC8 dari CR-018; jalur Layanan Pelanggan di AC8 diverifikasi di Fase 2 bersama US-207 AC5). **v0.3 (CR-021, S3):** AC6 (ubah password) dan AC7 (daftar ulang TOTP) realm `pasien`/`admin` diverifikasi di Fase 2 (F1-T75–F1-T79 pindah) `[USER] C21-P4` | Backlog |
 | US-104 | Persetujuan pemrosesan data | BR-103, BR-104, BR-107 | Must | 1 (AC4 di Fase 2 bersama US-1001; DoR AC terpenuhi, PRD v1.2 final) | Backlog |
-| US-105 | Profil data diri | BR-002 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; nilai PB-22 menunggu L-08) | Backlog |
+| US-105 | Profil data diri | BR-002 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; nilai PB-22 menunggu L-08). **v0.3:** AC4 (ubah email, F1-T57) di Fase 2 `[USER] C21-P4` | Backlog |
 | US-106 | Unggah NIK dan foto KTP | BR-003 | Must | 1 (reference implementation; DoR AC terpenuhi, PRD v1.2 final) | Backlog |
 | US-107 | Pembatasan layanan berdasarkan status verifikasi | BR-003, BR-004 | Must | 2 | Backlog |
 | US-108 | Tambah anggota keluarga | BR-002, BR-008, BR-104 | Should | 4 (Opsi B: 3) | Backlog |
@@ -62,7 +62,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 | US-205 | Onboarding rekanan | BR-006, BR-031 | Must | 2 (PT-47; status integrasi penuh dari US-1405 di Fase 3) | Backlog |
 | US-206 | Akun admin mitra | BR-006 | Must | 2 | Backlog |
 | US-207 | Menonaktifkan dan mengaktifkan akun | BR-060 | Must | 2 (kaskade ke produk dan home visit di AC2 diverifikasi di Fase 4; AC5 reset MFA pasien oleh Layanan Pelanggan dari CR-018) | Backlog |
-| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; AC8 pemberitahuan sub-peran sensitif di Fase 2 bersama US-1003; bootstrap AC4 production menunggu PT-52) | Backlog |
+| US-208 | Akun dan sub-peran admin Ruang Sehat | BR-060, BR-080 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; AC8 pemberitahuan sub-peran sensitif di Fase 2 bersama US-1003; bootstrap AC4 production menunggu PT-52). **v0.3:** layar kelola admin backoffice (F1-T67) di Fase 2; AC1–AC3 lewat API di Fase 1 `[USER] C21-P4` | Backlog |
 
 ### [EP-03] Konsultasi online
 
@@ -154,7 +154,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1101 | Pengelolaan konten (CMS) | BR-061 | Must | 3 | Backlog |
+| US-1101 | Pengelolaan konten (CMS) | BR-061, BR-131 | Must | **1** (v0.3, dipindah dari Fase 3 untuk situs CR-021; F1-T91–F1-T95) `[USER] C21-P4` | Backlog |
 | US-1102 | Konten di aplikasi pasien | BR-061 | Must | 3 | Backlog |
 | US-1103 | Ajukan keluhan | BR-062 | Must | 3 | Backlog |
 | US-1104 | Kelola keluhan | BR-062, BR-064, BR-065 | Must | 3 | Backlog |
@@ -218,6 +218,39 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
 | US-1701 | Dasbor KPI | BR-090 | Must | 3 | Backlog |
+
+### [EP-18] Situs web Ruang Sehat (CR-021)
+
+Sumber: PRD v1.3 EP-18; fase dari phase plan v0.3 (skenario S3 `[USER] C21-P4`).
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1801 | Halaman company profile publik | BR-130, BR-131 | Must | 1 (F1-T83, F1-T89, F1-T94, F1-T96, F1-T97, F1-T111) | Backlog |
+| US-1802 | Konten situs di CMS | BR-131, BR-061 | Must | 1 (F1-T91–F1-T95, F1-T111) | Backlog |
+
+### [EP-19] Layanan korporat (CR-021, T1)
+
+Sumber: PRD v1.3 EP-19; fase dari phase plan v0.3 (skenario S3 `[USER] C21-P4`). Gerbang K2/K3: G-25, G-26 (`docs/07-phase-plan.md` §9).
+
+| Story | Judul | Induk BR | Prioritas | Fase | Status |
+| --- | --- | --- | --- | --- | --- |
+| US-1901 | Pendaftaran perusahaan mandiri | BR-136 | Must | 1 (F1-T101–F1-T103; bentuk bukti kewenangan G-27) | Backlog |
+| US-1902 | Verifikasi perusahaan oleh Verifikator | BR-136 | Must | 1 (F1-T104, F1-T106) | Backlog |
+| US-1903 | Perusahaan dibuatkan Verifikator | BR-136 | Must | 1 (F1-T105, F1-T106; persetujuan orang kedua G-27) | Backlog |
+| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must | 1 (F1-T85–F1-T88, F1-T90, F1-T100, F1-T107, F1-T108); AC7–AC9 (daftar ulang TOTP dan reset MFA HR) di Fase 2 | Backlog |
+| US-1905 | Katalog paket korporat | BR-133, BR-137, BR-138 | Must | 3 (setelah EN-21) | Backlog |
+| US-1906 | Pesan layanan korporat | BR-135, BR-137, BR-142 | Must | 3 | Backlog |
+| US-1907 | Unggah daftar peserta | BR-139, BR-145 | Must | 3 (G-26 untuk data nyata) | Backlog |
+| US-1908 | Undangan peserta dan penautan akun pasien | BR-140, BR-145 | Must | 3 (layar di repositori mobile; AC4a menunggu PT-78) | Backlog |
+| US-1909 | Invoice B2B | BR-141, BR-142 | Must | 3 (G-25: PT-59, L-21) | Backlog |
+| US-1910 | Pencatatan mutasi bank dan pelunasan | BR-141 | Must | 3 (G-25) | Backlog |
+| US-1911 | Penjadwalan setelah lunas | BR-142, BR-135 | Must | 3 | Backlog |
+| US-1912 | Rekap kehadiran untuk HR | BR-144 | Must | 3 (sumber kehadiran PT-64) | Backlog |
+| US-1913 | Persetujuan berbagi ringkasan oleh peserta | BR-144, BR-145 | Must | 3 (teks L-18) | Backlog |
+| US-1914 | Ringkasan hasil untuk HR dengan persetujuan | BR-144 | Must | 3 (PT-65) | Backlog |
+| US-1915 | Hasil lengkap untuk peserta | BR-143 | Must | 3 (setelah US-901) | Backlog |
+| US-1916 | Pengelolaan perusahaan di backoffice | BR-136, BR-060 | Must | 1 (bagian K1, F1-T106); pesanan dan invoice di Fase 3 | Backlog |
+| US-1917 | Penerusan pesanan korporat ke rekanan pelaksana | BR-134, BR-070 | Must | 3 (setelah EN-21; PT-74) | Backlog |
 
 ## Enabler (Tahap 4–5)
 
@@ -513,6 +546,8 @@ Dampak ke scope / waktu / arsitektur (awal, belum dianalisis rinci):
 Fakta bisnis `[TIDAK DIKETAHUI]`: penempatan rilis; isi company profile dan pengelola kontennya; siapa klien korporat dan peserta; alur pemesanan, penjadwalan, dan penagihan layanan massal; daftar "semacamnya"; integrasi dengan rekanan lab/klinik; regulasi vaksinasi massal.
 Keputusan `[USER]` 2026-11-19 (Telegram): "1A, 2K" lalu "Web dan fitur ini pun masuk fase 1 dan harus"; setelah klarifikasi memilih **Y**: company profile **dan** member area korporat dibangun di Fase 1, dengan konsekuensi Fase 1 mundur atau sebagian task Fase 1 pindah ke Fase 2 (rincian dihitung dan diajukan ke user dulu). Peran login member area: HR/admin perusahaan + karyawan peserta (2K).
 Status: analisis disetujui user 2026-11-19 (skenario S3, K-01–K-12, UP-79–UP-87, PT-67 Verifikator, PT-79 wajib bukti kewenangan, PT-72 tolak NIB ganda; `docs/cr/CR-021-wawancara.md` putaran 4). ADR-027/028 Diterima; ADR-029 Diusulkan (menunggu PT-59/L-21). Pembaruan BRD/PRD/phase plan/data dictionary menyusul (task dokumen orkestrator)
+Diterapkan 2026-11-19 (F1-T81/F1-T82): BRD v1.4 (BR-130–BR-145, L-16–L-21), PRD v1.3 (EP-18, EP-19, AB-80–AB-87, PB-23–PB-25, E-18, UP-79–UP-87), data dictionary v1.1 (A20 rancangan dengan catatan DBA R2-01), ADR-006/011/018/024 direvisi (status tetap Diterima), threat model v1.3 (lingkup CR-021 LULUS), phase plan v0.3, traceability. Analisis: `docs/cr/CR-021-analisis.md` v0.3.
+Status: **disetujui dan dijadwalkan** `[USER] C21-P4`. Fase 1: F1-T83–F1-T111 (situs, CMS, pendaftaran dan verifikasi perusahaan, akun HR); Fase 2: tujuh task pindahan Fase 1 dan reset MFA HR; Fase 3: pemesanan, peserta, invoice, ringkasan, hasil (gerbang G-25, G-26). Pertanyaan yang masih terbuka: PRD §12.6
 
 ## Tech Debt
 

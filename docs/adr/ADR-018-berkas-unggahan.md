@@ -1,6 +1,7 @@
 # ADR-018: Berkas di object storage privat, unggah dan unduh lewat URL bertanda tangan setelah otorisasi
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
+Perubahan: butir 1 direvisi CR-021 (2026-11-19, `[USER] C21-P4`): izin baca publik bucket CMS dicabut, bucket impor peserta ditambah; jenis berkas CSV/XLSX untuk impor peserta diatur ADR-028 butir 6 dan NFR-SEC-08 (PRD v1.3). Status tetap Diterima. Riwayat di akhir dokumen.
 Tanggal: 2026-11-18
 
 ## Konteks
@@ -12,7 +13,7 @@ Tanggal: 2026-11-18
 
 ## Keputusan
 
-1. **Object storage privat di region Indonesia**, dengan bucket terpisah per sensitivitas: dokumen identitas, berkas klinis (lampiran chat, hasil lab, resep), bukti klaim, dokumen izin, export dan salinan data, konten publik CMS, serta foto produk dan layanan dari katalog rekanan. Hanya bucket konten CMS dan katalog yang boleh dibaca publik, dan isinya tidak boleh memuat data pribadi `[KEPUTUSAN-34]`.
+1. **Object storage privat di region Indonesia**, dengan bucket terpisah per sensitivitas: dokumen identitas, berkas klinis (lampiran chat, hasil lab, resep), bukti klaim, dokumen izin, export dan salinan data, konten publik CMS, serta foto produk dan layanan dari katalog rekanan. Hanya bucket konten CMS dan katalog yang boleh dibaca publik, dan isinya tidak boleh memuat data pribadi `[KEPUTUSAN-34]`. **Revisi CR-021 (2026-11-19):** izin baca publik untuk bucket konten CMS **dicabut**; gambar konten tayang disajikan lewat endpoint publik backend yang memeriksa status konten, sehingga gambar draf atau konten yang diturunkan tidak pernah dapat dibaca publik (ADR-027 butir 5, `[KEPUTUSAN-252]`). Ditambah bucket impor berkas peserta (CSV/XLSX) tanpa versi objek dengan aturan kedaluwarsa siklus hidup, dikecualikan dari backup object storage atau berumur sama (ADR-028 butir 6, `[KEPUTUSAN-269]`) `[USER] C21-P4` (K-07, K-09).
 2. **Unggah** `[KEPUTUSAN-34]`:
    - Klien meminta slot unggah. Backend memeriksa hak, lalu membuat nama objek UUID (bukan nama asli) dan URL unggah bertanda tangan berumur pendek yang dibatasi jenis dan ukuran, sejauh kemampuan penyedia (diverifikasi Tahap 5).
    - Setelah unggah, backend memvalidasi ukuran, jenis dari isi berkas (bukan dari header), dan untuk foto mendekode lalu mengode ulang gambar sehingga metadata (misalnya lokasi) terbuang.
@@ -36,3 +37,10 @@ Tanggal: 2026-11-18
 
 - Alur unggah memerlukan tiga langkah (minta slot, unggah, konfirmasi) di aplikasi dan di kontrak integrasi rekanan untuk PDF hasil lab (ADR-014).
 - Kemampuan pembatasan URL bertanda tangan, versi objek, dan WORM penyedia (ADR-009) menjadi syarat pemilihan object storage di Tahap 5.
+
+## Riwayat revisi
+
+| Tanggal | Revisi | Sumber |
+| --- | --- | --- |
+| 2026-11-18 | Diterima di gate Tahap 4 | `[USER] T4-G5` |
+| 2026-11-19 | Butir 1: izin baca publik bucket CMS dicabut (gambar lewat endpoint publik backend); bucket impor peserta tanpa versi objek. Threat model H-11 dan checklist ASVS yang menyebut bucket CMS publik disesuaikan saat task terkait. Status tetap Diterima | `[USER] C21-P4` (K-07, K-09); ADR-027 butir 5; ADR-028 butir 6; `docs/review/CR-021-security.md` N-01 |

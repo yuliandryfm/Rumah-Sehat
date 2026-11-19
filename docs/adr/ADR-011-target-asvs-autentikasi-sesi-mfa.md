@@ -1,7 +1,7 @@
 # ADR-011: Target ASVS Level 2, dengan Keycloak sebagai identity provider dan pencabutan sesi seketika di aplikasi
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`; revisi 2026-11-18 sesuai `[USER] T4-Q4`: autentikasi memakai Keycloak, menggantikan rancangan autentikasi buatan sendiri; revisi Checkpoint 2, 2026-11-18, disetujui user `[USER] C2-Q9, C2-Q10, C2-Q11`: MFA wajib untuk pasien, pemulihan perangkat hilang, manajemen sesi oleh pengguna; rincian di bagian "Riwayat revisi")
-Perubahan: butir 7 (BFF) ditafsirkan oleh ADR-024 — BFF dijalankan di server Next.js ([USER] T5-Q1), diterima di gate Tahap 5 (2026-11-18).
+Perubahan: butir 3 dan butir 5 direvisi CR-021 (2026-11-19, `[USER] C21-P4`; realm `korporat` dan jalur pemulihan MFA HR, ADR-027). Butir 7 (BFF) ditafsirkan oleh ADR-024 — BFF dijalankan di server Next.js ([USER] T5-Q1), diterima di gate Tahap 5 (2026-11-18).
 Tanggal: 2026-11-18
 
 Label `[USER] C2-Qx` merujuk ke jawaban user di `docs/checkpoint-2.md` bagian "Jawaban user" (butir 1–3). `[USER] C2-Bn` merujuk ke butir n yang didelegasikan user ke usulan penyusun di dokumen yang sama (butir 4–15).
@@ -53,6 +53,7 @@ Label `[USER] C2-Qx` merujuk ke jawaban user di `docs/checkpoint-2.md` bagian "J
 | `admin` | Admin Ruang Sehat dan admin rekanan | Hanya undangan, MFA TOTP wajib |
 | `rme` | Pengguna RME minimalis, termasuk Operator RME | Hanya undangan, MFA TOTP wajib. Backend RME hanya menerima token realm ini |
 | `integrasi` | Klien sistem rekanan dan fasyankes RME | Client credentials, satu klien per rekanan/fasyankes (ADR-014) |
+| `korporat` (CR-021) | HR/admin perusahaan klien | Pendaftaran mandiri lewat backend dengan kompensasi dan undangan aktivasi, verifikasi email, MFA TOTP wajib dengan kode pemulihan, sesi web 30 menit/12 jam (ADR-027 butir 3) `[USER] C21-P4` |
 
 **4. Kebijakan kredensial** `[KEPUTUSAN-24]`:
 - Hash password memakai Argon2, bawaan Keycloak untuk deployment non-FIPS `[SRC-70]`. Parameternya minimal setara OWASP Password Storage Cheat Sheet (19 MiB, 2 iterasi, paralelisme 1) `[SRC-49]`; kemampuan mengatur parameter diverifikasi di Tahap 5. Kebijakan panjang dan isi password mengikuti ASVS Level 2.
@@ -82,6 +83,7 @@ Label `[USER] C2-Qx` merujuk ke jawaban user di `docs/checkpoint-2.md` bagian "J
     4. Layanan Pelanggan tidak pernah melihat, memilih, atau menetapkan kredensial pasien.
     5. Setelah reset, semua sesi diakhiri, email pemberitahuan dikirim ke email akun, dan TOTP baru wajib didaftarkan saat masuk berikutnya.
   - Jalur tenaga kesehatan, admin, dan pengguna RME mengikuti prosedur H-05 yang sudah ada (sub-peran berwenang, verifikasi lewat kanal berbeda, pemberitahuan, pencabutan sesi).
+  - **Jalur HR perusahaan (realm `korporat`, revisi CR-021)** `[KEPUTUSAN-265]`: kode pemulihan didahulukan. Bila hilang, reset hanya dapat dimulai **Verifikator** `[USER] C21-P4` setelah konfirmasi lewat kanal berbeda (HR aktif lain di perusahaan yang sama, atau kontak resmi perusahaan yang terdaftar saat verifikasi). Reset berlaku setelah HR membuka tautan sekali pakai di email akun dan memasukkan password (pola jalur pasien di atas); TOTP lama berlaku sampai TOTP baru dan kode pemulihan baru tersimpan; semua sesi dicabut; semua HR aktif perusahaan diberi tahu; E-04 tercatat. Super Admin tidak punya jalur reset HR. Dibangun di Fase 2 bersama US-207 AC5 (PRD US-1904 AC7–AC9).
   - Pasien yang kehilangan perangkat, kode pemulihan, dan akses ke email atau password sekaligus tidak tercakup jalur di atas. Bukti identitas pengganti untuk kasus itu `[TIDAK DIKETAHUI]` (pertanyaan terbuka, risk register RT-37), ditetapkan sebelum prosedur H-05 final sebelum go-live.
 - SMS dan OTP email tidak dipakai sebagai faktor kedua. WebAuthn tidak dipakai di rilis 1, karena user memilih TOTP dan kode pemulihan `[USER] C2-Q9`. Penambahannya dapat diajukan lewat change request.
 
@@ -167,3 +169,4 @@ Label `[USER] C2-Qx` merujuk ke jawaban user di `docs/checkpoint-2.md` bagian "J
 | 2026-11-18 | Autentikasi memakai Keycloak, menggantikan rancangan buatan sendiri | `[USER] T4-Q4` |
 | 2026-11-18 | Butir 7 (BFF) ditafsirkan ADR-024: BFF di server Next.js | `[USER] T5-Q1`, gate Tahap 5 |
 | 2026-11-18 | **Revisi Checkpoint 2**, status tetap Diterima:<br>- Konteks: kewajiban MFA Level 2, 6.4.4, 7.5.2, 7.1.2;<br>- butir 3: realm `pasien` MFA wajib;<br>- butir 4: pesan seragam login gagal dan pendaftaran, ditegaskan lewat UP-73 opsi B; email pemberitahuan penguncian tidak dibangun;<br>- butir 5: MFA wajib pasien (TOTP dan kode pemulihan); atur ulang password tidak melewati MFA di semua realm, termasuk `pasien`; pemulihan perangkat hilang, prosedur H-05 diperluas ke pasien lewat Layanan Pelanggan; WebAuthn tidak dipakai di rilis 1;<br>- butir 9: aksi yang memerlukan autentikasi ulang ditambah;<br>- butir 12 baru: layar sesi aktif di Fase 2 untuk semua aplikasi; sesi paralel tidak dibatasi untuk semua realm, terdokumentasi;<br>- alternatif ditolak dan konsekuensi ditambah | `[USER] C2-Q9, C2-Q10, C2-Q11`, `[USER] C2-B4` (`docs/checkpoint-2.md`); `[KEPUTUSAN-198]`, `[KEPUTUSAN-199]`, `[KEPUTUSAN-202]`–`[KEPUTUSAN-205]` |
+| 2026-11-19 | **Revisi CR-021**, status tetap Diterima: butir 3 realm keenam `korporat`; butir 5 jalur pemulihan MFA HR (pemula reset Verifikator, konfirmasi kanal kedua, tanpa jalur Super Admin). Batas sesi web butir 7 berlaku untuk `korporat`. Karyawan peserta tetap di realm `pasien` lewat aplikasi mobile (K-01 opsi a) | `[USER] C21-P4` (K-08, PT-67); ADR-027; `[KEPUTUSAN-250]`, `[KEPUTUSAN-253]`, `[KEPUTUSAN-265]`; `docs/review/CR-021-security.md` B-02 |
