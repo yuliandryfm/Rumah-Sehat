@@ -96,6 +96,119 @@ periksa_toolchain() {
   echo "rustc $aktif sesuai rust-toolchain.toml"
 }
 
+openapi_sinkron() { # F1-T11: spesifikasi di-commit harus identik dengan hasil generate (ADR-022 butir 3)
+  local tmp f n status=0
+  tmp="$(mktemp -d)" || return 1
+  if ! cargo run --quiet --locked -p rs-backend --bin gen-openapi -- "$tmp"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  n=0
+  for f in "$tmp"/*; do
+    [ -e "$f" ] || continue
+    n=$((n + 1))
+    if ! cmp -s "$f" "openapi/$(basename "$f")"; then
+      echo "openapi/$(basename "$f") berbeda dari hasil generate (atau belum ada); perbarui: cargo run -p rs-backend --bin gen-openapi -- openapi" >&2
+      status=1
+    fi
+  done
+  if [ "$n" -eq 0 ]; then
+    echo "pembangkit tidak menghasilkan berkas" >&2
+    status=1
+  fi
+  for f in openapi/*.json openapi/*.yaml openapi/*.yml; do
+    [ -e "$f" ] || continue
+    if [ ! -e "$tmp/$(basename "$f")" ]; then
+      echo "$f tidak punya pembangkit (hapus berkas atau tambahkan pembangkitnya)" >&2
+      status=1
+    fi
+  done
+  rm -rf "$tmp"
+  [ "$status" -eq 0 ] && echo "openapi/ identik dengan hasil generate ($n berkas)"
+  return "$status"
+}
+
+# Schemathesis 4.33.4 (MIT) lewat image resmi Docker, dipin dengan digest (docs/sources.md SRC-382, SRC-383).
+# Perkakas Python tidak dipasang di mesin; Docker wajib ada di mesin developer dan runner CI.
+SCHEMATHESIS_IMAGE="schemathesis/schemathesis:4.33.4@sha256:708d934c8208a8f785bdf1b1610476e691f1efda0b7a3cb9ce7536d0f3280eec"
+ST_PID=""
+ST_TMP=""
+
+schemathesis_bersih() { # dipasang sebagai trap: backend efemeral selalu dimatikan apa pun hasilnya
+  if [ -n "$ST_PID" ]; then
+    kill "$ST_PID" 2>/dev/null || true
+    wait "$ST_PID" 2>/dev/null || true
+    ST_PID=""
+  fi
+  if [ -n "$ST_TMP" ]; then
+    rm -rf "$ST_TMP"
+    ST_TMP=""
+  fi
+}
+
+schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) diuji terhadap tiap spesifikasi
+  local bin bind i f n=0 status=0
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker tidak ditemukan; Schemathesis dijalankan lewat image Docker" >&2
+    return 1
+  fi
+  if ! docker image inspect "$SCHEMATHESIS_IMAGE" >/dev/null 2>&1; then
+    if ! docker pull "$SCHEMATHESIS_IMAGE" >/dev/null; then
+      echo "image $SCHEMATHESIS_IMAGE tidak tersedia" >&2
+      return 1
+    fi
+  fi
+  cargo build --quiet --locked -p rs-backend --bin rs-backend || return 1
+  bin="${CARGO_TARGET_DIR:-target}/debug/rs-backend"
+  if [ ! -x "$bin" ]; then
+    echo "biner $bin tidak ditemukan" >&2
+    return 1
+  fi
+  ST_TMP="$(mktemp -d)" || return 1
+  trap schemathesis_bersih EXIT INT TERM
+  # Data sintetis: backend belum memakai database; tidak ada data pribadi (ADR-019).
+  HTTP_BIND=127.0.0.1:0 LOG_LEVEL=info "$bin" api >"$ST_TMP/backend.log" 2>&1 &
+  ST_PID=$!
+  bind=""
+  i=0
+  while [ "$i" -lt 200 ]; do
+    bind="$(sed -n 's/.*"message":"api_listening".*"bind":"\([^"]*\)".*/\1/p' "$ST_TMP/backend.log" | sed -n '1p')"
+    [ -n "$bind" ] && break
+    if ! kill -0 "$ST_PID" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if [ -z "$bind" ]; then
+    echo "backend efemeral tidak siap; log:" >&2
+    cat "$ST_TMP/backend.log" >&2
+    schemathesis_bersih
+    trap - EXIT INT TERM
+    return 1
+  fi
+  echo "backend efemeral di http://$bind"
+  for f in openapi/*.json openapi/*.yaml openapi/*.yml; do
+    [ -e "$f" ] || continue
+    n=$((n + 1))
+    echo "-- schemathesis: $f"
+    # Pemeriksaan: tanpa unsupported_method dan allow_header_conformance karena registry
+    # docs/05-response-codes.md tidak memuat 405 (metode tak didukung dijawab 404, KU-03).
+    if ! docker run --rm --network host --workdir /tmp -v "$ROOT/openapi:/openapi:ro" "$SCHEMATHESIS_IMAGE" \
+      run "/openapi/$(basename "$f")" --url "http://$bind" --no-color --seed 1 --max-examples 50 \
+      --checks not_a_server_error,status_code_conformance,content_type_conformance,response_headers_conformance,response_schema_conformance,positive_data_acceptance,negative_data_rejection; then
+      status=1
+    fi
+  done
+  if [ "$n" -eq 0 ]; then
+    echo "tidak ada spesifikasi di openapi/ untuk diuji" >&2
+    status=1
+  fi
+  schemathesis_bersih
+  trap - EXIT INT TERM
+  return "$status"
+}
+
 pakai_sqlx() { # benar bila workspace sudah memakai sqlx
   [ -d .sqlx ] && return 0
   [ -f Cargo.lock ] && grep -q '^name = "sqlx"$' Cargo.lock
@@ -139,9 +252,21 @@ belum "cargo-audit" "F1-T06"
 belum "migrasi-db" "F1-T15" "db/migrations/*/*.sql" "db/roles/*.sql"
 
 # --- Langkah 3: Kontrak API (§6 butir 3) ---
-belum "openapi-sinkron" "F1-T11" "openapi/*.yaml" "openapi/*.yml" "openapi/*.json" "openapi/asyncapi/*.yaml" "openapi/asyncapi/*.yml" "openapi/asyncapi/*.json"
-belum "registry-response-code" "F1-T09" "openapi/*.yaml" "openapi/*.yml" "openapi/*.json"
-belum "schemathesis" "belum ditetapkan di phase plan §7.3" "openapi/*.yaml" "openapi/*.yml" "openapi/*.json"
+if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+  jalankan "openapi-sinkron" openapi_sinkron
+  # Setiap response_code di spesifikasi terdaftar di docs/05-response-codes.md (envelope::registry::parse),
+  # deskripsinya sama, dan tiga digit pertamanya sama dengan HTTP respons. --test gagal bila targetnya hilang.
+  jalankan "registry-response-code" cargo test --locked -p rs-backend --test openapi_response_codes
+else
+  gagal "openapi-sinkron" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
+  gagal "registry-response-code" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
+fi
+belum "asyncapi-sinkron" "task AsyncAPI belum ditetapkan" "openapi/asyncapi/*.yaml" "openapi/asyncapi/*.yml" "openapi/asyncapi/*.json"
+if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+  jalankan "schemathesis" schemathesis_run
+else
+  gagal "schemathesis" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
+fi
 
 # --- Langkah 4: Test arsitektur (§6 butir 4) ---
 belum "test-arsitektur" "F1-T12" "apps/*/module-tables.toml"
