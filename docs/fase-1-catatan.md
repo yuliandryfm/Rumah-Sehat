@@ -30,6 +30,7 @@ Catatan orkestrator selama Fase 1 (bahan `docs/fase-1-laporan.md` di F1-T71). St
 | Review F1-T09 | Test 404 seragam tautologis; anti-enumerasi harus ditegakkan di test modul pemakai | Task modul pemakai (US-201 dst.) |
 | Review F1-T09 | `Success::with_code` diam-diam mengganti kode non-2xx; pertimbangkan `debug_assert` atau tipe kode sukses | F1-T11 |
 | Review F1-T09 | Langkah skrip verifikasi "registry-response-code" memeriksa spesifikasi OpenAPI memakai `envelope::registry::parse` | F1-T11 |
+| Merge F1-T12 (2026-11-19) | Percobaan pertama commit merge MERAH di langkah `cargo-test` (pre-merge-commit), percobaan kedua tanpa perubahan kode HIJAU; `cargo test --workspace --locked` manual juga hijau. Ada test flaky yang belum teridentifikasi (kemungkinan test HTTP/port atau beban paralel subagent). Test flaky dapat menutupi kegagalan nyata | Diselidiki di task berikutnya (jalankan `cargo test` berulang, catat test yang gagal); bila ketemu, perbaiki atau masukkan Tech Debt |
 | Code reviewer | Hook guard-git memblokir subagent menjalankan skrip verifikasi (deteksi keliru "mengubah"); subagent memakai perintah cargo setara | Dilaporkan ke user; tidak diubah (hook dijaga) |
 
 ## Arahan user selama Fase 1

@@ -516,4 +516,9 @@ Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); ana
 
 ## Tech Debt
 
+| ID | Isi | Asal | Target |
+| --- | --- | --- | --- |
+| TD-01 | Pemeriksa teks migrasi (T-23) tidak dapat menutup SQL dinamis: 7 bentuk lolos (dollar-quote, `chr()`, `concat()`, `format('%s')`, `E'\x..'`, `convert_from(decode())`). Usulan: (a) tolak `EXECUTE` di berkas migrasi kecuali templat §6.2 yang cocok persis (allowlist); (b) event trigger runtime yang menolak DISABLE/DROP trigger penjaga (KEPUTUSAN-158) sebagai kontrol utama; review DBA wajib atas setiap berkas migrasi tetap berlaku | Review keamanan F1-T14/T15 putaran 2 (2026-11-19), Medium non-blokir | Sebelum migrasi pertama yang memakai `EXECUTE` (paling lambat F1-T16–F1-T19) |
+| TD-02 | Test flaky: commit merge F1-T12 sempat MERAH di `cargo-test`, ulang tanpa perubahan HIJAU; test penyebab belum teridentifikasi | Merge F1-T12 (2026-11-19) | Task berikutnya yang menyentuh test HTTP/Rust |
+
 _Belum ada._
