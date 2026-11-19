@@ -1,9 +1,0 @@
-allow-unwrap-in-tests = true
-allow-expect-in-tests = true
-allow-panic-in-tests = true
-allow-indexing-slicing-in-tests = true
-# Jam sistem hanya boleh dipanggil di SystemClock (KEPUTUSAN-131).
-disallowed-methods = [
-  { path = "time::OffsetDateTime::now_utc", reason = "pakai trait Clock; hanya SystemClock yang boleh (KEPUTUSAN-131)" },
-  { path = "std::time::SystemTime::now", reason = "pakai trait Clock (KEPUTUSAN-131)" },
-]

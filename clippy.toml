@@ -1,9 +1,18 @@
+# Konfigurasi clippy untuk seluruh workspace (F1-T12; menggantikan clippy.toml per crate).
+# Kunci diverifikasi: docs/sources.md SRC-387. Pengecualian yang sah dicatat di architecture-exceptions.toml.
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
+allow-dbg-in-tests = true
 disallowed-methods = [
+  # Jam sistem hanya di SystemClock (KEPUTUSAN-131); waktu selalu UTC (ADR-017).
   { path = "time::OffsetDateTime::now_utc", reason = "pakai trait Clock; hanya SystemClock yang boleh (KEPUTUSAN-131)" },
+  # now_local hanya ada bila fitur `local-offset` crate time aktif (tidak aktif); allow-invalid agar entri
+  # tidak memicu peringatan sekarang, tetapi langsung berlaku bila fitur itu pernah dinyalakan. Test arsitektur
+  # juga menolak fitur `local-offset` di Cargo.toml.
+  { path = "time::OffsetDateTime::now_local", reason = "waktu hanya UTC lewat trait Clock (ADR-017, KEPUTUSAN-131)", allow-invalid = true },
+  { path = "time::UtcDateTime::now", reason = "pakai trait Clock; hanya SystemClock yang boleh (KEPUTUSAN-131)" },
   { path = "std::time::SystemTime::now", reason = "pakai trait Clock (KEPUTUSAN-131)" },
   # Variabel lingkungan hanya dibaca di EnvSource::from_process (KEPUTUSAN-132).
   { path = "std::env::var", reason = "konfigurasi lewat EnvSource/struct bertipe (KEPUTUSAN-132)" },
