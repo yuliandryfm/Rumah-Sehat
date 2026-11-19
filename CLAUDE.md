@@ -47,6 +47,8 @@ Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di 
 - File migrasi skema dan hak role database (ADR-008)
 - Konfigurasi akses administratif production dan pipeline CI/CD (ADR-021)
 - Ditambah di Tahap 5 (CR-012, ADR-024/ADR-025): server Next.js sebagai BFF (sesi dan token web), konfigurasi dan policy OpenBao (pengganti KMS dan secret manager), bastion dan skrip deploy production, konfigurasi backup/replikasi PostgreSQL (pgBackRest)
+- Ditambah di Tahap 8 (CR-021, ADR-027/ADR-028/ADR-029): realm Keycloak `korporat` dan BFF `web/korporat`, isolasi data per perusahaan (tenant), persetujuan berbagi ringkasan hasil peserta dan invarian kanal turunan (AB-87), impor data peserta CSV/XLSX, undangan peserta, invoice B2B dan pencatatan mutasi bank, sanitasi konten CMS untuk `web/situs`
+- Repositori mobile terpisah (CR-019): repo ini tidak memuat `mobile/`; kontrak antar-repo adalah OpenAPI di `openapi/`
 
 ## Stack (Tahap 5, `docs/05-stack.md`, ADR-024, ADR-025)
 
