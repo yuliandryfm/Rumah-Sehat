@@ -255,8 +255,8 @@ LANGUAGE sql AS $f$
 $f$;
 
 -- Rutin proyek (CR-020, §2.1 butir 5, §4.2, §5.2): SECURITY DEFINER hanya yang diizinkan dokumen
--- (audit.fn_chain_head §6.3, dengan search_path pg_catalog, audit); setiap rutin lain memasang
--- search_path tetap, kecuali util.fn_current_fasyankes_id (§5.2, sengaja tanpa SET agar dapat
+-- (audit.fn_chain_head §6.3, dengan proconfig persis search_path=pg_catalog, audit); setiap rutin
+-- lain memasang proconfig persis search_path=pg_catalog, pg_temp (review DBA F1-T14/T15), kecuali util.fn_current_fasyankes_id (§5.2, sengaja tanpa SET agar dapat
 -- di-inline; rujukannya berkualifikasi pg_catalog).
 CREATE FUNCTION pg_temp.uji_rutin(p_skema text[]) RETURNS SETOF text
 LANGUAGE sql AS $f$
@@ -265,12 +265,12 @@ LANGUAGE sql AS $f$
          LATERAL (SELECT CASE
            WHEN p.prosecdef AND NOT (n.nspname = 'audit' AND p.proname = 'fn_chain_head')
              THEN 'SECURITY DEFINER tidak diizinkan dokumen'
-           WHEN p.prosecdef AND NOT ('search_path=pg_catalog, audit' = ANY (coalesce(p.proconfig, '{}')))
-             THEN 'SECURITY DEFINER tanpa search_path pg_catalog, audit'
+           WHEN p.prosecdef AND p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, audit']
+             THEN 'SECURITY DEFINER tanpa SET search_path persis pg_catalog, audit (§6.3)'
            WHEN (n.nspname, p.proname) = ('util', 'fn_current_fasyankes_id')
              THEN CASE WHEN p.proconfig IS NOT NULL THEN 'fn_current_fasyankes_id tidak boleh memasang SET (§5.2)' END
-           WHEN NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c ~ '^search_path=pg_catalog(,|$)')
-             THEN 'tanpa SET search_path = pg_catalog, ... (CR-020)'
+           WHEN p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, pg_temp']
+             THEN 'SET search_path bukan persis pg_catalog, pg_temp (CR-020, SRC-397)'
          END AS alasan) z
    WHERE n.nspname = ANY (p_skema) AND alasan IS NOT NULL
 $f$;
