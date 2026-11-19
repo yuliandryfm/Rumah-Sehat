@@ -485,6 +485,19 @@ Dampak ke scope / waktu / arsitektur:
 Keputusan: disetujui user 2026-11-19 `[USER]`
 Status: disetujui; pembaruan dokumen dan skrip verifikasi dijadwalkan sebagai task orkestrator di Fase 1
 
+### CR-020: Pengerasan bootstrap role database (temuan review F1-T13)
+
+Diajukan: 2026-11-19 (Tahap 8 Fase 1, F1-T13; review DBA LULUS DENGAN CATATAN dan review keamanan putaran 1 BLOKIR High)
+Deskripsi (perubahan teknis atas `docs/05-physical-schema.md` yang sudah lulus gate):
+- §3.5: bootstrap wajib berjalan dengan `search_path = pg_catalog, pg_temp` di awal dan setelah setiap `\connect`, dan fungsi di blok DO dikualifikasi `pg_catalog.`, karena search_path tingkat database juga berlaku untuk sesi superuser (pola CVE-2018-1058; repro: pemilik skema menanam `app.format(text,text)` → role login menjadi SUPERUSER saat bootstrap dijalankan ulang).
+- §2.1 butir 4 / §3.5 butir 2: `REVOKE CONNECT, TEMPORARY ON DATABASE template1 FROM PUBLIC`; penjaga encoding UTF8.
+- §3.4: `openbao_*_admin` diberi `log_min_duration_statement = -1`, `log_min_duration_sample = -1` (CREATE ROLE ... PASSWORD tidak tercatat di log durasi), dan `createrole_self_grant = ''`.
+- §3.4: self-grant ADMIN → SET → SET ROLE oleh `openbao_*_admin` dicatat sebagai risiko residu (sejalan dengan "setara pemilik skema"); kontrol detektif: log audit OpenBao dan pemeriksaan katalog berkala T-05.
+Alasan: keamanan (temuan High) dan pengerasan DBA; tidak mengubah scope bisnis.
+Dampak: dokumen skema fisik diperbarui; kode sudah menerapkan di F1-T13 (commit f0a40bd) dengan test negatif umpan.
+Keputusan: keputusan teknis orkestrator (tanpa dampak bisnis), dilaporkan di Checkpoint 3
+Status: diterapkan di kode; pembaruan teks `docs/05-physical-schema.md` menyusul (task dokumen orkestrator)
+
 ## Tech Debt
 
 _Belum ada._
