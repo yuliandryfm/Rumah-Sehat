@@ -1,0 +1,28 @@
+[package]
+name = "observability"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Versi: docs/05-stack.md §1.1 (tracing 0.1.44 [SRC-174]; tracing-subscriber 0.3.23 [SRC-175];
+# axum 0.8.9 [SRC-163]; tokio 1.54.1 [SRC-162]; time 0.3.55 [SRC-177]). Verifikasi indeks: docs/sources.md SRC-344 dst.
+# tracing-subscriber tanpa fitur `json`: format JSON ditulis sendiri agar redaksi per field berlaku (lihat src/log.rs).
+[dependencies]
+foundation = { path = "../foundation" }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "=0.3.23", default-features = false, features = ["registry", "std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std", "formatting"] }
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path"] }
+
+[dev-dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
+
+# Larangan unwrap/expect/panic/indeks di kode non-test (coding-standards §3.4, KEPUTUSAN-121).
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+disallowed_methods = "deny"
