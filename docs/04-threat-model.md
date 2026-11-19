@@ -1,10 +1,10 @@
 # Threat Model: Ruang Sehat
 
-Tanggal: 2026-11-18
-Versi: 1.1 (2026-11-18, tindak lanjut Checkpoint 2: MFA wajib pasien, pemulihan faktor, layar sesi aktif, UP-73 opsi B, UP-76; menunggu gate berikutnya). Sebelumnya 1.0, LULUS dan disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (sebelumnya 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4))
+Tanggal: 2026-11-19
+Versi: 1.2 (2026-11-19, review keamanan F1-T02: jalur email Keycloak ADR-026 Diusulkan; menunggu gate berikutnya). Sebelumnya 1.1 (2026-11-18, tindak lanjut Checkpoint 2: MFA wajib pasien, pemulihan faktor, layar sesi aktif, UP-73 opsi B, UP-76; menunggu gate berikutnya). Sebelumnya 1.0, LULUS dan disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (sebelumnya 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4))
 Penyusun: Claude (subagent `security-architect`)
 Tingkat ketelitian: **T1 Kritis** (keamanan, autentikasi/otorisasi, data pribadi spesifik, uang, audit trail; `aturan-kerja.md` §1)
-Dasar: PRD v1.1 `[DOK: 03-prd.md]` (termasuk CR-008 US-309 AC6–AC8 dan CR-009 NFR-SEC-10), arsitektur v0.1 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-021 `[DOK: adr/]`, data dictionary v0.1 `[DOK: 04-data-dictionary.md]`, risk register v0.1 `[DOK: 04-risk-register.md]`, backlog `[DOK: backlog.md]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]` (T4-Q1, T4-Q2, T4-Q4, T4-Q5, T4-Q6). Dasar tambahan v1.1: jawaban Checkpoint 2 `[DOK: checkpoint-2.md]` (C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7, C2-B14), ADR-011 revisi Checkpoint 2, PRD v1.2, checklist ASVS v1.1 `[DOK: 05-asvs-checklist.md]`, risk register v1.3 (tabel "Catatan status ancaman threat model"), KEPUTUSAN-198–205 `[DOK: decision-log.md]`, review keamanan `[DOK: review/checkpoint-2-security.md]`
+Dasar: PRD v1.1 `[DOK: 03-prd.md]` (termasuk CR-008 US-309 AC6–AC8 dan CR-009 NFR-SEC-10), arsitektur v0.1 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-021 `[DOK: adr/]`, data dictionary v0.1 `[DOK: 04-data-dictionary.md]`, risk register v0.1 `[DOK: 04-risk-register.md]`, backlog `[DOK: backlog.md]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]` (T4-Q1, T4-Q2, T4-Q4, T4-Q5, T4-Q6). Dasar tambahan v1.1: jawaban Checkpoint 2 `[DOK: checkpoint-2.md]` (C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7, C2-B14), ADR-011 revisi Checkpoint 2, PRD v1.2, checklist ASVS v1.1 `[DOK: 05-asvs-checklist.md]`, risk register v1.3 (tabel "Catatan status ancaman threat model"), KEPUTUSAN-198–205 `[DOK: decision-log.md]`, review keamanan `[DOK: review/checkpoint-2-security.md]`. Dasar tambahan v1.2: `docs/spike/F1-T02-email-keycloak.md`, ADR-026 (Diusulkan), KEPUTUSAN-226–232 `[DOK: decision-log.md]`, review keamanan `[DOK: review/F1-T02-security.md]`
 
 Dokumen ini tidak mengubah arsitektur. Mitigasi yang belum ada di desain ditulis sebagai usulan (§6) untuk diterapkan pelaksana Tahap 4.
 
@@ -19,6 +19,8 @@ Dokumen ini tidak mengubah arsitektur. Mitigasi yang belum ada di desain ditulis
 - Masukan DPIA di §7 disesuaikan.
 
 Dua ancaman baru dari rancangan baru ditambahkan: KC-10 untuk jalur pemulihan MFA pasien lewat Layanan Pelanggan, dan KC-11 untuk layar sesi aktif US-110. Penguatan H-16 juga ditambahkan. Revisi ini **tidak** mencakup pembaruan topologi VPS setelah Tahap 5 (usulan U-09 di `docs/05-asvs-checklist.md`), sehingga istilah komponen Tahap 4 (KMS, secret manager, Redis) dipertahankan. Padanan Tahap 5-nya adalah OpenBao dan Valkey (ADR-024, ADR-025). Riwayat lengkap di §9.
+
+**Perubahan v1.2 (F1-T02).** Komponen baru relay email Keycloak (ADR-026, berstatus Diusulkan) dinilai di §4.18 (EML-01–EML-09), dengan boundary baru TB-14 dan AS-10 yang diperluas. Ancaman berlaku bila ADR-026 diterima. Bila user memilih opsi lain, EML-01, EML-03, EML-05, dan EML-07 dinilai ulang. EML-02, EML-04, EML-06, EML-08, dan EML-09 berlaku untuk opsi mana pun. Tidak ada ancaman Tinggi baru. Status tetap LULUS.
 
 ---
 
@@ -88,7 +90,7 @@ Klasifikasi mengikuti legenda sensitivitas data dictionary §0.5 (`PII`, `Spesif
 | AS-07 | Instruksi pembagian dana dan rekening penerima rekanan | `fund_split_instruction_line`, `partner_bank_account.account_number_enc` | Keu; Enc (rekening) | I | A5.4, A12.7; AB-21 |
 | AS-08 | Pengaturan yang memengaruhi uang dan aturan: markup, biaya rekanan, tarif metode bayar, parameter bisnis, tarif konsultasi | A6, A4.5 | — | I | E-14; §0.8 |
 | AS-09 | Foto bukti klaim, teks tiket keluhan, rincian permintaan hak subjek data, salinan data pribadi | A14.9, A16, A17; bucket `claim_evidence`, `export` | Spesifik, Enc | K | §0.7 |
-| AS-10 | Kredensial dan sesi pengguna: hash password, faktor TOTP dan kode pemulihan (sejak v1.1 juga milik pasien), sesi IdP, token di perangkat, data sesi BFF, tautan konfirmasi reset MFA pasien | Database `keycloak`, penyimpanan aman perangkat, Redis | Rahasia | K, I | §0.10; ADR-011 butir 5, 7 |
+| AS-10 | Kredensial dan sesi pengguna: hash password, faktor TOTP dan kode pemulihan (sejak v1.1 juga milik pasien), sesi IdP, token di perangkat, data sesi BFF, tautan konfirmasi reset MFA pasien, token aksi Keycloak di badan email (verifikasi email, atur ulang password, undangan aktivasi) (v1.2) | Database `keycloak`, penyimpanan aman perangkat, Redis, memori relay email selama satu request, kotak surat penerima | Rahasia | K, I | §0.10; ADR-011 butir 5, 7 |
 | AS-11 | Material kunci: KEK di KMS, DEK terbungkus, DEK di memori proses, kunci blind index NIK dan kode verifikasi resep | KMS, `data_key`, `rme_data_key`, secret manager | Rahasia | K, A | ADR-013 butir 3–4, 8; A19.7; A9.8 |
 | AS-12 | Rahasia integrasi: rahasia klien realm `integrasi`, rahasia HMAC webhook, kredensial RME ke Ruang Sehat, kredensial API payment gateway, video, dan email, kredensial SATUSEHAT per fasyankes beserta token aksesnya, kredensial role database, kredensial Admin REST API Keycloak | Keycloak, `integration_client`, `rs_integration_credential`, `satusehat_credential`, `external_access_token`, secret manager | Rahasia, Enc | K | A18.1, C1.3–C1.5; ADR-013 butir 3, 8; ADR-020 butir 1 |
 | AS-13 | Audit trail: outbox, event, subjek, kunci event, kepala rantai, arsip WORM | `audit_outbox`, `rme_audit_outbox`, B1–B6, object storage WORM | PII (ID, IP) | I, A sebagai bukti, K | ADR-005, ADR-009; §B |
@@ -142,6 +144,7 @@ flowchart LR
       RL[relay audit]
       RMEB[Backend RME]
       KC[Keycloak]
+      ER[relay email]
     end
     subgraph DATA[Zona data]
       DBRS[(DB aplikasi RS dan keycloak)]
@@ -180,6 +183,8 @@ flowchart LR
   API & WK -->|TB-11| PG & EM & KUR
   CI -->|TB-10 deploy dan migrasi| API & WK & RL & RMEB & KC
   ADM -->|TB-13 akses darurat| KMS & DBRS & DBAU & DBRME & KC
+  KC -->|TB-14 SMTP STARTTLS| ER
+  ER -->|TB-11 SES API| EM
 ```
 
 ### 3.2 Daftar boundary
@@ -198,9 +203,10 @@ TB-1 sampai TB-13 tercantum di arsitektur §7.
 | TB-8 | Proses aplikasi ke KMS, secret manager, object storage, Redis, Admin REST API Keycloak | Kunci, rahasia, berkas, cache dan sesi, operasi admin IdP (termasuk daftar dan pengakhiran sesi US-110, v1.1) | KMS dan secret manager (ADR-013, ADR-021 butir 3); URL bertanda tangan (ADR-018); Redis terpisah per sistem dengan autentikasi (ADR-007 butir 6); Admin REST hanya internal, klien per realm (ADR-011 butir 2) | OS-01–OS-06, KMS-01–KMS-05, RD-01–RD-02, KC-04–KC-05, KC-11 |
 | TB-9 | Browser sistem dan aplikasi ke Keycloak | Kredensial, OTP, kode otorisasi, token | PKCE lewat browser sistem, BFF, MFA di semua realm pengguna (v1.1), deteksi brute force, hanya endpoint OIDC yang publik (ADR-011 butir 2, 4–7) | APP-01, APP-04, APP-06, KC-01–KC-03, KC-06–KC-07, KC-10 |
 | TB-10 | Pipeline CI/CD ke lingkungan cloud | Image, migrasi skema, konfigurasi | Identitas pipeline berhak minimum, branch terlindung, kredensial migrasi hanya di langkah migrasi (ADR-021 butir 4); infrastruktur sebagai kode (ADR-019 butir 2) | CI-01–CI-05, KMS-05 |
-| TB-11 | Backend ke penyedia pihak ketiga (API payment gateway, email, kurir, API server media) | Data pembayaran minimal, alamat email, alamat kirim, pembuatan ruang video | Adaptor dan minimisasi (ADR-013 butir 7, ADR-015 butir 2, ADR-016 butir 4–5) | PG-04–PG-07, VID-04, EXT-01–EXT-03 |
+| TB-11 | Backend ke penyedia pihak ketiga (API payment gateway, email, kurir, API server media) | Data pembayaran minimal, alamat email, alamat kirim, pembuatan ruang video, pesan MIME email Keycloak lewat relay (v1.2) | Adaptor dan minimisasi (ADR-013 butir 7, ADR-015 butir 2, ADR-016 butir 4–5) | PG-04–PG-07, VID-04, EXT-01–EXT-03, EML-02, EML-04, EML-06, EML-08 |
 | TB-12 | Perangkat pengguna (penyimpanan aplikasi mobile dan peramban) | Token, antrean pesan offline, berkas yang diunduh | Token di penyimpanan aman platform (ADR-011 butir 7); isi klinis tidak persisten, kunci aplikasi nakes, kendali SDK (ADR-021 butir 1–2); cookie `HttpOnly` untuk web | APP-01, APP-02, APP-05, OS-01 |
 | TB-13 | Akses administratif manusia ke infrastruktur production | Konsol cloud, superuser database, KMS, secret manager, admin Keycloak | MFA, tanpa hak tetap untuk manusia, akses darurat dengan persetujuan orang kedua, log audit cloud ke security log (ADR-021 butir 3, ADR-010 butir 5) | KMS-01, AUD-01, KC-06, DB-05 |
+| TB-14 | Keycloak (dan Alertmanager) ke relay email, di jaringan Docker khusus per host (v1.2; relay per host app-1, app-2, ops, stg-app, KEPUTUSAN-232) | Pesan MIME berisi token aksi, alamat penerima, peringatan operasional | STARTTLS wajib dengan CA internal dan verifikasi hostname, `debug` dilarang (ADR-026 butir 6); jaringan khusus per host tanpa jalur antar-host, satu penerima, daftar izin `From`, batas ukuran dan laju, tanpa log isi (ADR-026 butir 1, 4) | EML-01, EML-03, EML-05, EML-07 |
 
 Catatan lintas sistem: Ruang Sehat dan RME memakai instans Redis terpisah (ADR-007 butir 6, ADR-006 butir 4). Keycloak tetap dipakai bersama dengan realm, admin realm, dan klien Admin REST API terpisah per realm (ADR-011 butir 2, 11).
 
@@ -410,20 +416,36 @@ Halaman ini muncul dari mitigasi API-13 (CR-008). Ia adalah satu-satunya endpoin
 | RX-02 | S, T | AK-01, AK-05 | Pemalsu membuat PDF resep tiruan dengan QR dan alamat teks yang mengarah ke domain mirip, yang selalu menampilkan "Terbit". Alamat teks di PDF tidak menolong bila pemalsu mengendalikan seluruh isi PDF; yang menolong hanya apotek yang mengenali domain resmi dari sumber lain | S | T | **Tinggi** | Verifikasi hanya di domain resmi Ruang Sehat; alamat dicetak sebagai teks agar dapat diketik manual; halaman menampilkan rincian untuk dicocokkan dengan PDF; tanda tangan elektronik dipertimbangkan setelah L-05. Risiko QR ke situs tiruan dijelaskan ke user sebelum user memilih opsi ini | US-309 AC6–AC7; CR-008; `[USER] T4-Q5` (catatan penyusun T4-Q5) | Tercermin (risiko sisa diterima user, T4-Q5); pengurangan lewat M-32 |
 | RX-03 | T | AK-01 | Resep asli dicetak atau dikirim berulang kali untuk ditebus di beberapa apotek; halaman verifikasi tetap menampilkan "Terbit" karena tidak ada penandaan "sudah ditebus" | S | T | **Tinggi** | Status Terbit atau Dibatalkan; tanggal terbit tampil; setiap verifikasi dicatat E-05 dengan alamat IP. Opsi penandaan "sudah ditebus" ditawarkan untuk mencegah penebusan berulang dan tidak dipilih user | US-309 AC7–AC8; CR-008; `[USER] T4-Q5` | Tercermin (risiko sisa diterima user, T4-Q5); M-33 |
 
+### 4.18 Relay email Keycloak dan jalur SES (TB-14, TB-11), baru di v1.2
+
+Dasar: ADR-026 (Diusulkan), spike F1-T02 (eksperimen E1: token aksi `login-actions/action-token?key=...` ada di badan email), `docs/review/F1-T02-security.md` (B-01, B-02, C-01–C-05). Revisi ADR-026 setelah review sudah memuat sebagian mitigasi M-34–M-37; status di bawah tetap mengikuti penilaian reviewer sampai ADR-026 diterima dan cek ulang review selesai.
+
+| ID | STRIDE | Aktor | Ancaman | K | D | Tingkat | Mitigasi dalam desain | Tercermin di | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| EML-01 | S, E | AK-07, penyerang yang sudah menguasai satu kontainer di jaringan internal | Relay disalahgunakan sebagai open relay internal untuk mengirim phishing ber-DKIM sah atas nama Ruang Sehat ke alamat sembarang, termasuk lewat header To/Cc/Bcc tambahan atau header `X-SES-*` yang dibaca SES dari pesan Raw `[SRC-365]` | R | T | Sedang | Jaringan kontainer khusus per host; satu penerima; daftar izin `From`; batas ukuran dan laju; IAM `ses:FromAddress`, ARN identitas Jakarta, `aws:SourceIp`, penolakan `ses:MultiRegionEndpointId` `[SRC-298]`. Revisi ADR-026 (Diusulkan): topologi per host (KEPUTUSAN-232); permintaan SES disusun dari amplop dan header divalidasi | ADR-026 butir 1, 4–5 (Diusulkan) | **Sebagian** (M-34) |
+| EML-02 | I | AK-05 dengan posisi jaringan antara SES dan server penerima, AK-06 | Token aksi di badan email terbaca selama pengiriman (TLS oportunistik bawaan SES `[SRC-296]`) atau lewat domain pelacakan tautan `[SRC-294]`. Undangan aktivasi nakes atau admin yang dicuri memungkinkan penyerang menetapkan password dan TOTP sendiri | R | T | Sedang | Pelacakan klik dan buka dimatikan `[SRC-297]`; configuration set wajib TLS diusulkan (menunggu user); atur ulang password tetap meminta OTP (ADR-011 butir 5); undangan Super Admin pertama sekali pakai 24 jam (US-208 AC4). Belum: masa berlaku undangan umum di semua realm | ADR-026 butir 5 (Diusulkan); ADR-011 butir 5; US-208 AC4 | **Sebagian** (M-38; bila user memilih TLS oportunistik, dicatat sebagai risiko sisa diterima user) |
+| EML-03 | I | AK-07 | Isi email atau token bocor lewat log relay, opsi `debug` SMTP Keycloak (`mail.debug` `[SRC-301]`), atau teks balasan galat relay yang terbawa ke log server Keycloak dan detail `REASON` event `EMAIL_SEND_FAILED` lalu diambil ke audit `[SRC-364]` | R | T | Sedang | Relay tidak mencatat badan, subjek, alamat; `debug` dilarang dan diperiksa (ADR-005, ADR-010). Revisi ADR-026 (Diusulkan): teks balasan SMTP tetap tanpa menggemakan masukan | ADR-026 butir 4, 6 (Diusulkan) | **Sebagian** (M-35) |
+| EML-04 | D | AK-05 | Banjir permintaan "lupa password" atau kirim ulang verifikasi, atau lonjakan notifikasi aplikasi pada akun SES yang sama, menghabiskan kuota/laju SES `[SRC-294]`. Registrasi gagal, dan reset password gagal **diam-diam** karena Keycloak tetap menampilkan pesan sukses `[SRC-364]`; email bombing ke satu korban | S | S | Sedang | Kenaikan kuota sebelum staging dipakai (prasyarat spike §7); batas laju relay; WAF (ADR-019 butir 3). Revisi ADR-026 (Diusulkan): batas per penerima, peringatan `EMAIL_SEND_FAILED` dan laju galat relay (butir 4, 8) | ADR-026 butir 4, 8, Konsekuensi (Diusulkan) | **Sebagian** (M-36) |
+| EML-05 | S, I | AK-07, kontainer terkompromi | Relay palsu atau penyadap di jaringan internal menerima email Keycloak dan memanen token aksi | R | T | Sedang | `starttls` memaksa `mail.smtp.starttls.required`, sertifikat relay dari CA internal lewat `truststore-paths`, `tls-hostname-verifier` `DEFAULT` `[SRC-301]`; test negatif koneksi tanpa STARTTLS | ADR-026 butir 6, Konsekuensi (Diusulkan) | Tercermin (bersyarat ADR-026 diterima; kompatibilitas Alertmanager diverifikasi F1-T36) |
+| EML-06 | S, I | AK-07, AK-05 | Kunci akses AWS akun email bocor, lalu dipakai mengirim email atas nama domain resmi | R | T | Sedang | Akun AWS khusus email `[USER] T5-Q4`; kunci di OpenBao KV hanya untuk relay dan modul notifikasi `[KEPUTUSAN-79]`; IAM hanya kirim, ARN identitas, `ses:FromAddress`, `aws:SourceIp` `[SRC-298]` | ADR-026 butir 5 (Diusulkan); ADR-013 butir 8 | Tercermin; penguatan H-17 |
+| EML-07 | T, D | AK-01, AK-05 (lewat nilai yang dikendalikan pengguna, misalnya nama dan alamat email, yang masuk ke pesan) | Pengurai SMTP buatan sendiri salah menangani batas baris, akhir DATA, atau ukuran, sehingga terjadi injeksi perintah atau relay berhenti (semua email autentikasi gagal) | R | S | Rendah | Subset perintah kecil; batas ukuran; hanya terjangkau dari jaringan internal; test negatif wajib (modul T1) | ADR-026 butir 2, 4, Konsekuensi (Diusulkan) | Tercermin; detail CRLF ketat di M-34 |
+| EML-08 | I | AK-06 | Alamat dan isi email diproses atau disimpan di luar Indonesia: komitmen AWS bersifat umum dengan pengecualian "necessary to provide the services you initiated" `[SRC-295]`; daftar supresi menyimpan alamat sampai dihapus `[SRC-296]`; server penerima di lokasi `[TIDAK DIKETAHUI]` `[USER] T4-Q1` | S | S | Sedang | Region `ap-southeast-3`; tanpa `EndpointId` multi-region dan penolakan IAM-nya `[SRC-297]` `[SRC-298]`. Kesesuaian dengan T4-Q1/CR-007 dibawa ke user dan tim legal | ADR-026 butir 4–5 (Diusulkan); KEPUTUSAN-230 | **Sebagian** (menunggu user dan legal; M-39) |
+| EML-09 | I | AK-07, AK-05 | Email aplikasi bertoken (tautan konfirmasi reset MFA KEPUTUSAN-204) dikirim modul notifikasi lewat outbox dengan coba ulang (ADR-016), sehingga token tersimpan di database dan backup, dan dikirim dengan TLS oportunistik karena configuration set wajib TLS hanya untuk email Keycloak | S | S | Sedang | Tautan sekali pakai 60 menit dan password tetap diminta (KEPUTUSAN-204), sehingga token saja tidak cukup. Usulan di ADR-026 butir 7 (Diusulkan) untuk rancangan US-207 AC5 | KEPUTUSAN-204; ADR-026 butir 7 (Diusulkan) | **Belum** (M-37) |
+
 ---
 
 ## 5. Ringkasan
 
 ### 5.1 Jumlah ancaman per tingkat dan status
 
-Angka v1.1. Dibanding v1.0: API-10 dan WEB-07 (Sedang) berubah dari Sebagian ke Tercermin; KC-10 (Tinggi) dan KC-11 (Sedang) ditambahkan.
+Angka v1.2. Dibanding v1.1: EML-01–EML-09 ditambahkan (8 Sedang, 1 Rendah). Angka v1.1 dibanding v1.0: API-10 dan WEB-07 (Sedang) berubah dari Sebagian ke Tercermin; KC-10 (Tinggi) dan KC-11 (Sedang) ditambahkan.
 
 | Tingkat | Jumlah | Tercermin | Sebagian | Belum |
 | --- | --- | --- | --- | --- |
 | Tinggi | 55 | 55 | 0 | 0 |
-| Sedang | 53 | 38 | 11 | 4 |
-| Rendah | 5 | 4 | 1 | 0 |
-| **Total** | **113** | **97** | **12** | **4** |
+| Sedang | 61 | 40 | 16 | 5 |
+| Rendah | 6 | 5 | 1 | 0 |
+| **Total** | **122** | **100** | **17** | **5** |
 
 Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 - RX-02 dan RX-03 (diterima user, T4-Q5);
@@ -453,6 +475,7 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | 4.15 Pipeline CI/CD | 5 | 3 | — |
 | 4.16 Email dan kurir | 3 | 0 | — |
 | 4.17 Halaman verifikasi resep | 3 | 2 | — |
+| 4.18 Relay email Keycloak dan SES | 9 | 0 | — |
 
 ### 5.3 Butir yang diminta khusus
 
@@ -466,7 +489,7 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | Replay webhook rekanan | INT-03, INT-04 | Sedang | Tercermin |
 | Refund ganda | PG-04 | Tinggi | Tercermin |
 | Manipulasi audit, termasuk jendela outbox | AUD-01, AUD-02, AUD-03, DB-05 | Sedang | AUD-01 dan DB-05 Sebagian (M-22) |
-| Kebocoran lewat log, notifikasi, URL bertanda tangan | API-04, API-05, OS-01 | Tinggi | API-05 Belum (Sedang) |
+| Kebocoran lewat log, notifikasi, URL bertanda tangan | API-04, API-05, OS-01, EML-03, EML-09 | Tinggi | API-05 Belum (Sedang); EML-03 Sebagian, EML-09 Belum (Sedang) |
 | Token Keycloak dicuri, realm/audience tertukar, penonaktifan tidak seketika | APP-01, KC-03, KC-04, API-06, KC-11 | Tinggi | Tercermin |
 | Redis tidak tersedia atau diracuni | RD-01, RD-02 | Tinggi | Tercermin |
 | Isolasi log akses audit RME (F-06) | AUD-04 | Tinggi | Tercermin |
@@ -523,6 +546,12 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | M-31 | RX-01 | (a) Kode di tautan QR dibangkitkan pembangkit acak kriptografis dengan entropi minimal 128 bit. (b) Kode yang diketik manual boleh lebih pendek hanya bila dipasangkan dengan nomor resep, dengan batas percobaan per nomor resep. (c) Batas laju global selain per sumber, dan peringatan security log saat lonjakan "resep tidak ditemukan". (d) Kode diredaksi dari log akses dan log aplikasi. (e) Halaman tidak di-cache, tidak diindeks mesin pencari, tidak memuat sumber daya pihak ketiga, dan tidak meneruskan kode lewat header perujuk; mekanisme header ditetapkan Tahap 5 | Revisi ADR-012 butir 3; A9.8; ADR-010 butir 1 | Baru |
 | M-32 | RX-02 | (a) Satu domain verifikasi resmi yang pendek, dipublikasikan di kanal resmi Ruang Sehat (situs dan listing toko aplikasi) dan materi untuk apotek. (b) PDF dan halaman menyatakan bahwa verifikasi sah hanya di domain itu dan menganjurkan apotek mengetik alamatnya sendiri. (c) Pemantauan domain mirip dan prosedur penurunan. (d) Tanda tangan elektronik setelah L-05 sebagai jangkar yang tidak bergantung pada domain | Revisi ADR-012 butir 3; prosedur operasional; risk register | Baru, disarankan sebelum go-live |
 | M-33 | RX-03 | Catat penebusan berulang sebagai risiko yang diterima user di risk register; evaluasi ulang setelah L-05 (penandaan "sudah ditebus" atau integrasi resep elektronik) | Risk register; pertanyaan terbuka L-05 | Baru |
+| M-34 | EML-01, EML-07 | (a) Satu relay per host di jaringan kontainer khusus yang hanya berisi relay dan Keycloak (di ops: relay dan Alertmanager), atau bila relay lintas host, AUTH wajib dan daftar izin firewall KEPUTUSAN-144. (b) Relay mengisi `Destination.ToAddresses` dari RCPT, `FromEmailAddress` dari daftar izin, dan `ConfigurationSetName` secara eksplisit. (c) Pesan ditolak bila header `From` tidak cocok, To/Cc/Bcc memuat alamat selain penerima amplop, atau ada header `X-SES-*` `[SRC-365]`. (d) CRLF ketat dan batas panjang baris. (e) Test negatif untuk (b)–(d) | Revisi ADR-026 butir 1, 4 (B-02, C-01; (a) dipilih sebagai relay per host, KEPUTUSAN-232); AC F1-T36 | Baru (dimuat revisi ADR-026 Diusulkan) |
+| M-35 | EML-03 | Kode dan teks balasan SMTP relay tetap per kelas galat ditambah ID korelasi acak, tanpa potongan header, badan, atau alamat; test bahwa detail event `EMAIL_SEND_FAILED` Keycloak tidak memuat alamat atau token | Revisi ADR-026 butir 4 (C-02); AC F1-T36 | Baru (dimuat revisi ADR-026 Diusulkan) |
+| M-36 | EML-04 | Batas laju per penerima di memori relay (kunci di-hash); saat batas tercapai, relay membalas 250 dan membuang pesan supaya tidak muncul sinyal berbeda; peringatan Alertmanager untuk laju galat relay/SES, event `EMAIL_SEND_FAILED`, dan pemakaian kuota; batas laju di endpoint reset Keycloak | Revisi ADR-026 (B-01, C-03); tabel ADR-010; ADR-019 butir 3 | Baru (dimuat revisi ADR-026 butir 4, 8, Diusulkan) |
+| M-37 | EML-09 | Outbox notifikasi hanya menyimpan referensi, token dibangkitkan saat pengiriman dan database hanya menyimpan hash; configuration set wajib TLS (bila dipilih user) juga untuk email bertoken aplikasi; kalimat ADR-026 Konsekuensi dipersempit ke token Keycloak | Revisi ADR-026 butir 7 (C-04); rancangan US-207 AC5 bersama H-16 (Fase 2) | Baru |
+| M-38 | EML-02 | Masa berlaku undangan `execute-actions-email` untuk semua realm ditetapkan (usulan ≤ 24 jam, setara US-208 AC4) dan sifat sekali pakainya diverifikasi di Keycloak 26.8.2; aktivasi undangan memberi tahu admin pembuat; keputusan TLS wajib dari user | ADR-011 butir 4 atau ADR-026; F1-T50/F1-T51; keputusan user ADR-026 butir 3 | Baru |
+| M-39 | EML-08 | Penilaian lokasi data oleh user dan legal (KEPUTUSAN-230); alamat di daftar supresi SES dihapus sebagai bagian dari penghapusan/anonimisasi hak subjek data; event publishing SES hanya ke tujuan di region Jakarta, bila dipakai | Keputusan user; EP-16; ADR-013 | Baru |
 
 ### 6.3 Penguatan untuk ancaman yang sudah tercermin (checklist Tahap 5, tidak memblokir)
 
@@ -544,6 +573,7 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | H-14 | VID-01, VID-02 | Batas peserta ruang dua orang di konfigurasi, sejauh didukung produk terpilih; pemeriksaan berkala bahwa tidak ada berkas rekaman di server media atau akun penyedia | ADR-016 butir 4 | Terbuka |
 | H-15 | SS-01 | Job SATUSEHAT mencocokkan Organization ID pada resource dengan kredensial fasyankes yang dipakai sebelum mengirim; test lintas fasyankes untuk job | ADR-020 butir 6 | Terbuka |
 | H-16 | KC-10 | **Baru v1.1.** (a) Konfirmasi reset berlanjut langsung ke pendaftaran TOTP baru di peramban yang sama; TOTP lama baru diganti dan reset baru berlaku setelah TOTP baru dan kode pemulihan baru tersimpan, sehingga tidak ada keadaan akun berpassword tanpa MFA. (b) Pemberitahuan permintaan reset dikirim saat reset dimulai (email akun dan sesi aktif lain bila ada), dengan tautan pembatalan. (c) Satu permintaan tertunda per akun; permintaan baru membatalkan tautan lama. (d) Pemeriksaan password di langkah konfirmasi didokumentasikan sebagai jalur autentikasi (6.3.4 `[SRC-265]`), kegagalannya dihitung ke penguncian yang sama dengan login, tanpa grant password langsung pada klien publik (ADR-011 Alternatif ditolak). (e) Batas jumlah reset per staf per hari dengan peringatan security log; reset atas akun milik staf sendiri ditolak. (f) E-04 mencatat "reset dimulai" (aktor admin) dan "reset dikonfirmasi" (aktor pasien) | KEPUTUSAN-204 butir 2; US-207 AC5; ADR jalur email (KEPUTUSAN-183) atau ADR baru yang dijanjikan KEPUTUSAN-204; prosedur H-05. Rinciannya `docs/review/checkpoint-2-security.md` C-01–C-03, C-05 | Terbuka; (a)–(d) disarankan masuk AC sebelum task US-207 AC5 (Fase 2) |
+| H-17 | EML-06 | Prosedur rotasi dan pencabutan kunci akses AWS akun email; policy OpenBao per proses/host hanya membaca kunci SES; `aws:SourceIp` memuat semua IP keluar host relay dan notifikasi; kemungkinan kredensial AWS dinamis dari OpenBao diperiksa (`[TIDAK DIKETAHUI]`) | ADR-026 butir 1, 5; ADR-025; F1-T36 | Terbuka |
 
 ---
 
@@ -579,6 +609,8 @@ Yang tetap terbuka dan tidak memblokir:
 - Prosedur H-05 tertulis (mencakup pasien) dan bukti identitas pengganti RT-37 (PT-54) sebelum go-live.
 - Pembaruan topologi VPS (U-09) sebelum Tahap 8 Fase 1.
 
+Versi 1.2: seluruh 55 ancaman Tinggi tetap berstatus Tercermin. Sembilan ancaman relay email (EML-01–EML-09, 8 Sedang dan 1 Rendah) ditambahkan. Lima di antaranya Sebagian dan satu Belum, dengan mitigasi M-34–M-39 dan H-17. Butir yang bergantung pada keputusan user: penerimaan ADR-026, TLS wajib (EML-02), dan lokasi data (EML-08). Status **LULUS**.
+
 ---
 
 ## 9. Riwayat revisi
@@ -589,3 +621,4 @@ Yang tetap terbuka dan tidak memblokir:
 | 0.2 | 2026-11-18 | Cek ulang setelah perbaikan desain M-01–M-09; §4.17 baru (RX-01–RX-03) | Lihat "Perubahan v0.2" |
 | 1.0 | 2026-11-18 | LULUS dan disetujui di gate Tahap 4 | `[USER] T4-G5` |
 | 1.1 | 2026-11-18 | Tindak lanjut Checkpoint 2:<br>- APP-04: MFA wajib pasien, risiko sisa diganti;<br>- API-10: Tercermin (M-12 diterapkan);<br>- KC-02: jalur pasien;<br>- KC-10 dan KC-11 baru;<br>- WEB-07: Tercermin (M-16 diterapkan);<br>- APP-01, API-11, API-15, KC-01, WEB-11, CI-04, EXT-01: mitigasi ditambah;<br>- H-01, H-04, H-05: sebagian diterapkan; H-16 baru;<br>- §5 dihitung ulang (113 ancaman);<br>- §7 butir 5 (DPIA) dan butir 6;<br>- §0.1 label `[USER] C2-*`;<br>- AS-10 dan TB-1/TB-8/TB-9 disesuaikan.<br>Topologi VPS (U-09) tidak tercakup | `[USER] C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7` (`docs/checkpoint-2.md`); risk register v1.3 catatan status ancaman; ADR-011 revisi Checkpoint 2; PRD v1.2; KEPUTUSAN-198–205; `docs/review/checkpoint-2-security.md` |
+| 1.2 | 2026-11-19 | Review keamanan F1-T02:<br>- §4.18 baru (EML-01–EML-09);<br>- TB-14 baru, TB-11 diperluas;<br>- AS-10 diperluas;<br>- M-34–M-39 dan H-17 baru;<br>- §5 dihitung ulang (122 ancaman).<br>Status tetap LULUS | `docs/spike/F1-T02-email-keycloak.md`; ADR-026 (Diusulkan); KEPUTUSAN-226–232; `docs/review/F1-T02-security.md` |

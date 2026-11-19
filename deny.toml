@@ -28,7 +28,8 @@ confidence-threshold = 0.8
 include-dev = true
 # Daftar izin adalah kebijakan, bukan inventaris: lisensi yang belum dipakai tidak dilaporkan.
 unused-allowed-license = "allow"
-exceptions = []
+# Pengecualian sempit: Unicode-3.0 hanya untuk crate unicode-ident (disetujui user, KEPUTUSAN-245).
+exceptions = [{ crate = "unicode-ident", allow = ["Unicode-3.0"] }]
 
 [licenses.private]
 # Crate workspace dengan `publish = false` tidak diperiksa lisensinya (kode milik proyek, tidak diterbitkan).

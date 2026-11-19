@@ -1,7 +1,18 @@
 # Konfigurasi resmi gitleaks 8.30.1 (F1-T06; review keamanan F1-T06 B-1). Diberikan eksplisit oleh
 # scripts/verify.sh lewat --config; berkas .gitleaks.toml lain di repo ditolak.
-# Aturan bawaan gitleaks dipakai utuh. Pengecualian hanya lewat .gitleaksignore (fingerprint) dengan alasan
-# tertulis dan review keamanan; jangan menambah allowlist atau menonaktifkan aturan di sini tanpa review.
+# Aturan bawaan gitleaks dipakai utuh. Pengecualian hanya di berkas ini (allowlist sempit: satu aturan,
+# satu path, satu teks) atau .gitleaksignore (fingerprint), selalu dengan alasan tertulis dan review keamanan.
 
 [extend]
 useDefault = true
+
+# Positif palsu generic-api-key: teks dokumen "secret manager, Loki/Prometheus/Grafana/GlitchTip" (nama produk
+# observability) di docs/backlog.md. Bukan rahasia. Allowlist (bukan fingerprint) karena fingerprint terikat
+# commit, sehingga salinan repo di scripts/test/test-verify.sh akan memicu temuan yang sama.
+[[allowlists]]
+description = "Positif palsu: daftar produk observability di docs/backlog.md"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/backlog\.md$''']
+regexTarget = "match"
+regexes = ['''secret manager, Loki/Prometheus/Grafana/GlitchTip''']

@@ -27,3 +27,6 @@ key.properties
 local.properties
 # Keluaran build Flutter
 mobile/**/build/
+
+# Worktree subagent Claude Code (sementara, lokal)
+.claude/worktrees/

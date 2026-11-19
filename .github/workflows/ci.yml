@@ -34,7 +34,8 @@ jobs:
   verify:
     name: verify.sh (lingkungan bersih)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # test-verify.sh menjalankan verify.sh lengkap (termasuk Docker) untuk setiap fixture.
+    timeout-minutes: 60
     steps:
       - name: Checkout (riwayat penuh untuk gitleaks)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,6 +54,14 @@ jobs:
         run: |
           bash scripts/ci/pasang-alat.sh "$RUNNER_TEMP/alat-ci"
           echo "$RUNNER_TEMP/alat-ci" >> "$GITHUB_PATH"
+
+      # Langkah bootstrap-role-db (kontainer PostgreSQL sekali pakai) dan schemathesis (image Docker dengan
+      # --network host) di verify.sh butuh Docker. Docker Engine sudah terpasang di image ubuntu-24.04
+      # (SRC-357); di sini dipastikan daemon berjalan sebelum verify.sh.
+      - name: Periksa Docker tersedia (bootstrap-role-db, schemathesis)
+        run: |
+          docker version
+          docker info --format '{{.OperatingSystem}} {{.ServerVersion}}'
 
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh

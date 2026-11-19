@@ -468,6 +468,36 @@ Dampak ke scope / waktu / arsitektur:
 - **Pertanyaan terbuka:** bukti identitas pengganti untuk kasus RT-37 `[TIDAK DIKETAHUI]`.
 Keputusan: Diterima user 2026-11-18 `[USER] C2-Q9` (perubahan ADR yang sudah diterima, diputuskan langsung oleh user). Review keamanan atas revisi ADR-011, pembaruan test case oleh QA, dan fact-check dijalankan sebelum Tahap 8 (`docs/checkpoint-2.md` tindak lanjut 4)
 
+### CR-019: Aplikasi mobile di repositori GitHub terpisah
+
+Diajukan: 2026-11-19 (Tahap 8 Fase 1), `[USER]` lewat Telegram: "kita fokus pada BE kemudian web based. flutter dijalankan terpisah di laptop" dan "sebaiknya terpisah saja. untuk mobile di github berbeda saja"
+Deskripsi:
+- Kode Flutter (aplikasi pasien dan tenaga kesehatan) berada di repositori GitHub terpisah, dikerjakan mobile developer di laptop.
+- Repositori ini (backend Rust, web Next.js, infra, db, docs) tidak memuat folder `mobile/`.
+- Antarmuka antar-repositori adalah kontrak API OpenAPI di `openapi/` repositori ini.
+Alasan: keputusan user.
+Dampak ke scope / waktu / arsitektur:
+- **Mengubah keputusan lama:** "satu monorepo" (KEPUTUSAN-82, KEPUTUSAN-89; `docs/05-stack.md` §6; `docs/coding-standards.md` §1.1; `CLAUDE.md` bagian Stack dan Perintah). Dokumen itu diperbarui di task tersendiri, termasuk perintah mobile di `CLAUDE.md`.
+- Skrip verifikasi: langkah mobile di repositori ini dihapus dari daftar "BELUM DITERAPKAN" dan diganti penjaga yang GAGAL bila `mobile/` muncul di repositori ini (bukan pelonggaran: komponen pindah repositori). Standar hijau setara (format, analyze, test, aksesibilitas, osv-scanner untuk pub) wajib ada di repositori mobile; penyiapannya `[TIDAK DIKETAHUI]` (nama repositori, CI, hook) dan menjadi tanggung jawab mobile developer, dengan panduan dari dokumen ini.
+- Task Fase 1 mobile (F1-T44, T45, T47, T48, T52, T53, T54, T58, T63, T77, T78) dikerjakan di repositori mobile. Review `code-reviewer` dan test plan tetap berlaku; cara review lintas repositori `[TIDAK DIKETAHUI]`.
+- Jalur kritis Fase 1 (F1-T58, F1-T63) dan demo F1-T70 bergantung pada repositori mobile.
+- `docs/test-plan.md` dan `docs/traceability.md`: kolom berkas kode untuk story mobile merujuk repositori mobile.
+Keputusan: disetujui user 2026-11-19 `[USER]`
+Status: disetujui; pembaruan dokumen dan skrip verifikasi dijadwalkan sebagai task orkestrator di Fase 1
+
+### CR-020: Pengerasan bootstrap role database (temuan review F1-T13)
+
+Diajukan: 2026-11-19 (Tahap 8 Fase 1, F1-T13; review DBA LULUS DENGAN CATATAN dan review keamanan putaran 1 BLOKIR High)
+Deskripsi (perubahan teknis atas `docs/05-physical-schema.md` yang sudah lulus gate):
+- §3.5: bootstrap wajib berjalan dengan `search_path = pg_catalog, pg_temp` di awal dan setelah setiap `\connect`, dan fungsi di blok DO dikualifikasi `pg_catalog.`, karena search_path tingkat database juga berlaku untuk sesi superuser (pola CVE-2018-1058; repro: pemilik skema menanam `app.format(text,text)` → role login menjadi SUPERUSER saat bootstrap dijalankan ulang).
+- §2.1 butir 4 / §3.5 butir 2: `REVOKE CONNECT, TEMPORARY ON DATABASE template1 FROM PUBLIC`; penjaga encoding UTF8.
+- §3.4: `openbao_*_admin` diberi `log_min_duration_statement = -1`, `log_min_duration_sample = -1` (CREATE ROLE ... PASSWORD tidak tercatat di log durasi), dan `createrole_self_grant = ''`.
+- §3.4: self-grant ADMIN → SET → SET ROLE oleh `openbao_*_admin` dicatat sebagai risiko residu (sejalan dengan "setara pemilik skema"); kontrol detektif: log audit OpenBao dan pemeriksaan katalog berkala T-05.
+Alasan: keamanan (temuan High) dan pengerasan DBA; tidak mengubah scope bisnis.
+Dampak: dokumen skema fisik diperbarui; kode sudah menerapkan di F1-T13 (commit f0a40bd) dengan test negatif umpan.
+Keputusan: keputusan teknis orkestrator (tanpa dampak bisnis), dilaporkan di Checkpoint 3
+Status: diterapkan di kode; pembaruan teks `docs/05-physical-schema.md` menyusul (task dokumen orkestrator)
+
 ## Tech Debt
 
 _Belum ada._

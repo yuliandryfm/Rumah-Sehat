@@ -2,7 +2,10 @@
 # scripts/test/test-verify.sh: test perilaku scripts/verify.sh (F1-T06; catatan review F1-T05 butir a).
 #
 # Setiap fixture adalah salinan pohon kerja repo (berkas dilacak dan belum dilacak yang tidak diabaikan,
-# tanpa docs/ dan .claude/) di direktori sementara, dijadikan repo git sendiri, lalu diberi satu cacat.
+# tanpa .claude/; docs/ ikut karena test membaca registry dan data dictionary) di direktori sementara,
+# dijadikan repo git sendiri, lalu diberi satu cacat. Direktori target cargo dipakai bersama semua fixture
+# (CARGO_TARGET_DIR) supaya dependensi registry hanya dikompilasi sekali; crate workspace selalu dikompilasi
+# ulang (lihat fixture_baru) sehingga tidak ada artefak basi antar-fixture.
 # verify.sh salinan itu dijalankan dan hasilnya harus: kode keluar sesuai, "HASIL: MERAH", dan langkah yang
 # ditargetkan tercatat GAGAL di ringkasan. Satu fixture bersih harus HIJAU dengan keempat pemindai LULUS.
 #
@@ -30,6 +33,10 @@ trap 'rm -rf "$KERJA"' EXIT
 
 export GIT_AUTHOR_NAME="fixture" GIT_AUTHOR_EMAIL="fixture@example.invalid"
 export GIT_COMMITTER_NAME="fixture" GIT_COMMITTER_EMAIL="fixture@example.invalid"
+export CARGO_TARGET_DIR="$KERJA/target"
+# Tanpa kompilasi inkremental: setiap fixture dikompilasi ulang penuh, jadi cache inkremental hanya
+# memakan ruang (kuota /tmp habis saat diuji). Tidak mengubah hasil lint atau test.
+export CARGO_INCREMENTAL=0
 
 LULUS=0
 GAGAL=0
@@ -52,12 +59,22 @@ commit_semua() { # commit_semua <repo> <pesan>: stage semua lalu commit lewat pl
   git -C "$repo" update-ref HEAD "$komit"
 }
 
+tambah_dep_rentan() { # tambah_dep_rentan <repo>: smallvec 0.6.13 (RUSTSEC-2021-0003, SRC-363) di bawah [dependencies]
+  # Seri 0.6 dipilih supaya tidak bentrok dengan smallvec 1.x yang sudah ada di graf (satu versi per seri semver).
+  local berkas="$1/crates/foundation/Cargo.toml"
+  awk '{ print } /^\[dependencies\]$/ { print "smallvec = \"=0.6.13\"" }' "$berkas" >"$berkas.baru"
+  mv "$berkas.baru" "$berkas"
+  grep -q '^smallvec = "=0.6.13"$' "$berkas"
+  # Resolusi minimal: hanya entri baru ditambahkan ke Cargo.lock, versi lain tetap.
+  (cd "$1" && cargo metadata --format-version 1 >/dev/null)
+}
+
 siapkan_murni() { # salinan pohon kerja repo ke $KERJA/murni, satu commit; verify.sh tidak pernah dijalankan di sini
   local tujuan="$KERJA/murni" berkas
   mkdir -p "$tujuan"
   (cd "$ROOT" && git ls-files -z --cached --others --exclude-standard) | while IFS= read -r -d '' berkas; do
     case "$berkas" in
-      docs/* | .claude/*) continue ;;
+      .claude/*) continue ;;
     esac
     if [ -f "$ROOT/$berkas" ]; then
       mkdir -p "$tujuan/$(dirname "$berkas")"
@@ -68,9 +85,14 @@ siapkan_murni() { # salinan pohon kerja repo ke $KERJA/murni, satu commit; verif
   commit_semua "$tujuan" "fixture: salinan repo"
 }
 
-fixture_baru() { # fixture_baru <nama>: salin repo murni, cetak path-nya
-  cp -R "$KERJA/murni" "$KERJA/$1"
-  printf '%s' "$KERJA/$1"
+fixture_baru() { # fixture_baru <nama>: salin repo murni ke $KERJA/fixture (fixture sebelumnya dibuang), cetak path-nya
+  # Satu path untuk semua fixture: artefak crate workspace di CARGO_TARGET_DIR bersama ditimpa, tidak menumpuk
+  # (menumpuk per path menghabiskan kuota /tmp). cp tanpa -p memberi mtime baru ke semua berkas, sehingga
+  # cargo selalu mengompilasi ulang crate workspace dan tidak memakai artefak basi dari fixture sebelumnya.
+  # Nama fixture hanya dipakai untuk berkas log.
+  rm -rf "$KERJA/fixture"
+  cp -R "$KERJA/murni" "$KERJA/fixture"
+  printf '%s' "$KERJA/fixture"
 }
 
 verify_di() { # verify_di <repo> <log> [VAR=nilai ...] [-- argumen verify ...]: cetak kode keluar verify.sh
@@ -111,6 +133,8 @@ nilai() { # nilai <nama> <kode-diharapkan> <kode-aktual> <log> [pola-ERE-wajib .
     RINGKASAN="${RINGKASAN}  GAGAL  ${nama}"$'\n'
     echo "GAGAL  $nama; ringkasan keluaran verify.sh:" >&2
     sed -n '/== Ringkasan verify.sh ==/,$p' "$log" >&2
+    echo "  baris galat (maks. 40):" >&2
+    grep -E 'panicked|FAILED|^error|GAGAL|tidak ditemukan|ditolak' "$log" | sed -n '1,40p' >&2 || true
   fi
 }
 
@@ -218,7 +242,7 @@ k="$(verify_di "$r" "$KERJA/clippy.log")"
 merah "cargo-clippy" "$k" "$KERJA/clippy.log" "cargo-clippy"
 
 r="$(fixture_baru test)"
-printf '\npub fn satu() -> i32 {\n    1\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn harus_gagal() {\n        assert_eq!(super::satu(), 2);\n    }\n}\n' >>"$r/crates/foundation/src/lib.rs"
+printf '\npub fn satu() -> i32 {\n    1\n}\n\n#[cfg(test)]\nmod uji_fixture {\n    #[test]\n    fn harus_gagal() {\n        assert_eq!(super::satu(), 2);\n    }\n}\n' >>"$r/crates/foundation/src/lib.rs"
 commit_semua "$r" "fixture: test gagal"
 k="$(verify_di "$r" "$KERJA/test.log")"
 merah "cargo-test" "$k" "$KERJA/test.log" "cargo-test"
@@ -268,8 +292,7 @@ merah "gitleaks-config-resmi-hilang" "$k" "$KERJA/gitleaks-config-hilang.log" "g
 
 # osv-scanner.toml liar di samping lockfile, dilacak, mengabaikan advisory dependensi rentan.
 r="$(fixture_baru osv-config-liar)"
-printf 'smallvec = "=1.6.0"\n' >>"$r/crates/foundation/Cargo.toml"
-(cd "$r" && cargo generate-lockfile --quiet)
+tambah_dep_rentan "$r"
 printf '[[IgnoredVulns]]\nid = "RUSTSEC-2021-0003"\nreason = "x"\n[[IgnoredVulns]]\nid = "GHSA-43w2-9j62-hq99"\nreason = "x"\n[[IgnoredVulns]]\nid = "CVE-2021-25900"\nreason = "x"\n' >"$r/crates/foundation/osv-scanner.toml"
 commit_semua "$r" "fixture: osv-scanner.toml liar"
 k="$(verify_di "$r" "$KERJA/osv-config-liar.log")"
@@ -303,15 +326,14 @@ r="$(fixture_baru lisensi)"
 mkdir -p "$r/crates/zz-lisensi-uji/src"
 printf '[package]\nname = "zz-lisensi-uji"\nversion = "0.1.0"\nedition = "2024"\nlicense = "GPL-3.0-only"\n\n[dependencies]\n' >"$r/crates/zz-lisensi-uji/Cargo.toml"
 printf '//! Fixture lisensi di luar daftar izin.\n' >"$r/crates/zz-lisensi-uji/src/lib.rs"
-(cd "$r" && cargo generate-lockfile --offline --quiet)
+(cd "$r" && cargo metadata --offline --format-version 1 >/dev/null)
 commit_semua "$r" "fixture: crate workspace berlisensi GPL tanpa publish = false"
 k="$(verify_di "$r" "$KERJA/lisensi.log")"
 merah "lisensi-di-luar-daftar-izin" "$k" "$KERJA/lisensi.log" "cargo-deny"
 
-# --- Dependensi rentan: smallvec 1.6.0, RUSTSEC-2021-0003 (SRC-363); butuh jaringan ---
+# --- Dependensi rentan: smallvec 0.6.13, RUSTSEC-2021-0003 (SRC-363); butuh jaringan ---
 r="$(fixture_baru rentan)"
-printf 'smallvec = "=1.6.0"\n' >>"$r/crates/foundation/Cargo.toml"
-(cd "$r" && cargo generate-lockfile --quiet)
+tambah_dep_rentan "$r"
 commit_semua "$r" "fixture: dependensi dengan advisory"
 k="$(verify_di "$r" "$KERJA/rentan.log")"
 merah "dependensi-rentan" "$k" "$KERJA/rentan.log" "cargo-deny" "cargo-audit" "osv-scanner"
