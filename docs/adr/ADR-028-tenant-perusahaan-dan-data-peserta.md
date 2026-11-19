@@ -1,6 +1,6 @@
 # ADR-028: Tenant perusahaan, data peserta korporat, impor berkas, dan persetujuan berbagi ringkasan hasil
 
-Status: **Diusulkan** (CR-021, 2026-11-19; revisi setelah review keamanan putaran 1 B-03 dan B-04 serta review kepatuhan B-1, `docs/review/CR-021-security.md`, `docs/review/CR-021-kepatuhan.md`; menunggu cek ulang review dan persetujuan user bersama `docs/cr/CR-021-analisis.md` v0.2; bagian pemrosesan data nyata menunggu konfirmasi legal L-17 dan L-18)
+Status: Diterima (2026-11-19, `[USER]` Telegram "1S3 2Y 3Y 4aV 4bY4cT"; review keamanan dan kepatuhan CR-021 LULUS DENGAN CATATAN; fact-check menyusul)
 Merevisi bila diterima: ADR-012 butir 1 dan butir 2, ADR-013 butir 3 (wadah data), ADR-018 (jenis berkas)
 Tanggal: 2026-11-19
 

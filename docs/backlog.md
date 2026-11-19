@@ -512,7 +512,7 @@ Dampak ke scope / waktu / arsitektur (awal, belum dianalisis rinci):
 - Kapasitas: phase plan v0.2 sudah menyatakan scope penuh kemungkinan besar tidak layak sampai 1 Maret 2027 (Fase 2 ±43 jam-task per hari kerja).
 Fakta bisnis `[TIDAK DIKETAHUI]`: penempatan rilis; isi company profile dan pengelola kontennya; siapa klien korporat dan peserta; alur pemesanan, penjadwalan, dan penagihan layanan massal; daftar "semacamnya"; integrasi dengan rekanan lab/klinik; regulasi vaksinasi massal.
 Keputusan `[USER]` 2026-11-19 (Telegram): "1A, 2K" lalu "Web dan fitur ini pun masuk fase 1 dan harus"; setelah klarifikasi memilih **Y**: company profile **dan** member area korporat dibangun di Fase 1, dengan konsekuensi Fase 1 mundur atau sebagian task Fase 1 pindah ke Fase 2 (rincian dihitung dan diajukan ke user dulu). Peran login member area: HR/admin perusahaan + karyawan peserta (2K).
-Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); analisis BR/story/AC, dampak arsitektur dan phase plan menyusul untuk persetujuan user sebelum pembangunan
+Status: analisis disetujui user 2026-11-19 (skenario S3, K-01–K-12, UP-79–UP-87, PT-67 Verifikator, PT-79 wajib bukti kewenangan, PT-72 tolak NIB ganda; `docs/cr/CR-021-wawancara.md` putaran 4). ADR-027/028 Diterima; ADR-029 Diusulkan (menunggu PT-59/L-21). Pembaruan BRD/PRD/phase plan/data dictionary menyusul (task dokumen orkestrator)
 
 ## Tech Debt
 

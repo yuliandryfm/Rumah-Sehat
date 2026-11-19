@@ -1,6 +1,6 @@
 # ADR-027: Situs publik dan member area korporat, yaitu dua aplikasi Next.js, realm Keycloak `korporat`, dan penyajian konten publik
 
-Status: **Diusulkan** (CR-021, 2026-11-19; revisi setelah review keamanan putaran 1 B-01 dan B-02, `docs/review/CR-021-security.md`; menunggu cek ulang review dan persetujuan user bersama `docs/cr/CR-021-analisis.md` v0.2)
+Status: Diterima (2026-11-19, `[USER]` Telegram "1S3 2Y 3Y 4aV 4bY4cT"; review keamanan dan kepatuhan CR-021 LULUS DENGAN CATATAN; fact-check menyusul)
 Merevisi bila diterima: ADR-006 butir 5, ADR-011 butir 3, butir 5, dan butir 7, ADR-018 butir 1 (izin bucket CMS publik dicabut), ADR-024 butir 2
 Tanggal: 2026-11-19
 
