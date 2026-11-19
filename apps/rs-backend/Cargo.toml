@@ -1,0 +1,36 @@
+[package]
+name = "rs-backend"
+version = "0.1.0"
+edition = "2024"
+publish = false
+default-run = "rs-backend"
+
+# Satu biner dengan subcommand api | worker | audit-relay | audit-verify (KEPUTUSAN-89; realtime dan
+# privacy-worker menyusul di task masing-masing). Versi: docs/05-stack.md §1.1 (axum 0.8.9 [SRC-163];
+# tokio 1.54.1 [SRC-162]; utoipa 6.0.0 [SRC-168]; serde 1.0.229 [SRC-167]; serde_json 1.0.154 [SRC-335];
+# utoipa-axum 0.3.0 dan pengecekan lain: docs/sources.md SRC-377 dst).
+[dependencies]
+foundation = { path = "../../crates/foundation" }
+envelope = { path = "../../crates/envelope" }
+observability = { path = "../../crates/observability" }
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal"] }
+utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
+utoipa-axum = { version = "=0.3.0", default-features = false }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+
+# Larangan unwrap/expect/panic/indeks di kode non-test (coding-standards §3.4, KEPUTUSAN-121).
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+disallowed_methods = "deny"

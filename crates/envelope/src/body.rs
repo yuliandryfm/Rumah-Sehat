@@ -44,9 +44,14 @@ pub struct Success<T> {
 }
 
 impl<T> Success<T> {
-    /// Sukses dengan kode `code` (harus kode HTTP 2xx; selain itu jatuh ke [`codes::OK`]
-    /// supaya envelope sukses tidak pernah membawa kode galat).
+    /// Sukses dengan kode `code` (harus kode HTTP 2xx). Kode non-2xx adalah kesalahan pemrograman:
+    /// build debug dan test gagal lewat `debug_assert!` supaya cepat ketahuan; build release jatuh ke
+    /// [`codes::OK`] supaya envelope sukses tidak pernah membawa kode galat di production.
     pub fn with_code(code: ResponseCode, data: T) -> Self {
+        debug_assert!(
+            code.is_success(),
+            "Success::with_code menerima kode non-2xx (kesalahan pemrograman)"
+        );
         let code = if code.is_success() { code } else { codes::OK };
         Self {
             response_code: code,
@@ -145,8 +150,14 @@ pub struct ErrorBody {
 
 impl ErrorBody {
     /// Membuat galat dengan `code`. `type_base` adalah awalan URI dokumentasi jenis masalah.
-    /// Kode sukses (2xx) ditolak dan diganti [`codes::INTERNAL`] agar galat tidak tampak sukses.
+    /// Kode sukses (2xx) adalah kesalahan pemrograman: build debug dan test gagal lewat
+    /// `debug_assert!`; build release menggantinya dengan [`codes::INTERNAL`] agar galat tidak
+    /// tampak sukses.
     pub fn new(code: ResponseCode, correlation_id: CorrelationId, type_base: &str) -> Self {
+        debug_assert!(
+            !code.is_success(),
+            "ErrorBody::new menerima kode 2xx (kesalahan pemrograman)"
+        );
         let code = if code.is_success() {
             codes::INTERNAL
         } else {
@@ -229,10 +240,23 @@ mod tests {
     }
 
     #[test]
-    fn success_never_carries_error_code() {
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "non-2xx")]
+    fn success_with_error_code_panics_in_debug() {
+        let _ = Success::with_code(codes::NOT_FOUND, json!({}));
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn success_never_carries_error_code_in_release() {
         let s = Success::with_code(codes::NOT_FOUND, json!({}));
         assert_eq!(s.response_code(), codes::OK);
         assert_eq!(s.http_status(), http::StatusCode::OK);
+    }
+
+    #[test]
+    fn success_helpers_use_2xx_statuses() {
+        assert_eq!(Success::ok(1).http_status(), http::StatusCode::OK);
         assert_eq!(Success::created(1).http_status(), http::StatusCode::CREATED);
         assert_eq!(
             Success::accepted(1).http_status(),
@@ -280,7 +304,15 @@ mod tests {
     }
 
     #[test]
-    fn error_body_never_reports_success_code() {
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "kode 2xx")]
+    fn error_body_with_success_code_panics_in_debug() {
+        let _ = ErrorBody::new(codes::OK, cid(), "https://d.example/problems");
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn error_body_never_reports_success_code_in_release() {
         let b = ErrorBody::new(codes::OK, cid(), "https://d.example/problems");
         assert_eq!(b.response_code(), codes::INTERNAL);
         assert_eq!(b.http_status(), http::StatusCode::INTERNAL_SERVER_ERROR);
