@@ -511,8 +511,8 @@ Dampak ke scope / waktu / arsitektur (awal, belum dianalisis rinci):
 - Pengguna baru (akun korporat, kemungkinan admin perusahaan dan peserta) → dampak ke autentikasi (realm baru atau pemakaian realm yang ada, ADR-011), otorisasi dan isolasi data (ADR-012), persetujuan data karyawan (UU PDP), pembayaran/penagihan korporat (ADR-015).
 - Kapasitas: phase plan v0.2 sudah menyatakan scope penuh kemungkinan besar tidak layak sampai 1 Maret 2027 (Fase 2 ±43 jam-task per hari kerja).
 Fakta bisnis `[TIDAK DIKETAHUI]`: penempatan rilis; isi company profile dan pengelola kontennya; siapa klien korporat dan peserta; alur pemesanan, penjadwalan, dan penagihan layanan massal; daftar "semacamnya"; integrasi dengan rekanan lab/klinik; regulasi vaksinasi massal.
-Keputusan: menunggu user (penempatan rilis ditanyakan 2026-11-19)
-Status: diajukan; tidak dikerjakan sebelum diputuskan dan dianalisis (aturan change request)
+Keputusan `[USER]` 2026-11-19 (Telegram): "1A, 2K" lalu "Web dan fitur ini pun masuk fase 1 dan harus"; setelah klarifikasi memilih **Y**: company profile **dan** member area korporat dibangun di Fase 1, dengan konsekuensi Fase 1 mundur atau sebagian task Fase 1 pindah ke Fase 2 (rincian dihitung dan diajukan ke user dulu). Peran login member area: HR/admin perusahaan + karyawan peserta (2K).
+Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); analisis BR/story/AC, dampak arsitektur dan phase plan menyusul untuk persetujuan user sebelum pembangunan
 
 ## Tech Debt
 
