@@ -8,8 +8,9 @@
 #
 # Urutan:
 #   1. Pemeriksaan teks berkas migrasi (nama, maju saja, penjaga di awal berkas, T-23) + test
-#      negatif pemeriksa dengan berkas rusak buatan. Pemeriksaan teks dapat diakali SQL dinamis
-#      yang lebih rumit; kontrol jangka panjang adalah event trigger (KEPUTUSAN-158) + T-08.
+#      negatif pemeriksa dengan berkas rusak buatan. Sejak TD-01 (a), SQL dinamis (EXECUTE) hanya
+#      boleh berbentuk templat §6.2 persis (allowlist, temuan_execute). Pemeriksaan teks tetap
+#      bukan kontrol tunggal: event trigger runtime (TD-01 b, KEPUTUSAN-158) + T-08 + review DBA.
 #   1b. Urutan terhadap basis git (merge-base dengan main/tahap-08-fase-1): berkas basis identik,
 #      berkas baru berversi lebih besar; penjaga DO berkas lanjutan menolak bila _sqlx_migrations
 #      sudah memuat versi lebih besar (templat db/test/templat-penjaga-lanjutan-*.sql).
@@ -123,6 +124,155 @@ tanpa_komentar() {
     }'
 }
 
+# temuan_execute <berkas> <app|audit|rme>: TD-01 (a), review keamanan F1-T14/T15 putaran 2. SQL
+# dinamis di berkas migrasi ditolak kecuali bentuk templat docs/05-physical-schema.md §6.2 yang
+# cocok persis (allowlist). Lexer SQL sederhana: literal '...' ('' di dalamnya), identifier "...",
+# komentar -- dan /* */ bersarang, dollar-quote bertag. Isi dollar-quote diperiksa sebagai kode
+# (badan DO/fungsi); dollar-quote yang ditutup saat lexer berada di literal/komentar/identifier
+# (isi data dengan kutip tidak seimbang yang dapat menggeser batas literal) adalah temuan.
+# Setiap kata EXECUTE di luar literal dan komentar wajib salah satu dari:
+#   R1  CREATE TRIGGER ... FOR EACH ROW|STATEMENT EXECUTE FUNCTION|PROCEDURE ...
+#   R2  GRANT/REVOKE ... EXECUTE ON ...                       (ON kata cadangan, bukan variabel)
+#   R3  (hanya db/migrations/audit) EXECUTE format('<bentuk §6.2 persis>', <argumen>); dengan
+#       argumen hanya identifier, angka, literal, || + - , ::, dan panggilan to_char(...); format
+#       ditutup langsung oleh ";" (tanpa || atau USING setelahnya). %I/%L mengutip nilai argumen,
+#       sehingga argumen tidak dapat mengubah bentuk pernyataan.
+# Selain itu ditolak: literal E'...' dan U&'...' (escape yang menggeser lexer), pengaturan
+# standard_conforming_strings/backslash_quote, dan fungsi bernama format/to_char (pembayang
+# fungsi yang dipakai R3). Event trigger runtime (TD-01 b, KEPUTUSAN-158) bukan bagian pemeriksa ini.
+temuan_execute() {
+  awk -v sistem="$2" '
+    function idch(c) { return c != "" && c ~ /[A-Za-z0-9_$]/ }
+    function emitc(c) {
+      if (c ~ /^[ \t\r\n]$/) {
+        if (norm == "" || substr(norm, length(norm), 1) == " ") return
+        c = " "
+      }
+      norm = norm c; mask = mask "c"
+    }
+    function lompat(j) { while (substr(norm, j, 1) == " ") j++; return j }
+    function templat(q,    j, m, c, lit, dep, id) {
+      j = lompat(q)
+      if (tolower(substr(norm, j, 6)) != "format" || idch(substr(norm, j + 6, 1))) return 0
+      j = lompat(j + 6)
+      if (substr(norm, j, 1) != "(") return 0
+      j = lompat(j + 1)
+      if (substr(norm, j, 1) != "\047" || substr(mask, j, 1) != "l") return 0
+      lit = ""; j++
+      while (1) {
+        c = substr(norm, j, 1)
+        if (substr(mask, j, 1) != "l") return 0
+        if (c == "\047") {
+          if (substr(norm, j + 1, 1) == "\047" && substr(mask, j + 1, 1) == "l") { lit = lit c; j += 2; continue }
+          j++; break
+        }
+        lit = lit c; j++
+      }
+      if (lit != F1 && lit != F2 && lit != F3) return 0
+      dep = 0
+      while (1) {
+        c = substr(norm, j, 1)
+        if (c == "") return 0
+        if (substr(mask, j, 1) == "l") { j++; continue }
+        if (c ~ /^[ ,|+:0-9-]$/) { j++; continue }
+        if (c ~ /^[A-Za-z_]$/) {
+          id = ""
+          while (substr(norm, j, 1) ~ /^[A-Za-z0-9_]$/ && substr(mask, j, 1) == "c") { id = id substr(norm, j, 1); j++ }
+          m = lompat(j)
+          if (substr(norm, m, 1) == "(") {
+            if (tolower(id) != "to_char") return 0
+            dep++; j = m + 1
+          }
+          continue
+        }
+        if (c == ")") { j++; if (dep == 0) break; dep--; continue }
+        return 0
+      }
+      j = lompat(j)
+      return substr(norm, j, 1) == ";"
+    }
+    { s = s $0 "\n" }
+    END {
+      F1 = "CREATE TABLE audit.%I PARTITION OF audit.%I FOR VALUES FROM (%L) TO (%L)"
+      F2 = "CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+      F3 = "CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+      n = length(s); i = 1; st = "c"; d = 0; cd = 0; norm = ""; mask = ""; ne = 0
+      while (i <= n) {
+        ch = substr(s, i, 1)
+        if (d > 0 && ch == "$") {
+          tk = "$" tag[d] "$"
+          if (substr(s, i, length(tk)) == tk) {
+            if (st != "c") {
+              print "dollar-quote " tk " ditutup di dalam literal/komentar/identifier (kutip tidak seimbang; isi dollar-quote diperiksa sebagai kode, TD-01)"
+              st = "c"; cd = 0
+            }
+            d--; emitc(" "); i += length(tk); continue
+          }
+        }
+        if (st == "l") {
+          norm = norm ch; mask = mask "l"
+          if (ch == "\047") {
+            if (substr(s, i + 1, 1) == "\047") { norm = norm ch; mask = mask "l"; i += 2; continue }
+            st = "c"
+          }
+          i++; continue
+        }
+        if (st == "i") {
+          if (ch == "\"") {
+            if (substr(s, i + 1, 1) == "\"") { norm = norm "\"\""; mask = mask "ii"; i += 2; continue }
+            st = "c"; norm = norm "\""; mask = mask "c"
+          } else { norm = norm ch; mask = mask "i" }
+          i++; continue
+        }
+        if (st == "lc") { if (ch == "\n") { st = "c"; emitc(" ") } i++; continue }
+        c2 = substr(s, i, 2)
+        if (st == "bc") {
+          if (c2 == "/*") { cd++; i += 2; continue }
+          if (c2 == "*/") { cd--; i += 2; if (cd == 0) { st = "c"; emitc(" ") } continue }
+          i++; continue
+        }
+        if (c2 == "--") { st = "lc"; i += 2; continue }
+        if (c2 == "/*") { st = "bc"; cd = 1; i += 2; continue }
+        pv = (i > 1) ? substr(s, i - 1, 1) : ""
+        pv2 = (i > 2) ? substr(s, i - 2, 1) : ""
+        if (ch == "\047") {
+          if ((pv == "E" || pv == "e") && pv2 !~ /^[A-Za-z_$]$/)
+            print "literal E\047...\047 (escape backslash) dilarang di berkas migrasi (TD-01)"
+          if (pv == "&" && (pv2 == "U" || pv2 == "u"))
+            print "literal U&\047...\047 (escape unicode) dilarang di berkas migrasi (TD-01)"
+          st = "l"; norm = norm ch; mask = mask "l"; i++; continue
+        }
+        if (ch == "\"") { st = "i"; norm = norm "\""; mask = mask "c"; i++; continue }
+        if (ch == "$" && !idch(pv)) {
+          rest = substr(s, i, 80)
+          if (match(rest, /^\$[A-Za-z_][A-Za-z0-9_]*\$/) || match(rest, /^\$\$/)) {
+            d++; tag[d] = substr(rest, 2, RLENGTH - 2); emitc(" "); i += RLENGTH; continue
+          }
+        }
+        if ((ch == "E" || ch == "e") && !idch(pv) && toupper(substr(s, i, 7)) == "EXECUTE" && !idch(substr(s, i + 7, 1))) {
+          ne++; pos[ne] = length(norm) + 1; norm = norm "EXECUTE"; mask = mask "ccccccc"; i += 7; continue
+        }
+        emitc(ch); i++
+      }
+      if (st != "c" || d > 0) print "berkas berakhir di dalam literal/komentar/identifier/dollar-quote (tidak seimbang, TD-01)"
+      u = toupper(norm)
+      if (u ~ /STANDARD_CONFORMING_STRINGS|BACKSLASH_QUOTE/)
+        print "memuat standard_conforming_strings/backslash_quote (mengubah arti literal, TD-01)"
+      if (u ~ /(FUNCTION|RENAME TO) +("?[A-Z_][A-Z0-9_]*"? *\. *)?"?(FORMAT|TO_CHAR)"? *[(; ]/)
+        print "membuat/menamai fungsi format atau to_char (membayangi fungsi templat §6.2, TD-01)"
+      for (k = 1; k <= ne; k++) {
+        p = pos[k]
+        a = p - 40; if (a < 1) a = 1
+        pre = toupper(substr(norm, a, p - a))
+        post = toupper(substr(norm, p + 7, 12))
+        if (pre ~ /FOR EACH (ROW|STATEMENT) $/ && post ~ /^ (FUNCTION|PROCEDURE) /) continue
+        if (post ~ /^ ON /) continue
+        if (sistem == "audit" && templat(p + 7)) continue
+        print "EXECUTE di luar allowlist templat §6.2 (SQL dinamis dilarang, TD-01): " substr(norm, p, 90)
+      }
+    }' "$1"
+}
+
 # temuan_statis <direktori> <app|audit|rme>: mencetak satu baris per temuan (kosong = bersih).
 temuan_statis() {
   local dir="$1" sistem="$2" f nama penjaga datar bersih teks lit versi semua_versi="" pertama
@@ -195,9 +345,9 @@ temuan_statis() {
     # T-23 (§11.4, KEPUTUSAN-158) dan pengerasan review keamanan F1-T14/T15: pola dicari pada teks
     # mentah DAN teks tanpa komentar (-- dan /* */ bersarang) dengan spasi dinormalkan, sehingga
     # komentar di antara kata kunci tidak meloloskan pola. Literal string (setelah penggabungan
-    # 'a' || 'b', tanpa literal COMMENT ON ... IS) diperiksa untuk SQL dinamis. Ini pemeriksaan teks
-    # yang dapat diakali dengan SQL dinamis yang lebih rumit (chr(), format('%s')); kontrol jangka
-    # panjang adalah event trigger (KEPUTUSAN-158) ditambah test katalog T-08 setelah migrasi.
+    # 'a' || 'b', tanpa literal COMMENT ON ... IS) diperiksa untuk SQL dinamis. SQL dinamis yang
+    # lebih rumit (chr(), format('%s'), dollar-quote, E'\x..') ditutup allowlist EXECUTE TD-01 (a)
+    # (temuan_execute); kontrol runtime adalah event trigger (KEPUTUSAN-158) + test katalog T-08.
     datar="$(tr '\n\t\r' '   ' <"$f" | tr -s ' ')"
     bersih="$(tanpa_komentar <"$f" | tr '\n\t\r' '   ' | tr -s ' ')"
     for teks in "$datar" "$bersih"; do
@@ -215,6 +365,8 @@ temuan_statis() {
         echo "$nama: mengubah fungsi util di luar berkas *_util_*.sql (§11.4: penggantian fungsi penjaga hanya di migrasi util yang direview)"
       fi
     done
+    # TD-01 (a): SQL dinamis hanya bentuk templat §6.2 (nama berkas sudah lolos pola di atas).
+    temuan_execute "$f" "$sistem" | sed "s|^|$nama: |"
     while IFS= read -r lit; do
       [ -n "$lit" ] || continue
       if printf '%s\n' "$lit" | grep -Eiq 'ABLE TRIGGER|REPLICA TRIGGER|ALWAYS TRIGGER|(DROP|ALTER) TRIGGER|(DROP|ALTER) FUNCTION|(DROP|ALTER) SCHEMA|replication_role'; then
@@ -330,26 +482,116 @@ DO \$x\$ BEGIN EXECUTE 'COMMENT ON FUNCTION ' || 'util.fn_x() IS NULL'; END \$x\
   kasus_lanjutan "berkas lanjutan tanpa pemeriksaan urutan" "$PENJAGA_APP" "penjaga lanjutan tanpa pemeriksaan urutan"
   kasus_lanjutan "literal versi penjaga urutan berbeda dari nama berkas" \
     "$(sed 's/@VERSI@/20990101000001/g' db/test/templat-penjaga-lanjutan-app.sql)" "literal versi penjaga urutan berbeda"
-  # Tanpa positif palsu: templat lanjutan resmi dan pola partisi §6.2 (format CREATE TRIGGER util.*).
+  # TD-01 (a): SQL dinamis di luar templat §6.2 ditolak. Tujuh bentuk yang lolos pemeriksa lama
+  # (review keamanan F1-T14/T15 putaran 2), lalu pengakalan atas allowlist itu sendiri.
+  local tmpl_tr="CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+  local ex="EXECUTE di luar allowlist"
+  kasus "TD-01 EXECUTE dollar-quote" app 20990101000000_d1.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE \$q\$ALTER TABLE app.x DIS\$q\$ || \$q\$ABLE TRIGGER ALL\$q\$; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE chr()" app 20990101000000_d2.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE 'ALTER TABLE app.x ' || chr(68) || 'ISABLE ' || chr(84) || 'RIGGER ALL'; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE concat()" app 20990101000000_d3.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE concat('ALTER TABLE app.x DIS', 'ABLE TRIG', 'GER ALL'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE format('%s')" app 20990101000000_d4.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('ALTER TABLE app.x %sABLE %sGER ALL', 'DIS', 'TRIG'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE E'\\x..'" app 20990101000000_d5.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE E'ALTER TABLE app.x \\x44ISABLE \\x54RIGGER ALL'; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE convert_from(decode())" app 20990101000000_d6.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE convert_from(decode('414c544552205441424c45', 'hex'), 'UTF8'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE variabel" app 20990101000000_d7.sql "$PENJAGA_APP
+DO \$x\$ DECLARE v text; BEGIN v := 'SELECT 1'; EXECUTE v; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 diikuti || chr()" audit 20990101000000_d8.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b') || chr(59) || 'SELECT 1'; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan argumen chr()" audit 20990101000000_d9.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', chr(97), 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan USING" audit 20990101000000_d10.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b') USING 1; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan subquery argumen" audit 20990101000000_d11.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', (SELECT 'b')); END \$x\$;" "$ex"
+  kasus "TD-01 bentuk mirip templat (skema app, bukan persis §6.2)" audit 20990101000000_d12.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('${tmpl_tr//audit./app.}', 'a', 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 di db/migrations/app (allowlist hanya audit)" app 20990101000000_d13.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 variabel bernama function (bukan CREATE TRIGGER)" app 20990101000000_d14.sql "$PENJAGA_APP
+DO \$x\$ DECLARE function text := 'SELECT 1'; BEGIN EXECUTE function; END \$x\$;" "$ex"
+  kasus "TD-01 PREPARE/EXECUTE SQL" app 20990101000000_d15.sql "$PENJAGA_APP
+PREPARE p AS SELECT 1;
+EXECUTE p;" "$ex"
+  kasus "TD-01 dollar-quote data berkutip tunggal (menggeser batas literal)" app 20990101000000_d16.sql "$PENJAGA_APP
+SELECT \$d\$'\$d\$, '-- ';
+DO \$y\$ BEGIN EXECUTE 'SELECT 1'; END \$y\$;" "dollar-quote \$d\$ ditutup di dalam literal"
+  kasus "TD-01 literal E'...' di luar EXECUTE" app 20990101000000_d17.sql "$PENJAGA_APP
+SELECT E'\\x41';" "literal E'"
+  kasus "TD-01 literal U&'...'" app 20990101000000_d18.sql "$PENJAGA_APP
+SELECT U&'\\0041';" "literal U&'"
+  kasus "TD-01 standard_conforming_strings" app 20990101000000_d19.sql "$PENJAGA_APP
+SET LOCAL standard_conforming_strings = off;" "standard_conforming_strings"
+  kasus "TD-01 fungsi pembayang format" app 20990101000000_d20.sql "$PENJAGA_APP
+CREATE FUNCTION app.format(text) RETURNS text LANGUAGE sql AS \$f\$ SELECT \$1 \$f\$;" "fungsi format atau to_char"
+  kasus "TD-01 ganti nama fungsi menjadi \"to_char\"" app 20990101000000_d21.sql "$PENJAGA_APP
+ALTER FUNCTION app.f(date, text) RENAME TO \"to_char\";" "fungsi format atau to_char"
+  kasus "TD-01 literal tidak tertutup" app 20990101000000_d22.sql "$PENJAGA_APP
+SELECT 'abc;" "tidak seimbang"
+
+  # Tanpa positif palsu (app): templat lanjutan resmi, trigger penolak statis (EXECUTE FUNCTION),
+  # REVOKE/GRANT EXECUTE ON, kata EXECUTE di komentar, COMMENT berisi 'Trigger'.
   no=$((no + 1))
   d="$KERJA/statis-bersih-$no"
   mkdir -p "$d"
   printf '%s\n' "$PENJAGA_APP" >"$d/20990101000000_util_awal.sql"
   { sed 's/@VERSI@/20990101000002/g' db/test/templat-penjaga-lanjutan-app.sql
     cat <<'SQL'
--- Pola §6.2: trigger penolak per partisi lewat SQL dinamis (sah).
+-- EXECUTE di komentar baris tidak dihitung; /* EXECUTE /* bersarang */ */ juga tidak.
 COMMENT ON TABLE app.x IS 'class:T module:uji -- Trigger penolak';
-DO $$
-BEGIN
-  EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON app.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()', 'tg_x_reject_ud', 'x');
-END $$;
+CREATE TRIGGER tg_x_reject_ud BEFORE UPDATE OR DELETE ON app.x
+  FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification();
+CREATE TRIGGER tg_x_guard_delete BEFORE DELETE ON app.x
+  FOR EACH ROW EXECUTE FUNCTION util.fn_guard_log_delete('k', 'created_at', '{}', 'rs_privacy_worker');
+REVOKE ALL ON FUNCTION app.fn_x() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.fn_x() TO rs_app;
+SELECT "EXECUTE" FROM app.x;
 SQL
   } >"$d/20990101000002_tabel_x.sql"
   t="$(temuan_statis "$d" app)"
   if [ -z "$t" ]; then
-    tandai lulus "statis tanpa positif palsu: templat penjaga lanjutan + format('CREATE TRIGGER ... util.fn_reject_modification()') + COMMENT berisi 'Trigger'"
+    tandai lulus "statis tanpa positif palsu (app): templat penjaga lanjutan + CREATE TRIGGER ... EXECUTE FUNCTION + GRANT/REVOKE EXECUTE ON + EXECUTE di komentar/identifier"
   else
-    tandai gagal "statis positif palsu: $t"
+    tandai gagal "statis positif palsu (app): $t"
+  fi
+  # Tanpa positif palsu (audit): blok templat §6.2 persis (partisi + dua trigger penolak per partisi).
+  no=$((no + 1))
+  d="$KERJA/statis-bersih-$no"
+  mkdir -p "$d"
+  cp db/migrations/audit/20261119090000_util_shared_functions.sql "$d/"
+  { sed 's/@VERSI@/20990101000002/g' db/test/templat-penjaga-lanjutan-audit.sql
+    cat <<'SQL'
+-- Templat docs/05-physical-schema.md §6.2 (KEPUTUSAN-100), disalin persis.
+DO $$
+DECLARE
+  m date;
+  p text;
+BEGIN
+  FOR m IN SELECT generate_series(date '2026-11-01', date '2029-12-01', interval '1 month')::date LOOP
+    FOREACH p IN ARRAY ARRAY['audit_event', 'audit_event_subject'] LOOP
+      EXECUTE format(
+        'CREATE TABLE audit.%I PARTITION OF audit.%I FOR VALUES FROM (%L) TO (%L)',
+        p || '_' || to_char(m, '"y"YYYY"m"MM'), p,
+        to_char(m, 'YYYY-MM-DD') || ' 00:00:00+00',
+        to_char(m + interval '1 month', 'YYYY-MM-DD') || ' 00:00:00+00');
+      EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()',
+        'tg_' || p || '_' || to_char(m, '"y"YYYY"m"MM') || '_reject_ud', p || '_' || to_char(m, '"y"YYYY"m"MM'));
+      EXECUTE format('CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()',
+        'tg_' || p || '_' || to_char(m, '"y"YYYY"m"MM') || '_reject_truncate', p || '_' || to_char(m, '"y"YYYY"m"MM'));
+    END LOOP;
+  END LOOP;
+END $$;
+SQL
+  } >"$d/20990101000002_partisi.sql"
+  t="$(temuan_statis "$d" audit)"
+  if [ -z "$t" ]; then
+    tandai lulus "statis tanpa positif palsu (audit): blok templat §6.2 persis (CREATE TABLE PARTITION OF + dua CREATE TRIGGER lewat EXECUTE format)"
+  else
+    tandai gagal "statis positif palsu (audit): $t"
   fi
 }
 
