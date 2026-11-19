@@ -17,3 +17,12 @@ Sumber semua jawaban: `[USER]` lewat Telegram, 2026-11-19. Konteks: `docs/backlo
 | P1-2 | Layanan korporat rilis ini | **V, M, L**: vaksinasi massal, MCU massal, pemeriksaan lab massal (non-MCU) |
 | P1-3 | Pelaksana di lokasi perusahaan | **R**: klinik/lab rekanan (Ruang Sehat sebagai perantara) |
 | P1-4 | Pembayaran korporat | **I**: invoice B2B (transfer, termin/jatuh tempo), tanpa payment gateway |
+
+## Putaran 2
+
+| Q | Pertanyaan | Jawaban |
+| --- | --- | --- |
+| P2-1 | Cara perusahaan menjadi member | **DA**: daftar sendiri di web lalu diverifikasi admin Ruang Sehat (dokumen NIB/NPWP), **dan** dibuatkan admin/sales Ruang Sehat setelah kesepakatan |
+| P2-2 | Alur pemesanan | **K**: HR memilih paket dari katalog harga tetap, lalu langsung memesan (bukan alur penawaran) |
+| P2-3 | Data dan akun peserta | **U**: HR unggah daftar peserta (Excel/CSV: nama, email/HP, tanggal lahir; NIK hanya bila wajib untuk layanan); peserta menerima undangan email dan memakai akun pasien Ruang Sehat yang sama |
+| P2-4 | Siapa melihat hasil MCU/lab | **PK**: hasil lengkap hanya untuk peserta; HR melihat rekap kehadiran, dan ringkasan (mis. fit/unfit) hanya bila peserta memberi persetujuan. Tafsiran penyusun (dikonfirmasi di rekap): tanpa persetujuan peserta, HR hanya melihat rekap kehadiran |
