@@ -11,7 +11,8 @@
 -- Daftar tabel pola berlaku-mulai (§4.2 (3)).
 \set berlaku '{markup_rule,partner_fee_rule,consultation_rate,business_parameter,payment_method_fee,retention_policy,consent_text_version}'
 
--- A. Skema app nyata: semua tabel memenuhi aturan kelas (saat ini belum ada tabel bisnis).
+-- A. Skema app nyata: semua tabel memenuhi aturan kelas (tabel bisnis sejak F1-T16; test per tabel
+--    di db/test/tabel-app-*.sql).
 SELECT pg_catalog.set_config('uji.berlaku', :'berlaku', false) AS _b \gset
 DO $$
 DECLARE

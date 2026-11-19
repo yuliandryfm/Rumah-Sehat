@@ -89,8 +89,12 @@ if [ "$VERSI_AKTIF" != "$SQLX_VERSI" ]; then
   echo "  pasang: cargo install sqlx-cli --version $SQLX_VERSI --locked --no-default-features --features postgres,rustls --root $SQLX_ROOT" >&2
   exit 1
 fi
+# Test per tabel database ruang_sehat (struktur khusus + perilaku role sungguhan), satu berkas per
+# task migrasi (F1-T16 dst.). Daftar eksplisit: berkas yang hilang GAGAL, tidak dilewati diam-diam.
+TEST_TABEL_APP="db/test/tabel-app-a1.sql"
 for f in db/test/lib.sql db/test/katalog.sql db/test/util-app.sql db/test/kelas-app.sql \
-  db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql; do
+  db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql \
+  $TEST_TABEL_APP; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -1015,6 +1019,9 @@ if [ "$GAGAL" -eq 0 ]; then
   jalankan_test ruang_sehat db/test/katalog.sql -v skema_harap='{app,util,ext}' -v skema_proyek='{app,util}' -v skema_mig=app -v prefiks=rs_
   jalankan_test ruang_sehat db/test/util-app.sql
   jalankan_test ruang_sehat db/test/kelas-app.sql
+  for f in $TEST_TABEL_APP; do
+    jalankan_test ruang_sehat "$f"
+  done
   for p in rs_:ruang_sehat_audit rme_:rme_audit; do
     jalankan_test "${p#*:}" db/test/katalog.sql -v skema_harap='{audit,util,audit_detached}' \
       -v skema_proyek='{audit,util,audit_detached}' -v skema_mig=audit -v prefiks="${p%%:*}"
