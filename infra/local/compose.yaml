@@ -4,6 +4,7 @@
 # Pakai:
 #   cp .env.example infra/local/.env      # lalu ubah nilainya bila perlu (berkas di-ignore git)
 #   docker compose -f infra/local/compose.yaml up -d --wait
+#   bash scripts/db-roles-check.sh compose   # bootstrap db/roles/ (role, database, skema) + test, F1-T13
 #   docker compose -f infra/local/compose.yaml down -v
 # Alternatif: simpan nilai di .env.local (coding-standards §6) dan tambahkan
 #   --env-file .env.local pada setiap perintah compose.
