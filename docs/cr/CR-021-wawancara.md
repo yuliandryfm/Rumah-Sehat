@@ -50,3 +50,14 @@ Jawaban `[USER]` Telegram 2026-11-19 15:35 UTC: "1S3 2Y 3Y 4aV 4bY4cT".
 | 4c | PT-72: NIB sudah terdaftar → **tolak** (jawaban "T"). "Arahkan menghubungi Layanan Pelanggan" adalah **tafsiran penyusun** (pola M-52: tanggapan generik, konflik diselesaikan admin di luar layar), dikonfirmasi user |
 
 Catatan fact-check `docs/fact-check/CR-021.md` N-3: jawaban putaran 4 berupa kode singkat; rincian di luar teks opsi §17 ditandai tafsiran.
+
+## Putaran 5: konfirmasi tafsiran (koreksi fact-check `docs/fact-check/CR-021-penerapan.md` B-1)
+
+Jawaban `[USER]` Telegram 2026-11-19 23:13 UTC: "4BY 4CY".
+
+| Q | Tafsiran yang dikonfirmasi |
+| --- | --- |
+| 4b | Bukti kewenangan pendaftar berupa surat kuasa atau surat penunjukan dari perusahaan (ditandatangani pejabat berwenang), diunggah saat daftar, dicek Verifikator |
+| 4c | NIB sudah terdaftar → pendaftaran ditolak dengan pesan umum dan arahan menghubungi Layanan Pelanggan, tanpa memberi tahu akun mana yang memakai NIB itu |
+
+Dengan konfirmasi ini, label "tafsiran penyusun yang dikonfirmasi user" di BR-136 dan US-1901 AC1/AC7 menjadi benar, dan PT-72 tetap terjawab.

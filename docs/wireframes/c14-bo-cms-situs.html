@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C14 Backoffice: CMS kanal situs - Wireframe Ruang Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+<link rel="stylesheet" href="wireframe-situs.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>C14 Backoffice CMS: kanal situs, editor Markdown, pratinjau aman <span class="draft-tag">DRAF F1-T84</span></h1>
+  <p>Story: US-1802 (AC1-AC9), US-1101 (CMS yang sama dengan aplikasi), ADR-027 butir 5. Melengkapi D-C07 (§10.2) dengan kanal situs. Sub-peran: Konten. Isi hanya Markdown tanpa HTML mentah; pratinjau di iframe <code>sandbox</code> tanpa <code>allow-same-origin</code>. Aturan render aman sama dengan situs (AC7). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+<!-- 1. Daftar -->
+<section aria-labelledby="m1">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Konten &middot; k1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><span class="sec">Konten</span><a class="on" href="#" aria-current="page">Daftar konten</a><a href="#">Keluhan</a></nav>
+    <div class="web-main">
+      <div class="row between"><h1 class="t-title">Daftar konten</h1><button class="btn btn-primary">Buat konten</button></div>
+      <div class="toolbar">
+        <div class="field"><label for="g-kn">Kanal</label><select id="g-kn" class="input"><option>Semua</option><option>Aplikasi</option><option selected>Situs</option><option>Aplikasi dan situs</option></select></div>
+        <div class="field"><label for="g-st">Status</label><select id="g-st" class="input"><option>Semua</option><option>Draf</option><option>Tayang</option><option>Selesai</option><option>Diarsipkan</option><option>Terhapus</option></select></div>
+        <div class="field"><label for="g-hl">Halaman situs</label><select id="g-hl" class="input"><option>Semua</option><option>Beranda</option><option>Tentang Kami</option><option>Layanan</option><option>Untuk Perusahaan</option><option>Rekanan</option><option>Artikel/berita</option><option>Kontak</option><option>Unduh aplikasi</option><option>Kebijakan privasi &amp; syarat</option></select></div>
+      </div>
+      <div class="table-wrap"><table class="tbl"><caption class="t-cap" style="text-align:left;padding:8px">Konten kanal Situs</caption>
+        <thead><tr><th scope="col">Judul</th><th scope="col">Jenis</th><th scope="col">Kanal</th><th scope="col">Halaman situs</th><th scope="col">Status</th><th scope="col">Tayang sejak</th></tr></thead>
+        <tbody>
+          <tr class="sel"><td>[Tentang Kami]</td><td>Halaman tetap</td><td>Situs</td><td>Tentang Kami</td><td><span class="badge neutral">Draf</span></td><td>-</td></tr>
+          <tr><td>[Layanan]</td><td>Halaman tetap</td><td>Situs</td><td>Layanan</td><td><span class="badge success">Tayang</span></td><td>1 Mar 2027</td></tr>
+          <tr><td>[Artikel contoh]</td><td>Artikel</td><td>Aplikasi dan situs</td><td>Artikel/berita</td><td><span class="badge info">Tayang (terjadwal)</span></td><td>[tanggal]</td></tr>
+          <tr><td>[Kebijakan privasi]</td><td>Halaman tetap</td><td>Situs</td><td>Kebijakan privasi &amp; syarat</td><td><span class="badge neutral">Draf</span></td><td>-</td></tr>
+        </tbody></table></div>
+      <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Tidak ada akses</b>Akun Anda tidak memiliki sub-peran Konten untuk membuat, mengubah, atau menayangkan konten situs. (Layar ini hanya muncul untuk akun tanpa hak; percobaan tercatat, US-1802 AC4.)</span></div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="m1">1. Daftar konten dengan filter kanal dan halaman situs (US-1802 AC1, AC2)</b>Kolom "Kanal" dan "Halaman situs" baru. Halaman tetap: hanya satu versi tayang per halaman, versi sebelumnya berakhir (AC2). Status memakai nada guideline §5.6 (Draf = netral, Tayang = sukses). "Tayang (terjadwal)" menandai jadwal tayang belum tiba; nama status final mengikuti PRD §3.6 <span class="td">[TIDAK DIKETAHUI]</span> bila berbeda. Hapus dan pulihkan tercatat E-16.</p>
+</section>
+
+<!-- 2. Editor + pratinjau -->
+<section aria-labelledby="m2">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Konten &middot; k1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><span class="sec">Konten</span><a class="on" href="#" aria-current="page">Daftar konten</a></nav>
+    <div class="web-main">
+      <div class="row between"><h1 class="t-title">Ubah konten: Tentang Kami</h1><span class="badge neutral">Draf</span></div>
+      <form novalidate class="stack">
+        <div class="toolbar">
+          <div class="field"><label for="e-jd">Judul</label><input id="e-jd" class="input" value="[Tentang Kami]"></div>
+          <fieldset style="border:0;padding:0;margin:0"><legend class="t-small" style="font-weight:600">Kanal</legend><div class="chips"><span class="chip">Aplikasi</span><span class="chip on">Situs</span></div></fieldset>
+          <div class="field"><label for="e-hl">Halaman situs tujuan</label><select id="e-hl" class="input"><option>Tentang Kami</option></select></div>
+          <div class="field"><label for="e-jw">Jadwal tayang (opsional)</label><input id="e-jw" class="input" type="datetime-local"></div>
+        </div>
+        <div class="md-editor">
+          <div class="field is-error"><label for="e-md">Isi (Markdown)</label><textarea id="e-md" class="input md-src" aria-invalid="true" aria-describedby="e-md-e">## Siapa kami
+[Teks dari user]
+
+![ ](https://img.example.test/x.png)
+&lt;script&gt;alert(1)&lt;/script&gt;
+[klik](javascript:alert(1))</textarea>
+            <span class="err" id="e-md-e">Isi tidak dapat disimpan: HTML mentah tidak diizinkan (baris 5); tautan harus berskema https, mailto, atau relatif (baris 6); gambar harus dari pustaka gambar Ruang Sehat (baris 4); gambar tanpa teks alternatif (baris 4).</span>
+            <span class="hint">Hanya Markdown. HTML mentah, skrip, dan sematan tidak didukung (US-1802 AC6).</span></div>
+          <div class="field"><label for="e-pv">Pratinjau (dirender dengan aturan sama seperti di situs)</label>
+            <iframe id="e-pv" class="preview" title="Pratinjau isi konten, terisolasi" sandbox srcdoc="<!doctype html><html lang=id><body style='font-family:system-ui;margin:16px;color:#1A2B2E'><h2>Siapa kami</h2><p>[Teks dari user]</p></body></html>"></iframe>
+            <span class="hint">Terisolasi (iframe sandbox tanpa allow-same-origin): skrip apa pun di pratinjau tidak dapat memakai sesi backoffice (AC8).</span></div>
+        </div>
+        <div class="field is-error"><label for="e-gb">Gambar (opsional)</label><input id="e-gb" class="input" type="file" accept=".jpg,.jpeg,.png"><div class="field is-error" style="margin-top:8px"><label for="e-alt">Teks alternatif gambar</label><input id="e-alt" class="input" aria-invalid="true" aria-describedby="e-alt-e"><span class="err" id="e-alt-e">Teks alternatif wajib sebelum konten dapat ditayangkan.</span></div></div>
+        <div class="note"><b>Promo hanya informasi:</b> tidak mengubah harga di aplikasi maupun katalog korporat (US-1802 AC3, US-1101 AC4).</div>
+        <div class="row" style="justify-content:space-between"><button class="btn btn-danger" type="button">Hapus</button><span class="row"><button class="btn btn-secondary" type="button">Simpan draf</button><button class="btn btn-primary" type="submit">Tayangkan</button></span></div>
+        <div class="alert warning"><span aria-hidden="true">!</span><span><b>Tayangkan halaman ini?</b>Versi yang sedang tayang untuk halaman "Tentang Kami" akan berakhir dan digantikan versi ini (US-1802 AC2).</span></div>
+      </form>
+    </div>
+  </div>
+  <p class="web-caption"><b id="m2">2. Editor Markdown dan pratinjau (US-1802 AC1, AC5-AC8)</b>Satu kolom pada &lt; 768 px (editor di atas pratinjau). Galat per baris menjelaskan penolakan: HTML mentah, skema tautan di luar https/mailto/relatif, gambar dari luar endpoint gambar publik, gambar tanpa teks alternatif (AC5, AC6). Backend menolak atau menetralkan bagian itu; pratinjau dan situs memakai aturan render yang sama (AC7). Teks galat per field tanpa menampilkan isi berbahaya sebagai HTML (dirender sebagai teks). Pustaka Markdown dipilih di task (F1-T111). Alat bantu editor (toolbar tebal, miring) bukan bagian rancangan ini; hanya isian teks Markdown <span class="td">[TIDAK DIKETAHUI]</span> apakah dibutuhkan, belum ada di PRD.</p>
+</section>
+
+<!-- 3. Pratinjau seluler 360 -->
+<section aria-labelledby="m3">
+  <div class="site narrow" role="group" aria-label="Tampilan 360 piksel layar backoffice CMS">
+    <header class="site-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><details class="site-menu" style="display:block"><summary aria-label="Menu">Menu</summary><nav class="site-nav" aria-label="Utama"><a href="#" aria-current="page">Daftar konten</a><a href="#">Keluhan</a><a href="#">Keluar</a></nav></details></header>
+    <main style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <h1 class="t-title">Ubah konten</h1>
+      <div class="field"><label for="m-jd">Judul</label><input id="m-jd" class="input" value="[Tentang Kami]"></div>
+      <div class="field"><label for="m-md">Isi (Markdown)</label><textarea id="m-md" class="input md-src">## Siapa kami</textarea></div>
+      <iframe class="preview" title="Pratinjau terisolasi" sandbox srcdoc="<!doctype html><html lang=id><body style='font-family:system-ui;margin:12px'><h2>Siapa kami</h2></body></html>"></iframe>
+      <button class="btn btn-primary btn-block">Tayangkan</button>
+    </main>
+  </div>
+  <p class="web-caption"><b id="m3">3. Backoffice pada lebar sempit</b>Menu menjadi tombol "Menu" dengan teks; editor di atas pratinjau; tombol 48 px. Backoffice dipakai terutama di desktop; kebutuhan menyunting di ponsel belum ada di PRD, sehingga layar ini hanya memastikan reflow 320 px (SC 1.4.10).</p>
+</section>
+
+</main>
+</body>
+</html>

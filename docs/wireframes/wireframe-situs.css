@@ -1,0 +1,77 @@
+/*
+  Ruang Sehat - tambahan CSS wireframe untuk situs publik dan layar CR-021 (F1-T83, F1-T84).
+  Dipakai bersama wireframe.css (token sama, design guideline §3). Tanpa CDN dan font jarak jauh.
+  Responsif memakai container query pada .site, sehingga bingkai sempit (.site.narrow) dan
+  jendela browser sungguhan memakai aturan yang sama (guideline §8).
+*/
+.site { container-type: inline-size; width: 1280px; max-width: 100%; background: var(--c-bg); border: 1px solid var(--c-border-strong); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--e2); }
+.site.narrow { width: 360px; }
+.site.mid { width: 800px; }
+.skip { position: absolute; left: -9999px; top: 0; background: var(--c-surface); padding: var(--s2) var(--s4); z-index: 5; }
+.skip:focus { left: var(--s2); top: var(--s2); box-shadow: var(--focus); }
+
+.site-top { display: flex; align-items: center; gap: var(--s4); padding: var(--s2) var(--s6); min-height: 64px; background: var(--c-surface); border-bottom: 1px solid var(--c-divider); }
+.site-top .grow { flex: 1; }
+.site-nav { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.site-nav a { min-height: 40px; padding: 0 var(--s3); display: inline-flex; align-items: center; color: var(--c-ink); text-decoration: none; border-radius: var(--r-md); font-size: 14px; border-bottom: 3px solid transparent; }
+.site-nav a[aria-current="page"] { color: var(--c-primary-strong); font-weight: 700; border-bottom-color: var(--c-primary-strong); }
+.site-menu { display: none; }
+.site-menu summary { list-style: none; min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); cursor: pointer; font-size: 14px; font-weight: 600; padding: 0 var(--s3); background: var(--c-surface); }
+.site-menu .site-nav { flex-direction: column; position: absolute; right: var(--s3); top: 64px; background: var(--c-surface); border: 1px solid var(--c-divider); border-radius: var(--r-md); padding: var(--s2); box-shadow: var(--e2); z-index: 4; min-width: 220px; }
+.site-menu .site-nav a { min-height: 48px; }
+.site-top { position: relative; }
+.site .btn { min-height: 44px; font-size: 15px; }
+
+.hero { padding: var(--s10) var(--s6); display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--s8); align-items: center; background: var(--c-mint); }
+.hero h1 { font-size: 36px; line-height: 44px; margin: 0 0 var(--s3); }
+.hero p { margin: 0 0 var(--s4); font-size: 18px; line-height: 28px; }
+.hero .cta { display: flex; gap: var(--s3); flex-wrap: wrap; }
+.img-ph { min-height: 220px; background: repeating-linear-gradient(45deg, var(--c-neutral-bg) 0 12px, var(--c-surface) 12px 24px); border: 1px dashed var(--c-border-strong); border-radius: var(--r-xl); display: flex; align-items: center; justify-content: center; text-align: center; padding: var(--s4); font-size: 13px; color: var(--c-ink-2); }
+.sec { padding: var(--s8) var(--s6); display: flex; flex-direction: column; gap: var(--s4); }
+.sec.alt { background: var(--c-surface); border-top: 1px solid var(--c-divider); border-bottom: 1px solid var(--c-divider); }
+.sec h2 { font-size: 24px; line-height: 32px; margin: 0; }
+.sec h3 { font-size: 18px; margin: 0; }
+.sec p { margin: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+.pagehead { padding: var(--s8) var(--s6) var(--s4); background: var(--c-mint); }
+.pagehead h1 { margin: 0 0 var(--s2); font-size: 32px; line-height: 40px; }
+.crumb { font-size: 13px; color: var(--c-ink-2); margin: 0 0 var(--s2); }
+.prose { max-width: 68ch; display: flex; flex-direction: column; gap: var(--s3); }
+.prose h2 { font-size: 20px; margin: var(--s2) 0 0; }
+.site-foot { padding: var(--s6); background: var(--c-ink); color: #FFFFFF; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--s6); font-size: 14px; }
+.site-foot a { color: #FFFFFF; display: inline-block; min-height: 32px; }
+.site-foot ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.site-foot .legal { grid-column: 1 / -1; border-top: 1px solid #5C6B6F; padding-top: var(--s3); font-size: 12px; }
+.td { background: var(--c-warning-bg); color: var(--c-warning); font-weight: 600; padding: 0 4px; border-radius: 4px; }
+.draft-banner { margin: 0; padding: var(--s2) var(--s6); background: var(--c-warning-bg); color: var(--c-warning); font-weight: 600; font-size: 14px; }
+.tag-row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.map-ph { min-height: 200px; }
+.steps { display: flex; gap: var(--s2); list-style: none; padding: 0; margin: 0; font-size: 14px; flex-wrap: wrap; }
+.steps li { padding: var(--s1) var(--s3); border-radius: var(--r-full); border: 1px solid var(--c-border-strong); background: var(--c-surface); }
+.steps li[aria-current="step"] { background: var(--c-primary-strong); color: #FFFFFF; border-color: var(--c-primary-strong); font-weight: 700; }
+.steps li.done::before { content: "\2713 "; }
+.form-narrow { max-width: 560px; display: flex; flex-direction: column; gap: var(--s4); }
+.state-box { max-width: 520px; margin: var(--s8) auto; }
+.md-editor { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); }
+.md-src { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 220px; white-space: pre-wrap; }
+iframe.preview { width: 100%; height: 240px; border: 1px solid var(--c-border-strong); border-radius: var(--r-md); background: var(--c-surface); }
+.cap-grid { display: flex; flex-direction: column; gap: var(--s6); padding: var(--s6); }
+
+@container (max-width: 767px) {
+  .site-top { padding: var(--s2) var(--s4); }
+  .site-top > .site-nav { display: none; }
+  .site-menu { display: block; }
+  .hero { grid-template-columns: 1fr; padding: var(--s6) var(--s4); }
+  .hero h1 { font-size: 28px; line-height: 36px; }
+  .hero p { font-size: 16px; line-height: 24px; }
+  .sec { padding: var(--s6) var(--s4); }
+  .pagehead { padding: var(--s6) var(--s4) var(--s3); }
+  .pagehead h1 { font-size: 26px; line-height: 32px; }
+  .site-foot { grid-template-columns: 1fr; padding: var(--s4); }
+  .md-editor, .split { grid-template-columns: 1fr; }
+  .site .btn { min-height: 48px; }
+  .web-main, .draft-banner { padding-left: var(--s4); padding-right: var(--s4); }
+}
+@media (max-width: 767px) {
+  .cap-grid { padding: var(--s3); }
+}

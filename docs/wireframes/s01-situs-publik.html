@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S01 Situs publik: sembilan halaman - Wireframe Ruang Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+<link rel="stylesheet" href="wireframe-situs.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>S01 Situs publik <code>web/situs</code>: sembilan halaman <span class="draft-tag">DRAF F1-T83</span></h1>
+  <p>Story: US-1801 (AC1-AC7), US-1802 AC9; BR-130, BR-131; ADR-027 butir 1 dan 5. Semua isi halaman berasal dari CMS (kanal situs, status Tayang); teks di bawah adalah <b>placeholder struktur</b>, bukan konten final. Logo hanya placeholder (PT-40). Tanpa skrip, tanpa font atau sematan pihak ketiga, tanpa cookie sesi (US-1801 AC5, US-1802 AC9). Bingkai sempit 360 px dan 800 px menunjukkan perilaku responsif (guideline §8). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="cap-grid">
+
+<!-- ============ 1. Beranda (desktop) ============ -->
+<section aria-labelledby="c1">
+  <div class="site" role="group" aria-label="Halaman Beranda, lebar desktop">
+    <a class="skip" href="#isi-1">Lewati ke isi</a>
+    <header class="site-top">
+      <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Ruang Sehat <small>logo placeholder</small></span>
+      <span class="grow"></span>
+      <nav class="site-nav" aria-label="Utama"><a href="#" aria-current="page">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav>
+    </header>
+    <main id="isi-1">
+      <div class="hero">
+        <div><h1>[Judul utama dari CMS] <span class="td">[TIDAK DIKETAHUI]</span></h1><p>[Kalimat pembuka tentang Ruang Sehat dari CMS. Slogan pamflet menunggu konfirmasi (UP-60).] <span class="td">[TIDAK DIKETAHUI]</span></p>
+          <div class="cta"><a class="btn btn-primary" href="#">Unduh aplikasi</a><a class="btn btn-secondary" href="#">Untuk Perusahaan</a></div></div>
+        <div class="img-ph" role="img" aria-label="Placeholder gambar utama; gambar final dari CMS dengan teks alternatif">Gambar utama (placeholder, PT-40)<br>Teks alternatif wajib di CMS (US-1802 AC5)</div>
+      </div>
+      <section class="sec" aria-labelledby="b-lay"><h2 id="b-lay">Layanan</h2>
+        <div class="cards">
+          <div class="card"><h3>Konsultasi Online</h3><p class="t-small">Chat dan video dengan dokter atau psikolog.</p></div>
+          <div class="card"><h3>Pendaftaran Klinik</h3><p class="t-small">Daftar ke klinik rekanan.</p></div>
+          <div class="card"><h3>Pendaftaran Lab</h3><p class="t-small">Daftar ke lab rekanan.</p></div>
+          <div class="card"><h3>Home Visit</h3><p class="t-small">Tenaga medis datang ke rumah.</p></div>
+          <div class="card"><h3>Biaya MCU &amp; Lab</h3><p class="t-small">Informasi biaya pemeriksaan.</p></div>
+          <div class="card"><h3>Belanja Produk</h3><p class="t-small">Obat bebas, kecantikan, dan produk kesehatan.</p></div>
+        </div>
+        <p><a href="#">Lihat semua layanan</a> (daftar dan urutan dari CMS, US-1801 AC2)</p>
+      </section>
+      <section class="sec alt" aria-labelledby="b-corp"><h2 id="b-corp">Untuk Perusahaan</h2>
+        <p>[Ringkasan layanan korporat dari CMS.] <span class="td">[TIDAK DIKETAHUI]</span></p>
+        <p><a class="btn btn-secondary" href="#">Pelajari layanan perusahaan</a></p>
+      </section>
+      <section class="sec" aria-labelledby="b-art"><h2 id="b-art">Artikel terbaru</h2>
+        <div class="cards"><div class="card"><span class="t-cap">[Tanggal]</span><h3>[Judul artikel dari CMS]</h3></div><div class="card"><span class="t-cap">[Tanggal]</span><h3>[Judul artikel dari CMS]</h3></div><div class="card"><span class="t-cap">[Tanggal]</span><h3>[Judul artikel dari CMS]</h3></div></div>
+      </section>
+    </main>
+    <footer class="site-foot"><div><span class="t-sub">Ruang Sehat</span><p class="t-small">Ruang Sehat berperan sebagai platform yang menghubungkan pasien dengan rekanan.</p></div><nav aria-label="Tautan kaki"><ul><li><a href="#">Kebijakan privasi &amp; syarat</a></li><li><a href="#">Kontak</a></li></ul></nav><div><p class="t-small">Dioperasikan oleh PT. Arunika</p></div><p class="legal">[Hak cipta dan alamat badan usaha] <span class="td">[TIDAK DIKETAHUI]</span></p></footer>
+  </div>
+  <p class="web-caption"><b id="c1">1. Beranda (desktop)</b>Hero, enam ubin layanan (UP-63), Untuk Perusahaan, artikel terbaru. Semua blok dari CMS dan hanya konten Tayang (AC1). Tombol dan tautan ≥ 40 px tinggi (WCAG 2.5.8, guideline §7.2 A9). Tautan lewati isi di awal (SC 2.4.1). Cincin fokus mengikuti token. Teks pembuka, slogan, dan gambar belum ada <span class="td">[TIDAK DIKETAHUI]</span>.</p>
+</section>
+
+<!-- ============ 1b. Beranda mobile + menu terbuka ============ -->
+<section aria-labelledby="c1b">
+  <div class="site narrow" role="group" aria-label="Halaman Beranda, lebar 360 piksel dengan menu terbuka">
+    <header class="site-top">
+      <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 14 L16 5 L26 14 V27 H6 Z" fill="none" stroke="#065F59" stroke-width="3" stroke-linejoin="round"/><path d="M15 25 C15 18 20 15 25 15 C25 21 21 25 15 25 Z" fill="#087F78"/></svg>Ruang Sehat</span>
+      <span class="grow"></span>
+      <nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a></nav>
+      <details class="site-menu" open><summary aria-label="Menu utama">Menu</summary>
+        <nav class="site-nav" aria-label="Utama (seluler)"><a href="#" aria-current="page">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></details>
+    </header>
+    <main>
+      <div class="hero"><div><h1>[Judul utama dari CMS]</h1><p>[Kalimat pembuka]</p><div class="cta"><a class="btn btn-primary btn-block" href="#">Unduh aplikasi</a></div></div><div class="img-ph" role="img" aria-label="Placeholder gambar utama">Gambar (placeholder)</div></div>
+      <section class="sec"><h2>Layanan</h2><div class="cards"><div class="card"><h3>Konsultasi Online</h3></div><div class="card"><h3>Pendaftaran Klinik</h3></div></div></section>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c1b">1b. Beranda, lebar 360 px</b>Navigasi menjadi tombol "Menu" 48 px dengan teks (bukan ikon saja) memakai elemen <code>details</code> tanpa skrip. Satu kolom, tanpa gulir dua arah pada 320 px (SC 1.4.10). Teks dapat diperbesar 200% tanpa kehilangan isi (SC 1.4.4).</p>
+</section>
+
+<!-- ============ 2. Tentang Kami ============ -->
+<section aria-labelledby="c2">
+  <div class="site mid" role="group" aria-label="Halaman Tentang Kami">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#" aria-current="page">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Tentang Kami</p><h1>Tentang Kami</h1></div>
+      <div class="sec"><div class="prose"><h2>Siapa kami</h2><p>[Teks Tentang Kami dari CMS] <span class="td">[TIDAK DIKETAHUI]</span></p><h2>Visi dan misi</h2><p>[Belum ada visi dan misi dari user] <span class="td">[TIDAK DIKETAHUI]</span></p><h2>Peran Ruang Sehat</h2><p>Ruang Sehat berperan sebagai platform (gateway): data klinik, lab, home visit, dan produk berasal dari sistem rekanan <span class="muted">[DOK: 00-project-brief.md]</span>.</p></div></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c2">2. Tentang Kami</b>Halaman tetap: hanya satu versi tayang (US-1802 AC2). Teks profil perusahaan, visi, misi, dan foto tim <span class="td">[TIDAK DIKETAHUI]</span> (menunggu user). Lebar baca ≤ 68 karakter untuk keterbacaan.</p>
+</section>
+
+<!-- ============ 3. Layanan ============ -->
+<section aria-labelledby="c3">
+  <div class="site mid" role="group" aria-label="Halaman Layanan">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#" aria-current="page">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Layanan</p><h1>Layanan</h1></div>
+      <div class="sec"><div class="cards">
+        <article class="card"><h2 class="t-sub">Konsultasi Online</h2><p class="t-small">Konsultasi chat dan video dengan dokter dan psikolog, berlangsung di aplikasi Ruang Sehat.</p></article>
+        <article class="card"><h2 class="t-sub">Pendaftaran Klinik</h2><p class="t-small">[Uraian dari CMS]</p></article>
+        <article class="card"><h2 class="t-sub">Pendaftaran Lab</h2><p class="t-small">[Uraian dari CMS]</p></article>
+        <article class="card"><h2 class="t-sub">Home Visit</h2><p class="t-small">[Uraian dari CMS]</p></article>
+        <article class="card"><h2 class="t-sub">Biaya MCU &amp; Lab</h2><p class="t-small">[Uraian dari CMS]</p></article>
+        <article class="card"><h2 class="t-sub">Belanja Produk</h2><p class="t-small">[Uraian dari CMS]</p></article>
+        <article class="card mint"><h2 class="t-sub">Layanan Korporat</h2><p class="t-small">[Uraian dari CMS] <a href="#">Untuk Perusahaan</a></p></article>
+      </div>
+      <p class="note"><b>Catatan:</b> isi dan urutan kartu berasal dari CMS, tidak ditetapkan di kode (US-1801 AC2). Tidak ada harga, tombol beli, atau tombol daftar layanan di situs; layanan dipakai di aplikasi. Promo di situs hanya informasi (US-1802 AC3). Teks uraian per layanan <span class="td">[TIDAK DIKETAHUI]</span>.</p></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c3">3. Layanan</b>Tujuh layanan rilis 1 dikelompokkan sebagai enam kartu seperti UP-63 ditambah kartu layanan korporat (BR-130). Kartu memakai judul tingkat 2 untuk navigasi pembaca layar.</p>
+</section>
+
+<!-- ============ 4. Untuk Perusahaan ============ -->
+<section aria-labelledby="c4">
+  <div class="site mid" role="group" aria-label="Halaman Untuk Perusahaan">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#" aria-current="page">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Untuk Perusahaan</p><h1>Untuk Perusahaan</h1></div>
+      <div class="sec"><div class="prose"><p>[Uraian layanan korporat dari CMS: vaksinasi, MCU, dan lab massal] <span class="td">[TIDAK DIKETAHUI]</span></p><p class="note"><b>Catatan:</b> harga, katalog, dan syarat tidak ditampilkan di situs (isi katalog korporat PT-61 dan PT-62 terbuka). Tidak ada klaim yang belum dikonfirmasi user.</p></div>
+        <div class="cards">
+          <div class="card mint"><h2 class="t-sub">Perusahaan baru</h2><p class="t-small">Daftarkan perusahaan Anda. Pendaftaran memerlukan dokumen NIB, NPWP, dan bukti kewenangan, lalu diverifikasi oleh tim Ruang Sehat (US-1901).</p><a class="btn btn-primary" href="#">Daftarkan perusahaan</a></div>
+          <div class="card"><h2 class="t-sub">Sudah terdaftar</h2><p class="t-small">Masuk ke member area HR.</p><a class="btn btn-secondary" href="#">Masuk member area</a></div>
+        </div>
+        <p class="t-small">Tautan ke <code>web/korporat</code> (aplikasi dan host terpisah; domain <span class="td">[TIDAK DIKETAHUI]</span>, PT-70). Situs tidak memuat formulir dan tidak membuat cookie.</p></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c4">4. Untuk Perusahaan</b>Dua jalur jelas: daftar atau masuk. Formulir pendaftaran ada di member area (K01), bukan di situs, sehingga situs tetap tanpa sesi dan tanpa data pribadi (ADR-027 butir 1).</p>
+</section>
+
+<!-- ============ 5. Rekanan ============ -->
+<section aria-labelledby="c5">
+  <div class="site mid" role="group" aria-label="Halaman Rekanan">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#" aria-current="page">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Rekanan</p><h1>Rekanan</h1></div>
+      <div class="sec"><p>[Pengantar tentang rekanan dari CMS] <span class="td">[TIDAK DIKETAHUI]</span></p>
+        <ul class="cards" style="list-style:none;padding:0;margin:0">
+          <li class="card"><div class="img-ph" style="min-height:64px" role="img" aria-label="Placeholder logo rekanan">Logo (placeholder)</div><span class="t-sub">[Nama rekanan] <span class="td">[TIDAK DIKETAHUI]</span></span><span class="t-small muted">[Jenis: klinik, lab, outlet]</span></li>
+          <li class="card"><div class="img-ph" style="min-height:64px" role="img" aria-label="Placeholder logo rekanan">Logo (placeholder)</div><span class="t-sub">[Nama rekanan] <span class="td">[TIDAK DIKETAHUI]</span></span><span class="t-small muted">[Jenis]</span></li>
+        </ul>
+        <div class="card"><h2 class="t-sub">Ingin menjadi rekanan?</h2><p class="t-small">[Cara menghubungi dari CMS; kanal dan syarat kemitraan] <span class="td">[TIDAK DIKETAHUI]</span></p></div>
+        <p class="note"><b>Catatan:</b> daftar rekanan yang boleh tampil publik dan izin memakai logo mereka belum diketahui <span class="td">[TIDAK DIKETAHUI]</span>; daftar ditulis tangan di CMS, bukan diambil otomatis dari data rekanan.</p></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c5">5. Rekanan</b>Kondisi kosong (belum ada rekanan tayang): "Daftar rekanan segera hadir" + tautan ke Kontak. Logo wajib teks alternatif (nama rekanan).</p>
+</section>
+
+<!-- ============ 6. Artikel / berita ============ -->
+<section aria-labelledby="c6">
+  <div class="site mid" role="group" aria-label="Halaman Artikel, daftar dan detail">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#" aria-current="page">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Artikel</p><h1>Artikel dan berita</h1></div>
+      <div class="sec">
+        <ul class="cards" style="list-style:none;padding:0;margin:0">
+          <li class="card"><div class="img-ph" style="min-height:96px" role="img" aria-label="Placeholder gambar artikel">Gambar (alt wajib)</div><span class="t-cap">[Tanggal tayang]</span><a class="t-sub" href="#">[Judul artikel dari CMS]</a><span class="t-small muted">[Ringkasan]</span></li>
+          <li class="card"><div class="img-ph" style="min-height:96px" role="img" aria-label="Placeholder gambar artikel">Gambar (alt wajib)</div><span class="t-cap">[Tanggal tayang]</span><a class="t-sub" href="#">[Judul artikel dari CMS]</a><span class="t-small muted">[Ringkasan]</span></li>
+        </ul>
+        <nav class="pager" aria-label="Halaman artikel"><span>1-2 dari [n]</span><span><a class="btn btn-secondary btn-sm" href="#">Berikutnya</a></span></nav>
+        <hr>
+        <article class="prose"><p class="crumb">Detail artikel</p><h2 style="font-size:24px">[Judul artikel]</h2><p class="t-cap">[Tanggal tayang]</p><p>[Isi Markdown dirender aman: tanpa HTML mentah, tautan hanya https/mailto/relatif, gambar hanya dari endpoint gambar publik] </p><p><a href="#">Kembali ke daftar artikel</a></p></article>
+        <div class="state"><div class="ill" aria-hidden="true">&#9998;</div><p class="t-sub">Belum ada artikel</p><p class="t-small muted">Artikel dan berita akan tampil di sini setelah ditayangkan.</p><a class="btn btn-secondary" href="#">Kembali ke Beranda</a></div>
+      </div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c6">6. Artikel/berita: daftar, detail, kondisi kosong</b>Daftar berhalaman dari konten Tayang; detail memakai render aman yang sama dengan pratinjau backoffice (US-1802 AC7). Artikel Draf, terjadwal, berakhir, diarsipkan, atau terhapus menampilkan "tidak ditemukan" (layar 10), bukan petunjuk bahwa draf ada (AC3). Tidak ada komentar, bagikan pihak ketiga, atau pelacak.</p>
+</section>
+
+<!-- ============ 7. Kontak ============ -->
+<section aria-labelledby="c7">
+  <div class="site mid" role="group" aria-label="Halaman Kontak">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#" aria-current="page">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Kontak</p><h1>Kontak</h1></div>
+      <div class="sec"><div class="cards">
+        <div class="card"><h2 class="t-sub">Layanan Pelanggan</h2><dl class="kv"><dt>Email</dt><dd>[alamat email] <span class="td">[TIDAK DIKETAHUI]</span></dd><dt>Telepon / WhatsApp</dt><dd>[nomor] <span class="td">[TIDAK DIKETAHUI]</span></dd><dt>Jam layanan</dt><dd>[jam dan zona waktu] <span class="td">[TIDAK DIKETAHUI]</span></dd></dl></div>
+        <div class="card"><h2 class="t-sub">Alamat kantor</h2><p class="t-small">[Alamat PT. Arunika] <span class="td">[TIDAK DIKETAHUI]</span></p><div class="img-ph map-ph" role="img" aria-label="Placeholder peta; peta tidak dimuat dari pihak ketiga">Peta tidak disematkan (tanpa sematan pihak ketiga); hanya alamat teks</div></div>
+      </div>
+      <p class="note"><b>Catatan:</b> tidak ada formulir kontak. PRD tidak memuat formulir dan formulir berarti situs menerima data pribadi serta butuh basis pemrosesan (L-20) [KEPUTUSAN-271]. Keluhan pasien memakai jalur di aplikasi (D-A14).</p></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c7">7. Kontak</b>Hanya info kontak dari CMS. Semua kanal kontak <span class="td">[TIDAK DIKETAHUI]</span>. Tautan <code>mailto:</code> dan <code>tel:</code> memakai teks tautan yang jelas (bukan "klik di sini").</p>
+</section>
+
+<!-- ============ 8. Unduh aplikasi ============ -->
+<section aria-labelledby="c8">
+  <div class="site mid" role="group" aria-label="Halaman Unduh aplikasi">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#" aria-current="page">Unduh aplikasi</a></nav></header>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Unduh aplikasi</p><h1>Unduh aplikasi Ruang Sehat</h1></div>
+      <div class="sec"><p>Tersedia untuk Android dan iOS <span class="muted">[DOK: 00-project-brief.md]</span>.</p>
+        <div class="cards">
+          <div class="card"><h2 class="t-sub">Android</h2><a class="btn btn-primary" href="#" aria-disabled="true">Unduh di toko aplikasi Android</a><span class="t-cap">Tautan toko <span class="td">[TIDAK DIKETAHUI]</span> (belum terbit; Tahap 12)</span></div>
+          <div class="card"><h2 class="t-sub">iOS</h2><a class="btn btn-primary" href="#" aria-disabled="true">Unduh di App Store</a><span class="t-cap">Tautan toko <span class="td">[TIDAK DIKETAHUI]</span> (belum terbit; Tahap 12)</span></div>
+        </div>
+        <div class="alert info"><span aria-hidden="true">i</span><span><b>Sebelum aplikasi terbit di toko</b>Halaman menampilkan "Aplikasi segera hadir" dan tautan toko disembunyikan; tombol tidak memakai tautan palsu. Tanggal target go-live 1 Maret 2027 hanya tampil bila dikonfirmasi untuk publik <span class="td">[TIDAK DIKETAHUI]</span>.</span></div></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c8">8. Unduh aplikasi</b>Dua tombol 44-48 px dengan nama jelas. Tanpa lencana toko dari server pihak ketiga; lencana adalah aset lokal setelah aturan merek toko diperiksa (Tahap 12). Nama aplikasi di toko menunggu PT-46.</p>
+</section>
+
+<!-- ============ 9. Kebijakan privasi & syarat ============ -->
+<section aria-labelledby="c9">
+  <div class="site mid" role="group" aria-label="Halaman Kebijakan privasi dan syarat">
+    <header class="site-top"><span class="logo">Ruang Sehat</span><span class="grow"></span><nav class="site-nav" aria-label="Utama"><a href="#">Beranda</a><a href="#">Tentang Kami</a><a href="#">Layanan</a><a href="#">Untuk Perusahaan</a><a href="#">Rekanan</a><a href="#">Artikel</a><a href="#">Kontak</a><a href="#">Unduh aplikasi</a></nav></header>
+    <p class="draft-banner" role="note">DRAF: teks final menunggu tinjauan legal (L-08, L-20, PT-24). Jangan dijadikan dasar persetujuan.</p>
+    <main>
+      <div class="pagehead"><p class="crumb">Beranda / Kebijakan privasi &amp; syarat</p><h1>Kebijakan privasi dan syarat penggunaan</h1><p class="t-small">Versi <span class="td">[TIDAK DIKETAHUI]</span> &middot; Berlaku sejak <span class="td">[TIDAK DIKETAHUI]</span></p></div>
+      <div class="sec"><nav aria-label="Daftar isi" class="note"><b>Isi:</b> <a href="#">Kebijakan privasi</a> &middot; <a href="#">Syarat penggunaan</a></nav>
+        <div class="prose"><h2>Kebijakan privasi</h2><p>[Teks draf dari CMS; belum disetujui legal] <span class="td">[TIDAK DIKETAHUI]</span></p><h2>Syarat penggunaan</h2><p>[Teks draf dari CMS] <span class="td">[TIDAK DIKETAHUI]</span></p><p class="t-small">Situs ini tidak memakai cookie sesi dan tidak memuat pelacak pihak ketiga (US-1801 AC5).</p></div></div>
+    </main>
+  </div>
+  <p class="web-caption"><b id="c9">9. Kebijakan privasi dan syarat (draf)</b>Versi dan tanggal berlaku selalu tampil di kepala halaman (US-1801 AC4). Spanduk draf bernada peringatan dengan teks (bukan warna saja) sampai legal menyetujui. Tidak ada spanduk persetujuan cookie karena tidak ada cookie yang dipasang.</p>
+</section>
+
+<!-- ============ 10. Tidak ditemukan dan galat umum ============ -->
+<section aria-labelledby="c10">
+  <div class="flow" style="padding:0;align-items:flex-start">
+    <div class="site mid" role="group" aria-label="Halaman tidak ditemukan">
+      <header class="site-top"><span class="logo">Ruang Sehat</span></header>
+      <main><div class="state state-box"><div class="ill" aria-hidden="true">?</div><h1 class="t-title">Halaman tidak ditemukan</h1><p class="t-small muted">Halaman yang Anda cari tidak tersedia.</p><a class="btn btn-primary" href="#">Ke Beranda</a></div></main>
+    </div>
+    <div class="site mid" role="group" aria-label="Halaman galat umum">
+      <header class="site-top"><span class="logo">Ruang Sehat</span></header>
+      <main><div class="state state-box"><div class="ill" aria-hidden="true">!</div><h1 class="t-title">Halaman sedang tidak dapat dimuat</h1><p class="t-small muted">Silakan coba lagi beberapa saat lagi. Bila berlanjut, hubungi Layanan Pelanggan.</p><a class="btn btn-secondary" href="#">Coba lagi</a><a href="#">Ke Beranda</a></div></main>
+    </div>
+  </div>
+  <p class="web-caption"><b id="c10">10. Tidak ditemukan dan galat umum (US-1801 AC3, AC7)</b>Pesan "tidak ditemukan" identik untuk URL yang tidak ada, konten Draf, terjadwal, berakhir, diarsipkan, atau terhapus. Galat umum tidak memuat jejak teknis, tidak memuat kode referensi, dan tidak membeda-bedakan penyebab [KEPUTUSAN-272].</p>
+</section>
+
+</main>
+</body>
+</html>

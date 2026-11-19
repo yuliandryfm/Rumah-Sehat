@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C13 Backoffice: verifikasi dan pengelolaan perusahaan - Wireframe Ruang Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+<link rel="stylesheet" href="wireframe-situs.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>C13 Backoffice: antrean verifikasi perusahaan, buat perusahaan, daftar perusahaan dan anggota HR <span class="draft-tag">DRAF F1-T84</span></h1>
+  <p>Story: US-1902, US-1903, US-1916 (bagian Fase 1); pola US-201/C02. Dokumen perusahaan T1 (ADR-018): dibuka hanya lewat URL berumur pendek setelah otorisasi, pembukaan dicatat E-05, keputusan E-10. Sub-peran: Verifikator [USER] C21-P4; perlu-tidaknya sub-peran baru dan persetujuan orang kedua terbuka (PT-67, M-49). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+<!-- 1. Antrean + keputusan -->
+<section aria-labelledby="v1">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; v1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><span class="sec">Verifikasi</span><a href="#">Identitas pasien (12)</a><a href="#">Tenaga kesehatan (3)</a><a href="#">Rekanan (1)</a><a class="on" href="#" aria-current="page">Perusahaan (4)</a><a href="#">Perubahan rekening (0)</a><span class="sec">Perusahaan</span><a href="#">Daftar perusahaan</a><a href="#">Buat perusahaan</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Antrean verifikasi perusahaan</h1>
+      <div class="split">
+        <div class="stack">
+          <div class="table-wrap"><table class="tbl"><caption class="t-cap" style="text-align:left;padding:8px">Urut dari pengajuan terlama (US-1902 AC1)</caption>
+            <thead><tr><th scope="col">Diajukan</th><th scope="col">Badan usaha</th><th scope="col">NIB</th><th scope="col">Sumber</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              <tr class="sel"><td>1 Mar 08.15</td><td>PT Contoh Sejahtera</td><td>************1234</td><td>Mendaftar sendiri</td><td><span class="badge warning">Menunggu verifikasi</span></td></tr>
+              <tr><td>1 Mar 09.40</td><td>CV Contoh Makmur</td><td>************5678</td><td>Pengajuan ulang</td><td><span class="badge warning">Menunggu verifikasi</span></td></tr>
+              <tr><td>2 Mar 10.02</td><td>PT Contoh Lain</td><td>************9012</td><td>Mendaftar sendiri</td><td><span class="badge warning">Menunggu verifikasi</span></td></tr>
+            </tbody></table></div>
+          <div class="pager"><span>1-3 dari 4</span><span><button class="btn btn-secondary btn-sm">Sebelumnya</button> <button class="btn btn-secondary btn-sm">Berikutnya</button></span></div>
+        </div>
+        <div class="panel">
+          <p class="t-sub">PT Contoh Sejahtera</p>
+          <dl class="kv"><dt>NIB</dt><dd>12345678901234 (lengkap untuk Verifikator)</dd><dt>NPWP</dt><dd>[nomor lengkap]</dd><dt>Alamat kantor</dt><dd>[alamat contoh]</dd><dt>Pendaftar</dt><dd>Sari A., [jabatan], hr@contoh.id</dd></dl>
+          <p class="t-small"><b>Dokumen</b></p>
+          <ul class="list" style="list-style:none;margin:0;padding:0">
+            <li class="list-item"><span class="grow">Dokumen NIB</span><button class="btn btn-secondary btn-sm">Buka</button></li>
+            <li class="list-item"><span class="grow">Dokumen NPWP</span><button class="btn btn-secondary btn-sm">Buka</button></li>
+            <li class="list-item"><span class="grow">Bukti kewenangan pendaftar</span><button class="btn btn-secondary btn-sm">Buka</button></li>
+          </ul>
+          <div class="doc-img" role="img" aria-label="Tampilan dokumen (contoh): Bukti kewenangan pendaftar">Dokumen dibuka lewat URL berumur pendek (dibuka = E-05)</div>
+          <div class="field is-error"><label for="rc">Alasan penolakan</label><select id="rc" class="input" aria-invalid="true" aria-describedby="rc-e"><option>Pilih alasan</option><option>Bukti kewenangan tidak memadai</option><option>[Kode alasan lain] </option></select><span class="err" id="rc-e">Pilih alasan untuk menolak</span><span class="hint">Daftar kode alasan final selain "bukti kewenangan tidak memadai" <span class="td">[TIDAK DIKETAHUI]</span>.</span></div>
+          <div class="field"><label for="kt2">Keterangan tambahan (opsional, tampil ke HR)</label><textarea id="kt2" class="input" style="min-height:56px"></textarea></div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-danger">Tolak</button><button class="btn btn-primary">Setujui</button></div>
+          <div class="alert warning" role="alert"><span aria-hidden="true">!</span><span><b>Pengajuan sudah diputuskan</b>Verifikator lain sudah memutuskan pengajuan ini pukul 08.20. Keputusan pertama yang berlaku (US-1902 AC4).</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="v1">1. Antrean, dokumen, keputusan (US-1902 AC1-AC5)</b>Antrean urut terlama; kolom "Sumber" membedakan pendaftaran mandiri dan pengajuan ulang. NIB termasking di daftar, lengkap di panel (pola US-201). Tiga dokumen dibuka satu per satu, setiap pembukaan E-05. Setujui membuat perusahaan Aktif (AC2); Tolak memerlukan kode alasan, HR melihat alasannya (AC3). Keputusan kedua pada pengajuan yang sama ditolak dan tercatat (AC4). Admin tanpa sub-peran Verifikator: 403; akun HR: 404 (AC5), layar akses ditolak mengikuti C01.</p>
+</section>
+
+<!-- 2. Buat perusahaan -->
+<section aria-labelledby="v2">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; v1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><span class="sec">Verifikasi</span><a href="#">Perusahaan (4)</a><span class="sec">Perusahaan</span><a href="#">Daftar perusahaan</a><a class="on" href="#" aria-current="page">Buat perusahaan</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Buat perusahaan</h1>
+      <p class="t-small muted">Untuk perusahaan yang sudah bersepakat dengan Ruang Sehat. Perusahaan langsung berstatus Aktif dan HR pertama menerima undangan aktivasi.</p>
+      <div class="split">
+        <form class="panel" novalidate>
+          <div class="field"><label for="n-nm">Nama badan usaha</label><input id="n-nm" class="input"></div>
+          <div class="toolbar"><div class="field is-error"><label for="n-nib">NIB</label><input id="n-nib" class="input" aria-invalid="true" aria-describedby="n-nib-e"><span class="err" id="n-nib-e">NIB tidak dapat digunakan untuk mendaftar. Periksa kembali data atau hubungi Layanan Pelanggan.</span></div><div class="field"><label for="n-npwp">NPWP</label><input id="n-npwp" class="input"></div></div>
+          <div class="field"><label for="n-al">Alamat kantor</label><textarea id="n-al" class="input" style="min-height:56px"></textarea></div>
+          <div class="field"><label for="n-tl">Telepon kantor</label><input id="n-tl" class="input" type="tel"></div>
+          <div class="field"><label for="n-d1">Dokumen NIB, NPWP, bukti kewenangan</label><input id="n-d1" class="input" type="file" multiple><span class="hint">Aturan jenis dan ukuran sama dengan pendaftaran mandiri (NFR-SEC-08).</span></div>
+          <div class="field"><label for="n-em">Email HR pertama</label><input id="n-em" class="input" type="email"></div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-primary">Buat perusahaan</button></div>
+        </form>
+        <div class="stack">
+          <div class="alert info" role="status"><span aria-hidden="true">i</span><span><b>Perusahaan dibuat</b>Undangan aktivasi terkirim ke HR pertama. Asal pencatatan: "dibuat admin" (E-10, US-1903 AC3).</span></div>
+          <div class="alert warning"><span aria-hidden="true">!</span><span><b>Persetujuan orang kedua</b>Perlu-tidaknya persetujuan orang kedua sebelum perusahaan Aktif <span class="td">[TIDAK DIKETAHUI]</span> (PT-67 sisa, M-49). Wireframe ini belum memuat langkah itu.</span></div>
+          <div class="note"><b>NIB ganda:</b> penolakan memakai pesan generik yang sama dengan pendaftaran mandiri, tanpa menyebut nama perusahaan yang sudah memakai NIB itu (US-1903 AC4, US-1901 AC7).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="v2">2. Buat perusahaan (US-1903 AC1, AC3, AC4)</b>Data, dokumen, dan email HR pertama. Hasil: perusahaan Aktif dan undangan aktivasi (password dan TOTP) ke HR. Undangan kedaluwarsa atau sudah dipakai ditolak di sisi HR (AC2, layar aktivasi memakai pola layar masuk dengan pesan umum).</p>
+</section>
+
+<!-- 3. Daftar perusahaan -->
+<section aria-labelledby="v3">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; v1@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><span class="sec">Verifikasi</span><a href="#">Perusahaan (4)</a><span class="sec">Perusahaan</span><a class="on" href="#" aria-current="page">Daftar perusahaan</a><a href="#">Buat perusahaan</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Daftar perusahaan</h1>
+      <div class="toolbar"><div class="field"><label for="f-st">Status</label><select id="f-st" class="input"><option>Semua</option><option>Menunggu verifikasi</option><option>Aktif</option><option>Ditolak</option><option>Nonaktif</option></select></div><div class="field"><label for="f-q">Cari nama badan usaha</label><input id="f-q" class="input" type="search"></div></div>
+      <div class="split">
+        <div class="table-wrap"><table class="tbl"><thead><tr><th scope="col">Badan usaha</th><th scope="col">Status</th><th scope="col">HR aktif</th></tr></thead>
+          <tbody><tr class="sel"><td>PT Contoh Sejahtera</td><td><span class="badge success">Aktif</span></td><td class="num">2</td></tr><tr><td>CV Contoh Makmur</td><td><span class="badge danger">Ditolak</span></td><td class="num">1</td></tr><tr><td>PT Contoh Lain</td><td><span class="badge neutral">Nonaktif</span></td><td class="num">0</td></tr></tbody></table></div>
+        <div class="panel"><p class="t-sub">PT Contoh Sejahtera</p>
+          <dl class="kv"><dt>Status</dt><dd><span class="badge success">Aktif</span></dd><dt>Sumber</dt><dd>Mendaftar sendiri</dd><dt>Diputuskan</dt><dd>[Verifikator, tanggal]</dd></dl>
+          <p class="t-small"><b>Anggota HR</b></p>
+          <ul class="list" style="list-style:none;margin:0;padding:0"><li class="list-item"><span class="grow">Sari A. &middot; hr@contoh.id</span><span class="badge success">Aktif</span></li><li class="list-item"><span class="grow">Budi &middot; budi@contoh.id</span><span class="badge success">Aktif</span></li></ul>
+          <p class="t-small muted">Pesanan dan invoice tampil setelah fitur tersedia (Fase 3). Ringkasan dan hasil peserta tidak pernah tampil di layar ini (US-1916 AC1).</p>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-danger btn-sm" aria-disabled="true">Nonaktifkan perusahaan</button></div>
+          <p class="t-cap">Tombol nonaktif dengan alasan tertulis: aturan nasib pesanan berjalan menunggu PT-63 <span class="td">[TIDAK DIKETAHUI]</span>; penonaktifan (US-1916 AC2) dibangun di task berikutnya.</p></div>
+      </div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="v3">3. Daftar perusahaan dan anggota HR (US-1916 AC1, bagian Fase 1)</b>Status verifikasi dan anggota HR; tanpa kolom pesanan atau invoice sampai tersedia. Sub-peran tanpa hak: 403 (AC3). Tidak ada tombol melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (Fase 2, US-1904 AC8).</p>
+</section>
+
+</main>
+</body>
+</html>

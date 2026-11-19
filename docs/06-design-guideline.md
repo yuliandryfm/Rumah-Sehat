@@ -1,7 +1,7 @@
 # Design Guideline: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.1 (2026-11-18, tindak lanjut Checkpoint 2): alur baru A15 (pendaftaran TOTP pasien, kode pemulihan, perangkat hilang) dan G01 (perangkat dan sesi aktif) sebagai deskripsi terstruktur; §9 MFA mencakup pasien; D-C05 reset MFA pasien; PT-43 dan PT-44 terjawab. Versi 0.1 (draf Tahap 6) disetujui di Checkpoint 2: arah visual, font, logo, navigasi, ubin, mode gelap, pengingat jadwal (UP-58–UP-64) dan KEPUTUSAN-160–177 `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`. PT-40, PT-41, dan sisa PT-45 tetap terbuka
+Versi: 1.2 (2026-11-19, CR-021, F1-T83/F1-T84): wireframe HTML baru S01 (situs publik sembilan halaman), K01 (member area HR), C13 (verifikasi dan daftar perusahaan), C14 (CMS kanal situs); deskripsi D-S01, D-K01, D-C13, D-C14 di §10.2; permukaan web situs dan korporat di §2; KEPUTUSAN-270–274. Konten bisnis situs (teks Tentang Kami, daftar rekanan, kontak, teks hukum) tetap `[TIDAK DIKETAHUI]`; PT-40 dan sisa PT-45 terbuka. Versi 1.1 (2026-11-18, tindak lanjut Checkpoint 2): alur baru A15 (pendaftaran TOTP pasien, kode pemulihan, perangkat hilang) dan G01 (perangkat dan sesi aktif) sebagai deskripsi terstruktur; §9 MFA mencakup pasien; D-C05 reset MFA pasien; PT-43 dan PT-44 terjawab. Versi 0.1 (draf Tahap 6) disetujui di Checkpoint 2: arah visual, font, logo, navigasi, ubin, mode gelap, pengingat jadwal (UP-58–UP-64) dan KEPUTUSAN-160–177 `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`. PT-40, PT-41, dan sisa PT-45 tetap terbuka
 Penyusun: Claude (persona UI/UX Designer / Design System Lead), Mode Otomatis
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, stack v1.0 `[DOK: 05-stack.md]`, coding standards `[DOK: coding-standards.md]`, backlog CR-007, CR-009, CR-012, CR-013, CR-015 `[DOK: backlog.md]`, pamflet `[DOK: input/Rumah Sehat Apps.jpeg]`, catatan T5-Q12 `[DOK: 05-catatan-stack.md]`
@@ -42,6 +42,8 @@ Semua nilai visual di dokumen ini (warna, font, logo) berstatus **usulan** sampa
 | Backoffice Ruang Sehat | Admin RS (7 sub-peran) | Next.js 16.4.6 | `web/packages/ui` | `[DOK: 05-stack.md]` §1.2, `[DOK: coding-standards.md]` §1.5 |
 | Portal rekanan | Admin klinik, lab, outlet | Next.js 16.4.6 | `web/packages/ui` | sama |
 | Web RME minimalis | Pengguna RME | Next.js 16.4.6 | `web/packages/ui` | sama; aplikasi terpisah dari Ruang Sehat (BR-120) |
+| Situs publik (`web/situs`, CR-021) | Pengunjung anonim | Next.js, dirender server dari endpoint konten publik; tanpa cookie sesi, skrip, font, atau sematan pihak ketiga | `web/packages/ui` | ADR-027 butir 1 dan 5; US-1801 AC5, US-1802 AC9 `[KEPUTUSAN-270]` |
+| Member area HR (`web/korporat`, CR-021) | HR perusahaan | Next.js dengan BFF (modul T1); realm Keycloak `korporat`, tema login yang sama | `web/packages/ui` | ADR-027 butir 1 dan 3 `[KEPUTUSAN-270]` |
 | Halaman login, OTP, atur ulang password, aktivasi undangan, login ulang | Semua populasi | Tema login Keycloak (extend tema bawaan, stylesheet dan template sendiri) | Tema di konfigurasi realm | ADR-011 butir 7 dan konsekuensi `[SRC-233]` |
 | Halaman verifikasi resep publik | Apotek (anonim) | HTML dari backend Rust | Stylesheet statis dari token yang sama | US-309 AC6–AC8 (CR-008) |
 | Email notifikasi | Pasien, tenaga kesehatan, admin rekanan | Template email lewat Amazon SES API | Template HTML dengan CSS inline | `[DOK: 05-stack.md]` (SES), AB-73 |
@@ -374,6 +376,10 @@ Alur utama diturunkan dari epic PRD §5. Setiap alur punya wireframe HTML (`docs
 | C10 | Audit log dan ekspor | EP-15 US-1502, US-1503 | Backoffice | Deskripsi | D-C10 |
 | C11 | Proses hak subjek data (Petugas PDP) | EP-16 US-1603, US-1605 | Backoffice | Deskripsi | D-C11 |
 | C12 | Dasbor KPI | EP-17 US-1701 | Backoffice | Deskripsi | D-C12 |
+| C13 | Antrean verifikasi perusahaan, buat perusahaan, daftar perusahaan dan anggota HR (CR-021) | EP-19 US-1902, US-1903, US-1916 | Backoffice | HTML | `c13-bo-verifikasi-perusahaan.html`, D-C13 |
+| C14 | CMS kanal situs: daftar, editor Markdown, pratinjau aman (CR-021) | EP-18 US-1802; EP-11 US-1101 | Backoffice | HTML | `c14-bo-cms-situs.html`, D-C14 |
+| K01 | Member area HR: masuk, daftar perusahaan, TOTP, menunggu verifikasi, ditolak, dasbor, kelola HR, sesi (CR-021) | EP-19 US-1901, US-1904; US-1902 AC3 | Web korporat | HTML | `k01-korporat-hr.html`, D-K01 |
+| S01 | Situs publik sembilan halaman, tidak ditemukan dan galat umum (CR-021) | EP-18 US-1801 | Situs publik | HTML | `s01-situs-publik.html`, D-S01 |
 | D01 | Laporan transaksi dan pengaturan konsultasi online | EP-12 US-1201; EP-03 US-301, US-302 AC4 | Portal rekanan | HTML | `d01-portal-rekanan.html` |
 | D02 | Lihat profil rekanan dan keluhan terkait | EP-12 US-1202, US-1203 | Portal rekanan | Deskripsi | D-D02 |
 | E01 | Appointment, check-in, antrean, rekam medis kunjungan, status SATUSEHAT | EP-13 US-1304, US-1305, US-1306, US-1309 | Web RME | HTML | `e01-rme-kunjungan.html` |
@@ -385,7 +391,7 @@ Alur utama diturunkan dari epic PRD §5. Setiap alur punya wireframe HTML (`docs
 | F01 | Halaman verifikasi resep publik | EP-03 US-309 AC6–AC8 (CR-008) | Web publik | Deskripsi | D-F01 |
 | F02 | Template email notifikasi | EP-10 US-1001, US-1002, US-1003 | Email | Deskripsi | §6, D-F02 |
 
-Ringkasan: 21 alur dengan wireframe HTML (semua alur aplikasi pasien kecuali keluhan, ketiga alur tenaga kesehatan, dan alur kunci web), 20 alur dengan deskripsi terstruktur (18 dari Tahap 6, ditambah A15 dan G01 dari Checkpoint 2). A15 menyentuh modul T1 sehingga menurut KEPUTUSAN-173 semestinya berwireframe HTML. Pada tindak lanjut ini A15 sengaja hanya dideskripsikan (instruksi orkestrator: tanpa wireframe HTML baru). Wireframe A01 belum menampilkan langkah TOTP; D-A15 melengkapinya sampai wireframe diperbarui di pekerjaan UI Tahap 8 (UI-03).
+Ringkasan (diperbarui v1.2: S01, K01, C13, C14 menambah empat alur HTML; deskripsi D-S01, D-K01, D-C13, D-C14 menyertai wireframe-nya, jadi total 25 HTML dan 20 deskripsi mandiri): 21 alur dengan wireframe HTML (semua alur aplikasi pasien kecuali keluhan, ketiga alur tenaga kesehatan, dan alur kunci web), 20 alur dengan deskripsi terstruktur (18 dari Tahap 6, ditambah A15 dan G01 dari Checkpoint 2). A15 menyentuh modul T1 sehingga menurut KEPUTUSAN-173 semestinya berwireframe HTML. Pada tindak lanjut ini A15 sengaja hanya dideskripsikan (instruksi orkestrator: tanpa wireframe HTML baru). Wireframe A01 belum menampilkan langkah TOTP; D-A15 melengkapinya sampai wireframe diperbarui di pekerjaan UI Tahap 8 (UI-03).
 
 ### 10.2 Deskripsi terstruktur
 
@@ -446,6 +452,49 @@ Rujukan: US-110, ADR-011 butir 12, KEPUTUSAN-205.
 **D-C11 Hak subjek data** · Petugas PDP · (1) Antrean dengan kolom sisa waktu menuju 3×24 jam dan badge "Mendesak" saat tinggal 12 jam; (2) Detail: jenis, subjek, tahap; isian tanggapan dan alasan; aksi sesuai jenis (perbaikan, pembatasan, salinan otomatis). · NIK termasking; isi klinis tidak dibuka petugas (salinan dibuat sistem). Penghapusan (US-1605) terblokir sampai L-06/PT-24: tombol tampil nonaktif dengan alasan tertulis. · US-1603, US-1605.
 
 **D-C12 Dasbor KPI** · Super Admin · (1) Pilih bulan (WIB); (2) Kartu KPI-01 (dan angka pendukung), KPI-02, KPI-03, KPI-04 dengan angka dan label teks; grafik opsional selalu disertai tabel angka; (3) Ekspor CSV agregat. · US-1701.
+
+**D-S01 Situs publik (CR-021, F1-T83)** · Pengunjung anonim · Wireframe `s01-situs-publik.html`. Sembilan halaman: Beranda, Tentang Kami, Layanan, Untuk Perusahaan, Rekanan, Artikel/berita (daftar, detail, kosong), Kontak, Unduh aplikasi, Kebijakan privasi dan syarat (BR-130 `[USER] C21-P1-1`), ditambah "tidak ditemukan" dan galat umum.
+1. Kerangka bersama: tautan "Lewati ke isi", kepala dengan logo placeholder dan navigasi delapan item (Kebijakan privasi dan syarat di kaki), isi, kaki dengan pernyataan peran platform. Navigasi desktop berupa tautan; di bawah 768 px menjadi tombol "Menu" (elemen `details`, tanpa skrip) 48 px dengan teks.
+2. Beranda: hero (judul, kalimat pembuka, dua tombol: Unduh aplikasi, Untuk Perusahaan), enam ubin layanan (UP-63), blok Untuk Perusahaan, tiga artikel terbaru. Layanan: kartu per layanan ditambah layanan korporat, isi dan urutan dari CMS (US-1801 AC2). Untuk Perusahaan: uraian dari CMS dan dua jalur "Daftarkan perusahaan" dan "Masuk member area" ke `web/korporat` (aplikasi dan host terpisah).
+3. Rekanan: kartu logo dan nama yang ditulis di CMS (bukan diambil otomatis dari data rekanan). Kontak: info kontak dan alamat teks, tanpa formulir dan tanpa peta sematan `[KEPUTUSAN-271]`. Unduh aplikasi: tombol Android dan iOS; sebelum terbit di toko tampil "Aplikasi segera hadir" tanpa tautan palsu. Kebijakan privasi dan syarat: spanduk draf, versi dan tanggal berlaku di kepala (US-1801 AC4).
+
+Kondisi khusus:
+- Semua konten Markdown dirender aman dan hanya status Tayang tampil. URL konten Draf, terjadwal, berakhir, diarsipkan, atau terhapus menampilkan "Halaman tidak ditemukan" yang identik (AC3).
+- Galat layanan konten: halaman galat umum tanpa jejak teknis dan tanpa kode referensi `[KEPUTUSAN-272]` (AC7). Kosong: Artikel "Belum ada artikel"; Rekanan "Daftar rekanan segera hadir".
+- Tanpa cookie sesi, tanpa spanduk persetujuan cookie (tidak ada cookie), tanpa skrip, font, atau sematan pihak ketiga (US-1801 AC5, US-1802 AC9).
+- Aksesibilitas §7.2: kontras token §3.2 (A2, A3), judul bertingkat per halaman, landmark `header`, `nav`, `main`, `footer` berlabel, `lang="id"`, target ≥ 40 px (desktop) dan 48 px (sempit), fokus terlihat, reflow 320 px, teks dapat diperbesar 200%, gambar bermakna wajib teks alternatif dari CMS (A1–A9, A17). Verifikasi otomatis di F1-T97 (US-1801 AC6).
+- `[TIDAK DIKETAHUI]` di wireframe: teks Tentang Kami, visi dan misi, uraian layanan dan Untuk Perusahaan, nama rekanan yang boleh tampil dan izin logonya, kanal kontak dan alamat, tautan toko aplikasi, versi dan tanggal berlaku teks hukum (L-08, L-20, PT-24), logo dan gambar (PT-40), slogan (UP-60), domain (PT-46, PT-70).
+
+Rujukan: US-1801, US-1802 AC9, BR-130, BR-131, ADR-027, KEPUTUSAN-270–272.
+
+**D-K01 Member area HR (CR-021, F1-T84)** · HR perusahaan · Wireframe `k01-korporat-hr.html`. Layar 1 dan 6 di tema login Keycloak, lainnya di `web/korporat`.
+1. Masuk: email dan password, lalu kode TOTP dengan tautan "Pakai kode pemulihan"; satu pesan galat seragam (UP-73, §9); petunjuk kehilangan TOTP mengarah ke Layanan Pelanggan (reset oleh Verifikator di Fase 2, US-1904 AC8).
+2. Daftar tiga langkah: (a) data perusahaan: nama badan usaha, NIB, NPWP, alamat kantor, telepon kantor; (b) data HR: nama, jabatan, email, password; (c) unggah dokumen NIB, NPWP, bukti kewenangan (JPG/PNG ≤ 5 MiB, PDF ≤ 10 MiB, NFR-SEC-08) dan centang persetujuan teks pemrosesan data (tidak tercentang otomatis, versi tampil). Galat per field, isian benar tidak hilang, tombol kirim terkunci saat memuat.
+3. Setelah kirim: layar "Periksa email Anda" yang identik untuk email baru dan email yang sudah terdaftar (US-1901 AC4). NIB yang sudah dipakai: galat generik tanpa nama perusahaan lain dan arahan ke Layanan Pelanggan (AC7). Setelah email terverifikasi dan masuk pertama: pendaftaran TOTP dan 12 kode pemulihan sekali tampil (pola D-A15, KEPUTUSAN-253).
+4. Menunggu verifikasi: badge "Menunggu verifikasi", linimasa, profil baca-saja (NIB dan NPWP termasking), menu hanya Status dan Profil (AC6). Ditolak: alasan dari Verifikator, tombol "Perbaiki dan ajukan ulang" membuka formulir dengan data sebelumnya.
+5. Dasbor Aktif: status, jumlah HR aktif, tautan Kelola HR; menu Pesanan, Peserta, Invoice tampil nonaktif "belum tersedia" (Fase 3). Kelola HR: tabel anggota (nama, email, status), undang lewat email, nonaktifkan dengan dialog dampak; HR aktif terakhir tidak dapat dinonaktifkan (US-1904 AC2).
+6. Dialog sesi: peringatan 2 menit sebelum 30 menit tidak aktif dengan "Tetap masuk"; batas 12 jam tanpa perpanjangan (§5.5).
+
+Kondisi khusus:
+- Isolasi: objek perusahaan lain dijawab "Data tidak ditemukan" (US-1904 AC3, KU-03). Akun atau perusahaan nonaktif: sesi berakhir pada permintaan berikutnya (AC5) dengan layar "Akun nonaktif" (KU-10).
+- Dasbor tidak pernah menampilkan hasil atau ringkasan peserta (BR-143); isi dasbor lanjutan menunggu fase layanan korporat `[TIDAK DIKETAHUI]`.
+- `[TIDAK DIKETAHUI]` di wireframe: format NIB dan NPWP (US-1901 AC3), bentuk bukti kewenangan (PT-79 sisa), teks persetujuan (L-20), daftar kode alasan penolakan selain "bukti kewenangan tidak memadai", peran dalam perusahaan (PT-68), isi dasbor korporat (PT-61, PT-62).
+
+Rujukan: US-1901, US-1902 AC3, US-1904, BR-132, BR-136, BR-145, ADR-027, ADR-028, KEPUTUSAN-253, KEPUTUSAN-273.
+
+**D-C13 Verifikasi dan pengelolaan perusahaan (CR-021, F1-T84)** · Verifikator · Wireframe `c13-bo-verifikasi-perusahaan.html`; pola C02.
+1. Antrean "Perusahaan": urut terlama, kolom badan usaha, NIB termasking, sumber (mendaftar sendiri atau pengajuan ulang), status. Panel: data lengkap (NIB, NPWP, alamat, pendaftar), tiga dokumen dibuka satu per satu lewat URL berumur pendek (E-05), alasan penolakan wajib saat Tolak (kode alasan dan keterangan opsional), Setujui, dan pesan "Pengajuan sudah diputuskan" bagi keputusan kedua (US-1902 AC4, E-10).
+2. Buat perusahaan: nama, NIB, NPWP, alamat, telepon, dokumen, email HR pertama → perusahaan Aktif dan undangan aktivasi; NIB ganda ditolak dengan pesan generik (US-1903 AC4).
+3. Daftar perusahaan: filter status dan nama; panel status, sumber, anggota HR; tanpa pesanan atau invoice sampai tersedia (US-1916 AC1).
+
+Kondisi khusus: akun tanpa sub-peran: 403 dan layar akses ditolak (C01); akun HR: 404. Tidak ada layar untuk melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (US-1904 AC8, Fase 2). Persetujuan orang kedua untuk perusahaan buatan admin `[TIDAK DIKETAHUI]` (PT-67 sisa, M-49); daftar kode alasan penolakan final `[TIDAK DIKETAHUI]`; nasib pesanan saat perusahaan dinonaktifkan `[TIDAK DIKETAHUI]` (PT-63), sehingga tombol nonaktifkan tampil nonaktif dengan alasan tertulis. · US-1902, US-1903, US-1916.
+
+**D-C14 CMS kanal situs (CR-021, F1-T84)** · Konten · Wireframe `c14-bo-cms-situs.html`; memperluas D-C07.
+1. Daftar: filter kanal (aplikasi, situs, keduanya), status, dan halaman situs; kolom kanal dan halaman situs; hapus dan pulihkan (E-16).
+2. Editor: judul, kanal, halaman situs tujuan (untuk situs), jadwal tayang, isi Markdown, gambar dengan teks alternatif wajib (US-1802 AC5). Pratinjau di sebelah isian (di bawahnya pada < 768 px) dirender di iframe `sandbox` tanpa `allow-same-origin` (AC8). Galat per baris untuk HTML mentah, skema tautan di luar https/mailto/relatif, dan gambar dari luar endpoint gambar publik (AC6).
+3. Tayangkan halaman tetap: dialog menyebut bahwa versi yang sedang tayang akan berakhir (AC2). Teks bantu: promo hanya informasi (AC3).
+
+Kondisi khusus: akun tanpa sub-peran Konten: 403 dan percobaan tercatat (AC4). Isi berbahaya yang tampil di pesan galat dirender sebagai teks, bukan HTML. Pemilihan pustaka Markdown di F1-T111. Nama status untuk jadwal tayang belum tiba `[TIDAK DIKETAHUI]` (KEPUTUSAN-274). · US-1802, US-1101, ADR-027 butir 5.
 
 **D-D02 Profil dan keluhan di portal** · Admin rekanan · (1) Profil baca-saja: nama, jenis, alamat, zona waktu, kontak, rekening termasking, sumber sistem, status integrasi, dan petunjuk "Hubungi Layanan Pelanggan untuk perubahan"; (2) Keluhan: daftar tiket yang diteruskan + riwayat tanggapan, tanpa kotak balas. · US-1202, US-1203.
 

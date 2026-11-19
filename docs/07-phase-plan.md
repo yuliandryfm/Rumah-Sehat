@@ -251,7 +251,7 @@ Catatan:
 - Pembanding dari atas (semua per kelas): tambahan ±435 jam-task, total ±2.226.
 
 **Opsi lain dengan CR-021 v0.3** (Fase 3, 15 hari kerja). Dihitung dengan cara §6.6 ditambah CR-021:
-- A: 973 + 200 = 1.173, yaitu 78,2 per hari kerja; total ±2.307.
+- A: 930 − 12 + 195 + 36 = 1.149 (US-108/US-109 tidak dihitung dua kali), yaitu 76,6 per hari kerja; total ±2.307 (koreksi fact-check `docs/fact-check/CR-021-penerapan.md` B-2).
 - C: 681 − 12 + 195 + 36 = 900, yaitu 60,0.
 - D: 300 − 12 + 195 + 36 = 519, yaitu 34,6.
 - **Peringatan dependensi:**

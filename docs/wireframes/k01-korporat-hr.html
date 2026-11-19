@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K01 Member area HR: daftar, verifikasi, dasbor, kelola HR - Wireframe Ruang Sehat</title>
+<link rel="stylesheet" href="wireframe.css">
+<link rel="stylesheet" href="wireframe-situs.css">
+</head>
+<body>
+<header class="doc-head">
+  <h1>K01 Member area HR <code>web/korporat</code>: daftar perusahaan, menunggu verifikasi, dasbor, kelola HR <span class="draft-tag">DRAF F1-T84</span></h1>
+  <p>Story: US-1901, US-1902 AC3 (sisi HR), US-1904; BR-132, BR-136, BR-145; ADR-027, ADR-028. Realm Keycloak <code>korporat</code>, MFA TOTP wajib (KEPUTUSAN-253), sesi 30 menit tidak aktif dan 12 jam mutlak. Layar autentikasi memakai tema login Keycloak (browser), layar lain di Next.js dengan BFF. Pesan galat mengikuti UP-73 (seragam, tidak membuka status akun). Logo placeholder (PT-40). Layanan korporat (katalog, pesanan, peserta, invoice) belum dirancang di sini (US-1905 dst., Fase 3). <a href="index.html">Kembali ke indeks</a></p>
+</header>
+<main class="flow" style="flex-direction:column">
+
+<!-- 1. Masuk -->
+<section aria-labelledby="k1">
+  <div class="web no-side" style="min-height:420px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area perusahaan</span></div>
+    <div class="web-main"><div class="login-box" style="margin:16px auto">
+      <h1 class="t-title">Masuk member area</h1>
+      <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Tidak dapat masuk</b>Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.</span></div>
+      <div class="field"><label for="k-em">Email</label><input id="k-em" class="input" type="email" autocomplete="username" value="hr@contoh.id"></div>
+      <div class="field"><label for="k-pw">Password</label><input id="k-pw" class="input" type="password" autocomplete="current-password"></div>
+      <button class="btn btn-primary btn-block">Lanjut</button>
+      <a href="#">Lupa password</a>
+      <p class="t-small">Belum terdaftar? <a href="#">Daftarkan perusahaan</a></p>
+      <hr>
+      <div class="field"><label for="k-otp">Kode dari aplikasi authenticator (6 digit)</label><input id="k-otp" class="input otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><span class="hint">Boleh ditempel.</span></div>
+      <a href="#">Pakai kode pemulihan</a>
+      <p class="t-small muted">Kehilangan ponsel dan kode pemulihan? Hubungi Layanan Pelanggan. Reset oleh Verifikator memerlukan konfirmasi lewat kanal lain (US-1904 AC8; dibangun Fase 2).</p>
+    </div></div>
+  </div>
+  <p class="web-caption"><b id="k1">1. Masuk (tema login realm korporat; password lalu kode)</b>Satu pesan untuk password salah, akun tidak ada, terkunci, nonaktif, dan kode salah (US-103 AC2, UP-73, guideline §9). Tanpa pesan "akun terkunci". Password dan kode boleh ditempel (A14). Dua langkah ditampilkan dalam satu bingkai untuk ringkas. Tautan "Daftarkan perusahaan" menuju layar 2.</p>
+</section>
+
+<!-- 2. Daftar langkah 1 -->
+<section aria-labelledby="k2">
+  <div class="web no-side" style="min-height:560px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Daftarkan perusahaan</span><span class="grow"></span><a href="#">Sudah punya akun? Masuk</a></div>
+    <div class="web-main">
+      <ol class="steps" aria-label="Langkah pendaftaran"><li aria-current="step">1 Data perusahaan</li><li>2 Data Anda</li><li>3 Dokumen dan persetujuan</li></ol>
+      <h1 class="t-title">Data perusahaan</h1>
+      <form class="form-narrow" novalidate>
+        <div class="field"><label for="d-nm">Nama badan usaha</label><input id="d-nm" class="input" value="PT Contoh Sejahtera" autocomplete="organization"></div>
+        <div class="field is-error"><label for="d-nib">NIB</label><input id="d-nib" class="input" aria-invalid="true" aria-describedby="d-nib-e" inputmode="numeric" value="12345"><span class="err" id="d-nib-e">Format NIB tidak sesuai. Periksa kembali nomor di dokumen NIB Anda.</span><span class="hint">Panjang dan format resmi NIB <span class="td">[TIDAK DIKETAHUI]</span> (AC3, diverifikasi ke sumber resmi sebelum task).</span></div>
+        <div class="field is-error"><label for="d-npwp">NPWP perusahaan</label><input id="d-npwp" class="input" aria-invalid="true" aria-describedby="d-npwp-e" value=""><span class="err" id="d-npwp-e">NPWP wajib diisi.</span><span class="hint">Format NPWP <span class="td">[TIDAK DIKETAHUI]</span> (AC3).</span></div>
+        <div class="field"><label for="d-al">Alamat kantor</label><textarea id="d-al" class="input" autocomplete="street-address"></textarea></div>
+        <div class="field"><label for="d-tl">Telepon kantor</label><input id="d-tl" class="input" type="tel" autocomplete="tel"></div>
+        <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Lanjut</button></div>
+      </form>
+      <p class="note"><b>Pola:</b> galat per field di bawah isian, isian benar tidak hilang, fokus pindah ke isian galat pertama, ringkasan "Ada 2 isian yang perlu diperbaiki" diumumkan (KU-01, SC 3.3.1, 4.1.3). Kemajuan tersimpan di perangkat selama sesi pendaftaran; bila halaman dimuat ulang, isian tidak diminta ulang dalam satu proses (A13).</p>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k2">2. Pendaftaran langkah 1: data perusahaan (US-1901 AC1, AC3)</b>Nama badan usaha, NIB, NPWP, alamat kantor, telepon kantor (UP-79). Format NIB dan NPWP <span class="td">[TIDAK DIKETAHUI]</span>, validasi hanya setelah format diverifikasi.</p>
+</section>
+
+<!-- 3. Langkah 2 -->
+<section aria-labelledby="k3">
+  <div class="web no-side" style="min-height:520px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Daftarkan perusahaan</span></div>
+    <div class="web-main">
+      <ol class="steps" aria-label="Langkah pendaftaran"><li class="done">1 Data perusahaan</li><li aria-current="step">2 Data Anda</li><li>3 Dokumen dan persetujuan</li></ol>
+      <h1 class="t-title">Data Anda sebagai pendaftar</h1>
+      <form class="form-narrow" novalidate>
+        <div class="field"><label for="h-nm">Nama lengkap</label><input id="h-nm" class="input" autocomplete="name"></div>
+        <div class="field"><label for="h-jb">Jabatan</label><input id="h-jb" class="input" autocomplete="organization-title"></div>
+        <div class="field"><label for="h-em">Email kerja</label><input id="h-em" class="input" type="email" autocomplete="email"><span class="hint">Tautan verifikasi dikirim ke email ini.</span></div>
+        <div class="field is-error"><label for="h-pw">Password</label><input id="h-pw" class="input" type="password" autocomplete="new-password" aria-invalid="true" aria-describedby="h-pw-e"><span class="err" id="h-pw-e">Password belum memenuhi syarat: [aturan password dari NFR-SEC-03].</span><span class="hint">Boleh ditempel dari pengelola password.</span></div>
+        <div class="row" style="justify-content:space-between"><button class="btn btn-secondary" type="button">Kembali</button><button class="btn btn-primary" type="submit">Lanjut</button></div>
+      </form>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k3">3. Pendaftaran langkah 2: data HR (US-1901 AC1)</b>Nama, jabatan, email, password. Aturan password mengikuti NFR-SEC-03 dan tidak ditulis ulang di sini. Tombol "Kembali" mempertahankan isian langkah 1.</p>
+</section>
+
+<!-- 4. Langkah 3 -->
+<section aria-labelledby="k4">
+  <div class="web no-side" style="min-height:720px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Daftarkan perusahaan</span></div>
+    <div class="web-main">
+      <ol class="steps" aria-label="Langkah pendaftaran"><li class="done">1 Data perusahaan</li><li class="done">2 Data Anda</li><li aria-current="step">3 Dokumen dan persetujuan</li></ol>
+      <h1 class="t-title">Dokumen dan persetujuan</h1>
+      <form class="form-narrow" novalidate>
+        <p class="t-small">Foto JPG atau PNG maksimal 5 MiB; dokumen PDF maksimal 10 MiB (NFR-SEC-08).</p>
+        <div class="field"><label for="u-nib">Dokumen NIB</label><input id="u-nib" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf"><span class="hint">nib.pdf (2,1 MiB) terunggah</span></div>
+        <div class="field is-error"><label for="u-npwp">Dokumen NPWP</label><input id="u-npwp" class="input" type="file" aria-invalid="true" aria-describedby="u-npwp-e"><span class="err" id="u-npwp-e">Dokumen NPWP wajib diunggah.</span></div>
+        <div class="field is-error"><label for="u-kw">Bukti kewenangan pendaftar</label><input id="u-kw" class="input" type="file" aria-invalid="true" aria-describedby="u-kw-e"><span class="err" id="u-kw-e">Ukuran berkas melebihi 10 MiB. Pilih berkas yang lebih kecil.</span><span class="hint">Bentuk bukti kewenangan (misalnya surat kuasa atau surat penunjukan) menunggu konfirmasi user <span class="td">[TIDAK DIKETAHUI]</span> (US-1901 AC1, PT-79).</span></div>
+        <div class="check"><span class="box" role="checkbox" aria-checked="false" aria-labelledby="pr-l" tabindex="0"></span><span id="pr-l">Saya menyetujui teks pemrosesan data pendaftaran perusahaan (versi <span class="td">[TIDAK DIKETAHUI]</span>, <a href="#">baca teks</a>). Teks final menunggu legal (L-20), kotak tidak tercentang otomatis.</span></div>
+        <p class="t-cap">Pernyataan: saya berwenang mewakili perusahaan ini. <span class="td">[TIDAK DIKETAHUI]</span> (bunyi dari legal)</p>
+        <div class="row" style="justify-content:space-between"><button class="btn btn-secondary" type="button">Kembali</button><button class="btn btn-primary is-loading" type="submit" aria-disabled="true">Mengirim...</button></div>
+        <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Pendaftaran tidak dapat diproses</b>Data yang Anda kirim tidak dapat digunakan untuk mendaftar. Periksa kembali data Anda, atau hubungi Layanan Pelanggan untuk bantuan.</span></div>
+      </form>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k4">4. Pendaftaran langkah 3: tiga dokumen wajib, persetujuan, kirim (US-1901 AC1, AC2, AC7)</b>Per field: dokumen wajib kosong, jenis atau ukuran di luar NFR-SEC-08 ditolak (AC2). Tombol kirim terkunci dan memuat selama permintaan (KU-05). Spanduk merah di bawah adalah galat NIB sudah terdaftar: pesan generik tanpa menyebut nama perusahaan lain dan arahan ke Layanan Pelanggan (AC7). Kegagalan di tengah proses tidak meninggalkan akun HR tanpa perusahaan dan persetujuan (AC5, kompensasi di backend). Berkas diunggah lewat upload slot dan dinetralkan di backend (ADR-018).</p>
+</section>
+
+<!-- 5. Periksa email -->
+<section aria-labelledby="k5">
+  <div class="web no-side" style="min-height:380px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Daftarkan perusahaan</span></div>
+    <div class="web-main"><div class="state state-box"><div class="ill" aria-hidden="true">@</div><h1 class="t-title">Periksa email Anda</h1><p class="t-body">Kami mengirim petunjuk ke email yang Anda daftarkan. Buka tautannya untuk melanjutkan. Bila email tidak masuk dalam beberapa menit, periksa folder spam atau hubungi Layanan Pelanggan.</p><a class="btn btn-secondary" href="#">Kembali ke situs</a></div></div>
+  </div>
+  <p class="web-caption"><b id="k5">5. Setelah mengirim pendaftaran</b>Layar yang sama persis untuk email baru dan email yang sudah terdaftar di realm korporat; petunjuk berbeda hanya di kotak masuk email (US-1901 AC4, pola US-101 AC3). Setelah email terverifikasi, HR masuk dan mendaftarkan TOTP (layar 6).</p>
+</section>
+
+<!-- 6. TOTP pertama -->
+<section aria-labelledby="k6">
+  <div class="web no-side" style="min-height:560px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area perusahaan</span></div>
+    <div class="web-main"><div class="login-box" style="margin:16px auto;width:520px;max-width:100%">
+      <h1 class="t-title">Lindungi akun Anda dengan kode masuk</h1>
+      <p class="t-small">Pasang aplikasi authenticator, lalu pindai kode QR atau masukkan kunci di bawah.</p>
+      <div class="qr" role="img" aria-label="Kode QR pendaftaran TOTP (contoh)"></div>
+      <p class="t-small">Kunci teks: <span class="ref">ABCD EFGH IJKL MNOP</span> <button class="btn btn-text btn-sm">Salin</button></p>
+      <div class="field"><label for="t-c">Kode 6 digit</label><input id="t-c" class="input otp" inputmode="numeric" autocomplete="one-time-code"></div>
+      <button class="btn btn-primary btn-block">Aktifkan</button>
+      <hr>
+      <p class="t-sub">Simpan kode pemulihan</p>
+      <ol class="t-small ref" style="columns:2"><li>xxxx-xxxx</li><li>xxxx-xxxx</li><li>xxxx-xxxx</li><li>xxxx-xxxx</li><li>... (12 kode)</li></ol>
+      <div class="alert warning"><span aria-hidden="true">!</span><span><b>Hanya tampil sekali</b>Setiap kode hanya berlaku sekali. Simpan di tempat aman; tanpa kode ini dan perangkat TOTP, akun hanya dapat dipulihkan lewat Verifikator.</span></div>
+      <div class="check"><span class="box" role="checkbox" aria-checked="false" aria-labelledby="sv" tabindex="0"></span><span id="sv">Saya sudah menyimpan kode pemulihan</span></div>
+      <button class="btn btn-primary btn-block is-disabled" aria-disabled="true">Lanjut</button>
+    </div></div>
+  </div>
+  <p class="web-caption"><b id="k6">6. Pendaftaran TOTP dan kode pemulihan, wajib pada login pertama (US-1904 AC1, KEPUTUSAN-253)</b>Pola sama dengan D-A15 (§10.2): QR dan kunci teks dapat disalin, 12 kode pemulihan sekali tampil, centang wajib sebelum lanjut. Menutup layar tidak membuat HR masuk ke dasbor. Kode pemulihan tidak masuk log atau tangkapan layar privasi. Dua langkah dalam satu bingkai untuk ringkas.</p>
+</section>
+
+<!-- 7. Menunggu verifikasi -->
+<section aria-labelledby="k7">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Status verifikasi</a><a href="#">Profil perusahaan</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Status verifikasi perusahaan</h1>
+      <div class="panel"><div class="row"><span class="badge warning">Menunggu verifikasi</span><span class="t-small muted">Diajukan Sen, 1 Mar 2027 08.15 WIB</span></div>
+        <p class="t-body">Tim Ruang Sehat sedang memeriksa dokumen perusahaan Anda. Layanan pesanan akan terbuka setelah perusahaan disetujui. Pemberitahuan lewat email menyusul di Fase 2, sehingga periksa halaman ini secara berkala <span class="muted">[DOK: US-1902 AC3]</span>.</p>
+        <ol class="timeline"><li class="done">Pendaftaran terkirim</li><li class="now">Pemeriksaan dokumen oleh Verifikator</li><li>Keputusan</li></ol>
+        <p class="t-small">Perlu bantuan? Hubungi Layanan Pelanggan.</p></div>
+      <div class="panel"><h2 class="t-sub">Profil perusahaan (baca-saja)</h2><dl class="kv"><dt>Nama badan usaha</dt><dd>PT Contoh Sejahtera</dd><dt>NIB</dt><dd>************1234</dd><dt>NPWP</dt><dd>************5678</dd><dt>Alamat</dt><dd>[alamat contoh]</dd><dt>Telepon kantor</dt><dd>[nomor contoh]</dd></dl></div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k7">7. Menunggu verifikasi (US-1901 AC6)</b>Hanya status, alasan penolakan bila ada, dan profil perusahaan; menu pesanan, peserta, invoice tidak tampil. NIB dan NPWP termasking. Status ditulis dengan teks dan simbol (A1). Belum ada notifikasi email di Fase 1.</p>
+</section>
+
+<!-- 8. Ditolak -->
+<section aria-labelledby="k8">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Status verifikasi</a><a href="#">Profil perusahaan</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Status verifikasi perusahaan</h1>
+      <div class="alert danger" role="status"><span aria-hidden="true">&#10005;</span><span><b>Ditolak</b>Alasan: Bukti kewenangan tidak memadai. Keterangan Verifikator: [teks keterangan, bila ada]. Daftar kode alasan final <span class="td">[TIDAK DIKETAHUI]</span>.</span></div>
+      <div class="panel"><p class="t-body">Anda dapat memperbaiki data atau mengunggah ulang dokumen, lalu mengajukan kembali.</p>
+        <div class="row"><button class="btn btn-primary">Perbaiki dan ajukan ulang</button></div>
+        <p class="t-small muted">Pengajuan ulang membuka formulir langkah 1-3 dengan data sebelumnya terisi; dokumen yang diganti diunggah ulang.</p></div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k8">8. Ditolak dan ajukan ulang (US-1901 AC6, US-1902 AC3)</b>Alasan penolakan ditampilkan kepada HR (kode alasan dari Verifikator, termasuk "bukti kewenangan tidak memadai"). Email pemberitahuan penolakan menyusul bersama US-1001 (Fase 2).</p>
+</section>
+
+<!-- 9. Dasbor -->
+<section aria-labelledby="k9">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Dasbor</a><a href="#">Profil perusahaan</a><a href="#">Kelola HR</a><span class="sec">Layanan korporat</span><a href="#" aria-disabled="true" class="muted">Pesanan (belum tersedia)</a><a href="#" aria-disabled="true" class="muted">Peserta (belum tersedia)</a><a href="#" aria-disabled="true" class="muted">Invoice (belum tersedia)</a></nav>
+    <div class="web-main">
+      <h1 class="t-title">Dasbor</h1>
+      <div class="alert success" role="status"><span aria-hidden="true">&#10003;</span><span><b>Perusahaan terverifikasi</b>Status: Aktif. Akun HR Anda dapat memakai menu pesanan saat tersedia.</span></div>
+      <div class="cards">
+        <div class="panel"><span class="t-cap">Status perusahaan</span><span class="badge success">Aktif</span></div>
+        <div class="panel"><span class="t-cap">HR aktif</span><span class="t-title">2</span><a href="#">Kelola HR</a></div>
+        <div class="panel"><span class="t-cap">Pesanan berjalan</span><span class="t-small muted">Belum tersedia. [Isi dasbor layanan korporat: kehadiran, invoice] <span class="td">[TIDAK DIKETAHUI]</span> (US-1905 dst., Fase 3)</span></div>
+      </div>
+      <p class="note"><b>Catatan:</b> dasbor Fase 1 hanya memuat status perusahaan, jumlah HR, dan tautan. Pesanan, peserta, invoice, rekap kehadiran, dan ringkasan hasil dirancang di task Fase 3. Dasbor tidak pernah menampilkan hasil pemeriksaan peserta (BR-143).</p>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k9">9. Dasbor HR perusahaan Aktif (US-1902 AC2, US-1904)</b>Menu layanan korporat tampil nonaktif dengan alasan tertulis "belum tersedia" (bukan hilang), agar HR tidak bingung. Isian dasbor lanjutan <span class="td">[TIDAK DIKETAHUI]</span> sampai fase layanan korporat.</p>
+</section>
+
+<!-- 10. Kelola HR -->
+<section aria-labelledby="k10">
+  <div class="web">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
+    <nav class="web-side" aria-label="Menu"><a href="#">Dasbor</a><a href="#">Profil perusahaan</a><a class="on" href="#" aria-current="page">Kelola HR</a></nav>
+    <div class="web-main">
+      <div class="row between"><h1 class="t-title">Kelola HR</h1><button class="btn btn-primary">Undang HR</button></div>
+      <div class="table-wrap"><table class="tbl"><caption class="t-cap" style="text-align:left;padding:8px">Anggota HR perusahaan. Semua HR berperan sama (PT-68 terbuka).</caption>
+        <thead><tr><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
+        <tbody>
+          <tr><td>Sari A. (Anda)</td><td>hr@contoh.id</td><td><span class="badge success">Aktif</span></td><td><span class="muted">Tidak dapat menonaktifkan diri bila HR aktif terakhir</span></td></tr>
+          <tr><td>Budi</td><td>budi@contoh.id</td><td><span class="badge success">Aktif</span></td><td><button class="btn btn-secondary btn-sm">Nonaktifkan</button></td></tr>
+          <tr><td>Rina</td><td>rina@contoh.id</td><td><span class="badge warning">Menunggu aktivasi</span></td><td><button class="btn btn-secondary btn-sm">Nonaktifkan</button></td></tr>
+          <tr><td>Dewi</td><td>dewi@contoh.id</td><td><span class="badge neutral">Nonaktif</span></td><td><span class="muted">-</span></td></tr>
+        </tbody></table></div>
+      <div class="split">
+        <div class="panel"><h2 class="t-sub">Undang HR lain</h2><div class="field"><label for="iv-em">Email HR yang diundang</label><input id="iv-em" class="input" type="email"><span class="hint">Undangan aktivasi (password dan TOTP) dikirim ke email ini dan terikat ke perusahaan Anda.</span></div><div class="row" style="justify-content:flex-end"><button class="btn btn-primary">Kirim undangan</button></div>
+          <div class="alert info" role="status"><span aria-hidden="true">i</span><span><b>Undangan dikirim</b>Pesan yang sama tampil bila email sudah terdaftar di tempat lain.</span></div></div>
+        <div class="panel"><h2 class="t-sub">Nonaktifkan HR</h2>
+          <div class="alert warning"><span aria-hidden="true">!</span><span><b>Nonaktifkan Budi?</b>Budi tidak dapat masuk lagi dan sesi yang terbuka diakhiri pada permintaan berikutnya.</span></div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-secondary">Batal</button><button class="btn btn-danger">Nonaktifkan</button></div>
+          <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Tidak dapat dinonaktifkan</b>HR aktif terakhir tidak dapat dinonaktifkan.</span></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="web-caption"><b id="k10">10. Kelola HR (US-1904 AC2, AC3, AC5)</b>Undang HR lain lewat email, nonaktifkan dengan dialog dampak, HR aktif terakhir tidak dapat dinonaktifkan. Data perusahaan lain tidak pernah tampil; objek perusahaan lain dijawab "Data tidak ditemukan" (AC3, KU-03). Nonaktif mengakhiri sesi pada permintaan berikutnya (AC5). Dialog fokus terkunci dan kembali ke tombol pemicu saat ditutup. Status diumumkan tanpa memindah fokus (A15). Alasan nonaktif wajib atau tidak <span class="td">[TIDAK DIKETAHUI]</span> (tidak disebut di PRD, tidak ditambahkan).</p>
+</section>
+
+<!-- 11. Sesi -->
+<section aria-labelledby="k11">
+  <div class="web" style="min-height:300px">
+    <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span></div>
+    <nav class="web-side" aria-label="Menu"><a href="#">Dasbor</a></nav>
+    <div class="web-main"><p class="t-body muted">(isi halaman di belakang dialog)</p></div>
+    <div class="scrim center" role="presentation"><div class="dialog" role="alertdialog" aria-labelledby="ss-t" aria-describedby="ss-d" style="max-width:420px;margin:0 auto"><h2 class="t-sub" id="ss-t">Sesi akan berakhir</h2><p class="t-small" id="ss-d">Anda tidak aktif. Sesi berakhir dalam 2 menit demi keamanan.</p><div class="row" style="justify-content:flex-end"><button class="btn btn-secondary">Keluar</button><button class="btn btn-primary">Tetap masuk</button></div></div></div>
+  </div>
+  <p class="web-caption"><b id="k11">11. Sesi tidak aktif 30 menit (US-1904 AC6)</b>Peringatan 2 menit sebelum berakhir dengan "Tetap masuk" (guideline §5.5, KEPUTUSAN-170). Batas mutlak 12 jam: peringatan tanpa perpanjangan. Setelah berakhir, HR diarahkan ke layar masuk (layar 1) tanpa isian terbawa.</p>
+</section>
+
+</main>
+</body>
+</html>
