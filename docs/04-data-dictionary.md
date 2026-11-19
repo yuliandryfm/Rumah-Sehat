@@ -2291,8 +2291,8 @@ Kunci data (DEK) terbungkus KEK di KMS, satu per wadah (ADR-013 §3). Aturan khu
 | container_id | uuid | tidak | | — | |
 | wrapped_dek | bytea | ya | | Rahasia | CHECK `(wrapped_dek IS NULL) = (shredded_at IS NOT NULL)` |
 | kek_ref | text | tidak | | — | ID dan versi KEK di KMS |
-| retention_category | text | ya | | — | Kategori di `retention_policy` |
-| retention_anchor_at | timestamptz | ya | | — | Tanggal acuan retensi (ADR-013 §6) |
+| retention_category | text | ya | | — | Kategori di `retention_policy`. Bila belum diketahui saat `INSERT`, diisi sekali lewat `data_key_retention_anchor` (A19.10, CR-014) |
+| retention_anchor_at | timestamptz | ya | | — | Tanggal acuan retensi (ADR-013 §6). Bila baru diketahui kemudian, dicatat sekali di `data_key_retention_anchor` (A19.10, CR-014); kolom ini tidak dapat diubah setelah `INSERT` (trigger satu arah) |
 | shredded_at | timestamptz | ya | | — | |
 | shred_reason | text | ya | | — | CHECK (`retention_expired`, `erasure_request`) |
 
@@ -2327,6 +2327,26 @@ Penanda pemilik akun membuka aplikasi dalam keadaan masuk minimal sekali di suat
 | activity_month | date | tidak | | — | |
 
 Index: `UQ (patient_id, activity_month)`.
+
+#### A19.10 `data_key_retention_anchor` (T)
+
+Ditambahkan oleh **CR-014** (disetujui di gate Tahap 5, T5-G2 e; dijadwalkan F1-T17 `[KEPUTUSAN-185]`), desain fisik `docs/05-physical-schema.md` §4.12 `[KEPUTUSAN-155]`. Acuan retensi DEK yang baru diketahui setelah wadah dibuat (misalnya akhir sesi konsultasi), dicatat **sekali** per DEK, karena `data_key.retention_category`/`retention_anchor_at` tidak dapat diubah setelah `INSERT` dan role aplikasi tidak punya `UPDATE` atas `data_key` (A19.7, KEPUTUSAN-66). Sumber: CR-014, ADR-013 §5–§6, review DBA Tahap 5 F-P04.
+
+| Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
+| --- | --- | --- | --- | --- | --- |
+| data_key_id | uuid | tidak | PK, FK→data_key | — | Satu baris per DEK (PK menolak pengisian kedua) |
+| retention_category | text | tidak | | — | Kategori di `retention_policy`; wajib sama dengan `data_key.retention_category` bila kolom itu sudah terisi (trigger) |
+| retention_anchor_at | timestamptz | tidak | | — | Tanggal acuan retensi. Ditolak bila `data_key.retention_anchor_at` sudah terisi (trigger) |
+| created_at | timestamptz | tidak | | — | |
+| created_by | uuid | ya | FK→account | — | |
+
+Index: `ix (retention_category, retention_anchor_at)`.
+
+Aturan:
+- Acuan yang berlaku = `coalesce(data_key.retention_anchor_at, data_key_retention_anchor.retention_anchor_at)` (begitu pula kategori). Acuan `NULL` berarti DEK **tidak memenuhi syarat retensi** (gagal-tertutup): job retensi tidak pernah memusnahkan DEK tanpa acuan.
+- Kelas T: tanpa `UPDATE`/`DELETE`/`TRUNCATE` (trigger penolak). Koreksi acuan yang salah tidak dapat dilakukan dengan `UPDATE`; bila kelak diperlukan, polanya diusulkan lewat CR.
+- Hak (melengkapi §0.6 A): `rs_app` S, I; `privacy_worker` S (seluruh kolom, untuk menghitung acuan berlaku); role lain tanpa hak.
+- Padanan RME `rme_data_key_retention_anchor` (C, dengan `fasyankes_id` dan RLS) dijadwalkan di EN-22 Fase 3.
 
 ---
 
