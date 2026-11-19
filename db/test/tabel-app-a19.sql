@@ -143,6 +143,10 @@ SELECT pg_temp.uji_boleh('A19.4 penyelesaian dipagari sewa', 'rs_worker',
   'UPDATE app.job SET status = ''succeeded'', finished_at = now() WHERE id = ''00000000-0000-7000-8000-00000000e001'' AND status = ''running'' AND locked_by = ''w1''', 1);
 SELECT pg_temp.uji_boleh('A19.4 dedupe_key yang sama boleh lagi setelah job selesai', 'rs_api',
   'INSERT INTO app.job (id, job_type, payload, run_at, status, attempt_count, max_attempts, dedupe_key) VALUES (''00000000-0000-7000-8000-00000000e003'', ''uji'', ''{}'', now(), ''queued'', 0, 3, ''uji:x'')', 1);
+SELECT pg_temp.uji_tolak('A19.4 NEG attempt_count negatif', 'rs_worker',
+  'UPDATE app.job SET attempt_count = -1 WHERE id = ''00000000-0000-7000-8000-00000000e003''', '23514', 'ck_job_attempt_count');
+SELECT pg_temp.uji_tolak('A19.4 NEG max_attempts nol', 'rs_api',
+  'INSERT INTO app.job (id, job_type, payload, run_at, status, attempt_count, max_attempts) VALUES (''00000000-0000-7000-8000-00000000e004'', ''uji'', ''{}'', now(), ''queued'', 0, 0)', '23514', 'ck_job_max_attempts');
 SELECT pg_temp.uji_tolak('A19.4 NEG status di luar daftar', 'rs_worker',
   'UPDATE app.job SET status = ''done'' WHERE id = ''00000000-0000-7000-8000-00000000e003''', '23514', 'ck_job_status');
 SELECT pg_temp.uji_boleh('A19.4 rs_worker menghapus job selesai (pembersihan)', 'rs_worker',
@@ -156,6 +160,12 @@ SELECT pg_temp.uji_boleh('A19.5 rs_api membuat slot unggah', 'rs_api',
 SELECT pg_temp.uji_tolak('A19.5 NEG object_key ganda', 'rs_api',
   'INSERT INTO app.upload_slot (id, expires_at, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES (''00000000-0000-7000-8000-00000000f002'', now(), ''identity_document'', ''00000000-0000-7000-8000-0000000000f1'', ''image/png'', 1)',
   '23505', 'uq_upload_slot_object_key');
+SELECT pg_temp.uji_tolak('A19.5 NEG bucket di luar daftar stored_file.bucket', 'rs_api',
+  'INSERT INTO app.upload_slot (id, expires_at, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES (''00000000-0000-7000-8000-00000000f002'', now(), ''publik'', ''k2'', ''image/png'', 1)',
+  '23514', 'ck_upload_slot_bucket');
+SELECT pg_temp.uji_tolak('A19.5 NEG max_size_bytes nol', 'rs_api',
+  'INSERT INTO app.upload_slot (id, expires_at, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES (''00000000-0000-7000-8000-00000000f002'', now(), ''clinical'', ''k2'', ''application/pdf'', 0)',
+  '23514', 'ck_upload_slot_max_size_bytes');
 SELECT pg_temp.uji_tolak('A19.5 NEG slot tanpa expires_at', 'rs_api',
   'INSERT INTO app.upload_slot (id, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES (''00000000-0000-7000-8000-00000000f002'', ''identity_document'', ''k2'', ''image/png'', 1)',
   '23502', 'expires_at');
@@ -178,13 +188,24 @@ SELECT pg_temp.uji_tolak('A19.6 NEG mime_type di luar daftar', 'rs_api',
 SELECT pg_temp.uji_tolak('A19.6 NEG size_bytes nol', 'rs_api',
   'INSERT INTO app.stored_file (id, bucket, object_key, category, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001002'', ''export'', ''obj-2'', ''x'', ''text/csv'', 0, ''\x00'', now())',
   '23514', 'ck_stored_file_size_bytes');
+SELECT pg_temp.uji_tolak('A19.6 NEG container_type di luar wadah DD §0.7', 'rs_api',
+  'INSERT INTO app.stored_file (id, bucket, object_key, category, container_type, container_id, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001002'', ''clinical'', ''obj-2'', ''x'', ''rme_visit'', ''00000000-0000-7000-8000-000000002002'', ''application/pdf'', 1, ''\x00'', now())',
+  '23514', 'ck_stored_file_container_type');
+SELECT pg_temp.uji_tolak('A19.6 NEG container_type tanpa container_id', 'rs_api',
+  'INSERT INTO app.stored_file (id, bucket, object_key, category, container_type, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001002'', ''clinical'', ''obj-2'', ''x'', ''lab_result'', ''application/pdf'', 1, ''\x00'', now())',
+  '23514', 'ck_stored_file_container');
+SELECT pg_temp.uji_tolak('A19.6 NEG container_id tanpa container_type', 'rs_api',
+  'INSERT INTO app.stored_file (id, bucket, object_key, category, container_id, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001002'', ''clinical'', ''obj-2'', ''x'', ''00000000-0000-7000-8000-000000002002'', ''application/pdf'', 1, ''\x00'', now())',
+  '23514', 'ck_stored_file_container');
+SELECT pg_temp.uji_boleh('A19.6 berkas tanpa wadah (container_type dan container_id NULL)', 'rs_api',
+  'INSERT INTO app.stored_file (id, bucket, object_key, category, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001003'', ''public_content'', ''obj-3'', ''banner'', ''image/png'', 1, ''\x00'', now())', 1);
 SELECT pg_temp.uji_tolak('A19.6 NEG object_key ganda', 'rs_api',
   'INSERT INTO app.stored_file (id, bucket, object_key, category, mime_type, size_bytes, sha256, validated_at) VALUES (''00000000-0000-7000-8000-000000001002'', ''export'', ''obj-1'', ''x'', ''text/csv'', 1, ''\x00'', now())',
   '23505', 'uq_stored_file_object_key');
 SELECT pg_temp.uji_tolak('A19.6 NEG soft delete tanpa alasan', 'rs_api',
   'UPDATE app.stored_file SET deleted_at = now() WHERE id = ''00000000-0000-7000-8000-000000001001''', '23514', 'ck_stored_file_soft_delete');
 SELECT pg_temp.uji_tolak('A19.6 NEG rs_api DELETE stored_file (Master)', 'rs_api', 'DELETE FROM app.stored_file', '42501', 'permission denied for table stored_file');
-SELECT pg_temp.uji_boleh('A19.6 pekerja privasi membaca stored_file', 'rs_privacy_worker_login', 'SELECT id FROM app.stored_file', 1);
+SELECT pg_temp.uji_boleh('A19.6 pekerja privasi membaca stored_file', 'rs_privacy_worker_login', 'SELECT id FROM app.stored_file', 2);
 SELECT pg_temp.uji_tolak('A19.6 NEG pekerja privasi UPDATE stored_file (tanpa kolom anonymize)', 'rs_privacy_worker_login',
   'UPDATE app.stored_file SET purged_at = now()', '42501', 'permission denied for table stored_file');
 
@@ -200,6 +221,12 @@ SELECT pg_temp.uji_tolak('A19.7 NEG dua DEK untuk wadah yang sama', 'rs_api',
 SELECT pg_temp.uji_tolak('A19.7 NEG DEK baru tanpa wrapped_dek (bukan pemusnahan)', 'rs_api',
   'INSERT INTO app.data_key (id, container_type, container_id, kek_ref) VALUES (''00000000-0000-7000-8000-000000003099'', ''claim'', ''00000000-0000-7000-8000-000000004099'', ''k'')',
   '23514', 'ck_data_key_shredded');
+SELECT pg_temp.uji_tolak('A19.7 NEG DEK baru dengan shred_reason tanpa pemusnahan', 'rs_api',
+  'INSERT INTO app.data_key (id, container_type, container_id, wrapped_dek, kek_ref, shred_reason) VALUES (''00000000-0000-7000-8000-000000003099'', ''claim'', ''00000000-0000-7000-8000-000000004099'', ''\x01'', ''k'', ''erasure_request'')',
+  '23514', 'ck_data_key_shred_reason_shredded_at');
+SELECT pg_temp.uji_tolak('A19.7 NEG DEK baru dimusnahkan tanpa shred_reason', 'rs_api',
+  'INSERT INTO app.data_key (id, container_type, container_id, kek_ref, shredded_at) VALUES (''00000000-0000-7000-8000-000000003099'', ''claim'', ''00000000-0000-7000-8000-000000004099'', ''k'', now())',
+  '23514', 'ck_data_key_shred_reason_shredded_at');
 SELECT pg_temp.uji_tolak('A19.7 NEG rs_api UPDATE data_key', 'rs_api', 'UPDATE app.data_key SET kek_ref = ''x''', '42501', 'permission denied for table data_key');
 SELECT pg_temp.uji_tolak('A19.7 NEG rs_api DELETE data_key', 'rs_api', 'DELETE FROM app.data_key', '42501', 'permission denied for table data_key');
 SELECT pg_temp.uji_tolak('A19.7 NEG pemilik UPDATE data_key ditolak trigger satu arah', 'rs_migration',

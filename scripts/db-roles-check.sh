@@ -242,7 +242,7 @@ tolak_koneksi() {
   local ctr="$1" role="$2" db="$3" pola="$4" out
   if out="$(docker exec -u postgres "$ctr" psql -X -w -At -U "$role" -d "$db" -c 'SELECT 1' 2>&1)"; then
     tandai gagal "NEG koneksi $role -> $db seharusnya ditolak, tetapi berhasil"
-  elif printf '%s' "$out" | grep -q -- "$pola"; then
+  elif grep -q -- "$pola" <<<"$out"; then   # here-string: tanpa SIGPIPE di bawah pipefail
     tandai lulus "NEG koneksi $role -> $db ditolak ($pola)"
   else
     tandai gagal "NEG koneksi $role -> $db ditolak dengan galat tak terduga: $out"

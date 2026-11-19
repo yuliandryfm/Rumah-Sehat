@@ -63,7 +63,9 @@ CREATE TABLE app.job (
   dedupe_key    text        NULL,
   finished_at   timestamptz NULL,
   CONSTRAINT pk_job PRIMARY KEY (id),
-  CONSTRAINT ck_job_status CHECK (status IN ('queued','running','succeeded','failed','cancelled'))
+  CONSTRAINT ck_job_status CHECK (status IN ('queued','running','succeeded','failed','cancelled')),
+  CONSTRAINT ck_job_attempt_count CHECK (attempt_count >= 0),       -- review DBA F1-T17 butir 7
+  CONSTRAINT ck_job_max_attempts CHECK (max_attempts >= 1)
 );
 CREATE INDEX ix_job_run_at_queued ON app.job (run_at) WHERE status = 'queued';
 CREATE INDEX ix_job_status_finished_at ON app.job (status, finished_at)
@@ -89,7 +91,11 @@ CREATE TABLE app.upload_slot (
   max_size_bytes    integer     NOT NULL,
   CONSTRAINT pk_upload_slot PRIMARY KEY (id),
   CONSTRAINT fk_upload_slot_owner_account_id FOREIGN KEY (owner_account_id) REFERENCES app.account (id),
-  CONSTRAINT uq_upload_slot_object_key UNIQUE (object_key)
+  CONSTRAINT uq_upload_slot_object_key UNIQUE (object_key),
+  -- review DBA F1-T17 butir 2: nilai sama dengan stored_file.bucket (DD A19.5 "Sama dengan").
+  CONSTRAINT ck_upload_slot_bucket CHECK (bucket IN
+    ('identity_document','clinical','claim_evidence','license_document','export','public_content','public_catalog')),
+  CONSTRAINT ck_upload_slot_max_size_bytes CHECK (max_size_bytes > 0)
 );
 CREATE INDEX ix_upload_slot_expires_at ON app.upload_slot (expires_at);   -- §9.3
 COMMENT ON TABLE app.upload_slot IS 'class:O module:platform';
@@ -131,7 +137,12 @@ CREATE TABLE app.stored_file (
     ('identity_document','clinical','claim_evidence','license_document','export','public_content','public_catalog')),
   CONSTRAINT ck_stored_file_mime_type CHECK (mime_type IN
     ('image/jpeg','image/png','application/pdf','text/csv','application/json')),
-  CONSTRAINT ck_stored_file_size_bytes CHECK (size_bytes > 0)
+  CONSTRAINT ck_stored_file_size_bytes CHECK (size_bytes > 0),
+  -- review DBA F1-T17 butir 5: wadah retensi = nilai DD §0.7 (DB aplikasi); tipe dan ID berpasangan.
+  CONSTRAINT ck_stored_file_container_type CHECK (container_type IN
+    ('consultation_chat','consultation_clinical','lab_result','identity_document','claim',
+     'integration_client','partner_bank_account','complaint_ticket','data_subject_request','status_note')),
+  CONSTRAINT ck_stored_file_container CHECK ((container_type IS NULL) = (container_id IS NULL))
 );
 CREATE INDEX ix_stored_file_container_type_container_id ON app.stored_file (container_type, container_id);
 COMMENT ON TABLE app.stored_file IS 'class:M module:platform';
@@ -161,7 +172,8 @@ CREATE TABLE app.data_key (
     ('consultation_chat','consultation_clinical','lab_result','identity_document','claim',
      'integration_client','partner_bank_account','complaint_ticket','data_subject_request','status_note')),
   CONSTRAINT ck_data_key_shredded CHECK ((wrapped_dek IS NULL) = (shredded_at IS NOT NULL)),
-  CONSTRAINT ck_data_key_shred_reason CHECK (shred_reason IN ('retention_expired','erasure_request'))
+  CONSTRAINT ck_data_key_shred_reason CHECK (shred_reason IN ('retention_expired','erasure_request')),
+  CONSTRAINT ck_data_key_shred_reason_shredded_at CHECK ((shred_reason IS NULL) = (shredded_at IS NULL))   -- review DBA butir 6
 );
 CREATE INDEX ix_data_key_retention_category_retention_anchor_at
   ON app.data_key (retention_category, retention_anchor_at) WHERE shredded_at IS NULL;

@@ -2252,7 +2252,7 @@ Slot unggah yang belum dikonfirmasi. Berkas yang gagal validasi atau tidak perna
 | --- | --- | --- | --- | --- | --- |
 | *STD-O* | | | | | |
 | owner_account_id | uuid | ya | FK→account | — | `NULL` untuk unggahan rekanan (PDF hasil lab) |
-| owner_partner_id | uuid | ya | FK→partner | — | |
+| owner_partner_id | uuid | ya | FK→partner | — | Belum dibuat di migrasi F1-T17 karena tabel `partner` (A5) belum ada di Fase 1. Kolom dibuat bersama migrasi A5 (expand §11.3 skema fisik: kolom `NULL`, FK ditambah `NOT VALID` lalu `VALIDATE`) (review DBA F1-T17 butir 3) |
 | bucket | text | tidak | | — | Sama dengan `stored_file.bucket` |
 | object_key | text | tidak | UQ | — | UUID buatan aplikasi |
 | allowed_mime_type | text | tidak | | — | |
