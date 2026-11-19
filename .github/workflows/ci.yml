@@ -37,11 +37,23 @@ jobs:
     # test-verify.sh menjalankan verify.sh lengkap (termasuk Docker) untuk setiap fixture.
     timeout-minutes: 60
     steps:
-      - name: Checkout (riwayat penuh untuk gitleaks)
+      - name: Checkout (riwayat penuh untuk gitleaks dan basis migrasi)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      # scripts/db-migrations-check.sh mencari basis lewat `git merge-base HEAD main` atau
+      # `tahap-08-fase-1` (ref lokal). Checkout hanya membuat branch lokal untuk ref yang dibangun; branch
+      # lain tersedia sebagai origin/<nama>, jadi dibuatkan branch lokal (tanpa jaringan).
+      - name: Siapkan ref basis migrasi (main, tahap-08-fase-1)
+        run: |
+          for b in main tahap-08-fase-1; do
+            if ! git show-ref --verify --quiet "refs/heads/$b" && git show-ref --verify --quiet "refs/remotes/origin/$b"; then
+              git branch "$b" "origin/$b"
+            fi
+          done
+          git branch --list main tahap-08-fase-1
 
       - name: Pasang toolchain Rust sesuai rust-toolchain.toml
         run: |
@@ -55,10 +67,18 @@ jobs:
           bash scripts/ci/pasang-alat.sh "$RUNNER_TEMP/alat-ci"
           echo "$RUNNER_TEMP/alat-ci" >> "$GITHUB_PATH"
 
-      # Langkah bootstrap-role-db (kontainer PostgreSQL sekali pakai) dan schemathesis (image Docker dengan
-      # --network host) di verify.sh butuh Docker. Docker Engine sudah terpasang di image ubuntu-24.04
-      # (SRC-357); di sini dipastikan daemon berjalan sebelum verify.sh.
-      - name: Periksa Docker tersedia (bootstrap-role-db, schemathesis)
+      # sqlx-cli 0.9.1 (SRC-182) untuk langkah migrasi-db, di lokasi yang dicari scripts/db-migrations-check.sh.
+      # --locked memakai Cargo.lock rilis; setiap crate diperiksa checksum-nya terhadap indeks crates.io.
+      - name: Pasang sqlx-cli 0.9.1 (crates.io, --locked)
+        run: |
+          root="$HOME/.local/share/ruang-sehat/sqlx-cli-0.9.1"
+          cargo install sqlx-cli --version 0.9.1 --locked --no-default-features --features postgres,rustls --root "$root"
+          test "$("$root/bin/sqlx" --version | sed -n '1p')" = "sqlx-cli 0.9.1"
+
+      # Langkah bootstrap-role-db dan migrasi-db (kontainer PostgreSQL sekali pakai) serta schemathesis (image
+      # Docker dengan --network host) di verify.sh butuh Docker. Docker Engine sudah terpasang di image
+      # ubuntu-24.04 (SRC-357); di sini dipastikan daemon berjalan sebelum verify.sh.
+      - name: Periksa Docker tersedia (bootstrap-role-db, migrasi-db, schemathesis)
         run: |
           docker version
           docker info --format '{{.OperatingSystem}} {{.ServerVersion}}'

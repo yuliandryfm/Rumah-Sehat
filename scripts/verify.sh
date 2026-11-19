@@ -396,8 +396,15 @@ if ada_pola "db/roles/*.sql"; then
 else
   gagal "bootstrap-role-db" "db/roles/*.sql (bootstrap klaster, F1-T13) tidak ada"
 fi
-# 2b. Migrasi + test katalog lengkap (F1-T15).
-belum "migrasi-db" "F1-T15" "db/migrations/*/*.sql"
+# 2b. Migrasi + test katalog (F1-T15): pemeriksaan teks berkas migrasi (penjaga, maju saja, T-23),
+#     PostgreSQL 18 sekali pakai (image sama dengan 2a), bootstrap, test negatif penjaga, sqlx-cli
+#     0.9.1 `migrate run` per database sebagai role migrasi dinamis tiruan (dua kali, idempoten),
+#     lalu test katalog db/test/*.sql (skema fisik §11, §12). Sejak F1-T15 langkah ini wajib.
+if [ -f scripts/db-migrations-check.sh ]; then
+  jalankan "migrasi-db" bash scripts/db-migrations-check.sh
+else
+  gagal "migrasi-db" "scripts/db-migrations-check.sh (F1-T15) tidak ada"
+fi
 
 # --- Langkah 3: Kontrak API (§6 butir 3) ---
 if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then

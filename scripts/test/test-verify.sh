@@ -83,6 +83,8 @@ siapkan_murni() { # salinan pohon kerja repo ke $KERJA/murni, satu commit; verif
   done
   git -C "$tujuan" init -q
   commit_semua "$tujuan" "fixture: salinan repo"
+  # Langkah migrasi-db mencari basis lewat `git merge-base HEAD main`; commit salinan menjadi basis itu.
+  git -C "$tujuan" update-ref refs/heads/main HEAD
 }
 
 fixture_baru() { # fixture_baru <nama>: salin repo murni ke $KERJA/fixture (fixture sebelumnya dibuang), cetak path-nya
@@ -352,13 +354,21 @@ k="$(verify_di "$r" "$KERJA/alat-versi.log" "PATH=$KERJA/shim:$PATH")"
 merah "alat-versi-lain" "$k" "$KERJA/alat-versi.log" "gitleaks"
 nilai "alat-versi-lain-pesan" 1 "$k" "$KERJA/alat-versi.log" "gitleaks aktif '8.0.0', dibutuhkan"
 
-# --- Artefak komponen ada tetapi langkahnya belum diterapkan ---
+# --- Artefak komponen ada tetapi langkahnya belum diterapkan (web, F1-T39) ---
 r="$(fixture_baru artefak)"
-mkdir -p "$r/db/migrations/app"
-printf -- '-- fixture\n' >"$r/db/migrations/app/0001_uji.sql"
-commit_semua "$r" "fixture: migrasi tanpa langkah migrasi-db"
+mkdir -p "$r/web"
+printf '{"name": "fixture"}\n' >"$r/web/package.json"
+commit_semua "$r" "fixture: web/package.json tanpa langkah web"
 k="$(verify_di "$r" "$KERJA/artefak.log")"
-merah "artefak-tanpa-langkah" "$k" "$KERJA/artefak.log" "migrasi-db"
+merah "artefak-tanpa-langkah" "$k" "$KERJA/artefak.log" "web"
+
+# --- Berkas migrasi baru tanpa penjaga (langkah migrasi-db, F1-T15) ---
+r="$(fixture_baru migrasi)"
+mkdir -p "$r/db/migrations/app"
+printf -- '-- fixture\n' >"$r/db/migrations/app/99990101000000_uji.sql"
+commit_semua "$r" "fixture: migrasi tanpa penjaga"
+k="$(verify_di "$r" "$KERJA/migrasi.log")"
+merah "migrasi-tanpa-penjaga" "$k" "$KERJA/migrasi.log" "migrasi-db"
 
 echo ""
 echo "== Ringkasan test-verify.sh =="
