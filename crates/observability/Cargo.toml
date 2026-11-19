@@ -17,12 +17,6 @@ axum = { version = "=0.8.9", default-features = false, features = ["tokio", "htt
 [dev-dependencies]
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
 
-# Larangan unwrap/expect/panic/indeks di kode non-test (coding-standards §3.4, KEPUTUSAN-121).
-[lints.clippy]
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-todo = "deny"
-unimplemented = "deny"
-indexing_slicing = "deny"
-disallowed_methods = "deny"
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

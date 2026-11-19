@@ -1,0 +1,32 @@
+# Kepemilikan tabel per modul backend Ruang Sehat (coding-standards §1.3, KEPUTUSAN-113).
+# Diperiksa test arsitektur (crates/arch-check): SQL di kode suatu modul hanya boleh menyentuh tabel
+# milik modul itu; tabel yang dibuat migrasi di db/migrations/<database>/ wajib punya pemilik di sini.
+# Nama tabel tanpa awalan skema. Pemetaan modul mengikuti docs/04-arsitektur.md §3 dan area
+# docs/04-data-dictionary.md (A1 identitas, A2 profil, A19 platform). Tabel area lain ditambahkan
+# oleh task migrasinya (F1-T16 dan seterusnya) pada commit yang sama dengan migrasinya.
+database = "app"
+
+[modules.identity]
+tables = ["account", "rs_admin_role", "session_revocation"]
+
+[modules.profile]
+tables = [
+  "patient",
+  "care_recipient",
+  "address",
+  "identity_document",
+  "identity_verification_request",
+  "identity_verification_request_status_event",
+  "identity_verification_request_state",
+  "account_owner_nik_registry",
+]
+
+[modules.platform]
+tables = ["job", "upload_slot", "stored_file"]
+
+# Pengecualian yang sah (coding-standards §1.3): tabel milik crate bersama, hanya ditulis lewat crate itu.
+[crates.audit]
+tables = ["audit_outbox"]
+
+[crates.crypto]
+tables = ["data_key", "data_key_retention_anchor"]
