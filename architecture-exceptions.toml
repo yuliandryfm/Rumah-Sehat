@@ -1,0 +1,56 @@
+# Pengecualian sempit atas larangan test arsitektur (crates/arch-check, F1-T12).
+# Setiap entri: rule, file, detail, (opsional) in_fn, count = jumlah kemunculan PERSIS, reason.
+# Kemunculan di luar entri, kemunculan melebihi count, dan entri usang (tanpa kemunculan) sama-sama
+# menggagalkan test. Menambah entri = keputusan reviewer (KEPUTUSAN-121); jangan menambah untuk kenyamanan.
+# Test (`tests/`) dikecualikan dari aturan attr-allow dan print oleh aturan itu sendiri, bukan lewat berkas ini.
+
+# --- Jam sistem: satu-satunya pemanggilan sah (KEPUTUSAN-131) ---
+[[exception]]
+rule = "clock"
+file = "crates/foundation/src/clock.rs"
+detail = "now_utc"
+in_fn = "now"
+reason = "SystemClock::now adalah implementasi jam sistem; semua kode lain memakai trait Clock"
+
+[[exception]]
+rule = "attr-allow"
+file = "crates/foundation/src/clock.rs"
+detail = "clippy::disallowed_methods"
+in_fn = "now"
+reason = "pasangan pengecualian clock di atas, hanya pada SystemClock::now"
+
+# --- Variabel lingkungan: satu-satunya pembacaan sah (KEPUTUSAN-132) ---
+[[exception]]
+rule = "env"
+file = "crates/observability/src/config.rs"
+detail = "env::vars_os"
+in_fn = "from_process"
+reason = "EnvSource::from_process memuat lingkungan proses sekali saat start; kode lain menerima EnvSource"
+
+[[exception]]
+rule = "attr-allow"
+file = "crates/observability/src/config.rs"
+detail = "clippy::disallowed_methods"
+in_fn = "from_process"
+reason = "pasangan pengecualian env di atas, hanya pada EnvSource::from_process"
+
+# --- Keluaran konsol: CLI, bukan log aplikasi ---
+[[exception]]
+rule = "print"
+file = "apps/rs-backend/src/cli.rs"
+detail = "eprintln"
+count = 3
+reason = "pesan galat start-up sebelum subscriber log terpasang (pemakaian, konfigurasi tidak valid, subscriber ganda); tanpa nilai konfigurasi"
+
+[[exception]]
+rule = "print"
+file = "apps/rs-backend/src/bin/gen-openapi.rs"
+detail = "eprintln"
+count = 4
+reason = "alat pembangkit spesifikasi (bukan proses layanan); galat pemakaian dan I/O ke stderr"
+
+[[exception]]
+rule = "print"
+file = "apps/rs-backend/src/bin/gen-openapi.rs"
+detail = "println"
+reason = "alat pembangkit spesifikasi melaporkan nama berkas yang ditulis ke stdout"
