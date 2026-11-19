@@ -50,7 +50,7 @@
         <div class="field"><label for="d-tl">Telepon kantor</label><input id="d-tl" class="input" type="tel" autocomplete="tel"></div>
         <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" type="submit">Lanjut</button></div>
       </form>
-      <p class="note"><b>Pola:</b> galat per field di bawah isian, isian benar tidak hilang, fokus pindah ke isian galat pertama, ringkasan "Ada 2 isian yang perlu diperbaiki" diumumkan (KU-01, SC 3.3.1, 4.1.3). Kemajuan tersimpan di perangkat selama sesi pendaftaran; bila halaman dimuat ulang, isian tidak diminta ulang dalam satu proses (A13).</p>
+      <p class="note"><b>Pola:</b> galat per field di bawah isian, isian benar tidak hilang, fokus pindah ke isian galat pertama, ringkasan "Ada 2 isian yang perlu diperbaiki" diumumkan (KU-01, SC 3.3.1, 4.1.3). Isian dipertahankan hanya di memori halaman selama proses; kemajuan tidak disimpan di perangkat. Password dan berkas tidak pernah disimpan di sisi klien, dan bila halaman dimuat ulang, pendaftar mengisi dari awal.</p>
     </div>
   </div>
   <p class="web-caption"><b id="k2">2. Pendaftaran langkah 1: data perusahaan (US-1901 AC1, AC3)</b>Nama badan usaha, NIB, NPWP, alamat kantor, telepon kantor (UP-79). Format NIB dan NPWP <span class="td">[TIDAK DIKETAHUI]</span>, validasi hanya setelah format diverifikasi.</p>
@@ -85,16 +85,17 @@
       <form class="form-narrow" novalidate>
         <p class="t-small">Foto JPG atau PNG maksimal 5 MiB; dokumen PDF maksimal 10 MiB (NFR-SEC-08).</p>
         <div class="field"><label for="u-nib">Dokumen NIB</label><input id="u-nib" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf"><span class="hint">nib.pdf (2,1 MiB) terunggah</span></div>
-        <div class="field is-error"><label for="u-npwp">Dokumen NPWP</label><input id="u-npwp" class="input" type="file" aria-invalid="true" aria-describedby="u-npwp-e"><span class="err" id="u-npwp-e">Dokumen NPWP wajib diunggah.</span></div>
-        <div class="field is-error"><label for="u-kw">Bukti kewenangan pendaftar</label><input id="u-kw" class="input" type="file" aria-invalid="true" aria-describedby="u-kw-e"><span class="err" id="u-kw-e">Ukuran berkas melebihi 10 MiB. Pilih berkas yang lebih kecil.</span><span class="hint">Bentuk bukti kewenangan (misalnya surat kuasa atau surat penunjukan) menunggu konfirmasi user <span class="td">[TIDAK DIKETAHUI]</span> (US-1901 AC1, PT-79).</span></div>
+        <div class="field is-error"><label for="u-npwp">Dokumen NPWP</label><input id="u-npwp" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf" aria-invalid="true" aria-describedby="u-npwp-e"><span class="err" id="u-npwp-e">Dokumen NPWP wajib diunggah.</span></div>
+        <div class="field is-error"><label for="u-kw">Bukti kewenangan pendaftar</label><input id="u-kw" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf" aria-invalid="true" aria-describedby="u-kw-e"><span class="err" id="u-kw-e">Ukuran berkas melebihi batas (PDF 10 MiB, JPG/PNG 5 MiB). Pilih berkas yang lebih kecil.</span><span class="hint">Surat kuasa atau surat penunjukan dari perusahaan, ditandatangani pejabat berwenang [USER] C21-P4 (putaran 5, 4b). Siapa yang dianggap pejabat berwenang <span class="td">[TIDAK DIKETAHUI]</span>.</span></div>
         <div class="check"><span class="box" role="checkbox" aria-checked="false" aria-labelledby="pr-l" tabindex="0"></span><span id="pr-l">Saya menyetujui teks pemrosesan data pendaftaran perusahaan (versi <span class="td">[TIDAK DIKETAHUI]</span>, <a href="#">baca teks</a>). Teks final menunggu legal (L-20), kotak tidak tercentang otomatis.</span></div>
-        <p class="t-cap">Pernyataan: saya berwenang mewakili perusahaan ini. <span class="td">[TIDAK DIKETAHUI]</span> (bunyi dari legal)</p>
         <div class="row" style="justify-content:space-between"><button class="btn btn-secondary" type="button">Kembali</button><button class="btn btn-primary is-loading" type="submit" aria-disabled="true">Mengirim...</button></div>
         <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Pendaftaran tidak dapat diproses</b>Data yang Anda kirim tidak dapat digunakan untuk mendaftar. Periksa kembali data Anda, atau hubungi Layanan Pelanggan untuk bantuan.</span></div>
+        <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Pendaftaran belum terkirim</b>Terjadi gangguan saat mengirim. Belum ada akun yang dibuat dan isian Anda masih ada. Silakan coba lagi.</span></div>
+        <div class="row"><button class="btn btn-primary" type="button">Coba lagi</button></div>
       </form>
     </div>
   </div>
-  <p class="web-caption"><b id="k4">4. Pendaftaran langkah 3: tiga dokumen wajib, persetujuan, kirim (US-1901 AC1, AC2, AC7)</b>Per field: dokumen wajib kosong, jenis atau ukuran di luar NFR-SEC-08 ditolak (AC2). Tombol kirim terkunci dan memuat selama permintaan (KU-05). Spanduk merah di bawah adalah galat NIB sudah terdaftar: pesan generik tanpa menyebut nama perusahaan lain dan arahan ke Layanan Pelanggan (AC7). Kegagalan di tengah proses tidak meninggalkan akun HR tanpa perusahaan dan persetujuan (AC5, kompensasi di backend). Berkas diunggah lewat upload slot dan dinetralkan di backend (ADR-018).</p>
+  <p class="web-caption"><b id="k4">4. Pendaftaran langkah 3: tiga dokumen wajib, persetujuan, kirim (US-1901 AC1, AC2, AC7)</b>Per field: dokumen wajib kosong, jenis atau ukuran di luar NFR-SEC-08 ditolak (AC2). Tombol kirim terkunci dan memuat selama permintaan (KU-05). Spanduk merah di bawah adalah galat NIB sudah terdaftar: pesan generik tanpa menyebut nama perusahaan lain dan arahan ke Layanan Pelanggan (AC7). Spanduk kedua dan tombol "Coba lagi" adalah galat pengiriman di tengah proses: dinyatakan belum ada akun dibuat, isian tetap (isian memori halaman, bukan password atau berkas yang harus dipilih ulang bila halaman dimuat ulang); backend memakai kompensasi sehingga tidak ada akun HR tanpa perusahaan dan persetujuan (AC5). Berkas diunggah lewat upload slot dan dinetralkan di backend (ADR-018).</p>
 </section>
 
 <!-- 5. Periksa email -->

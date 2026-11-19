@@ -549,6 +549,15 @@ Status: analisis disetujui user 2026-11-19 (skenario S3, K-01–K-12, UP-79–UP
 Diterapkan 2026-11-19 (F1-T81/F1-T82): BRD v1.4 (BR-130–BR-145, L-16–L-21), PRD v1.3 (EP-18, EP-19, AB-80–AB-87, PB-23–PB-25, E-18, UP-79–UP-87), data dictionary v1.1 (A20 rancangan dengan catatan DBA R2-01), ADR-006/011/018/024 direvisi (status tetap Diterima), threat model v1.3 (lingkup CR-021 LULUS), phase plan v0.3, traceability. Analisis: `docs/cr/CR-021-analisis.md` v0.3.
 Status: **disetujui dan dijadwalkan** `[USER] C21-P4`. Fase 1: F1-T83–F1-T111 (situs, CMS, pendaftaran dan verifikasi perusahaan, akun HR); Fase 2: tujuh task pindahan Fase 1 dan reset MFA HR; Fase 3: pemesanan, peserta, invoice, ringkasan, hasil (gerbang G-25, G-26). Pertanyaan yang masih terbuka: PRD §12.6
 
+### CR-022: Scope penuh diutamakan, go-live boleh mundur
+
+Diajukan: 2026-11-19, `[USER]` Telegram: "semua CR tetap. masuk, jalankan paralel opsinua. tidak mundur" lalu "baik, kita kerjakan semaksimal mungkin. jika harus mundur kita ambil resikonya tetapi semua fitur harus berjalan dan komplit"
+Deskripsi: semua fitur harus berjalan dan lengkap; bila tidak muat, tanggal go-live boleh mundur (risiko diterima user).
+**Mengubah keputusan lama:** toleransi waktu 0 dan go-live tetap 1 Maret 2027 (`docs/01-business-case.md` §7.1; P8.3 brief); baseline Opsi B dan urutan pengurangan scope PRD §2.3 (UP-67, C2-Q1); kerangka gerbang re-plan 2026-12-11 (UP-66) yang memilih opsi pengurangan scope.
+Dampak: baseline scope menjadi Opsi A (Fase 4 dikerjakan) ditambah CR-021; gerbang 2026-12-11 berubah dari "pilih opsi potong scope" menjadi "tetapkan tanggal go-live baru berdasarkan kecepatan terukur + keputusan tambahan tenaga (PT-53)". Dampak biaya (toleransi +20%, T1-Q8), jendela audit/toko aplikasi (RT-34), dan komitmen pemasaran (R-07) perlu ditinjau. Cakupan "semua fitur" (apakah CR-011 dan CR-015 yang ditunda ikut) `[TIDAK DIKETAHUI]`, ditanyakan ke user.
+Keputusan: disetujui user 2026-11-19 (cakupan menunggu konfirmasi)
+Status: dicatat; phase plan dan business case diperbarui setelah cakupan dikonfirmasi
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

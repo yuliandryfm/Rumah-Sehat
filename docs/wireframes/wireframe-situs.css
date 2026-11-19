@@ -39,7 +39,8 @@
 .prose { max-width: 68ch; display: flex; flex-direction: column; gap: var(--s3); }
 .prose h2 { font-size: 20px; margin: var(--s2) 0 0; }
 .site-foot { padding: var(--s6); background: var(--c-ink); color: #FFFFFF; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--s6); font-size: 14px; }
-.site-foot a { color: #FFFFFF; display: inline-block; min-height: 32px; }
+.site-foot a { color: #FFFFFF; display: inline-block; min-height: 40px; }
+summary:focus-visible { outline: none; box-shadow: var(--focus); }
 .site-foot ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s1); }
 .site-foot .legal { grid-column: 1 / -1; border-top: 1px solid #5C6B6F; padding-top: var(--s3); font-size: 12px; }
 .td { background: var(--c-warning-bg); color: var(--c-warning); font-weight: 600; padding: 0 4px; border-radius: 4px; }

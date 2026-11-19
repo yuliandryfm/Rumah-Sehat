@@ -41,6 +41,8 @@
             <li class="list-item"><span class="grow">Dokumen NPWP</span><button class="btn btn-secondary btn-sm">Buka</button></li>
             <li class="list-item"><span class="grow">Bukti kewenangan pendaftar</span><button class="btn btn-secondary btn-sm">Buka</button></li>
           </ul>
+          <div class="note"><b>Petunjuk pemeriksaan bukti kewenangan:</b> surat kuasa atau surat penunjukan dari perusahaan, ditandatangani pejabat berwenang [USER] C21-P4 (putaran 5, 4b). Periksa: nama badan usaha cocok dengan NIB, ada tanda tangan pejabat, nama pendaftar tercantum. Bila tidak memenuhi, tolak dengan alasan "bukti kewenangan tidak memadai". Siapa yang dianggap pejabat berwenang <span class="td">[TIDAK DIKETAHUI]</span>.</div>
+          <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Dokumen tidak dapat dibuka</b>Tautan dokumen kedaluwarsa atau gagal dibuka. Klik Buka lagi untuk membuat tautan baru (dicatat E-05).</span></div>
           <div class="doc-img" role="img" aria-label="Tampilan dokumen (contoh): Bukti kewenangan pendaftar">Dokumen dibuka lewat URL berumur pendek (dibuka = E-05)</div>
           <div class="field is-error"><label for="rc">Alasan penolakan</label><select id="rc" class="input" aria-invalid="true" aria-describedby="rc-e"><option>Pilih alasan</option><option>Bukti kewenangan tidak memadai</option><option>[Kode alasan lain] </option></select><span class="err" id="rc-e">Pilih alasan untuk menolak</span><span class="hint">Daftar kode alasan final selain "bukti kewenangan tidak memadai" <span class="td">[TIDAK DIKETAHUI]</span>.</span></div>
           <div class="field"><label for="kt2">Keterangan tambahan (opsional, tampil ke HR)</label><textarea id="kt2" class="input" style="min-height:56px"></textarea></div>
@@ -64,10 +66,12 @@
       <div class="split">
         <form class="panel" novalidate>
           <div class="field"><label for="n-nm">Nama badan usaha</label><input id="n-nm" class="input"></div>
-          <div class="toolbar"><div class="field is-error"><label for="n-nib">NIB</label><input id="n-nib" class="input" aria-invalid="true" aria-describedby="n-nib-e"><span class="err" id="n-nib-e">NIB tidak dapat digunakan untuk mendaftar. Periksa kembali data atau hubungi Layanan Pelanggan.</span></div><div class="field"><label for="n-npwp">NPWP</label><input id="n-npwp" class="input"></div></div>
+          <div class="toolbar"><div class="field is-error"><label for="n-nib">NIB</label><input id="n-nib" class="input" aria-invalid="true" aria-describedby="n-nib-e"><span class="err" id="n-nib-e">Data yang Anda kirim tidak dapat digunakan untuk mendaftar. Periksa kembali data Anda, atau hubungi Layanan Pelanggan untuk bantuan.</span></div><div class="field"><label for="n-npwp">NPWP</label><input id="n-npwp" class="input"></div></div>
           <div class="field"><label for="n-al">Alamat kantor</label><textarea id="n-al" class="input" style="min-height:56px"></textarea></div>
           <div class="field"><label for="n-tl">Telepon kantor</label><input id="n-tl" class="input" type="tel"></div>
-          <div class="field"><label for="n-d1">Dokumen NIB, NPWP, bukti kewenangan</label><input id="n-d1" class="input" type="file" multiple><span class="hint">Aturan jenis dan ukuran sama dengan pendaftaran mandiri (NFR-SEC-08).</span></div>
+          <div class="field"><label for="n-d1">Dokumen NIB</label><input id="n-d1" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf"></div>
+          <div class="field"><label for="n-d2">Dokumen NPWP</label><input id="n-d2" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf"></div>
+          <div class="field is-error"><label for="n-d3">Bukti kewenangan (surat kuasa atau surat penunjukan)</label><input id="n-d3" class="input" type="file" accept=".jpg,.jpeg,.png,.pdf" aria-invalid="true" aria-describedby="n-d3-e"><span class="err" id="n-d3-e">Bukti kewenangan wajib diunggah.</span><span class="hint">Aturan jenis dan ukuran sama dengan pendaftaran mandiri (NFR-SEC-08).</span></div>
           <div class="field"><label for="n-em">Email HR pertama</label><input id="n-em" class="input" type="email"></div>
           <div class="row" style="justify-content:flex-end"><button class="btn btn-primary">Buat perusahaan</button></div>
         </form>
@@ -98,12 +102,17 @@
           <p class="t-small"><b>Anggota HR</b></p>
           <ul class="list" style="list-style:none;margin:0;padding:0"><li class="list-item"><span class="grow">Sari A. &middot; hr@contoh.id</span><span class="badge success">Aktif</span></li><li class="list-item"><span class="grow">Budi &middot; budi@contoh.id</span><span class="badge success">Aktif</span></li></ul>
           <p class="t-small muted">Pesanan dan invoice tampil setelah fitur tersedia (Fase 3). Ringkasan dan hasil peserta tidak pernah tampil di layar ini (US-1916 AC1).</p>
-          <div class="row" style="justify-content:flex-end"><button class="btn btn-danger btn-sm" aria-disabled="true">Nonaktifkan perusahaan</button></div>
-          <p class="t-cap">Tombol nonaktif dengan alasan tertulis: aturan nasib pesanan berjalan menunggu PT-63 <span class="td">[TIDAK DIKETAHUI]</span>; penonaktifan (US-1916 AC2) dibangun di task berikutnya.</p></div>
+          <div class="row" style="justify-content:flex-end"><button class="btn btn-danger btn-sm">Nonaktifkan perusahaan</button></div>
+          <div class="dialog" role="alertdialog" aria-labelledby="nz-t" aria-describedby="nz-d" style="border:1px solid var(--c-border-strong)"><h2 class="t-sub" id="nz-t">Nonaktifkan PT Contoh Sejahtera?</h2>
+            <p class="t-small" id="nz-d">Semua akun HR perusahaan ini langsung ditolak pada permintaan berikutnya dan sesi terbuka berakhir (US-1916 AC2, KU-10). Tindakan dicatat.</p>
+            <div class="field is-error"><label for="nz-a">Alasan (wajib)</label><textarea id="nz-a" class="input" style="min-height:56px" aria-invalid="true" aria-describedby="nz-e"></textarea><span class="err" id="nz-e">Alasan wajib diisi</span></div>
+            <p class="t-cap">Di Fase 1 belum ada pesanan korporat. Aturan untuk pesanan berjalan menyusul <span class="td">[TIDAK DIKETAHUI]</span> (PT-63).</p>
+            <div class="row" style="justify-content:flex-end"><button class="btn btn-secondary">Batal</button><button class="btn btn-danger">Nonaktifkan</button></div></div>
+          <div class="alert success" role="status"><span aria-hidden="true">&#10003;</span><span><b>Perusahaan dinonaktifkan</b>Status berubah menjadi Nonaktif. Pengaktifan kembali perusahaan <span class="td">[TIDAK DIKETAHUI]</span> (tidak diatur di PRD).</span></div></div>
       </div>
     </div>
   </div>
-  <p class="web-caption"><b id="v3">3. Daftar perusahaan dan anggota HR (US-1916 AC1, bagian Fase 1)</b>Status verifikasi dan anggota HR; tanpa kolom pesanan atau invoice sampai tersedia. Sub-peran tanpa hak: 403 (AC3). Tidak ada tombol melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (Fase 2, US-1904 AC8).</p>
+  <p class="web-caption"><b id="v3">3. Daftar perusahaan dan anggota HR (US-1916 AC1, bagian Fase 1)</b>Status verifikasi dan anggota HR; tanpa kolom pesanan atau invoice sampai tersedia. Dialog nonaktifkan memerlukan alasan wajib dan menyebut dampak: semua HR ditolak seketika (AC2); nasib pesanan berjalan menyusul PT-63. Sub-peran tanpa hak: 403 (AC3). Tidak ada tombol melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (Fase 2, US-1904 AC8).</p>
 </section>
 
 </main>

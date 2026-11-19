@@ -478,7 +478,8 @@ Rujukan: US-1801, US-1802 AC9, BR-130, BR-131, ADR-027, KEPUTUSAN-270–272.
 Kondisi khusus:
 - Isolasi: objek perusahaan lain dijawab "Data tidak ditemukan" (US-1904 AC3, KU-03). Akun atau perusahaan nonaktif: sesi berakhir pada permintaan berikutnya (AC5) dengan layar "Akun nonaktif" (KU-10).
 - Dasbor tidak pernah menampilkan hasil atau ringkasan peserta (BR-143); isi dasbor lanjutan menunggu fase layanan korporat `[TIDAK DIKETAHUI]`.
-- `[TIDAK DIKETAHUI]` di wireframe: format NIB dan NPWP (US-1901 AC3), bentuk bukti kewenangan (PT-79 sisa), teks persetujuan (L-20), daftar kode alasan penolakan selain "bukti kewenangan tidak memadai", peran dalam perusahaan (PT-68), isi dasbor korporat (PT-61, PT-62).
+- Bukti kewenangan: surat kuasa atau surat penunjukan dari perusahaan, ditandatangani pejabat berwenang `[USER] C21-P4` (putaran 5, 4b). Tiga isian unggah terpisah (NIB, NPWP, bukti kewenangan) dengan galat per field; pesan ukuran menyebut batas per jenis berkas. Galat pengiriman di tengah proses: "Pendaftaran belum terkirim", dinyatakan belum ada akun dibuat, tombol "Coba lagi" (AC5). Kemajuan pendaftaran tidak disimpan di perangkat; password dan berkas tidak pernah disimpan di sisi klien. Kotak centang di implementasi memakai `input type=checkbox` asli (A7, A11).
+- `[TIDAK DIKETAHUI]` di wireframe: format NIB dan NPWP (US-1901 AC3), siapa yang dianggap pejabat berwenang, teks persetujuan (L-20), daftar kode alasan penolakan selain "bukti kewenangan tidak memadai", peran dalam perusahaan (PT-68), isi dasbor korporat (PT-61, PT-62).
 
 Rujukan: US-1901, US-1902 AC3, US-1904, BR-132, BR-136, BR-145, ADR-027, ADR-028, KEPUTUSAN-253, KEPUTUSAN-273.
 
@@ -487,12 +488,16 @@ Rujukan: US-1901, US-1902 AC3, US-1904, BR-132, BR-136, BR-145, ADR-027, ADR-028
 2. Buat perusahaan: nama, NIB, NPWP, alamat, telepon, dokumen, email HR pertama → perusahaan Aktif dan undangan aktivasi; NIB ganda ditolak dengan pesan generik (US-1903 AC4).
 3. Daftar perusahaan: filter status dan nama; panel status, sumber, anggota HR; tanpa pesanan atau invoice sampai tersedia (US-1916 AC1).
 
-Kondisi khusus: akun tanpa sub-peran: 403 dan layar akses ditolak (C01); akun HR: 404. Tidak ada layar untuk melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (US-1904 AC8, Fase 2). Persetujuan orang kedua untuk perusahaan buatan admin `[TIDAK DIKETAHUI]` (PT-67 sisa, M-49); daftar kode alasan penolakan final `[TIDAK DIKETAHUI]`; nasib pesanan saat perusahaan dinonaktifkan `[TIDAK DIKETAHUI]` (PT-63), sehingga tombol nonaktifkan tampil nonaktif dengan alasan tertulis. · US-1902, US-1903, US-1916.
+Tambahan (review QA): panel memuat petunjuk pemeriksaan bukti kewenangan (nama badan usaha cocok dengan NIB, tanda tangan pejabat berwenang, nama pendaftar tercantum; kalau tidak, tolak dengan "bukti kewenangan tidak memadai"); keadaan "Dokumen tidak dapat dibuka" dengan tombol Buka ulang (E-05); Buat perusahaan memakai tiga isian unggah terpisah; dialog "Nonaktifkan perusahaan" dengan alasan wajib dan dampak "semua HR ditolak seketika" (US-1916 AC2, di Fase 1 belum ada pesanan; aturan pesanan berjalan menyusul PT-63). Teks galat NIB ganda kanonik: "Data yang Anda kirim tidak dapat digunakan untuk mendaftar. Periksa kembali data Anda, atau hubungi Layanan Pelanggan untuk bantuan." (sama di K01 dan C13).
+
+Kondisi khusus: akun tanpa sub-peran: 403 dan layar akses ditolak (C01); akun HR: 404. Tidak ada layar untuk melihat atau menetapkan kredensial HR; reset MFA HR bukan di layar ini (US-1904 AC8, Fase 2). Persetujuan orang kedua untuk perusahaan buatan admin `[TIDAK DIKETAHUI]` (PT-67 sisa, M-49); daftar kode alasan penolakan final `[TIDAK DIKETAHUI]`; nasib pesanan saat perusahaan dinonaktifkan `[TIDAK DIKETAHUI]` (PT-63), (hanya relevan setelah pesanan ada). · US-1902, US-1903, US-1916.
 
 **D-C14 CMS kanal situs (CR-021, F1-T84)** · Konten · Wireframe `c14-bo-cms-situs.html`; memperluas D-C07.
 1. Daftar: filter kanal (aplikasi, situs, keduanya), status, dan halaman situs; kolom kanal dan halaman situs; hapus dan pulihkan (E-16).
 2. Editor: judul, kanal, halaman situs tujuan (untuk situs), jadwal tayang, isi Markdown, gambar dengan teks alternatif wajib (US-1802 AC5). Pratinjau di sebelah isian (di bawahnya pada < 768 px) dirender di iframe `sandbox` tanpa `allow-same-origin` (AC8). Galat per baris untuk HTML mentah, skema tautan di luar https/mailto/relatif, dan gambar dari luar endpoint gambar publik (AC6).
 3. Tayangkan halaman tetap: dialog menyebut bahwa versi yang sedang tayang akan berakhir (AC2). Teks bantu: promo hanya informasi (AC3).
+
+Hapus konten: dialog dengan alasan wajib (`delete_reason`, ADR-003); filter Terhapus menampilkan konten terhapus dengan aksi "Pulihkan"; keduanya E-16. Daftar kosong: "Tidak ada konten".
 
 Kondisi khusus: akun tanpa sub-peran Konten: 403 dan percobaan tercatat (AC4). Isi berbahaya yang tampil di pesan galat dirender sebagai teks, bukan HTML. Pemilihan pustaka Markdown di F1-T111. Nama status untuk jadwal tayang belum tiba `[TIDAK DIKETAHUI]` (KEPUTUSAN-274). · US-1802, US-1101, ADR-027 butir 5.
 
@@ -550,6 +555,18 @@ Kondisi khusus: akun tanpa sub-peran Konten: 403 dan percobaan tercatat (AC4). I
 | PT-44 | Pesan apa yang tampil saat akun terkunci sementara (US-103 AC3): pesan umum yang sama dengan AC2 (tidak membuka status akun) atau pesan khusus terkunci? Draf wireframe A01 layar 5 ditandai menunggu keputusan (temuan QA N2). **Terjawab di Checkpoint 2:** pesan seragam yang identik untuk semua kegagalan login, termasuk terkunci dan nonaktif (UP-73 opsi B, US-103 AC2); tanpa email pemberitahuan penguncian `[USER] C2-B4`. Wireframe A01 layar 5 disesuaikan di Tahap 8 (UI-03) | Tech Lead + security reviewer, disetujui user | Terjawab |
 | PT-45 | ~~Wordmark pamflet "RuangSehat" atau "Ruang Sehat" dengan spasi?~~ **Terjawab 2026-11-18:** "Ruang Sehat" dengan spasi di semua tempat; wordmark pamflet tidak dipakai `[USER] "dengan spasi"`. Sisa: slogan pamflet dipakai atau tidak (Checkpoint 2, UP-60) | User | Terjawab (slogan: Checkpoint 2) |
 | PT-46 | Apakah nama "Ruang Sehat" sudah dicek ketersediaannya sebagai merek (DJKI) dan nama domain, serta apakah nama aplikasi di toko aplikasi mengikuti nama ini? | User, legal (PT-20) | Sebelum pengajuan ke toko aplikasi (Tahap 12). Status 2026-11-18: belum dicek `[USER] "belum dicek"` |
+
+Celah spesifikasi CR-021 dari review QA F1-T83/T84 (`docs/qa/F1-T83-T84-review.md`), belum diputuskan desain dan diteruskan ke pemilik PRD:
+
+| ID | Pertanyaan | Pemilik |
+| --- | --- | --- |
+| S-1 | Apakah NIB ganda (US-1901 AC7) mencakup perusahaan berstatus Menunggu verifikasi, Ditolak, Nonaktif, atau hanya Aktif? | User (PRD) |
+| S-2 | Urutan pemeriksaan email terdaftar dan NIB ganda, serta nasib data dan dokumen saat email sudah terdaftar (AC4 vs AC7) | User (PRD) |
+| S-3 | Batas laju endpoint pendaftaran perusahaan (unggahan dokumen, pengecekan NIB) | User, security |
+| S-4 | Lupa password realm `korporat` (US-1904 tidak memuat AC; K01 layar 1 menampilkan tautannya) | User (PRD) |
+| S-5 | HR menonaktifkan diri sendiri; email undangan sudah menjadi HR perusahaan lain; email HR pertama sudah terdaftar (US-1903 AC1) | User (PRD) |
+| S-6 | Daftar status konten seragam (Selesai atau berakhir, terjadwal) di PRD §3.6 (terkait KEPUTUSAN-274) | User (PRD) |
+| S-7 | Memulihkan halaman tetap terhapus saat versi lain Tayang: usulan QA status Draf | User (PRD) |
 
 Pertanyaan yang sudah ada dan memengaruhi layar: L-08 dan PT-24 (teks persetujuan), PT-28 (baris pajak), AB-25 (metode pembayaran), L-03 (informasi produk BPOM), L-05 (resep, rekam medis), batas usia anak (US-108 AC6), CR-015.
 

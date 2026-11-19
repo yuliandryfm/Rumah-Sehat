@@ -34,10 +34,17 @@
           <tr><td>[Artikel contoh]</td><td>Artikel</td><td>Aplikasi dan situs</td><td>Artikel/berita</td><td><span class="badge info">Tayang (terjadwal)</span></td><td>[tanggal]</td></tr>
           <tr><td>[Kebijakan privasi]</td><td>Halaman tetap</td><td>Situs</td><td>Kebijakan privasi &amp; syarat</td><td><span class="badge neutral">Draf</span></td><td>-</td></tr>
         </tbody></table></div>
+      <div class="table-wrap"><table class="tbl"><caption class="t-cap" style="text-align:left;padding:8px">Filter Status = Terhapus: konten terhapus (soft delete, ADR-003)</caption>
+        <thead><tr><th scope="col">Judul</th><th scope="col">Dihapus</th><th scope="col">Alasan</th><th scope="col">Aksi</th></tr></thead>
+        <tbody><tr><td>[Artikel lama]</td><td>[tanggal, pelaku]</td><td>[alasan penghapusan]</td><td><button class="btn btn-secondary btn-sm">Pulihkan</button></td></tr></tbody></table></div>
+      <div class="dialog" role="alertdialog" aria-labelledby="hp-t" style="border:1px solid var(--c-border-strong);max-width:480px"><h2 class="t-sub" id="hp-t">Hapus konten "[Tentang Kami]"?</h2><p class="t-small">Konten tidak tampil lagi di kanal terpilih dan dapat dipulihkan dari filter Terhapus. Dicatat E-16.</p>
+        <div class="field is-error"><label for="hp-a">Alasan (wajib)</label><textarea id="hp-a" class="input" style="min-height:56px" aria-invalid="true" aria-describedby="hp-e"></textarea><span class="err" id="hp-e">Alasan wajib diisi</span></div>
+        <div class="row" style="justify-content:flex-end"><button class="btn btn-secondary">Batal</button><button class="btn btn-danger">Hapus</button></div></div>
+      <div class="state"><p class="t-sub">Tidak ada konten</p><p class="t-small muted">Belum ada konten untuk filter ini.</p></div>
       <div class="alert danger" role="alert"><span aria-hidden="true">!</span><span><b>Tidak ada akses</b>Akun Anda tidak memiliki sub-peran Konten untuk membuat, mengubah, atau menayangkan konten situs. (Layar ini hanya muncul untuk akun tanpa hak; percobaan tercatat, US-1802 AC4.)</span></div>
     </div>
   </div>
-  <p class="web-caption"><b id="m1">1. Daftar konten dengan filter kanal dan halaman situs (US-1802 AC1, AC2)</b>Kolom "Kanal" dan "Halaman situs" baru. Halaman tetap: hanya satu versi tayang per halaman, versi sebelumnya berakhir (AC2). Status memakai nada guideline §5.6 (Draf = netral, Tayang = sukses). "Tayang (terjadwal)" menandai jadwal tayang belum tiba; nama status final mengikuti PRD §3.6 <span class="td">[TIDAK DIKETAHUI]</span> bila berbeda. Hapus dan pulihkan tercatat E-16.</p>
+  <p class="web-caption"><b id="m1">1. Daftar konten dengan filter kanal dan halaman situs (US-1802 AC1, AC2)</b>Kolom "Kanal" dan "Halaman situs" baru. Halaman tetap: hanya satu versi tayang per halaman, versi sebelumnya berakhir (AC2). Status memakai nada guideline §5.6 (Draf = netral, Tayang = sukses). "Tayang (terjadwal)" menandai jadwal tayang belum tiba; nama status final mengikuti PRD §3.6 <span class="td">[TIDAK DIKETAHUI]</span> bila berbeda. Hapus memerlukan alasan wajib (delete_reason, ADR-003) dan konten terhapus dapat dipulihkan dari filter Terhapus; keduanya tercatat E-16. Memulihkan halaman tetap yang versi lain sedang Tayang belum diatur PRD (pertanyaan S-7).</p>
 </section>
 
 <!-- 2. Editor + pratinjau -->
