@@ -1,0 +1,190 @@
+# Compose lokal Ruang Sehat (F1-T07, EN-03). Hanya untuk laptop developer, data sintetis.
+# Rujukan: docs/05-stack.md §2 (lingkungan Lokal), ADR-007, ADR-019, KEPUTUSAN-88.
+#
+# Pakai:
+#   cp .env.example infra/local/.env      # lalu ubah nilainya bila perlu (berkas di-ignore git)
+#   docker compose -f infra/local/compose.yaml up -d --wait
+#   docker compose -f infra/local/compose.yaml down -v
+# Alternatif: simpan nilai di .env.local (coding-standards §6) dan tambahkan
+#   --env-file .env.local pada setiap perintah compose.
+#
+# Image dipin dengan tag + digest indeks multi-arsitektur dari registry resmi (docs/sources.md).
+# Emulator S3: SeaweedFS (KEPUTUSAN-233, SRC-312).
+# Semua port dibuka hanya di 127.0.0.1. Tidak ada rahasia asli di berkas ini.
+# LiveKit tidak ada di sini: baru dirinci di Fase 2 (EN-18, docs/07-phase-plan.md).
+name: ruang-sehat-local
+
+x-postgres: &postgres
+  image: postgres:18.7@sha256:e754b839f447639b7004895f4d8a4bfcb4e9dbe3a1bc035f27f646562a16fd61
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1"]
+    interval: 5s
+    timeout: 5s
+    retries: 20
+    start_period: 10s
+
+x-valkey: &valkey
+  image: valkey/valkey:9.1.3@sha256:3add1a336a920ea54770a001ab6feb3da5fceea96a40373a3a2cd469b815f0b7
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "valkey-cli -a \"$$VALKEY_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+
+services:
+  # Instans (a): DB aplikasi Ruang Sehat + DB keycloak (docs/05-stack.md §2.9).
+  postgres-app:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?isi di infra/local/.env}
+      POSTGRES_DB: ruang_sehat
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?isi di infra/local/.env}
+    ports:
+      - "127.0.0.1:${POSTGRES_APP_PORT:-15432}:5432"
+    volumes:
+      - postgres-app-data:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+
+  # Instans (b): audit Ruang Sehat + audit RME, terpisah (ADR-009, ADR-019).
+  postgres-audit:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_AUDIT_PASSWORD:?isi di infra/local/.env}
+      POSTGRES_DB: ruang_sehat_audit
+    ports:
+      - "127.0.0.1:${POSTGRES_AUDIT_PORT:-15433}:5432"
+    volumes:
+      - postgres-audit-data:/var/lib/postgresql
+
+  # Instans (c): RME minimalis (ADR-012, ADR-020).
+  postgres-rme:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_RME_PASSWORD:?isi di infra/local/.env}
+      POSTGRES_DB: rme
+    ports:
+      - "127.0.0.1:${POSTGRES_RME_PORT:-15434}:5432"
+    volumes:
+      - postgres-rme-data:/var/lib/postgresql
+
+  # Dua Valkey terpisah (Ruang Sehat dan RME), tanpa persistensi: isi dibangun ulang (ADR-007).
+  valkey-app:
+    <<: *valkey
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_APP_PASSWORD:?isi di infra/local/.env}
+    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no"]
+    ports:
+      - "127.0.0.1:${VALKEY_APP_PORT:-16379}:6379"
+
+  valkey-rme:
+    <<: *valkey
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_RME_PASSWORD:?isi di infra/local/.env}
+    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no"]
+    ports:
+      - "127.0.0.1:${VALKEY_RME_PORT:-16380}:6379"
+
+  # Keycloak mode dev (start-dev). Realm sebagai kode: F1-T31 (keycloak-config-cli).
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
+    restart: unless-stopped
+    command: ["start-dev"]
+    depends_on:
+      postgres-app:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-app:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?isi di infra/local/.env}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?isi di infra/local/.env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?isi di infra/local/.env}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-18081}:8080"
+    healthcheck:
+      # Image tanpa curl: baca endpoint kesehatan (port manajemen 9000) lewat /dev/tcp.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # OpenBao mode dev: in-memory, otomatis unseal, token root dari env. HANYA lokal.
+  openbao:
+    image: openbao/openbao:2.7.2@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
+    restart: unless-stopped
+    command: ["server", "-dev"]
+    cap_add:
+      - IPC_LOCK
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ${BAO_DEV_ROOT_TOKEN:?isi di infra/local/.env}
+      BAO_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      BAO_ADDR: http://127.0.0.1:8200
+    ports:
+      - "127.0.0.1:${OPENBAO_PORT:-18200}:8200"
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Swagger UI hanya lokal dan staging. Berkas spesifikasi dihasilkan task lain (utoipa);
+  # direktori openapi/ dipasang baca-saja di /openapi.
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.35.0@sha256:3e7305b17cb806a2925ed16145eae469a6084ab50d82fcec7ede600bba91650b
+    restart: unless-stopped
+    volumes:
+      - ../../openapi:/openapi:ro
+    ports:
+      - "127.0.0.1:${SWAGGER_UI_PORT:-18082}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Emulator S3 lokal/CI (KEPUTUSAN-233, spike F1-T03): SeaweedFS 4.54, Apache-2.0.
+  # Identitas S3 dibuat saat start dari env (tidak ada kredensial di repositori).
+  # Data di bind mount folder host di luar repo (RS_OBJECT_STORAGE_DIR); `down -v` TIDAK menghapusnya.
+  # Buat folder dulu: mkdir -p "$$HOME/ruang-sehat-data/object-storage" (agar tidak dibuat root oleh Docker).
+  s3:
+    image: chrislusf/seaweedfs:4.54@sha256:4b42c212543a0acd4c0e675215ecdcaf62a186ef98def76c7e12701871222d15
+    restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /tmp/s3.json <<JSON
+        {"identities":[{"name":"dev","credentials":[{"accessKey":"$$S3_ACCESS_KEY","secretKey":"$$S3_SECRET_KEY"}],"actions":["Admin","Read","Write","List","Tagging"]}]}
+        JSON
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -master.volumeSizeLimitMB=64
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?isi di infra/local/.env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?isi di infra/local/.env}
+    ports:
+      - "127.0.0.1:${S3_PORT:-18333}:8333"
+    volumes:
+      - ${RS_OBJECT_STORAGE_DIR:-${HOME}/ruang-sehat-data/object-storage}:/data
+    healthcheck:
+      # Tanpa kredensial, S3 mengembalikan 403 bila hidup; wget gagal pada 403, jadi cek port saja lewat curl.
+      test: ["CMD-SHELL", "curl -s -o /dev/null http://127.0.0.1:8333/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  postgres-app-data:
+  postgres-audit-data:
+  postgres-rme-data:
