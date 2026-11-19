@@ -42,7 +42,7 @@ Catatan orkestrator selama Fase 1 (bahan `docs/fase-1-laporan.md` di F1-T71). St
 
 | 2026-11-19 | Atas usulan percepatan A–D: "semua CR tetap. masuk, jalankan paralel opsinua. tidak mundur" (Telegram) | Tafsiran orkestrator (user dipersilakan mengoreksi): A (bekukan CR) **ditolak**, CR baru tetap diterima lewat backlog; kerja paralel **tetap**; C (test skrip verifikasi penuh hanya di CI) dan D (reviewer gabungan keamanan+DBA untuk putaran pertama task T1) **diterapkan**; B dipakai sempit: hanya task yang mengubah skrip verifikasi/runner yang tidak dijalankan bersamaan; tanggal go-live dan gerbang tidak mundur |
 
-| 2026-11-19 | "tidak ada hari libur. jalan terus" (Telegram) | **Mengubah C2-Q7** (tim libur pada libur nasional dan cuti bersama): libur nasional dan cuti bersama kini hari kerja. Akhir pekan ditanyakan ke user. Phase plan §6.2a dihitung ulang setelah jawaban |
+| 2026-11-19 | "tidak ada hari libur. jalan terus" (Telegram) | **Mengubah C2-Q7** (tim libur pada libur nasional dan cuti bersama): libur nasional dan cuti bersama kini hari kerja. Akhir pekan: user menjawab **Y** (7 hari per minggu, termasuk Sabtu-Minggu; berlaku untuk sesi Claude, dan mobile developer sesuai pertanyaan yang diajukan) `[USER]` 2026-11-19. Phase plan §6.2a dihitung ulang dengan hari kalender (task dokumen orkestrator) |
 
 ## Posisi saat sesi berhenti (2026-11-19, batas kuota)
 
