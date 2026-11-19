@@ -452,6 +452,41 @@ BEGIN
   END LOOP;
 END $f$;
 
+-- Ketentuan DDL umum §4.1 butir 2-3 (KEPUTUSAN-93), F1-T16: kolom id tanpa nilai bawaan/identity/
+-- generated (UUIDv7 dari aplikasi, ADR-002); created_at NOT NULL DEFAULT now(); semua FK ON DELETE
+-- dan ON UPDATE NO ACTION (tanpa CASCADE/SET NULL/SET DEFAULT/RESTRICT; kode 'a', SRC-431).
+CREATE FUNCTION pg_temp.uji_ddl_umum(p_skema text) RETURNS SETOF text
+LANGUAGE sql AS $f$
+  SELECT format('KEPUTUSAN-93 %s.%s: kolom id punya nilai bawaan/identity/generated', c.relname, a.attname)
+    FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = p_skema AND c.relkind IN ('r', 'p') AND c.relname <> '_sqlx_migrations'
+     AND a.attname = 'id' AND NOT a.attisdropped
+     AND (a.atthasdef OR a.attidentity <> '' OR a.attgenerated <> '')
+  UNION ALL
+  SELECT format('KEPUTUSAN-93 %s.created_at: bukan NOT NULL DEFAULT now() (%s)', c.relname,
+                coalesce(pg_get_expr(d.adbin, d.adrelid), '<tanpa default>'))
+    FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+   WHERE n.nspname = p_skema AND c.relkind IN ('r', 'p') AND c.relname <> '_sqlx_migrations'
+     AND a.attname = 'created_at' AND NOT a.attisdropped
+     AND (NOT a.attnotnull OR pg_get_expr(d.adbin, d.adrelid) IS DISTINCT FROM 'now()')
+  UNION ALL
+  SELECT format('KEPUTUSAN-93 %s: FK %s ON DELETE/UPDATE bukan NO ACTION (%s/%s)', c.relname, k.conname,
+                k.confdeltype, k.confupdtype)
+    FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = p_skema AND k.contype = 'f' AND (k.confdeltype <> 'a' OR k.confupdtype <> 'a')
+$f$;
+
+-- uji_indeks(tabel berkualifikasi, definisi[]): index tabel persis daftar pg_get_indexdef (tidak kurang,
+-- tidak lebih), termasuk index PK/UQ. Dipakai test per tabel (F1-T16 dst.).
+CREATE FUNCTION pg_temp.uji_indeks(p_tabel regclass, p_harap text[]) RETURNS SETOF text
+LANGUAGE sql AS $f$
+  WITH aktual AS (SELECT pg_get_indexdef(indexrelid) AS def FROM pg_index WHERE indrelid = p_tabel)
+  SELECT format('index %s lebih: %s', p_tabel, def) FROM aktual WHERE NOT (def = ANY (p_harap))
+  UNION ALL
+  SELECT format('index %s kurang: %s', p_tabel, h) FROM unnest(p_harap) h WHERE h NOT IN (SELECT def FROM aktual)
+$f$;
+
 -- T-22 (review N05): daftar tabel L yang punya FK masuk dari tabel non-L (snapshot di pemanggil).
 CREATE FUNCTION pg_temp.uji_t22(p_skema text) RETURNS text[]
 LANGUAGE sql AS $f$

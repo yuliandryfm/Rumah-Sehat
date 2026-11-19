@@ -8,8 +8,9 @@
 #
 # Urutan:
 #   1. Pemeriksaan teks berkas migrasi (nama, maju saja, penjaga di awal berkas, T-23) + test
-#      negatif pemeriksa dengan berkas rusak buatan. Pemeriksaan teks dapat diakali SQL dinamis
-#      yang lebih rumit; kontrol jangka panjang adalah event trigger (KEPUTUSAN-158) + T-08.
+#      negatif pemeriksa dengan berkas rusak buatan. Sejak TD-01 (a), SQL dinamis (EXECUTE) hanya
+#      boleh berbentuk templat §6.2 persis (allowlist, temuan_execute). Pemeriksaan teks tetap
+#      bukan kontrol tunggal: event trigger runtime (TD-01 b, KEPUTUSAN-158) + T-08 + review DBA.
 #   1b. Urutan terhadap basis git (merge-base dengan main/tahap-08-fase-1): berkas basis identik,
 #      berkas baru berversi lebih besar; penjaga DO berkas lanjutan menolak bila _sqlx_migrations
 #      sudah memuat versi lebih besar (templat db/test/templat-penjaga-lanjutan-*.sql).
@@ -71,6 +72,15 @@ tandai() { # tandai <lulus|gagal> <pesan>
   return 0
 }
 
+# cocok <teks> <opsi/pola grep...>: grep atas isi variabel lewat here-string. Pengganti
+# `printf ... | grep -q`: dengan pipefail, grep -q yang keluar lebih awal membuat printf terkena
+# SIGPIPE sehingga pipeline gagal walaupun pola cocok (flake, review keamanan TD-01).
+cocok() {
+  local teks="$1"
+  shift
+  grep "$@" <<<"$teks"
+}
+
 for alat in docker awk od; do
   if ! command -v "$alat" >/dev/null 2>&1; then
     echo "$alat tidak ditemukan di PATH" >&2
@@ -88,8 +98,12 @@ if [ "$VERSI_AKTIF" != "$SQLX_VERSI" ]; then
   echo "  pasang: cargo install sqlx-cli --version $SQLX_VERSI --locked --no-default-features --features postgres,rustls --root $SQLX_ROOT" >&2
   exit 1
 fi
+# Test per tabel database ruang_sehat (struktur khusus + perilaku role sungguhan), satu berkas per
+# task migrasi (F1-T16 dst.). Daftar eksplisit: berkas yang hilang GAGAL, tidak dilewati diam-diam.
+TEST_TABEL_APP="db/test/tabel-app-a1.sql db/test/tabel-app-a19.sql"
 for f in db/test/lib.sql db/test/katalog.sql db/test/util-app.sql db/test/kelas-app.sql \
-  db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql; do
+  db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql \
+  $TEST_TABEL_APP; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -123,6 +137,164 @@ tanpa_komentar() {
     }'
 }
 
+# temuan_execute <berkas> <app|audit|rme>: TD-01 (a), review keamanan F1-T14/T15 putaran 2. SQL
+# dinamis di berkas migrasi ditolak kecuali bentuk templat docs/05-physical-schema.md §6.2 yang
+# cocok persis (allowlist). Lexer SQL sederhana: literal '...' ('' di dalamnya), identifier "...",
+# komentar -- dan /* */ bersarang, dollar-quote bertag. Tag dikenali umum ($...$ tanpa spasi/$,
+# tanpa batas panjang, byte non-ASCII ikut; SRC-432) dan tag selain identifier ASCII <= 32 karakter
+# adalah temuan (review keamanan TD-01: tag $é$ yang tak dikenali menelan EXECUTE). Lexer berjalan
+# dengan LC_ALL=C (per byte); byte >= 0x80 dihitung karakter identifier seperti PostgreSQL.
+# Isi dollar-quote diperiksa sebagai kode
+# (badan DO/fungsi); dollar-quote yang ditutup saat lexer berada di literal/komentar/identifier
+# (isi data dengan kutip tidak seimbang yang dapat menggeser batas literal) adalah temuan.
+# Setiap kata EXECUTE di luar literal dan komentar wajib salah satu dari:
+#   R1  CREATE TRIGGER ... FOR EACH ROW|STATEMENT EXECUTE FUNCTION|PROCEDURE ...
+#   R2  GRANT/REVOKE ... EXECUTE ON ...                       (ON kata cadangan, bukan variabel)
+#   R3  (hanya db/migrations/audit) EXECUTE format('<bentuk §6.2 persis>', <argumen>); dengan
+#       argumen hanya identifier, angka, literal, || + - , ::, dan panggilan to_char(...); format
+#       ditutup langsung oleh ";" (tanpa || atau USING setelahnya). %I/%L mengutip nilai argumen,
+#       sehingga argumen tidak dapat mengubah bentuk pernyataan.
+# Selain itu ditolak: literal E'...' dan U&'...' (escape yang menggeser lexer), pengaturan
+# standard_conforming_strings/backslash_quote, dan fungsi bernama format/to_char (pembayang
+# fungsi yang dipakai R3). Event trigger runtime (TD-01 b, KEPUTUSAN-158) bukan bagian pemeriksa ini.
+temuan_execute() {
+  LC_ALL=C awk -v sistem="$2" '
+    function idch(c) { return c != "" && (c ~ /[A-Za-z0-9_$]/ || c > "\177") }
+    function emitc(c) {
+      if (c ~ /^[ \t\r\n]$/) {
+        if (norm == "" || substr(norm, length(norm), 1) == " ") return
+        c = " "
+      }
+      norm = norm c; mask = mask "c"
+    }
+    function lompat(j) { while (substr(norm, j, 1) == " ") j++; return j }
+    function templat(q,    j, m, c, lit, dep, id) {
+      j = lompat(q)
+      if (tolower(substr(norm, j, 6)) != "format" || idch(substr(norm, j + 6, 1))) return 0
+      j = lompat(j + 6)
+      if (substr(norm, j, 1) != "(") return 0
+      j = lompat(j + 1)
+      if (substr(norm, j, 1) != "\047" || substr(mask, j, 1) != "l") return 0
+      lit = ""; j++
+      while (1) {
+        c = substr(norm, j, 1)
+        if (substr(mask, j, 1) != "l") return 0
+        if (c == "\047") {
+          if (substr(norm, j + 1, 1) == "\047" && substr(mask, j + 1, 1) == "l") { lit = lit c; j += 2; continue }
+          j++; break
+        }
+        lit = lit c; j++
+      }
+      if (lit != F1 && lit != F2 && lit != F3) return 0
+      dep = 0
+      while (1) {
+        c = substr(norm, j, 1)
+        if (c == "") return 0
+        if (substr(mask, j, 1) == "l") { j++; continue }
+        if (c ~ /^[ ,|+:0-9-]$/) { j++; continue }
+        if (c ~ /^[A-Za-z_]$/) {
+          id = ""
+          while (substr(norm, j, 1) ~ /^[A-Za-z0-9_]$/ && substr(mask, j, 1) == "c") { id = id substr(norm, j, 1); j++ }
+          m = lompat(j)
+          if (substr(norm, m, 1) == "(") {
+            if (tolower(id) != "to_char") return 0
+            dep++; j = m + 1
+          }
+          continue
+        }
+        if (c == ")") { j++; if (dep == 0) break; dep--; continue }
+        return 0
+      }
+      j = lompat(j)
+      return substr(norm, j, 1) == ";"
+    }
+    { s = s $0 "\n" }
+    END {
+      F1 = "CREATE TABLE audit.%I PARTITION OF audit.%I FOR VALUES FROM (%L) TO (%L)"
+      F2 = "CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+      F3 = "CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+      n = length(s); i = 1; st = "c"; d = 0; cd = 0; norm = ""; mask = ""; ne = 0
+      while (i <= n) {
+        ch = substr(s, i, 1)
+        if (d > 0 && ch == "$") {
+          tk = "$" tag[d] "$"
+          if (substr(s, i, length(tk)) == tk) {
+            if (st != "c") {
+              print "dollar-quote " tk " ditutup di dalam literal/komentar/identifier (kutip tidak seimbang; isi dollar-quote diperiksa sebagai kode, TD-01)"
+              st = "c"; cd = 0
+            }
+            d--; emitc(" "); i += length(tk); continue
+          }
+        }
+        if (st == "l") {
+          norm = norm ch; mask = mask "l"
+          if (ch == "\047") {
+            if (substr(s, i + 1, 1) == "\047") { norm = norm ch; mask = mask "l"; i += 2; continue }
+            st = "c"
+          }
+          i++; continue
+        }
+        if (st == "i") {
+          if (ch == "\"") {
+            if (substr(s, i + 1, 1) == "\"") { norm = norm "\"\""; mask = mask "ii"; i += 2; continue }
+            st = "c"; norm = norm "\""; mask = mask "c"
+          } else { norm = norm ch; mask = mask "i" }
+          i++; continue
+        }
+        if (st == "lc") { if (ch == "\n") { st = "c"; emitc(" ") } i++; continue }
+        c2 = substr(s, i, 2)
+        if (st == "bc") {
+          if (c2 == "/*") { cd++; i += 2; continue }
+          if (c2 == "*/") { cd--; i += 2; if (cd == 0) { st = "c"; emitc(" ") } continue }
+          i++; continue
+        }
+        if (c2 == "--") { st = "lc"; i += 2; continue }
+        if (c2 == "/*") { st = "bc"; cd = 1; i += 2; continue }
+        pv = (i > 1) ? substr(s, i - 1, 1) : ""
+        pv2 = (i > 2) ? substr(s, i - 2, 1) : ""
+        if (ch == "\047") {
+          if ((pv == "E" || pv == "e") && pv2 !~ /^[A-Za-z_$]$/)
+            print "literal E\047...\047 (escape backslash) dilarang di berkas migrasi (TD-01)"
+          if (pv == "&" && (pv2 == "U" || pv2 == "u"))
+            print "literal U&\047...\047 (escape unicode) dilarang di berkas migrasi (TD-01)"
+          st = "l"; norm = norm ch; mask = mask "l"; i++; continue
+        }
+        if (ch == "\"") { st = "i"; norm = norm "\""; mask = mask "c"; i++; continue }
+        if (ch == "$" && !idch(pv)) {
+          # Tag umum tanpa batas panjang (PostgreSQL menerima huruf non-ASCII di tag); dikenali
+          # lebih luas dari PostgreSQL supaya tidak ada dollar-quote nyata yang terlewat.
+          rest = substr(s, i)
+          if (match(rest, /^\$[^$ \t\r\n]*\$/)) {
+            d++; tag[d] = substr(rest, 2, RLENGTH - 2)
+            if (tag[d] != "" && (tag[d] !~ /^[A-Za-z_][A-Za-z0-9_]*$/ || length(tag[d]) > 32))
+              print "tag dollar-quote $" tag[d] "$ dilarang (hanya identifier ASCII <= 32 karakter, TD-01)"
+            emitc(" "); i += RLENGTH; continue
+          }
+        }
+        if ((ch == "E" || ch == "e") && !idch(pv) && toupper(substr(s, i, 7)) == "EXECUTE" && !idch(substr(s, i + 7, 1))) {
+          ne++; pos[ne] = length(norm) + 1; norm = norm "EXECUTE"; mask = mask "ccccccc"; i += 7; continue
+        }
+        emitc(ch); i++
+      }
+      if (st != "c" || d > 0) print "berkas berakhir di dalam literal/komentar/identifier/dollar-quote (tidak seimbang, TD-01)"
+      u = toupper(norm)
+      if (u ~ /STANDARD_CONFORMING_STRINGS|BACKSLASH_QUOTE/)
+        print "memuat standard_conforming_strings/backslash_quote (mengubah arti literal, TD-01)"
+      if (u ~ /(FUNCTION|RENAME TO) +("?[A-Z_][A-Z0-9_]*"? *\. *)?"?(FORMAT|TO_CHAR)"? *[(; ]/)
+        print "membuat/menamai fungsi format atau to_char (membayangi fungsi templat §6.2, TD-01)"
+      for (k = 1; k <= ne; k++) {
+        p = pos[k]
+        a = p - 40; if (a < 1) a = 1
+        pre = toupper(substr(norm, a, p - a))
+        post = toupper(substr(norm, p + 7, 12))
+        if (pre ~ /FOR EACH (ROW|STATEMENT) $/ && post ~ /^ (FUNCTION|PROCEDURE) /) continue
+        if (post ~ /^ ON /) continue
+        if (sistem == "audit" && templat(p + 7)) continue
+        print "EXECUTE di luar allowlist templat §6.2 (SQL dinamis dilarang, TD-01): " substr(norm, p, 90)
+      }
+    }' "$1"
+}
+
 # temuan_statis <direktori> <app|audit|rme>: mencetak satu baris per temuan (kosong = bersih).
 temuan_statis() {
   local dir="$1" sistem="$2" f nama penjaga datar bersih teks lit versi semua_versi="" pertama
@@ -136,7 +308,7 @@ temuan_statis() {
       continue
     fi
     # Nama: <versi 14 digit>_<deskripsi snake_case>.sql; tanpa .up/.down (maju saja, ADR-019).
-    if ! printf '%s\n' "$nama" | grep -Eq '^[0-9]{14}_[a-z0-9]+(_[a-z0-9]+)*\.sql$'; then
+    if ! cocok "$nama" -Eq '^[0-9]{14}_[a-z0-9]+(_[a-z0-9]+)*\.sql$'; then
       echo "$nama: nama bukan <versi 14 digit>_<snake_case>.sql (ADR-001; maju saja tanpa .up/.down, ADR-019)"
       continue
     fi
@@ -145,7 +317,7 @@ temuan_statis() {
     semua_versi="$semua_versi $versi"
     # sqlx menjalankan berkas tanpa transaksi bila diawali "-- no-transaction" (SRC-399); penjaga
     # SET LOCAL dan atomisitas migrasi bergantung pada transaksi.
-    if sed -n '1p' "$f" | grep -q '^-- no-transaction'; then
+    if cocok "$(sed -n '1p' "$f")" -q '^-- no-transaction'; then
       echo "$nama: diawali -- no-transaction (migrasi wajib dalam transaksi, §11.2)"
     fi
     # Penjaga (§11.2): pernyataan pertama blok DO yang memeriksa current_user terhadap pemilik,
@@ -158,26 +330,26 @@ temuan_statis() {
       s == 2 && /^[[:space:]]*(--.*)?$/ { next }
       s == 2 { print; n++; if (n == 2) exit }
     ' "$f")"
-    if printf '%s\n' "$penjaga" | grep -q '<<BUKAN-PENJAGA>>' || ! printf '%s\n' "$penjaga" | grep -q '^END \$\$;'; then
+    if cocok "$penjaga" -q '<<BUKAN-PENJAGA>>' || ! cocok "$penjaga" -q '^END \$\$;'; then
       echo "$nama: pernyataan pertama bukan blok penjaga DO \$\$ ... END \$\$; (§11.2)"
     else
-      if ! printf '%s\n' "$penjaga" | grep -q 'current_user' ||
-        ! printf '%s\n' "$penjaga" | grep -q "RAISE EXCEPTION 'migration must run as"; then
+      if ! cocok "$penjaga" -q 'current_user' ||
+        ! cocok "$penjaga" -q "RAISE EXCEPTION 'migration must run as"; then
         echo "$nama: penjaga tidak memeriksa current_user dengan pesan 'migration must run as' (§11.2)"
       fi
       case "$sistem" in
-        app) printf '%s\n' "$penjaga" | grep -q "'rs_migration'" || echo "$nama: penjaga tidak memeriksa rs_migration" ;;
-        rme) printf '%s\n' "$penjaga" | grep -q "'rme_migration'" || echo "$nama: penjaga tidak memeriksa rme_migration" ;;
+        app) cocok "$penjaga" -q "'rs_migration'" || echo "$nama: penjaga tidak memeriksa rs_migration" ;;
+        rme) cocok "$penjaga" -q "'rme_migration'" || echo "$nama: penjaga tidak memeriksa rme_migration" ;;
         audit)
-          if ! printf '%s\n' "$penjaga" | grep -q "util.fn_audit_role('audit_migration')" &&
-            ! { printf '%s\n' "$penjaga" | grep -q "'rs_audit_migration'" &&
-              printf '%s\n' "$penjaga" | grep -q "'rme_audit_migration'"; }; then
+          if ! cocok "$penjaga" -q "util.fn_audit_role('audit_migration')" &&
+            ! { cocok "$penjaga" -q "'rs_audit_migration'" &&
+              cocok "$penjaga" -q "'rme_audit_migration'"; }; then
             echo "$nama: penjaga tidak memeriksa util.fn_audit_role('audit_migration') (§11.2)"
           fi
           ;;
       esac
-      if ! printf '%s\n' "$penjaga" | grep -q "^SET LOCAL lock_timeout = '5s';" ||
-        ! printf '%s\n' "$penjaga" | grep -q "^SET LOCAL statement_timeout = '15min';"; then
+      if ! cocok "$penjaga" -q "^SET LOCAL lock_timeout = '5s';" ||
+        ! cocok "$penjaga" -q "^SET LOCAL statement_timeout = '15min';"; then
         echo "$nama: penjaga tidak diikuti SET LOCAL lock_timeout = '5s'; dan SET LOCAL statement_timeout = '15min'; (§11.2)"
       fi
     fi
@@ -185,41 +357,48 @@ temuan_statis() {
     # pertama direktori menolak dijalankan bila _sqlx_migrations sudah memuat versi lebih besar;
     # literal versi di penjaga wajib sama dengan versi nama berkas.
     if [ "$nama" != "$pertama" ]; then
-      if ! printf '%s\n' "$penjaga" | grep -Eq "_sqlx_migrations WHERE version > $versi\)"; then
+      if ! cocok "$penjaga" -Eq "_sqlx_migrations WHERE version > $versi\)"; then
         echo "$nama: penjaga lanjutan tanpa pemeriksaan urutan '_sqlx_migrations WHERE version > $versi)' (literal = versi nama berkas)"
       fi
-      if printf '%s\n' "$penjaga" | grep -Eo '_sqlx_migrations WHERE version > [0-9]+' | grep -Evq " $versi\$"; then
+      literal_urut="$(cocok "$penjaga" -Eo '_sqlx_migrations WHERE version > [0-9]+' || true)"
+      if [ -n "$literal_urut" ] && cocok "$literal_urut" -Evq " $versi\$"; then
         echo "$nama: literal versi penjaga urutan berbeda dari versi nama berkas $versi"
       fi
     fi
     # T-23 (§11.4, KEPUTUSAN-158) dan pengerasan review keamanan F1-T14/T15: pola dicari pada teks
     # mentah DAN teks tanpa komentar (-- dan /* */ bersarang) dengan spasi dinormalkan, sehingga
     # komentar di antara kata kunci tidak meloloskan pola. Literal string (setelah penggabungan
-    # 'a' || 'b', tanpa literal COMMENT ON ... IS) diperiksa untuk SQL dinamis. Ini pemeriksaan teks
-    # yang dapat diakali dengan SQL dinamis yang lebih rumit (chr(), format('%s')); kontrol jangka
-    # panjang adalah event trigger (KEPUTUSAN-158) ditambah test katalog T-08 setelah migrasi.
+    # 'a' || 'b', tanpa literal COMMENT ON ... IS) diperiksa untuk SQL dinamis. SQL dinamis yang
+    # lebih rumit (chr(), concat(), format('%s'), EXECUTE $q$...$q$, E'\x..') ditangani allowlist
+    # EXECUTE TD-01 (a) (temuan_execute). Allowlist itu sebaik lexer-nya: review keamanan TD-01
+    # membuktikan tag dollar-quote non-ASCII ($é$) yang tidak dikenali lexer dapat menelan EXECUTE,
+    # sehingga tag dikenali umum dan tag selain identifier ASCII <= 32 karakter ditolak (aturan tag:
+    # https://www.postgresql.org/docs/18/sql-syntax-lexical.html, SRC-432). Kontrol runtime tetap
+    # event trigger (KEPUTUSAN-158) + test katalog T-08.
     datar="$(tr '\n\t\r' '   ' <"$f" | tr -s ' ')"
     bersih="$(tanpa_komentar <"$f" | tr '\n\t\r' '   ' | tr -s ' ')"
     for teks in "$datar" "$bersih"; do
-      if printf '%s\n' "$teks" | grep -Eiq 'DISABLE TRIGGER'; then echo "$nama: memuat DISABLE TRIGGER (T-23, §11.4)"; fi
-      if printf '%s\n' "$teks" | grep -Eiq 'ENABLE (REPLICA|ALWAYS) TRIGGER'; then echo "$nama: memuat ENABLE REPLICA/ALWAYS TRIGGER (trigger tidak terpicu pada sesi biasa, T-23)"; fi
-      if printf '%s\n' "$teks" | grep -Eiq '(DROP|ALTER) TRIGGER (IF EXISTS )?"?tg_[a-z0-9_]*_(reject_[a-z0-9_]*|guard_delete|one_way|effective_lock|no_backdate|published_lock|single_source)\b'; then
+      if cocok "$teks" -Eiq 'DISABLE TRIGGER'; then echo "$nama: memuat DISABLE TRIGGER (T-23, §11.4)"; fi
+      if cocok "$teks" -Eiq 'ENABLE (REPLICA|ALWAYS) TRIGGER'; then echo "$nama: memuat ENABLE REPLICA/ALWAYS TRIGGER (trigger tidak terpicu pada sesi biasa, T-23)"; fi
+      if cocok "$teks" -Eiq '(DROP|ALTER) TRIGGER (IF EXISTS )?"?tg_[a-z0-9_]*_(reject_[a-z0-9_]*|guard_delete|one_way|effective_lock|no_backdate|published_lock|single_source)\b'; then
         echo "$nama: memuat DROP/ALTER TRIGGER atas trigger penjaga (T-23, §11.4)"
       fi
-      if printf '%s\n' "$teks" | grep -Eiq 'replication_role'; then echo "$nama: memuat session_replication_role (mematikan trigger, T-23)"; fi
-      if printf '%s\n' "$teks" | grep -Eiq 'set_config'; then echo "$nama: memuat set_config (pengaturan sesi dinamis dilarang di migrasi)"; fi
-      if printf '%s\n' "$teks" | grep -Eiq 'DROP FUNCTION (IF EXISTS )?"?util"?\.'; then echo "$nama: memuat DROP FUNCTION util.* (CASCADE melepas trigger penjaga)"; fi
-      if printf '%s\n' "$teks" | grep -Eiq '(DROP|ALTER) SCHEMA'; then echo "$nama: memuat DROP/ALTER SCHEMA (skema dikelola bootstrap db/roles)"; fi
-      if ! printf '%s\n' "$nama" | grep -Eq '^[0-9]{14}_util_[a-z0-9_]+\.sql$' &&
-        printf '%s\n' "$teks" | grep -Eiq '(ALTER FUNCTION|CREATE OR REPLACE FUNCTION) "?util"?\.'; then
+      if cocok "$teks" -Eiq 'replication_role'; then echo "$nama: memuat session_replication_role (mematikan trigger, T-23)"; fi
+      if cocok "$teks" -Eiq 'set_config'; then echo "$nama: memuat set_config (pengaturan sesi dinamis dilarang di migrasi)"; fi
+      if cocok "$teks" -Eiq 'DROP FUNCTION (IF EXISTS )?"?util"?\.'; then echo "$nama: memuat DROP FUNCTION util.* (CASCADE melepas trigger penjaga)"; fi
+      if cocok "$teks" -Eiq '(DROP|ALTER) SCHEMA'; then echo "$nama: memuat DROP/ALTER SCHEMA (skema dikelola bootstrap db/roles)"; fi
+      if ! cocok "$nama" -Eq '^[0-9]{14}_util_[a-z0-9_]+\.sql$' &&
+        cocok "$teks" -Eiq '(ALTER FUNCTION|CREATE OR REPLACE FUNCTION) "?util"?\.'; then
         echo "$nama: mengubah fungsi util di luar berkas *_util_*.sql (§11.4: penggantian fungsi penjaga hanya di migrasi util yang direview)"
       fi
     done
+    # TD-01 (a): SQL dinamis hanya bentuk templat §6.2 (nama berkas sudah lolos pola di atas).
+    temuan_execute "$f" "$sistem" | sed "s|^|$nama: |"
     while IFS= read -r lit; do
       [ -n "$lit" ] || continue
-      if printf '%s\n' "$lit" | grep -Eiq 'ABLE TRIGGER|REPLICA TRIGGER|ALWAYS TRIGGER|(DROP|ALTER) TRIGGER|(DROP|ALTER) FUNCTION|(DROP|ALTER) SCHEMA|replication_role'; then
+      if cocok "$lit" -Eiq 'ABLE TRIGGER|REPLICA TRIGGER|ALWAYS TRIGGER|(DROP|ALTER) TRIGGER|(DROP|ALTER) FUNCTION|(DROP|ALTER) SCHEMA|replication_role'; then
         echo "$nama: literal string SQL dinamis memuat perintah terlarang: $lit"
-      elif printf '%s\n' "$lit" | grep -Eiq 'trigger|util\.' && ! printf '%s\n' "$lit" | grep -Eiq "^'[[:space:]]*CREATE (OR REPLACE )?TRIGGER "; then
+      elif cocok "$lit" -Eiq 'trigger|util\.' && ! cocok "$lit" -Eiq "^'[[:space:]]*CREATE (OR REPLACE )?TRIGGER "; then
         echo "$nama: literal string memuat TRIGGER/util. di luar teks CREATE TRIGGER: $lit"
       fi
     done <<LIT
@@ -261,7 +440,7 @@ statis_negatif() {
     printf '%s\n' "$PENJAGA_APP" >"$d/20990101000000_util_awal.sql"
     printf '%s\n' "$2" >"$d/20990101000002_lanjutan.sql"
     t="$(temuan_statis "$d" app)"
-    if printf '%s\n' "$t" | grep -q -- "$3"; then
+    if cocok "$t" -q -- "$3"; then
       tandai lulus "NEG statis: $1"
     else
       tandai gagal "NEG statis: $1 tidak terdeteksi (temuan: ${t:-kosong})"
@@ -273,7 +452,7 @@ statis_negatif() {
     mkdir -p "$d"
     printf '%s\n' "$4" >"$d/$3"
     t="$(temuan_statis "$d" "$2")"
-    if printf '%s\n' "$t" | grep -q -- "$5"; then
+    if cocok "$t" -q -- "$5"; then
       tandai lulus "NEG statis: $1"
     else
       tandai gagal "NEG statis: $1 tidak terdeteksi (temuan: ${t:-kosong})"
@@ -330,26 +509,133 @@ DO \$x\$ BEGIN EXECUTE 'COMMENT ON FUNCTION ' || 'util.fn_x() IS NULL'; END \$x\
   kasus_lanjutan "berkas lanjutan tanpa pemeriksaan urutan" "$PENJAGA_APP" "penjaga lanjutan tanpa pemeriksaan urutan"
   kasus_lanjutan "literal versi penjaga urutan berbeda dari nama berkas" \
     "$(sed 's/@VERSI@/20990101000001/g' db/test/templat-penjaga-lanjutan-app.sql)" "literal versi penjaga urutan berbeda"
-  # Tanpa positif palsu: templat lanjutan resmi dan pola partisi §6.2 (format CREATE TRIGGER util.*).
+  # TD-01 (a): SQL dinamis di luar templat §6.2 ditolak. Tujuh bentuk yang lolos pemeriksa lama
+  # (review keamanan F1-T14/T15 putaran 2), lalu pengakalan atas allowlist itu sendiri.
+  local tmpl_tr="CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()"
+  local ex="EXECUTE di luar allowlist"
+  kasus "TD-01 EXECUTE dollar-quote" app 20990101000000_d1.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE \$q\$ALTER TABLE app.x DIS\$q\$ || \$q\$ABLE TRIGGER ALL\$q\$; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE chr()" app 20990101000000_d2.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE 'ALTER TABLE app.x ' || chr(68) || 'ISABLE ' || chr(84) || 'RIGGER ALL'; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE concat()" app 20990101000000_d3.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE concat('ALTER TABLE app.x DIS', 'ABLE TRIG', 'GER ALL'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE format('%s')" app 20990101000000_d4.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('ALTER TABLE app.x %sABLE %sGER ALL', 'DIS', 'TRIG'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE E'\\x..'" app 20990101000000_d5.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE E'ALTER TABLE app.x \\x44ISABLE \\x54RIGGER ALL'; END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE convert_from(decode())" app 20990101000000_d6.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE convert_from(decode('414c544552205441424c45', 'hex'), 'UTF8'); END \$x\$;" "$ex"
+  kasus "TD-01 EXECUTE variabel" app 20990101000000_d7.sql "$PENJAGA_APP
+DO \$x\$ DECLARE v text; BEGIN v := 'SELECT 1'; EXECUTE v; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 diikuti || chr()" audit 20990101000000_d8.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b') || chr(59) || 'SELECT 1'; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan argumen chr()" audit 20990101000000_d9.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', chr(97), 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan USING" audit 20990101000000_d10.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b') USING 1; END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 dengan subquery argumen" audit 20990101000000_d11.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', (SELECT 'b')); END \$x\$;" "$ex"
+  kasus "TD-01 bentuk mirip templat (skema app, bukan persis §6.2)" audit 20990101000000_d12.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('${tmpl_tr//audit./app.}', 'a', 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 templat §6.2 di db/migrations/app (allowlist hanya audit)" app 20990101000000_d13.sql "$PENJAGA_APP
+DO \$x\$ BEGIN EXECUTE format('$tmpl_tr', 'a', 'b'); END \$x\$;" "$ex"
+  kasus "TD-01 variabel bernama function (bukan CREATE TRIGGER)" app 20990101000000_d14.sql "$PENJAGA_APP
+DO \$x\$ DECLARE function text := 'SELECT 1'; BEGIN EXECUTE function; END \$x\$;" "$ex"
+  kasus "TD-01 PREPARE/EXECUTE SQL" app 20990101000000_d15.sql "$PENJAGA_APP
+PREPARE p AS SELECT 1;
+EXECUTE p;" "$ex"
+  kasus "TD-01 dollar-quote data berkutip tunggal (menggeser batas literal)" app 20990101000000_d16.sql "$PENJAGA_APP
+SELECT \$d\$'\$d\$, '-- ';
+DO \$y\$ BEGIN EXECUTE 'SELECT 1'; END \$y\$;" "dollar-quote \$d\$ ditutup di dalam literal"
+  # Review keamanan TD-01 (High): tag dollar-quote yang tidak dikenali lexer menggeser batas literal.
+  local poc_e="SELECT \$é\$'\$é\$;
+DO \$\$ BEGIN EXECUTE 'ALTER TABLE app.job ' || chr(68) || 'ISABLE ' || chr(84) || 'RIGGER ALL'; END \$\$;
+SELECT \$é\$'\$é\$;"
+  local tag_p="t$(printf '%089d' 0)"
+  local poc_p="SELECT \$$tag_p\$'\$$tag_p\$;
+DO \$\$ BEGIN EXECUTE 'ALTER TABLE app.job ' || chr(68) || 'ISABLE ' || chr(84) || 'RIGGER ALL'; END \$\$;
+SELECT \$$tag_p\$'\$$tag_p\$;"
+  kasus "TD-01 tag dollar-quote non-ASCII \$é\$ tidak menelan EXECUTE" app 20990101000000_d23.sql "$PENJAGA_APP
+$poc_e" "$ex"
+  kasus "TD-01 tag dollar-quote non-ASCII \$é\$ ditolak" app 20990101000000_d24.sql "$PENJAGA_APP
+$poc_e" "tag dollar-quote"
+  kasus "TD-01 tag dollar-quote ASCII 90 karakter tidak menelan EXECUTE" app 20990101000000_d25.sql "$PENJAGA_APP
+$poc_p" "$ex"
+  kasus "TD-01 tag dollar-quote ASCII 33 karakter ditolak" app 20990101000000_d26.sql "$PENJAGA_APP
+SELECT \$a23456789012345678901234567890123\$x\$a23456789012345678901234567890123\$;" "tag dollar-quote"
+  kasus "TD-01 literal E'...' di luar EXECUTE" app 20990101000000_d17.sql "$PENJAGA_APP
+SELECT E'\\x41';" "literal E'"
+  kasus "TD-01 literal U&'...'" app 20990101000000_d18.sql "$PENJAGA_APP
+SELECT U&'\\0041';" "literal U&'"
+  kasus "TD-01 standard_conforming_strings" app 20990101000000_d19.sql "$PENJAGA_APP
+SET LOCAL standard_conforming_strings = off;" "standard_conforming_strings"
+  kasus "TD-01 fungsi pembayang format" app 20990101000000_d20.sql "$PENJAGA_APP
+CREATE FUNCTION app.format(text) RETURNS text LANGUAGE sql AS \$f\$ SELECT \$1 \$f\$;" "fungsi format atau to_char"
+  kasus "TD-01 ganti nama fungsi menjadi \"to_char\"" app 20990101000000_d21.sql "$PENJAGA_APP
+ALTER FUNCTION app.f(date, text) RENAME TO \"to_char\";" "fungsi format atau to_char"
+  kasus "TD-01 literal tidak tertutup" app 20990101000000_d22.sql "$PENJAGA_APP
+SELECT 'abc;" "tidak seimbang"
+
+  # Tanpa positif palsu (app): templat lanjutan resmi, trigger penolak statis (EXECUTE FUNCTION),
+  # REVOKE/GRANT EXECUTE ON, kata EXECUTE di komentar, COMMENT berisi 'Trigger'.
   no=$((no + 1))
   d="$KERJA/statis-bersih-$no"
   mkdir -p "$d"
   printf '%s\n' "$PENJAGA_APP" >"$d/20990101000000_util_awal.sql"
   { sed 's/@VERSI@/20990101000002/g' db/test/templat-penjaga-lanjutan-app.sql
     cat <<'SQL'
--- Pola §6.2: trigger penolak per partisi lewat SQL dinamis (sah).
+-- EXECUTE di komentar baris tidak dihitung; /* EXECUTE /* bersarang */ */ juga tidak.
 COMMENT ON TABLE app.x IS 'class:T module:uji -- Trigger penolak';
-DO $$
-BEGIN
-  EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON app.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()', 'tg_x_reject_ud', 'x');
-END $$;
+CREATE TRIGGER tg_x_reject_ud BEFORE UPDATE OR DELETE ON app.x
+  FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification();
+CREATE TRIGGER tg_x_guard_delete BEFORE DELETE ON app.x
+  FOR EACH ROW EXECUTE FUNCTION util.fn_guard_log_delete('k', 'created_at', '{}', 'rs_privacy_worker');
+REVOKE ALL ON FUNCTION app.fn_x() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.fn_x() TO rs_app;
+SELECT "EXECUTE" FROM app.x;
+DO $Tag_32_a567890123456789012345678$ BEGIN NULL; END $Tag_32_a567890123456789012345678$;
 SQL
   } >"$d/20990101000002_tabel_x.sql"
   t="$(temuan_statis "$d" app)"
   if [ -z "$t" ]; then
-    tandai lulus "statis tanpa positif palsu: templat penjaga lanjutan + format('CREATE TRIGGER ... util.fn_reject_modification()') + COMMENT berisi 'Trigger'"
+    tandai lulus "statis tanpa positif palsu (app): templat penjaga lanjutan + CREATE TRIGGER ... EXECUTE FUNCTION + GRANT/REVOKE EXECUTE ON + EXECUTE di komentar/identifier"
   else
-    tandai gagal "statis positif palsu: $t"
+    tandai gagal "statis positif palsu (app): $t"
+  fi
+  # Tanpa positif palsu (audit): blok templat §6.2 persis (partisi + dua trigger penolak per partisi).
+  no=$((no + 1))
+  d="$KERJA/statis-bersih-$no"
+  mkdir -p "$d"
+  cp db/migrations/audit/20261119090000_util_shared_functions.sql "$d/"
+  { sed 's/@VERSI@/20990101000002/g' db/test/templat-penjaga-lanjutan-audit.sql
+    cat <<'SQL'
+-- Templat docs/05-physical-schema.md §6.2 (KEPUTUSAN-100), disalin persis.
+DO $$
+DECLARE
+  m date;
+  p text;
+BEGIN
+  FOR m IN SELECT generate_series(date '2026-11-01', date '2029-12-01', interval '1 month')::date LOOP
+    FOREACH p IN ARRAY ARRAY['audit_event', 'audit_event_subject'] LOOP
+      EXECUTE format(
+        'CREATE TABLE audit.%I PARTITION OF audit.%I FOR VALUES FROM (%L) TO (%L)',
+        p || '_' || to_char(m, '"y"YYYY"m"MM'), p,
+        to_char(m, 'YYYY-MM-DD') || ' 00:00:00+00',
+        to_char(m + interval '1 month', 'YYYY-MM-DD') || ' 00:00:00+00');
+      EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()',
+        'tg_' || p || '_' || to_char(m, '"y"YYYY"m"MM') || '_reject_ud', p || '_' || to_char(m, '"y"YYYY"m"MM'));
+      EXECUTE format('CREATE TRIGGER %I BEFORE TRUNCATE ON audit.%I FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification()',
+        'tg_' || p || '_' || to_char(m, '"y"YYYY"m"MM') || '_reject_truncate', p || '_' || to_char(m, '"y"YYYY"m"MM'));
+    END LOOP;
+  END LOOP;
+END $$;
+SQL
+  } >"$d/20990101000002_partisi.sql"
+  t="$(temuan_statis "$d" audit)"
+  if [ -z "$t" ]; then
+    tandai lulus "statis tanpa positif palsu (audit): blok templat §6.2 persis (CREATE TABLE PARTITION OF + dua CREATE TRIGGER lewat EXECUTE format)"
+  else
+    tandai gagal "statis positif palsu (audit): $t"
   fi
 }
 
@@ -425,7 +711,7 @@ rme:rme:rme_migration:openbao_rme_admin:app"
 # karakter aman lalu tetap dikutip format(%I/%L).
 buat_dinamis() {
   local admin="$1" db="$2" nama="$3" pemilik="$4" sp="$5" pw="$6" setrole="$7"
-  if ! printf '%s' "$nama$pemilik$sp" | grep -Eq '^[a-z0-9_-]+$' || ! printf '%s' "$pw" | grep -Eq '^[0-9a-f]+$'; then
+  if ! cocok "$nama$pemilik$sp" -Eq '^[a-z0-9_-]+$' || ! cocok "$pw" -Eq '^[0-9a-f]+$'; then
     echo "buat_dinamis: nama/password di luar karakter aman" >&2
     return 1
   fi
@@ -465,7 +751,7 @@ EOF
       tandai gagal "$file ($db): tidak ada pemeriksaan yang berjalan"
     fi
   else
-    tandai gagal "$file ($db): $(printf '%s\n' "$out" | grep -E 'ERROR|GAGAL|FATAL' || printf '%s' "$out")"
+    tandai gagal "$file ($db): $(cocok "$out" -E 'ERROR|GAGAL|FATAL' || printf '%s' "$out")"
   fi
 }
 
@@ -476,7 +762,7 @@ tolak_berkas() {
   shift 5
   if out="$(psql_as "$role" "$db" -1 "$@" -f - <"$file" 2>&1)"; then
     tandai gagal "NEG penjaga $label: berkas $(basename "$file") BERHASIL dijalankan, seharusnya ditolak"
-  elif printf '%s\n' "$out" | grep -q -- "$pola"; then
+  elif cocok "$out" -q -- "$pola"; then
     tandai lulus "NEG penjaga $label: $(basename "$file") ditolak ($pola)"
   else
     tandai gagal "NEG penjaga $label: $(basename "$file") ditolak dengan galat tak terduga: $out"
@@ -526,7 +812,7 @@ basis_git() {
     git rev-parse -q --verify "$ref^{commit}" >/dev/null 2>&1 || continue
     mb="$(git merge-base HEAD "$ref" 2>/dev/null)" || continue
     ada_ref="$ref"
-    if git ls-tree -r --name-only "$mb" -- db/migrations | grep -q '\.sql$'; then
+    if cocok "$(git ls-tree -r --name-only "$mb" -- db/migrations)" -q '\.sql$'; then
       BASIS="$mb"
       BASIS_KET="merge-base HEAD $ref ($(printf '%s' "$mb" | cut -c1-10))"
       break
@@ -560,7 +846,7 @@ basis_negatif() {
   kasus_basis() { # kasus_basis <label> <pola> ; berkas disiapkan di $b dan $k oleh pemanggil
     t="$(temuan_basis "$b" "$k")"
     if [ -n "$2" ]; then
-      if printf '%s\n' "$t" | grep -q -- "$2"; then tandai lulus "NEG basis: $1"; else tandai gagal "NEG basis: $1 tidak terdeteksi (temuan: ${t:-kosong})"; fi
+      if cocok "$t" -q -- "$2"; then tandai lulus "NEG basis: $1"; else tandai gagal "NEG basis: $1 tidak terdeteksi (temuan: ${t:-kosong})"; fi
     else
       if [ -z "$t" ]; then tandai lulus "basis: $1"; else tandai gagal "basis: $1 menghasilkan temuan: $t"; fi
     fi
@@ -714,10 +1000,10 @@ migrasi() { # migrasi <putaran> <direktori sumber pengganti opsional>
     # Dijalankan dari direktori kerja kosong (tanpa .env / sqlx.toml repo), URL lewat lingkungan.
     if out="$(cd "$KERJA" && DATABASE_URL="postgres://$nama:$pw@127.0.0.1:$PORT/$db?sslmode=disable" \
       "$SQLX" migrate run --no-dotenv --source "$sumber" 2>&1)"; then
-      if [ "$putaran" = 2 ] && printf '%s\n' "$out" | grep -q 'Applied'; then
+      if [ "$putaran" = 2 ] && cocok "$out" -q 'Applied'; then
         tandai gagal "idempoten: sqlx migrate run putaran 2 ($db) masih menerapkan migrasi: $out"
       else
-        tandai lulus "sqlx migrate run putaran $putaran: db/migrations/$sistem -> $db sebagai $nama (current_user $pemilik) ($(printf '%s\n' "$out" | grep -c 'Applied' || true) diterapkan)"
+        tandai lulus "sqlx migrate run putaran $putaran: db/migrations/$sistem -> $db sebagai $nama (current_user $pemilik) ($(cocok "$out" -c 'Applied' || true) diterapkan)"
       fi
     else
       tandai gagal "sqlx migrate run putaran $putaran: db/migrations/$sistem -> $db: $out"
@@ -758,7 +1044,7 @@ checksum_negatif() {
   if out="$(cd "$KERJA" && DATABASE_URL="postgres://$nama:$pw@127.0.0.1:$PORT/ruang_sehat?sslmode=disable" \
     "$SQLX" migrate run --no-dotenv --source "$sumber" 2>&1)"; then
     tandai gagal "NEG checksum: berkas migrasi yang diubah setelah diterapkan diterima sqlx"
-  elif printf '%s\n' "$out" | grep -q "migration $n was previously applied but has been modified"; then
+  elif cocok "$out" -q "migration $n was previously applied but has been modified"; then
     tandai lulus "NEG checksum: berkas $n yang diubah setelah diterapkan ditolak sqlx (previously applied but has been modified)"
   else
     tandai gagal "NEG checksum: galat tak terduga: $out"
@@ -773,6 +1059,9 @@ if [ "$GAGAL" -eq 0 ]; then
   jalankan_test ruang_sehat db/test/katalog.sql -v skema_harap='{app,util,ext}' -v skema_proyek='{app,util}' -v skema_mig=app -v prefiks=rs_
   jalankan_test ruang_sehat db/test/util-app.sql
   jalankan_test ruang_sehat db/test/kelas-app.sql
+  for f in $TEST_TABEL_APP; do
+    jalankan_test ruang_sehat "$f"
+  done
   for p in rs_:ruang_sehat_audit rme_:rme_audit; do
     jalankan_test "${p#*:}" db/test/katalog.sql -v skema_harap='{audit,util,audit_detached}' \
       -v skema_proyek='{audit,util,audit_detached}' -v skema_mig=audit -v prefiks="${p%%:*}"
@@ -812,7 +1101,7 @@ R
     if out="$(cd "$KERJA" && DATABASE_URL="postgres://$nama:$pw@127.0.0.1:$PORT/$db?sslmode=disable" \
       "$SQLX" migrate run --no-dotenv --source "$sumber" 2>&1)"; then
       tandai gagal "NEG penjaga urutan ($db): berkas berversi lebih kecil dari migrasi terapan DITERIMA"
-    elif printf '%s\n' "$out" | grep -q "migration order: version 29991230000000 is older than an applied migration"; then
+    elif cocok "$out" -q "migration order: version 29991230000000 is older than an applied migration"; then
       tandai lulus "NEG penjaga urutan ($db): berkas 29991230000000 setelah 29991231000000 diterapkan ditolak penjaganya"
     else
       tandai gagal "NEG penjaga urutan ($db): galat tak terduga: $out"
@@ -843,7 +1132,7 @@ else
 fi
 # pg_parameter_acl (review keamanan butir Low): tidak ada role proyek dengan hak SET/ALTER SYSTEM
 # atas parameter, dan potret mendeteksi GRANT SET ON PARAMETER session_replication_role.
-if psql_su postgres -At -c "SELECT count(*) FROM pg_parameter_acl p, aclexplode(p.paracl) a WHERE pg_get_userbyid(a.grantee) ~ '^(rs|rme|openbao)_'" | grep -qx 0; then
+if [ "$(psql_su postgres -At -c "SELECT count(*) FROM pg_parameter_acl p, aclexplode(p.paracl) a WHERE pg_get_userbyid(a.grantee) ~ '^(rs|rme|openbao)_'")" = 0 ]; then
   tandai lulus "T-05 pg_parameter_acl: tidak ada role proyek dengan hak atas parameter server"
 else
   tandai gagal "T-05 pg_parameter_acl: ada role proyek dengan hak atas parameter server"
@@ -851,12 +1140,12 @@ fi
 psql_su postgres -c 'GRANT SET ON PARAMETER session_replication_role TO rs_migration' >/dev/null
 potret >"$KERJA/potret-param"
 psql_su postgres -c 'REVOKE SET ON PARAMETER session_replication_role FROM rs_migration' >/dev/null
-if grep -E '^paramacl\|session_replication_role\|' "$KERJA/potret-param" | grep -q 'rs_migration=s'; then
+if cocok "$(grep -E '^paramacl\|session_replication_role\|' "$KERJA/potret-param" || true)" -q 'rs_migration=s'; then
   tandai lulus "NEG T-05 potret mendeteksi GRANT SET ON PARAMETER session_replication_role TO rs_migration"
 else
   tandai gagal "NEG T-05 GRANT SET ON PARAMETER tidak terlihat di potret: $(grep '^paramacl' "$KERJA/potret-param" || echo kosong)"
 fi
-if psql_su postgres -At -c "SELECT count(*) FROM pg_roles WHERE rolname ~ '^v-'" | grep -qx 0; then
+if [ "$(psql_su postgres -At -c "SELECT count(*) FROM pg_roles WHERE rolname ~ '^v-'")" = 0 ]; then
   tandai lulus "pembersihan: tidak ada role dinamis tersisa"
 else
   tandai gagal "pembersihan: role dinamis tersisa"
