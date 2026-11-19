@@ -13,6 +13,7 @@
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;
+SET search_path = pg_catalog, pg_temp;   -- cegah pembajakan search_path (CVE-2018-1058), review keamanan F1-T13
 
 -- 0. Penjaga: hanya superuser, hanya PostgreSQL 18.
 DO $$
@@ -20,8 +21,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = current_user AND rolsuper) THEN
     RAISE EXCEPTION 'db/roles/rme.sql harus dijalankan superuser bootstrap, bukan %', current_user;
   END IF;
-  IF current_setting('server_version_num')::int < 180000 THEN
-    RAISE EXCEPTION 'db/roles/rme.sql menargetkan PostgreSQL 18, server %', current_setting('server_version');
+  IF pg_catalog.current_setting('server_version_num')::int < 180000 THEN
+    RAISE EXCEPTION 'db/roles/rme.sql menargetkan PostgreSQL 18, server %', pg_catalog.current_setting('server_version');
   END IF;
 END $$;
 
@@ -55,9 +56,9 @@ BEGIN
     ) AS t(rolname, can_login, conn_limit, can_createrole)
   LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = r.rolname) THEN
-      EXECUTE format('CREATE ROLE %I', r.rolname);
+      EXECUTE pg_catalog.format('CREATE ROLE %I', r.rolname);
     END IF;
-    EXECUTE format(
+    EXECUTE pg_catalog.format(
       'ALTER ROLE %I WITH NOSUPERUSER NOCREATEDB %s NOREPLICATION NOBYPASSRLS INHERIT %s CONNECTION LIMIT %s',
       r.rolname,
       CASE WHEN r.can_createrole THEN 'CREATEROLE' ELSE 'NOCREATEROLE' END,
@@ -76,11 +77,21 @@ GRANT rme_audit_relay    TO rme_audit_relay_login    WITH INHERIT TRUE, SET FALS
 GRANT rme_privacy_worker TO rme_privacy_worker_login WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 GRANT rme_ops_monitor    TO rme_metrics              WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 GRANT pg_monitor         TO rme_ops_monitor          WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
+-- openbao_rme_admin: ADMIN atas grup sasaran role OpenBao (§3.4), awalnya tanpa INHERIT dan SET.
+-- RISIKO RESIDU (review keamanan F1-T13): karena memegang ADMIN, role ini dapat memberi dirinya
+-- sendiri keanggotaan baru dengan SET TRUE lalu SET ROLE ke pemilik skema; ia setara kuatnya dengan
+-- pemilik skema (§3.4). SET FALSE di sini hanya keadaan awal, bukan batas keamanan. Kontrol:
+-- password hanya di OpenBao, pg_hba hanya dari host OpenBao (§3.4), log audit OpenBao (detektif),
+-- dan test katalog T-05 (keanggotaan persis) yang dijalankan berkala ke staging/production (§3.5).
+-- createrole_self_grant dikosongkan supaya role yang dibuatnya tidak otomatis mewariskan hak.
 GRANT rme_migration, rme_key_rotation, rme_ops_monitor TO openbao_rme_admin
   WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
 
 ALTER ROLE openbao_rme_admin SET log_min_error_statement = 'panic';
 ALTER ROLE openbao_rme_admin SET log_statement = 'none';
+ALTER ROLE openbao_rme_admin SET log_min_duration_statement = -1;
+ALTER ROLE openbao_rme_admin SET log_min_duration_sample = -1;
+ALTER ROLE openbao_rme_admin SET createrole_self_grant = '';
 
 -- 2. Database (§2.1, §3.5 butir 2), dimiliki superuser bootstrap.
 SELECT 'CREATE DATABASE rme'
@@ -88,6 +99,22 @@ SELECT 'CREATE DATABASE rme'
 
 REVOKE CONNECT, TEMPORARY ON DATABASE rme FROM PUBLIC;
 REVOKE CONNECT ON DATABASE postgres FROM PUBLIC;
+-- template1 juga tertutup bagi PUBLIC (review DBA F1-T13); template0 tidak menerima koneksi.
+REVOKE CONNECT, TEMPORARY ON DATABASE template1 FROM PUBLIC;
+
+-- Penjaga encoding: database proyek wajib UTF8 (review DBA F1-T13).
+DO $$
+DECLARE
+  bad text;
+BEGIN
+  SELECT pg_catalog.string_agg(datname || '=' || pg_catalog.pg_encoding_to_char(encoding), ', ') INTO bad
+    FROM pg_catalog.pg_database
+   WHERE datname IN ('rme')
+     AND pg_catalog.pg_encoding_to_char(encoding) <> 'UTF8';
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'encoding database bukan UTF8: %', bad;
+  END IF;
+END $$;
 
 GRANT CONNECT ON DATABASE rme
   TO rme_app, rme_auth, rme_worker, rme_operator, rme_audit_relay, rme_privacy_worker,
@@ -96,6 +123,7 @@ GRANT CONNECT ON DATABASE rme
 -- 3. Skema dan ekstensi (§2.1, §2.2, §3.5 butir 3).
 \connect rme
 SET client_min_messages = warning;
+SET search_path = pg_catalog, pg_temp;
 DROP SCHEMA IF EXISTS public;
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION rme_migration;
 ALTER SCHEMA app OWNER TO rme_migration;
@@ -133,13 +161,13 @@ BEGIN
       ('rme_metrics',              NULL,   NULL, NULL)
     ) AS t(rolname, stmt_timeout, lck_timeout, idle_timeout)
   LOOP
-    EXECUTE format('ALTER ROLE %I IN DATABASE rme SET search_path = app, ext', r.rolname);
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE rme SET search_path = app, ext', r.rolname);
     IF r.stmt_timeout IS NOT NULL THEN
-      EXECUTE format('ALTER ROLE %I IN DATABASE rme SET statement_timeout = %L',
+      EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE rme SET statement_timeout = %L',
                      r.rolname, r.stmt_timeout);
-      EXECUTE format('ALTER ROLE %I IN DATABASE rme SET lock_timeout = %L',
+      EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE rme SET lock_timeout = %L',
                      r.rolname, r.lck_timeout);
-      EXECUTE format('ALTER ROLE %I IN DATABASE rme SET idle_in_transaction_session_timeout = %L',
+      EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE rme SET idle_in_transaction_session_timeout = %L',
                      r.rolname, r.idle_timeout);
     END IF;
   END LOOP;

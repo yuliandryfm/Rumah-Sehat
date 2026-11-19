@@ -14,6 +14,7 @@
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;
+SET search_path = pg_catalog, pg_temp;   -- cegah pembajakan search_path (CVE-2018-1058), review keamanan F1-T13
 
 -- 0. Penjaga: hanya superuser, hanya PostgreSQL 18.
 DO $$
@@ -21,8 +22,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = current_user AND rolsuper) THEN
     RAISE EXCEPTION 'db/roles/audit.sql harus dijalankan superuser bootstrap, bukan %', current_user;
   END IF;
-  IF current_setting('server_version_num')::int < 180000 THEN
-    RAISE EXCEPTION 'db/roles/audit.sql menargetkan PostgreSQL 18, server %', current_setting('server_version');
+  IF pg_catalog.current_setting('server_version_num')::int < 180000 THEN
+    RAISE EXCEPTION 'db/roles/audit.sql menargetkan PostgreSQL 18, server %', pg_catalog.current_setting('server_version');
   END IF;
 END $$;
 
@@ -57,9 +58,9 @@ BEGIN
     ) AS t(rolname, can_login, conn_limit, can_createrole)
   LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = r.rolname) THEN
-      EXECUTE format('CREATE ROLE %I', r.rolname);
+      EXECUTE pg_catalog.format('CREATE ROLE %I', r.rolname);
     END IF;
-    EXECUTE format(
+    EXECUTE pg_catalog.format(
       'ALTER ROLE %I WITH NOSUPERUSER NOCREATEDB %s NOREPLICATION NOBYPASSRLS INHERIT %s CONNECTION LIMIT %s',
       r.rolname,
       CASE WHEN r.can_createrole THEN 'CREATEROLE' ELSE 'NOCREATEROLE' END,
@@ -75,13 +76,25 @@ GRANT rme_audit_writer         TO rme_audit_writer_login        WITH INHERIT TRU
 GRANT rme_audit_verifier       TO rme_audit_verifier_login      WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 GRANT rme_audit_tenant_reader  TO rme_audit_tenant_reader_login WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 -- Satu koneksi OpenBao per database audit (§3.4): ADMIN hanya atas pemilik skema database itu.
+-- RISIKO RESIDU (review keamanan F1-T13): karena memegang ADMIN, role ini dapat memberi dirinya
+-- sendiri keanggotaan baru dengan SET TRUE lalu SET ROLE ke pemilik skema; ia setara kuatnya dengan
+-- pemilik skema (§3.4). SET FALSE di sini hanya keadaan awal, bukan batas keamanan. Kontrol:
+-- password hanya di OpenBao, pg_hba hanya dari host OpenBao (§3.4), log audit OpenBao (detektif),
+-- dan test katalog T-05 (keanggotaan persis) yang dijalankan berkala ke staging/production (§3.5).
+-- createrole_self_grant dikosongkan supaya role yang dibuatnya tidak otomatis mewariskan hak.
 GRANT rs_audit_migration  TO openbao_rs_audit_admin  WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
 GRANT rme_audit_migration TO openbao_rme_audit_admin WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
 
 ALTER ROLE openbao_rs_audit_admin  SET log_min_error_statement = 'panic';
 ALTER ROLE openbao_rs_audit_admin  SET log_statement = 'none';
+ALTER ROLE openbao_rs_audit_admin  SET log_min_duration_statement = -1;
+ALTER ROLE openbao_rs_audit_admin  SET log_min_duration_sample = -1;
+ALTER ROLE openbao_rs_audit_admin  SET createrole_self_grant = '';
 ALTER ROLE openbao_rme_audit_admin SET log_min_error_statement = 'panic';
 ALTER ROLE openbao_rme_audit_admin SET log_statement = 'none';
+ALTER ROLE openbao_rme_audit_admin SET log_min_duration_statement = -1;
+ALTER ROLE openbao_rme_audit_admin SET log_min_duration_sample = -1;
+ALTER ROLE openbao_rme_audit_admin SET createrole_self_grant = '';
 
 -- 2. Database (§2.1, §3.5 butir 2), dimiliki superuser bootstrap.
 SELECT 'CREATE DATABASE ruang_sehat_audit'
@@ -92,6 +105,22 @@ SELECT 'CREATE DATABASE rme_audit'
 REVOKE CONNECT, TEMPORARY ON DATABASE ruang_sehat_audit FROM PUBLIC;
 REVOKE CONNECT, TEMPORARY ON DATABASE rme_audit FROM PUBLIC;
 REVOKE CONNECT ON DATABASE postgres FROM PUBLIC;
+-- template1 juga tertutup bagi PUBLIC (review DBA F1-T13); template0 tidak menerima koneksi.
+REVOKE CONNECT, TEMPORARY ON DATABASE template1 FROM PUBLIC;
+
+-- Penjaga encoding: database proyek wajib UTF8 (review DBA F1-T13).
+DO $$
+DECLARE
+  bad text;
+BEGIN
+  SELECT pg_catalog.string_agg(datname || '=' || pg_catalog.pg_encoding_to_char(encoding), ', ') INTO bad
+    FROM pg_catalog.pg_database
+   WHERE datname IN ('ruang_sehat_audit', 'rme_audit')
+     AND pg_catalog.pg_encoding_to_char(encoding) <> 'UTF8';
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'encoding database bukan UTF8: %', bad;
+  END IF;
+END $$;
 
 -- Role rs_audit_* tidak dapat memasuki rme_audit dan sebaliknya (T-21).
 GRANT CONNECT ON DATABASE ruang_sehat_audit
@@ -104,6 +133,7 @@ GRANT CONNECT ON DATABASE rme_audit
 --    audit_detached tanpa hak untuk role mana pun selain pemilik (§6.5 butir 5).
 \connect ruang_sehat_audit
 SET client_min_messages = warning;
+SET search_path = pg_catalog, pg_temp;
 DROP SCHEMA IF EXISTS public;
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION rs_audit_migration;
 ALTER SCHEMA audit OWNER TO rs_audit_migration;
@@ -117,6 +147,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE rs_audit_migration REVOKE EXECUTE ON FUNCTIONS
 
 \connect rme_audit
 SET client_min_messages = warning;
+SET search_path = pg_catalog, pg_temp;
 DROP SCHEMA IF EXISTS public;
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION rme_audit_migration;
 ALTER SCHEMA audit OWNER TO rme_audit_migration;
@@ -152,12 +183,12 @@ BEGIN
       ('rme_audit_verifier_login',      'rme_audit',         '0',   '5s', '60s')
     ) AS t(rolname, dbname, stmt_timeout, lck_timeout, idle_timeout)
   LOOP
-    EXECUTE format('ALTER ROLE %I IN DATABASE %I SET search_path = audit', r.rolname, r.dbname);
-    EXECUTE format('ALTER ROLE %I IN DATABASE %I SET statement_timeout = %L',
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I SET search_path = audit', r.rolname, r.dbname);
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I SET statement_timeout = %L',
                    r.rolname, r.dbname, r.stmt_timeout);
-    EXECUTE format('ALTER ROLE %I IN DATABASE %I SET lock_timeout = %L',
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I SET lock_timeout = %L',
                    r.rolname, r.dbname, r.lck_timeout);
-    EXECUTE format('ALTER ROLE %I IN DATABASE %I SET idle_in_transaction_session_timeout = %L',
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I SET idle_in_transaction_session_timeout = %L',
                    r.rolname, r.dbname, r.idle_timeout);
   END LOOP;
 END $$;

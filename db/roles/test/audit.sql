@@ -6,6 +6,7 @@
 -- Setiap pemeriksaan yang lulus mencetak "LULUS <label>"; yang gagal menghentikan skrip.
 
 \set ON_ERROR_STOP on
+SET search_path = pg_catalog, pg_temp;
 SELECT current_user AS su \gset
 
 -- ---------------------------------------------------------------------------------------------
@@ -156,7 +157,8 @@ BEGIN
       ) v(d, r, cs), unnest(cs) c
     UNION ALL
     SELECT '-', r, c FROM unnest(ARRAY['openbao_rs_audit_admin', 'openbao_rme_audit_admin']) r,
-                          unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none']) c
+                          unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none', 'log_min_duration_statement=-1',
+                         'log_min_duration_sample=-1', 'createrole_self_grant=']) c
   ), actual AS (
     SELECT coalesce(d.datname::text, '-'), coalesce(r.rolname::text, '-'), c
       FROM pg_catalog.pg_db_role_setting s
@@ -181,6 +183,7 @@ END $$;
 -- B. Katalog per database audit (sebagai superuser)
 -- ---------------------------------------------------------------------------------------------
 \connect ruang_sehat_audit :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 DECLARE
   diff text;
@@ -220,6 +223,7 @@ BEGIN
 END $$;
 
 \connect rme_audit :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 DECLARE
   diff text;
@@ -273,7 +277,7 @@ BEGIN
   FOR c IN SELECT * FROM (VALUES
       ('NEG openbao_rs_audit_admin tidak dapat membuat anggota rme_audit_migration (lintas sistem)', 'CREATE ROLE uji_neg_a IN ROLE rme_audit_migration', '42501'),
       ('NEG openbao_rs_audit_admin tidak dapat membuat anggota rs_audit_writer', 'CREATE ROLE uji_neg_b IN ROLE rs_audit_writer', '42501'),
-      ('NEG openbao_rs_audit_admin tidak dapat SET ROLE ke rs_audit_migration', 'SET ROLE rs_audit_migration', '42501'),
+      ('NEG openbao_rs_audit_admin tanpa self-grant tidak dapat SET ROLE ke rs_audit_migration (keadaan awal SET FALSE)', 'SET ROLE rs_audit_migration', '42501'),
       ('NEG openbao_rs_audit_admin tidak mewarisi hak pemilik: CREATE TABLE audit ditolak', 'CREATE TABLE audit.uji_neg (x int)', '42501')
     ) AS t(label, stmt, expected)
   LOOP
@@ -468,6 +472,7 @@ DO $$ BEGIN
 END $$;
 
 \connect postgres :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname ~ '^v-uji-') THEN

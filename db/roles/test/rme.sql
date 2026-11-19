@@ -7,6 +7,7 @@
 -- Setiap pemeriksaan yang lulus mencetak "LULUS <label>"; yang gagal menghentikan skrip.
 
 \set ON_ERROR_STOP on
+SET search_path = pg_catalog, pg_temp;
 SELECT current_user AS su \gset
 
 -- ---------------------------------------------------------------------------------------------
@@ -135,7 +136,8 @@ BEGIN
         ('rme_metrics', ARRAY['search_path=app, ext'])
       ) v(r, cs), unnest(cs) c
     UNION ALL
-    SELECT '-', 'openbao_rme_admin', c FROM unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none']) c
+    SELECT '-', 'openbao_rme_admin', c FROM unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none', 'log_min_duration_statement=-1',
+                         'log_min_duration_sample=-1', 'createrole_self_grant=']) c
   ), actual AS (
     SELECT coalesce(d.datname::text, '-'), coalesce(r.rolname::text, '-'), c
       FROM pg_catalog.pg_db_role_setting s
@@ -161,6 +163,7 @@ END $$;
 -- B. Katalog database rme (sebagai superuser)
 -- ---------------------------------------------------------------------------------------------
 \connect rme :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 DECLARE
   diff text;
@@ -218,7 +221,7 @@ BEGIN
       ('NEG openbao_rme_admin tidak dapat membuat anggota rme_app (tanpa ADMIN)', 'CREATE ROLE uji_neg_a IN ROLE rme_app', '42501'),
       ('NEG openbao_rme_admin tidak dapat membuat anggota rme_operator', 'CREATE ROLE uji_neg_b IN ROLE rme_operator', '42501'),
       ('NEG openbao_rme_admin tidak dapat membuat role BYPASSRLS', 'CREATE ROLE uji_neg_c BYPASSRLS', '42501'),
-      ('NEG openbao_rme_admin tidak dapat SET ROLE ke rme_migration', 'SET ROLE rme_migration', '42501'),
+      ('NEG openbao_rme_admin tanpa self-grant tidak dapat SET ROLE ke rme_migration (keadaan awal SET FALSE)', 'SET ROLE rme_migration', '42501'),
       ('NEG openbao_rme_admin tidak mewarisi hak pemilik: CREATE TABLE app ditolak', 'CREATE TABLE app.uji_neg (x int)', '42501')
     ) AS t(label, stmt, expected)
   LOOP
@@ -258,6 +261,7 @@ BEGIN
 END $$;
 
 \connect rme :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -384,6 +388,7 @@ DO $$ BEGIN
   RAISE NOTICE 'LULUS §3.4 revocation_statements rme-migration: DROP ROLE berhasil (tidak memiliki objek)';
 END $$;
 \connect postgres :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname ~ '^v-uji-') THEN

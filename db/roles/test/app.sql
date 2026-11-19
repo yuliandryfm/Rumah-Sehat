@@ -6,6 +6,7 @@
 -- Setiap pemeriksaan yang lulus mencetak "LULUS <label>"; yang gagal menghentikan skrip.
 
 \set ON_ERROR_STOP on
+SET search_path = pg_catalog, pg_temp;
 SELECT current_user AS su \gset
 
 -- ---------------------------------------------------------------------------------------------
@@ -162,7 +163,8 @@ BEGIN
     UNION ALL
     SELECT 'keycloak', 'keycloak', 'idle_in_transaction_session_timeout=60s'
     UNION ALL
-    SELECT '-', 'openbao_rs_admin', c FROM unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none']) c
+    SELECT '-', 'openbao_rs_admin', c FROM unnest(ARRAY['log_min_error_statement=panic', 'log_statement=none', 'log_min_duration_statement=-1',
+                         'log_min_duration_sample=-1', 'createrole_self_grant=']) c
   ), actual AS (
     SELECT coalesce(d.datname::text, '-'), coalesce(r.rolname::text, '-'), c
       FROM pg_catalog.pg_db_role_setting s
@@ -188,6 +190,7 @@ END $$;
 -- B. Katalog database ruang_sehat (sebagai superuser)
 -- ---------------------------------------------------------------------------------------------
 \connect ruang_sehat :su
+SET search_path = pg_catalog, pg_temp;
 
 -- T-02: skema persis app, util, ext; public tidak ada; pemilik sesuai §2.1.
 DO $$
@@ -290,7 +293,7 @@ BEGIN
       ('NEG openbao_rs_admin tidak dapat membuat role REPLICATION', 'CREATE ROLE uji_neg_d REPLICATION', '42501'),
       ('NEG openbao_rs_admin tidak dapat mengubah role login aplikasi', 'ALTER ROLE rs_api CONNECTION LIMIT 1', '42501'),
       ('NEG openbao_rs_admin tidak dapat memberi keanggotaan rs_app', 'GRANT rs_app TO openbao_rs_admin', '42501'),
-      ('NEG openbao_rs_admin tidak dapat SET ROLE ke rs_migration (SET FALSE)', 'SET ROLE rs_migration', '42501'),
+      ('NEG openbao_rs_admin tanpa self-grant tidak dapat SET ROLE ke rs_migration (keadaan awal SET FALSE)', 'SET ROLE rs_migration', '42501'),
       ('NEG openbao_rs_admin tidak mewarisi hak pemilik: CREATE TABLE app ditolak', 'CREATE TABLE app.uji_neg (x int)', '42501'),
       ('NEG openbao_rs_admin tidak dapat CREATE SCHEMA', 'CREATE SCHEMA uji_neg', '42501')
     ) AS t(label, stmt, expected)
@@ -306,6 +309,31 @@ BEGIN
     END IF;
     RAISE NOTICE 'LULUS %', c.label;
   END LOOP;
+END $$;
+
+-- RISIKO RESIDU terdokumentasi (review keamanan F1-T13): dengan ADMIN, openbao_rs_admin dapat memberi
+-- dirinya SET atas rs_migration lalu SET ROLE (setara pemilik skema, §3.4). Test ini memastikan
+-- perilaku itu sesuai yang didokumentasikan (dibatalkan dalam sub-transaksi, tidak meninggalkan jejak).
+-- Kontrol detektif: test katalog T-05 "keanggotaan persis" menangkap self-grant yang tertinggal.
+DO $$
+DECLARE
+  bisa boolean := false;
+BEGIN
+  BEGIN
+    GRANT rs_migration TO openbao_rs_admin WITH SET TRUE, INHERIT FALSE;
+    SET ROLE rs_migration;
+    bisa := (current_user = 'rs_migration');
+    RAISE EXCEPTION USING ERRCODE = 'P0099', MESSAGE = 'batalkan self-grant uji';
+  EXCEPTION WHEN SQLSTATE 'P0099' THEN
+    NULL;
+  END;
+  IF NOT bisa THEN
+    RAISE EXCEPTION 'GAGAL RISIKO-RESIDU: self-grant openbao_rs_admin ternyata ditolak; perbarui komentar db/roles/app.sql dan laporan';
+  END IF;
+  IF pg_catalog.pg_has_role('rs_migration', 'SET') THEN
+    RAISE EXCEPTION 'GAGAL RISIKO-RESIDU: self-grant uji tidak terbatalkan';
+  END IF;
+  RAISE NOTICE 'LULUS RISIKO-RESIDU terdokumentasi: openbao_rs_admin dapat self-grant SET atas rs_migration (setara pemilik skema, §3.4); uji dibatalkan, kontrol detektif T-05';
 END $$;
 
 -- creation_statements OpenBao "rs-migration" (§3.4) dengan password acak sekali pakai.
@@ -367,6 +395,7 @@ BEGIN
 END $$;
 
 \connect ruang_sehat :su
+SET search_path = pg_catalog, pg_temp;
 -- T-04 (pratinjau): objek buatan role dinamis dimiliki rs_migration; T-03: tanpa EXECUTE PUBLIC.
 DO $$
 DECLARE
@@ -525,6 +554,7 @@ BEGIN
 END $$;
 
 \connect ruang_sehat :su
+SET search_path = pg_catalog, pg_temp;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace

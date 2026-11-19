@@ -4,6 +4,7 @@
 -- Setiap pemeriksaan yang lulus mencetak "LULUS <label>"; yang gagal menghentikan skrip.
 
 \set ON_ERROR_STOP on
+SET search_path = pg_catalog, pg_temp;
 
 -- T-05: tidak ada role non-superuser dengan BYPASSRLS, REPLICATION, atau CREATEDB.
 DO $$
@@ -110,4 +111,29 @@ BEGIN
     RAISE EXCEPTION 'GAGAL T-03 PUBLIC masih punya CONNECT ke database postgres';
   END IF;
   RAISE NOTICE 'LULUS T-03 CONNECT database postgres dicabut dari PUBLIC';
+END $$;
+
+-- Review DBA F1-T13: PUBLIC tidak punya CONNECT/TEMP ke template1.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_database d, pg_catalog.aclexplode(d.datacl) a
+              WHERE d.datname = 'template1' AND a.grantee = 0 AND a.privilege_type IN ('CONNECT', 'TEMPORARY'))
+     OR (SELECT datacl IS NULL FROM pg_catalog.pg_database WHERE datname = 'template1') THEN
+    RAISE EXCEPTION 'GAGAL PUBLIC masih punya CONNECT/TEMP ke template1';
+  END IF;
+  RAISE NOTICE 'LULUS CONNECT/TEMP database template1 dicabut dari PUBLIC';
+END $$;
+
+-- Review DBA F1-T13: database proyek ber-encoding UTF8.
+DO $$
+DECLARE
+  bad text;
+BEGIN
+  SELECT pg_catalog.string_agg(datname::text, ', ') INTO bad FROM pg_catalog.pg_database
+   WHERE datname IN ('ruang_sehat', 'keycloak', 'ruang_sehat_audit', 'rme_audit', 'rme')
+     AND pg_catalog.pg_encoding_to_char(encoding) <> 'UTF8';
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'GAGAL encoding bukan UTF8: %', bad;
+  END IF;
+  RAISE NOTICE 'LULUS database proyek ber-encoding UTF8';
 END $$;

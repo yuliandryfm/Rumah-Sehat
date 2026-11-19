@@ -44,6 +44,16 @@ cd "$ROOT"
 LULUS=0
 GAGAL=0
 CONTAINER=""
+# Semua berkas sementara di satu direktori kerja yang selalu dihapus saat keluar (review F1-T13).
+KERJA="$(mktemp -d)"
+
+bersihkan() {
+  if [ -n "$CONTAINER" ]; then
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$KERJA"
+}
+trap bersihkan EXIT
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker tidak ditemukan di PATH (dibutuhkan untuk PostgreSQL uji)" >&2
@@ -51,7 +61,8 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 for f in db/roles/app.sql db/roles/audit.sql db/roles/rme.sql \
-  db/roles/test/cluster.sql db/roles/test/app.sql db/roles/test/audit.sql db/roles/test/rme.sql; do
+  db/roles/test/cluster.sql db/roles/test/app.sql db/roles/test/audit.sql db/roles/test/rme.sql \
+  db/roles/test/umpan-tanam.sql db/roles/test/umpan-periksa.sql; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -69,9 +80,11 @@ tandai() { # tandai <lulus|gagal> <pesan>
   return 0
 }
 
-# psql superuser di dalam kontainer: psql_su <kontainer> <database> (SQL dari stdin)
+# psql superuser di dalam kontainer: psql_su <kontainer> <database> [opsi psql...] (SQL dari stdin)
 psql_su() {
-  docker exec -i -u postgres "$1" psql -X -q -v ON_ERROR_STOP=1 -U postgres -d "$2"
+  local ctr="$1" db="$2"
+  shift 2
+  docker exec -i -u postgres "$ctr" psql -X -q -v ON_ERROR_STOP=1 -U postgres -d "$db" "$@"
 }
 
 # --- Pemeriksaan statis: bootstrap tanpa password (§3.5, coding-standards §5.3) ---
@@ -89,6 +102,7 @@ statis() {
 potret() { # potret <kontainer>
   local ctr="$1" dbs db
   psql_su "$ctr" postgres -At <<'SQL'
+SET search_path = pg_catalog, pg_temp;
 SELECT 'role', rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication,
        rolbypassrls, rolconnlimit
   FROM pg_catalog.pg_roles WHERE rolname !~ '^pg_' ORDER BY rolname;
@@ -106,6 +120,7 @@ SQL
   dbs="$(psql_su "$ctr" postgres -At -c "SELECT datname FROM pg_catalog.pg_database WHERE datname IN ('ruang_sehat','ruang_sehat_audit','rme_audit','rme') ORDER BY datname")"
   for db in $dbs; do
     psql_su "$ctr" "$db" -At <<SQL
+SET search_path = pg_catalog, pg_temp;
 SELECT '$db', 'schema', nspname, pg_catalog.pg_get_userbyid(nspowner), nspacl FROM pg_catalog.pg_namespace ORDER BY nspname;
 SELECT '$db', 'extension', extname, extnamespace::regnamespace, extversion FROM pg_catalog.pg_extension ORDER BY extname;
 SELECT '$db', 'default_acl', defaclrole::regrole, defaclnamespace, defaclobjtype, defaclacl
@@ -116,10 +131,10 @@ SQL
 
 # bootstrap_dua_kali <label> <pasangan "kontainer:berkas" ...>
 bootstrap_dua_kali() {
-  local label="$1" p ctr file putaran out tmp1 tmp2 tujuan
+  local label="$1" p ctr file putaran out tmp1="$KERJA/potret-1" tmp2="$KERJA/potret-2" tujuan
   shift
-  tmp1="$(mktemp)"
-  tmp2="$(mktemp)"
+  : >"$tmp1"
+  : >"$tmp2"
   for putaran in 1 2; do
     for p in "$@"; do
       ctr="${p%%:*}"
@@ -128,7 +143,6 @@ bootstrap_dua_kali() {
         tandai lulus "bootstrap putaran $putaran: $file ($label)"
       else
         tandai gagal "bootstrap putaran $putaran: $file ($label): $out"
-        rm -f "$tmp1" "$tmp2"
         return 0
       fi
     done
@@ -142,7 +156,61 @@ bootstrap_dua_kali() {
   else
     tandai gagal "idempoten: katalog berubah pada putaran 2 ($label): $(diff -u "$tmp1" "$tmp2" || true)"
   fi
-  rm -f "$tmp1" "$tmp2"
+}
+
+# uji_umpan <label> <"kontainer:database:skema:pemilik:sasaran" ...> -- <"kontainer:berkas" ...>
+# Test negatif pembajakan search_path (pola CVE-2018-1058; review keamanan F1-T13): fungsi umpan
+# ditanam pemilik skema, bootstrap dijalankan ulang, lalu dipastikan tidak ada umpan terpanggil,
+# role sasaran tetap bukan superuser, dan potret katalog sama dengan sebelum umpan ditanam.
+uji_umpan() {
+  local label="$1" t p ctr db sk pm ss out n umpan="" boot="" sebelum="$KERJA/umpan-1" sesudah="$KERJA/umpan-2"
+  shift
+  while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do
+    umpan="$umpan $1"
+    shift
+  done
+  shift
+  boot="$*"
+  : >"$sebelum"
+  : >"$sesudah"
+  for p in $boot; do potret "${p%%:*}" >>"$sebelum"; done
+  for t in $umpan; do
+    IFS=: read -r ctr db sk pm ss <<UMPAN
+$t
+UMPAN
+    if ! out="$(psql_su "$ctr" "$db" -v skema="$sk" -v pemilik="$pm" -v sasaran="$ss" <db/roles/test/umpan-tanam.sql 2>&1)"; then
+      tandai gagal "NEG pembajakan search_path: gagal menanam umpan di $db.$sk: $out"
+    fi
+  done
+  for p in $boot; do
+    if out="$(psql_su "${p%%:*}" postgres <"${p#*:}" 2>&1)"; then
+      tandai lulus "bootstrap ulang di atas umpan: ${p#*:} ($label)"
+    else
+      tandai gagal "bootstrap ulang di atas umpan: ${p#*:} ($label): $out"
+    fi
+  done
+  for p in $boot; do potret "${p%%:*}" >>"$sesudah"; done
+  # Pemeriksaan sekaligus pembersihan umpan; selalu dijalankan untuk setiap lokasi.
+  for t in $umpan; do
+    IFS=: read -r ctr db sk pm ss <<UMPAN
+$t
+UMPAN
+    if out="$(psql_su "$ctr" "$db" -v skema="$sk" -v sasaran="$ss" <db/roles/test/umpan-periksa.sql 2>&1)"; then
+      n="$(printf '%s\n' "$out" | grep -c 'NOTICE:  LULUS ' || true)"
+      if [ "$n" -eq 1 ]; then
+        tandai lulus "${out##*NOTICE:  LULUS }"
+      else
+        tandai gagal "NEG pembajakan search_path $db.$sk: keluaran tak terduga: $out"
+      fi
+    else
+      tandai gagal "$(printf '%s\n' "$out" | grep -E 'ERROR|GAGAL' || printf '%s' "$out")"
+    fi
+  done
+  if diff -u "$sebelum" "$sesudah" >/dev/null; then
+    tandai lulus "NEG pembajakan search_path: potret katalog (role, keanggotaan, ACL, pengaturan) tidak berubah ($label)"
+  else
+    tandai gagal "NEG pembajakan search_path: katalog berubah ($label): $(diff -u "$sebelum" "$sesudah" || true)"
+  fi
 }
 
 # jalankan_test <kontainer> <berkas test>: setiap "LULUS ..." dihitung; galat menghentikan berkas.
@@ -242,12 +310,6 @@ tunggu_siap() { # tunggu_siap <kontainer>: TCP lokal hanya hidup setelah inisial
   return 1
 }
 
-bersihkan() {
-  if [ -n "$CONTAINER" ]; then
-    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  fi
-}
-
 echo "db-roles-check: mode $MODE"
 statis
 
@@ -258,7 +320,6 @@ if [ "$MODE" = "ephemeral" ]; then
     exit 1
   fi
   CONTAINER="rs-db-roles-check-$$-$RANDOM"
-  trap bersihkan EXIT
   # Password superuser acak sekali pakai hanya karena image mewajibkannya; tidak dipakai (soket trust).
   docker run -d --rm --network none --name "$CONTAINER" \
     -e POSTGRES_PASSWORD="sekali-pakai-$RANDOM$RANDOM$RANDOM" "$IMAGE" >/dev/null
@@ -275,6 +336,16 @@ if [ "$MODE" = "ephemeral" ]; then
     koneksi_klaster_b "$CONTAINER"
     koneksi_klaster_c "$CONTAINER"
     koneksi_lintas_sistem "$CONTAINER"
+    uji_umpan "satu klaster" \
+      "$CONTAINER:ruang_sehat:app:rs_migration:rs_api" \
+      "$CONTAINER:ruang_sehat:util:rs_migration:rs_worker" \
+      "$CONTAINER:ruang_sehat_audit:audit:rs_audit_migration:rs_audit_reader_login" \
+      "$CONTAINER:ruang_sehat_audit:util:rs_audit_migration:rs_audit_writer_login" \
+      "$CONTAINER:rme_audit:audit:rme_audit_migration:rme_audit_tenant_reader_login" \
+      "$CONTAINER:rme_audit:util:rme_audit_migration:rme_audit_writer_login" \
+      "$CONTAINER:rme:app:rme_migration:rme_api" \
+      "$CONTAINER:rme:util:rme_migration:rme_worker_login" \
+      -- "$CONTAINER:db/roles/app.sql" "$CONTAINER:db/roles/audit.sql" "$CONTAINER:db/roles/rme.sql"
   fi
 else
   COMPOSE="docker compose -f infra/local/compose.yaml"
@@ -300,6 +371,16 @@ else
     koneksi_klaster_a "$C_APP"
     koneksi_klaster_b "$C_AUDIT"
     koneksi_klaster_c "$C_RME"
+    uji_umpan "tiga klaster compose" \
+      "$C_APP:ruang_sehat:app:rs_migration:rs_api" \
+      "$C_APP:ruang_sehat:util:rs_migration:rs_worker" \
+      "$C_AUDIT:ruang_sehat_audit:audit:rs_audit_migration:rs_audit_reader_login" \
+      "$C_AUDIT:ruang_sehat_audit:util:rs_audit_migration:rs_audit_writer_login" \
+      "$C_AUDIT:rme_audit:audit:rme_audit_migration:rme_audit_tenant_reader_login" \
+      "$C_AUDIT:rme_audit:util:rme_audit_migration:rme_audit_writer_login" \
+      "$C_RME:rme:app:rme_migration:rme_api" \
+      "$C_RME:rme:util:rme_migration:rme_worker_login" \
+      -- "$C_APP:db/roles/app.sql" "$C_AUDIT:db/roles/audit.sql" "$C_RME:db/roles/rme.sql"
   fi
 fi
 
