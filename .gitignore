@@ -1,3 +1,29 @@
 .DS_Store
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Rust (Cargo.lock di-commit: anti-halu §5)
+/target/
+
+# Rahasia lokal: hanya .env.example yang di-commit (KEPUTUSAN-88, coding-standards §6)
+.env
+.env.*
+!.env.example
+
+# Node.js / Next.js (lockfile pnpm di-commit)
+node_modules/
+.next/
+
+# Dart / Flutter (pubspec.lock di-commit)
+.dart_tool/
+
+# Kunci dan berkas penandatanganan (review keamanan F1-T05; gitleaks F1-T06 tetap penjaga utama)
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+key.properties
+local.properties
+# Keluaran build Flutter
+mobile/**/build/

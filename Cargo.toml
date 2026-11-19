@@ -1,0 +1,6 @@
+# Workspace Cargo tunggal untuk backend Ruang Sehat, RME minimalis, dan pustaka bersama
+# (KEPUTUSAN-74, KEPUTUSAN-89; struktur di docs/coding-standards.md §1.1).
+# Anggota memakai glob supaya setiap crate baru di apps/ atau crates/ otomatis dikompilasi dan dites (review keamanan F1-T05, non-blokir 1).
+[workspace]
+resolver = "3"
+members = ["apps/*", "crates/*"]

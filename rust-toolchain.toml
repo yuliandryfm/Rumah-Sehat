@@ -1,0 +1,6 @@
+# Toolchain Rust dipin untuk seluruh workspace (KEPUTUSAN-74, SRC-161).
+# Upgrade dievaluasi tiap rilis stabil, tidak otomatis (docs/05-stack.md §1.1).
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
