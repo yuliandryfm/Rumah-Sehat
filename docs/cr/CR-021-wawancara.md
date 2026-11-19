@@ -26,3 +26,12 @@ Sumber semua jawaban: `[USER]` lewat Telegram, 2026-11-19. Konteks: `docs/backlo
 | P2-2 | Alur pemesanan | **K**: HR memilih paket dari katalog harga tetap, lalu langsung memesan (bukan alur penawaran) |
 | P2-3 | Data dan akun peserta | **U**: HR unggah daftar peserta (Excel/CSV: nama, email/HP, tanggal lahir; NIK hanya bila wajib untuk layanan); peserta menerima undangan email dan memakai akun pasien Ruang Sehat yang sama |
 | P2-4 | Siapa melihat hasil MCU/lab | **PK**: hasil lengkap hanya untuk peserta; HR melihat rekap kehadiran, dan ringkasan (mis. fit/unfit) hanya bila peserta memberi persetujuan. Tafsiran penyusun (dikonfirmasi di rekap): tanpa persetujuan peserta, HR hanya melihat rekap kehadiran |
+
+## Putaran 3
+
+| Q | Pertanyaan | Jawaban |
+| --- | --- | --- |
+| P3-1 | Penetapan harga katalog korporat | **M**: harga dari rekanan (integrasi/portal rekanan) + markup Ruang Sehat, mengikuti aturan markup ADR-015 |
+| P3-2 | Lokasi pelaksanaan | **OK**: on-site di kantor perusahaan atau di klinik/lab rekanan, dipilih per pesanan |
+| P3-3 | Syarat invoice bawaan | **D**: invoice terbit saat pesanan dikonfirmasi, jatuh tempo 14 hari, layanan dijadwalkan setelah lunas |
+| P3-4 | Pengelola konten company profile | **C**: admin Ruang Sehat lewat CMS (US-1101) |
