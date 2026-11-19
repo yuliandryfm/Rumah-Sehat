@@ -89,6 +89,8 @@ const SENSITIVE_TOKENS: &[&str] = &[
     "anamnesis",
     "clinical",
     "prescription",
+    "ihs",
+    "pass",
 ];
 
 /// Pasangan token yang bersama-sama sensitif: (salah satu dari kiri) dan (salah satu dari kanan).
@@ -99,7 +101,22 @@ const TOKEN_PAIRS: &[(&[&str], &[&str])] = &[
         ],
         &["number", "no", "num", "nomor", "last4", "holder"],
     ),
-    (&["api", "private", "signing", "access"], &["key"]),
+    (
+        &[
+            "api",
+            "private",
+            "signing",
+            "access",
+            "encryption",
+            "hmac",
+            "master",
+            "webhook",
+            "secret",
+        ],
+        &["key"],
+    ),
+    (&["va"], &["number", "no", "nomor", "num"]),
+    (&["virtual"], &["account"]),
     (&["auth"], &["code"]),
     (&["medical", "rekam"], &["record", "medis"]),
     (&["ibu"], &["kandung"]),
@@ -184,22 +201,28 @@ const SUBSTRING_KEYS: &[&str] = &[
 ];
 
 fn key_tokens(key: &str) -> Vec<String> {
+    let chars: Vec<char> = key.chars().collect();
     let mut tokens = Vec::new();
     let mut cur = String::new();
-    let mut prev_lower = false;
-    for c in key.chars() {
+    for (j, &c) in chars.iter().enumerate() {
         if !c.is_ascii_alphanumeric() {
             if !cur.is_empty() {
                 tokens.push(std::mem::take(&mut cur));
             }
-            prev_lower = false;
             continue;
         }
-        if c.is_ascii_uppercase() && prev_lower && !cur.is_empty() {
+        let prev = if j == 0 { None } else { chars.get(j - 1) };
+        let next = chars.get(j + 1);
+        // Batas camelCase: `userPin` (kecil lalu besar) dan akronim `OTPCode` (besar-besar-kecil).
+        let boundary = c.is_ascii_uppercase()
+            && !cur.is_empty()
+            && (prev.is_some_and(|p| p.is_ascii_lowercase())
+                || (prev.is_some_and(|p| p.is_ascii_uppercase())
+                    && next.is_some_and(|n| n.is_ascii_lowercase())));
+        if boundary {
             tokens.push(std::mem::take(&mut cur));
         }
         cur.push(c.to_ascii_lowercase());
-        prev_lower = c.is_ascii_lowercase();
     }
     if !cur.is_empty() {
         tokens.push(cur);
@@ -305,6 +328,45 @@ fn sensitive_digits_end(chars: &[char], at: usize, out_ends_plus: bool) -> Optio
     None
 }
 
+/// Akhir nilai berkutip. `depth` = jumlah `\` di depan kutip pembuka (0 untuk kutip biasa, 1 untuk JSON di dalam
+/// string, dst.). Kutip biasa: `\` melompati karakter berikutnya (kutip ber-escape tidak menutup). Kutip ber-escape:
+/// menutup hanya pada kutip yang didahului tepat `depth` garis miring; yang didahului lebih banyak (`\\\"`) adalah
+/// kutip di dalam nilai dan dilompati.
+fn quoted_value_end(chars: &[char], vstart: usize, q: char, depth: usize) -> usize {
+    let mut i = vstart;
+    while let Some(&c) = chars.get(i) {
+        if c == '\\' {
+            let run_end = run_end(chars, i, |x| x == '\\');
+            let count = run_end - i;
+            if chars.get(run_end) == Some(&q) {
+                if depth == 0 {
+                    if count % 2 == 1 {
+                        i = run_end + 1; // kutip ber-escape di dalam nilai
+                        continue;
+                    }
+                    return run_end; // garis miring berpasangan, kutip menutup
+                }
+                if count > depth {
+                    i = run_end + 1;
+                    continue;
+                }
+                return i;
+            }
+            i = if depth == 0 && count % 2 == 1 {
+                run_end + 1 // `\x`: x dilompati
+            } else {
+                run_end
+            };
+            continue;
+        }
+        if c == q {
+            return i;
+        }
+        i += 1;
+    }
+    chars.len()
+}
+
 /// Akhir (eksklusif) nilai bagi kunci sensitif yang nilainya mulai di `vstart`.
 ///
 /// - Bernilai berkutip: sampai kutip penutup; bila kutip pembuka ber-escape (JSON di dalam string),
@@ -316,7 +378,7 @@ fn sensitive_value_end(
     chars: &[char],
     vstart: usize,
     quote: Option<char>,
-    escaped_quote: bool,
+    escape_depth: usize,
     key_is_cookie: bool,
     key_is_auth: bool,
 ) -> usize {
@@ -324,16 +386,7 @@ fn sensitive_value_end(
         return chars.len();
     }
     if let Some(q) = quote {
-        let mut i = vstart;
-        while chars.get(i).is_some_and(|&c| c != q) {
-            i += 1;
-        }
-        if escaped_quote {
-            while i > vstart && chars.get(i - 1) == Some(&'\\') {
-                i -= 1;
-            }
-        }
-        return i;
+        return quoted_value_end(chars, vstart, q, escape_depth);
     }
     if key_is_auth {
         // Skema apa pun (Bearer, Basic, Digest, Token, ...): seluruh nilai header.
@@ -346,7 +399,7 @@ fn sensitive_value_end(
     if (first_word.eq_ignore_ascii_case("bearer")
         || first_word.eq_ignore_ascii_case("basic")
         || first_word.eq_ignore_ascii_case("digest"))
-        && chars.get(word_end) == Some(&' ')
+        && chars.get(word_end).is_some_and(|c| c.is_whitespace())
     {
         return run_end(chars, word_end + 1, is_token_char);
     }
@@ -420,7 +473,7 @@ pub fn scrub_text(input: &str) -> String {
 
             // "Bearer xxx" / "Basic xxx" berdiri sendiri.
             if (ident.eq_ignore_ascii_case("bearer") || ident.eq_ignore_ascii_case("basic"))
-                && chars.get(end) == Some(&' ')
+                && chars.get(end).is_some_and(|c| c.is_whitespace())
             {
                 let tok_end = run_end(&chars, end + 1, is_token_char);
                 if tok_end > end + 1 {
@@ -433,7 +486,11 @@ pub fn scrub_text(input: &str) -> String {
             }
 
             // "kunci=nilai" / "kunci: nilai" / JSON ber-escape dengan kunci sensitif.
-            if is_sensitive_key(&ident) {
+            // Parameter query OAuth `code` (mis. `?code=...`): hanya di konteks URL, karena `code` sendirian
+            // terlalu umum sebagai nama field (`status_code`).
+            let url_code =
+                ident == "code" && i > 0 && chars.get(i - 1).is_some_and(|&p| p == '?' || p == '&');
+            if url_code || is_sensitive_key(&ident) {
                 let mut k = end;
                 while chars
                     .get(k)
@@ -441,7 +498,7 @@ pub fn scrub_text(input: &str) -> String {
                 {
                     k += 1;
                 }
-                while chars.get(k) == Some(&' ') {
+                while chars.get(k).is_some_and(|c| c.is_whitespace()) {
                     k += 1;
                 }
                 // Tuple Debug `("kunci", "nilai")`: kunci berkutip diikuti koma juga pasangan.
@@ -449,7 +506,7 @@ pub fn scrub_text(input: &str) -> String {
                     || (k > end && chars.get(k) == Some(&','));
                 if sep {
                     k += 1;
-                    while chars.get(k) == Some(&' ') {
+                    while chars.get(k).is_some_and(|c| c.is_whitespace()) {
                         k += 1;
                     }
                     let mut q_at = k;
@@ -457,14 +514,14 @@ pub fn scrub_text(input: &str) -> String {
                         q_at += 1;
                     }
                     let quote = chars.get(q_at).copied().filter(|&x| x == '"' || x == '\'');
-                    let escaped_quote = quote.is_some() && q_at > k;
+                    let escape_depth = if quote.is_some() { q_at - k } else { 0 };
                     let vstart = if quote.is_some() { q_at + 1 } else { k };
                     let lower = ident.to_ascii_lowercase();
                     let vend = sensitive_value_end(
                         &chars,
                         vstart,
                         quote,
-                        escaped_quote,
+                        escape_depth,
                         lower.contains("cookie"),
                         lower.contains("authorization"),
                     );

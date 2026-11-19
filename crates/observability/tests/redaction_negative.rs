@@ -248,8 +248,6 @@ fn sensitive_columns_from_data_dictionary_are_redacted() {
                 name,
                 "idp_subject"
                     | "rs_recipient_alias"
-                    | "satusehat_patient_ihs"
-                    | "satusehat_practitioner_ihs"
                     | "source_ip"
                     | "user_agent"
                     | "region_code"
@@ -291,4 +289,88 @@ fn sensitive_columns_from_data_dictionary_are_redacted() {
         checked >= 40,
         "parser kamus data hanya menemukan {checked} kolom"
     );
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct W {
+    password: String,
+    next: String,
+}
+
+#[test]
+fn escaped_quotes_inside_values_do_not_end_redaction_early() {
+    // Debug meng-escape kutip di dalam nilai: "ab\"cdSECRET1".
+    let w = W {
+        password: "ab\"cdSECRET1".into(),
+        next: "terlihat".into(),
+    };
+    let out = scrub_text(&format!("{w:?}"));
+    assert!(!out.contains("SECRET1"), "{out}");
+    assert!(out.contains("terlihat"), "{out}");
+    // Garis miring berpasangan lalu kutip menutup nilai; field sesudahnya tetap terlihat.
+    let out = scrub_text(r#"password="a\\" next=ok"#);
+    assert!(out.contains("next=ok"), "{out}");
+
+    // JSON ber-escape dengan kutip di dalam nilai: {\"token\":\"SEC\\\"RET11\"}
+    let inner = "{\"token\":\"SEC\\\"RET11\",\"user\":\"budi\"}";
+    let out = scrub_text(&format!("{inner:?}"));
+    assert!(!out.contains("RET11"), "{out}");
+    assert!(out.contains("budi"), "{out}");
+    // Nilai rancangan mencoba menutup lebih awal dan menyelipkan field sesudahnya.
+    let attack = "{\"token\":\"x\\\",\\\"a\\\":\\\"INNERSECRET\",\"password\":\"TAILSECRET\"}";
+    let out = scrub_text(&format!("{attack:?}"));
+    assert!(
+        !out.contains("INNERSECRET") && !out.contains("TAILSECRET"),
+        "{out}"
+    );
+}
+
+#[test]
+fn ihs_and_other_extra_key_variants_are_sensitive() {
+    for k in [
+        "satusehat_patient_ihs",
+        "satusehat_practitioner_ihs",
+        "ihs_number",
+        "encryption_key",
+        "hmac_key",
+        "master_key",
+        "webhook_key",
+        "signing_key",
+        "OTPCode",
+        "NIKPasien",
+        "user_pass",
+        "va_number",
+        "nomor_va",
+        "virtual_account",
+    ] {
+        assert!(is_sensitive_key(k), "{k}");
+    }
+    for k in ["key_version", "status_code", "bypass_count", "region_code"] {
+        assert!(!is_sensitive_key(k), "{k}");
+    }
+}
+
+#[test]
+fn whitespace_variants_and_url_credentials_are_scrubbed() {
+    let url = "GET /cb?access_token=ATSECRET&id_token=IDSECRET&refresh_token=RTSECRET";
+    for (input, secret) in [
+        ("password\t=\tTABSECRET", "TABSECRET"),
+        ("password:\u{a0}NBSPSECRET", "NBSPSECRET"),
+        ("pin :   SPACESECRET", "SPACESECRET"),
+        ("GET /cb?code=OAUTHCODE1&state=abc", "OAUTHCODE1"),
+        ("GET /cb?x=1&code=OAUTHCODE2", "OAUTHCODE2"),
+        (url, "ATSECRET"),
+        (url, "IDSECRET"),
+        (url, "RTSECRET"),
+    ] {
+        let out = scrub_text(input);
+        assert!(!out.contains(secret), "{input} -> {out}");
+    }
+    // `code` di luar konteks URL tidak disamarkan.
+    assert_eq!(
+        scrub_text("status_code=200 code 5"),
+        "status_code=200 code 5"
+    );
+    assert!(scrub_text("?state=abc").contains("state=abc"));
 }
