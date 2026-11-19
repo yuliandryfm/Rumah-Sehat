@@ -501,6 +501,46 @@ LANGUAGE sql AS $f$
 $f$;
 
 -- ---------------------------------------------------------------------------------------------
+-- T-20 (§4.1 butir 5, §7.1, §7.2, §12; KEPUTUSAN-104, KEPUTUSAN-105), F1-T18: setiap kolom proyek
+-- bernama *_enc bertipe bytea dengan CHECK amplop v1 satu-kolom yang tervalidasi persis
+--   <k> IS NULL OR (octet_length(<k>) >= 29 AND get_byte(<k>, 0) = 1)
+-- (CHECK diterapkan juga pada kolom NOT NULL, mengikuti templat §4.1 butir 5); setiap kolom *_bidx
+-- bertipe bytea dengan CHECK octet_length(<k>) = 32; setiap kolom *_bidx_key_version bertipe
+-- smallint dengan CHECK <k> >= 1. Bandingan atas pg_get_constraintdef (bentuk kanonik PostgreSQL,
+-- dibuktikan test), sehingga CHECK yang lebih longgar, NOT VALID, atau multi-kolom tidak dihitung.
+-- Nama constraint diperiksa T-01. Partisi dilewati (CHECK diwarisi induk).
+-- uji_t20_kolom: daftar kolom yang diperiksa (dipakai label dan test "tidak hampa").
+-- ---------------------------------------------------------------------------------------------
+CREATE FUNCTION pg_temp.uji_t20_kolom(p_skema text[]) RETURNS TABLE (rel oid, nspname text, relname text,
+  attnum smallint, k text, atttypid oid, def text, tipe regtype)
+LANGUAGE sql AS $f$
+  SELECT c.oid, n.nspname::text, c.relname::text, a.attnum, a.attname::text, a.atttypid,
+         CASE WHEN a.attname ~ '_enc$'
+                THEN format('CHECK (((%1$s IS NULL) OR ((octet_length(%1$s) >= 29) AND (get_byte(%1$s, 0) = 1))))', quote_ident(a.attname))
+              WHEN a.attname ~ '_bidx$' THEN format('CHECK ((octet_length(%s) = 32))', quote_ident(a.attname))
+              ELSE format('CHECK ((%s >= 1))', quote_ident(a.attname)) END,
+         CASE WHEN a.attname ~ '_bidx_key_version$' THEN 'smallint'::regtype ELSE 'bytea'::regtype END
+    FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = ANY (p_skema) AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+     AND a.attnum > 0 AND NOT a.attisdropped
+     AND a.attname ~ '(_enc|_bidx|_bidx_key_version)$'
+$f$;
+
+CREATE FUNCTION pg_temp.uji_t20(p_skema text[]) RETURNS SETOF text
+LANGUAGE sql AS $f$
+  SELECT format('T-20 %s.%s.%s: tipe %s, diharapkan %s', h.nspname, h.relname, h.k, format_type(h.atttypid, NULL), h.tipe)
+    FROM pg_temp.uji_t20_kolom(p_skema) h
+   WHERE h.atttypid <> h.tipe
+  UNION ALL
+  SELECT format('T-20 %s.%s.%s: tanpa CHECK satu-kolom tervalidasi %s', h.nspname, h.relname, h.k, h.def)
+    FROM pg_temp.uji_t20_kolom(p_skema) h
+   WHERE NOT EXISTS (SELECT 1 FROM pg_constraint x
+                      WHERE x.conrelid = h.rel AND x.contype = 'c' AND x.convalidated
+                        AND x.conkey = ARRAY[h.attnum] AND pg_get_constraintdef(x.oid) = h.def)
+   ORDER BY 1
+$f$;
+
+-- ---------------------------------------------------------------------------------------------
 -- Kelas A database audit (DD §0.6 B; skema fisik §4.11, §5.6, §6.1, §6.2; T-06, T-08, T-18).
 -- Hak per tabel menurut nama tabel (nama logis DD §0.6 B dipetakan ke awalan rs_/rme_).
 -- ---------------------------------------------------------------------------------------------

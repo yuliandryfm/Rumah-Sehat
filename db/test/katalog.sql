@@ -5,7 +5,9 @@
 --   skema_proyek skema milik pemilik skema, mis. {app,util}
 --   skema_mig    skema tabel catatan migrasi sqlx (app atau audit)
 --   prefiks      awalan role sistem database ini (rs_ atau rme_)
--- Dasar: docs/05-physical-schema.md §12 (T-01, T-02, T-03, T-04, T-24), §2.1 butir 5, CR-020.
+-- Dasar: docs/05-physical-schema.md §12 (T-01, T-02, T-03, T-04, T-20, T-24), §2.1 butir 5, §4.1 butir 5,
+-- §7.1, §7.2, CR-020. T-20 generik untuk semua database (F1-T18); test negatif pemeriksanya di
+-- db/test/kelas-app.sql bagian C.
 
 SELECT pg_catalog.set_config('uji.skema_harap', :'skema_harap', false) AS _a,
        pg_catalog.set_config('uji.skema_proyek', :'skema_proyek', false) AS _b,
@@ -30,6 +32,9 @@ BEGIN
     ARRAY(SELECT pg_temp.uji_t24(proyek, current_setting('uji.prefiks'))));
   PERFORM pg_temp.uji_nol(format('CR-020 (%s) rutin proyek: SECURITY DEFINER hanya yang diizinkan, search_path tetap', db),
     ARRAY(SELECT pg_temp.uji_rutin(proyek)));
+  PERFORM pg_temp.uji_nol(format('T-20 (%s) %s kolom *_enc/*_bidx/*_bidx_key_version: CHECK amplop v1, 32 byte, versi >= 1', db,
+                                 (SELECT count(*) FROM pg_temp.uji_t20_kolom(proyek))),
+    ARRAY(SELECT pg_temp.uji_t20(proyek)));
 END $$;
 
 -- Tabel catatan migrasi sqlx: semua migrasi tercatat berhasil (tanpa migrasi kotor/gagal).
