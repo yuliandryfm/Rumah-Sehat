@@ -249,6 +249,49 @@ commit_semua "$r" "fixture: rahasia dengan komentar gitleaks:allow"
 k="$(verify_di "$r" "$KERJA/gitleaks-allow.log")"
 merah "gitleaks-komentar-allow-tidak-berlaku" "$k" "$KERJA/gitleaks-allow.log" "gitleaks"
 
+# --- Konfigurasi pemindai di luar berkas resmi (review keamanan F1-T06, B-1) ---
+# .gitleaks.toml liar yang membungkam semua aturan, belum dilacak, di subdirektori; ada rahasia ter-stage.
+r="$(fixture_baru gitleaks-config-liar)"
+printf '[[rules]]\nid = "x"\nregex = %s\n' "'''ZZZTIDAKPERNAHCOCOKZZZ'''" >"$r/crates/.gitleaks.toml"
+printf 'kredensial = "%s"\n' "$TOKEN_UJI" >"$r/bocor.txt"
+git -C "$r" add bocor.txt
+k="$(verify_di "$r" "$KERJA/gitleaks-config-liar.log")"
+merah "gitleaks-config-liar" "$k" "$KERJA/gitleaks-config-liar.log" "gitleaks"
+nilai "gitleaks-config-liar-pesan" 1 "$k" "$KERJA/gitleaks-config-liar.log" "konfigurasi gitleaks di luar berkas resmi ditolak"
+
+# Berkas .gitleaks.toml resmi tidak ada.
+r="$(fixture_baru gitleaks-config-hilang)"
+rm "$r/.gitleaks.toml"
+commit_semua "$r" "fixture: .gitleaks.toml resmi dihapus"
+k="$(verify_di "$r" "$KERJA/gitleaks-config-hilang.log")"
+merah "gitleaks-config-resmi-hilang" "$k" "$KERJA/gitleaks-config-hilang.log" "gitleaks"
+
+# osv-scanner.toml liar di samping lockfile, dilacak, mengabaikan advisory dependensi rentan.
+r="$(fixture_baru osv-config-liar)"
+printf 'smallvec = "=1.6.0"\n' >>"$r/crates/foundation/Cargo.toml"
+(cd "$r" && cargo generate-lockfile --quiet)
+printf '[[IgnoredVulns]]\nid = "RUSTSEC-2021-0003"\nreason = "x"\n[[IgnoredVulns]]\nid = "GHSA-43w2-9j62-hq99"\nreason = "x"\n[[IgnoredVulns]]\nid = "CVE-2021-25900"\nreason = "x"\n' >"$r/crates/foundation/osv-scanner.toml"
+commit_semua "$r" "fixture: osv-scanner.toml liar"
+k="$(verify_di "$r" "$KERJA/osv-config-liar.log")"
+merah "osv-config-liar" "$k" "$KERJA/osv-config-liar.log" "osv-scanner"
+nilai "osv-config-liar-pesan" 1 "$k" "$KERJA/osv-config-liar.log" "konfigurasi osv-scanner di luar berkas resmi ditolak"
+
+# .cargo/audit.toml belum dilacak yang mengabaikan advisory.
+r="$(fixture_baru audit-toml)"
+mkdir -p "$r/.cargo"
+printf '[advisories]\nignore = ["RUSTSEC-2021-0003"]\n' >"$r/.cargo/audit.toml"
+k="$(verify_di "$r" "$KERJA/audit-toml.log")"
+merah "cargo-audit-toml-di-repo" "$k" "$KERJA/audit-toml.log" "lingkungan"
+
+# Lockfile yang tidak dikenali verify.sh (review F1-T06, non-blokir 3).
+r="$(fixture_baru lockfile-asing)"
+mkdir -p "$r/web"
+printf '{"lockfileVersion": 1}\n' >"$r/web/bun.lock"
+commit_semua "$r" "fixture: lockfile tidak dikenali"
+k="$(verify_di "$r" "$KERJA/lockfile-asing.log")"
+merah "lockfile-tidak-dikenali" "$k" "$KERJA/lockfile-asing.log" "osv-scanner"
+nilai "lockfile-tidak-dikenali-pesan" 1 "$k" "$KERJA/lockfile-asing.log" "lockfile yang tidak dikenali verify.sh"
+
 # --- cargo-deny ---
 r="$(fixture_baru deny-hilang)"
 rm "$r/deny.toml"

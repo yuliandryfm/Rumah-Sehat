@@ -166,20 +166,56 @@ periksa_cargo_audit() { # advisory RustSec atas Cargo.lock; peringatan (unmainta
   tanpa_env_git cargo-audit audit --file Cargo.lock --deny warnings
 }
 
+konfigurasi_liar() { # konfigurasi_liar <nama-berkas> <path-resmi>: cetak berkas bernama sama di luar path resmi
+  # Semua berkas di pohon kerja: dilacak, belum dilacak, dan yang diabaikan (repo bersarang tidak ditelusuri).
+  git ls-files --cached --others | grep -E "(^|/)$(printf '%s' "$1" | sed 's/[.]/[.]/g')\$" | grep -vxF "$2" || true
+}
+
 periksa_gitleaks() { # rahasia di riwayat HEAD, perubahan ter-stage, dan perubahan belum di-stage
+  local liar
   alat_siap gitleaks "$VERSI_GITLEAKS" || return 1
+  # Konfigurasi resmi diberikan eksplisit (--config/--gitleaks-ignore-path) supaya .gitleaks.toml lain tidak
+  # dimuat otomatis; berkas .gitleaks.toml selain yang resmi ditolak (review keamanan F1-T06, B-1).
+  if [ ! -f .gitleaks.toml ] || [ ! -f .gitleaksignore ]; then
+    echo ".gitleaks.toml atau .gitleaksignore resmi di akar repo tidak ada" >&2
+    return 1
+  fi
+  liar="$(konfigurasi_liar .gitleaks.toml .gitleaks.toml)"
+  if [ -n "$liar" ]; then
+    echo "konfigurasi gitleaks di luar berkas resmi ditolak: $(printf '%s' "$liar" | tr '\n' ' ')" >&2
+    return 1
+  fi
   # --ignore-gitleaks-allow: komentar "gitleaks:allow" tidak berlaku; pengecualian hanya lewat .gitleaksignore.
   echo "-- riwayat commit yang dapat dicapai dari HEAD"
-  gitleaks git --no-banner --redact --ignore-gitleaks-allow --log-opts="--full-history HEAD" . || return 1
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --log-opts="--full-history HEAD" . || return 1
   echo "-- perubahan ter-stage"
-  gitleaks git --no-banner --redact --ignore-gitleaks-allow --pre-commit --staged . || return 1
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --pre-commit --staged . || return 1
   echo "-- perubahan belum di-stage"
-  gitleaks git --no-banner --redact --ignore-gitleaks-allow --pre-commit . || return 1
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --pre-commit . || return 1
 }
 
 periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau belum dilacak, tidak diabaikan)
-  local berkas opsi
+  local berkas opsi liar asing
   alat_siap osv-scanner "$VERSI_OSV_SCANNER" || return 1
+  # Konfigurasi resmi diberikan eksplisit (--config) supaya osv-scanner.toml di direktori lockfile tidak dimuat
+  # otomatis; osv-scanner.toml selain yang resmi ditolak (review keamanan F1-T06, B-1).
+  if [ ! -f osv-scanner.toml ]; then
+    echo "osv-scanner.toml resmi di akar repo tidak ada" >&2
+    return 1
+  fi
+  liar="$(konfigurasi_liar osv-scanner.toml osv-scanner.toml)"
+  if [ -n "$liar" ]; then
+    echo "konfigurasi osv-scanner di luar berkas resmi ditolak: $(printf '%s' "$liar" | tr '\n' ' ')" >&2
+    return 1
+  fi
+  # Berkas berpola lockfile yang tidak dikenali tidak boleh lolos tanpa dipindai (review F1-T06, non-blokir 3).
+  asing="$(git ls-files --cached --others --exclude-standard \
+    | grep -E '(^|/)([^/]*\.lockb?|[^/]*lock\.json|[^/]*lock\.ya?ml|[^/]*\.lockfile|go\.sum|npm-shrinkwrap\.json|Package\.resolved)$' \
+    | grep -vE '(^|/)(Cargo\.lock|pnpm-lock\.yaml|package-lock\.json|yarn\.lock|pubspec\.lock)$' || true)"
+  if [ -n "$asing" ]; then
+    echo "lockfile yang tidak dikenali verify.sh: $(printf '%s' "$asing" | tr '\n' ' '); perbarui scripts/verify.sh (perlu persetujuan user)" >&2
+    return 1
+  fi
   # Daftar eksplisit dari git, bukan pemindaian rekursif: pemindai rekursif ikut menghormati .gitignore
   # di direktori induk repo (misalnya checkout utama yang mengabaikan .claude/worktrees/).
   opsi=()
@@ -192,7 +228,7 @@ periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau
     echo "tidak ada lockfile yang dapat dipindai" >&2
     return 1
   fi
-  tanpa_env_git osv-scanner scan source --all-vulns "${opsi[@]}"
+  tanpa_env_git osv-scanner scan source --all-vulns --config osv-scanner.toml "${opsi[@]}"
 }
 
 echo "verify.sh: $ROOT"
@@ -208,6 +244,10 @@ if [ -n "$VAR_TERLARANG" ]; then
 fi
 if [ -e .cargo/config ] || [ -e .cargo/config.toml ]; then
   gagal "lingkungan" ".cargo/config(.toml) ada di repo tetapi belum disetujui sebagai bagian verifikasi; perbarui scripts/verify.sh (perlu persetujuan user)"
+fi
+# .cargo/audit.toml dimuat otomatis oleh cargo-audit dan dapat mengabaikan advisory (SRC-361; review F1-T06, B-1).
+if [ -e .cargo/audit.toml ]; then
+  gagal "lingkungan" ".cargo/audit.toml ada di repo tetapi belum disetujui sebagai bagian verifikasi; perbarui scripts/verify.sh (perlu persetujuan user)"
 fi
 
 # --- Langkah 1: Rust (docs/05-stack.md §6 butir 1) ---

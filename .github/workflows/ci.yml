@@ -14,6 +14,10 @@ on:
   push:
   pull_request:
     branches: [main]
+  # Harian 23:00 UTC (06:00 WIB) di branch default: advisory baru terdeteksi walau tidak ada commit
+  # (review F1-T06, non-blokir 4).
+  schedule:
+    - cron: "0 23 * * *"
 
 permissions:
   contents: read

@@ -1,0 +1,7 @@
+# Konfigurasi resmi gitleaks 8.30.1 (F1-T06; review keamanan F1-T06 B-1). Diberikan eksplisit oleh
+# scripts/verify.sh lewat --config; berkas .gitleaks.toml lain di repo ditolak.
+# Aturan bawaan gitleaks dipakai utuh. Pengecualian hanya lewat .gitleaksignore (fingerprint) dengan alasan
+# tertulis dan review keamanan; jangan menambah allowlist atau menonaktifkan aturan di sini tanpa review.
+
+[extend]
+useDefault = true

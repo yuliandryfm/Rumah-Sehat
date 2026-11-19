@@ -3,8 +3,9 @@
 # Kunci konfigurasi diverifikasi ke dokumentasi resmi cargo-deny (SRC-362) dan diuji dengan cargo-deny 0.21.0.
 #
 # Pengecualian (ignore advisory, exception lisensi, sumber tambahan) hanya lewat berkas ini dengan alasan
-# tertulis dan review keamanan. Advisory yang diabaikan di sini juga harus diabaikan di cargo-audit
-# (`.cargo/audit.toml`) karena verify.sh menjalankan keduanya dengan tingkat ketat yang sama.
+# tertulis dan review keamanan. Advisory yang diabaikan di sini juga harus diabaikan di cargo-audit, yang
+# dijalankan verify.sh dengan tingkat ketat yang sama; `.cargo/audit.toml` saat ini ditolak verify.sh, jadi
+# pengecualian cargo-audit memerlukan perubahan scripts/verify.sh (persetujuan user).
 
 [graph]
 # Periksa graf dengan semua fitur aktif supaya dependensi di balik fitur opsional ikut diperiksa.
