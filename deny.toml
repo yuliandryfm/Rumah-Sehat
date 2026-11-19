@@ -1,0 +1,55 @@
+# Kebijakan cargo-deny 0.21.0 untuk workspace Ruang Sehat (F1-T06; docs/05-stack.md §3.2, §6;
+# docs/coding-standards.md §9; ADR-021 butir 4). Dijalankan scripts/verify.sh: `cargo deny --locked check`.
+# Kunci konfigurasi diverifikasi ke dokumentasi resmi cargo-deny (SRC-362) dan diuji dengan cargo-deny 0.21.0.
+#
+# Pengecualian (ignore advisory, exception lisensi, sumber tambahan) hanya lewat berkas ini dengan alasan
+# tertulis dan review keamanan. Advisory yang diabaikan di sini juga harus diabaikan di cargo-audit, yang
+# dijalankan verify.sh dengan tingkat ketat yang sama; `.cargo/audit.toml` saat ini ditolak verify.sh, jadi
+# pengecualian cargo-audit memerlukan perubahan scripts/verify.sh (persetujuan user).
+
+[graph]
+# Periksa graf dengan semua fitur aktif supaya dependensi di balik fitur opsional ikut diperiksa.
+all-features = true
+
+[advisories]
+# Basis data default: RustSec advisory-db (diambil ulang setiap verifikasi; tanpa --offline).
+yanked = "deny"
+unmaintained = "all"
+unsound = "all"
+unused-ignored-advisory = "deny"
+ignore = []
+
+[licenses]
+# Daftar izin awal docs/coding-standards.md §9.1 (KEPUTUSAN-136). Lisensi lain, termasuk ekspresi gabungan
+# yang memuat lisensi di luar daftar ini (misalnya Unicode-3.0), dibawa ke user sebelum ditambahkan.
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC"]
+confidence-threshold = 0.8
+# Dependensi pengembangan ikut diperiksa (lebih ketat dari default).
+include-dev = true
+# Daftar izin adalah kebijakan, bukan inventaris: lisensi yang belum dipakai tidak dilaporkan.
+unused-allowed-license = "allow"
+# Pengecualian sempit: Unicode-3.0 hanya untuk crate unicode-ident (disetujui user, KEPUTUSAN-245).
+exceptions = [{ crate = "unicode-ident", allow = ["Unicode-3.0"] }]
+
+[licenses.private]
+# Crate workspace dengan `publish = false` tidak diperiksa lisensinya (kode milik proyek, tidak diterbitkan).
+# Crate workspace tanpa `publish = false` tetap diperiksa terhadap daftar izin di atas.
+ignore = true
+registries = []
+
+[bans]
+multiple-versions = "warn"
+# Dependensi versi `*` ditolak; dependensi path antar-crate workspace privat diizinkan.
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+# Hanya registry crates.io; registry lain dan dependensi git ditolak.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,5 +1,18 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(cargo fmt --all --check)",
+      "Bash(cargo fmt --check)",
+      "Bash(osv-scanner scan *)",
+      "Bash(bash -n *)",
+      "Bash(sqlx --version)",
+      "Bash(rustc --version)",
+      "Bash(cargo tree *)",
+      "Bash(cargo info *)",
+      "Bash(cargo metadata *)",
+      "Bash(docker buildx imagetools inspect *)",
+      "Bash(shellcheck *)"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",

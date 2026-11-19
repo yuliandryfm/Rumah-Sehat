@@ -512,7 +512,7 @@ Dampak ke scope / waktu / arsitektur (awal, belum dianalisis rinci):
 - Kapasitas: phase plan v0.2 sudah menyatakan scope penuh kemungkinan besar tidak layak sampai 1 Maret 2027 (Fase 2 ±43 jam-task per hari kerja).
 Fakta bisnis `[TIDAK DIKETAHUI]`: penempatan rilis; isi company profile dan pengelola kontennya; siapa klien korporat dan peserta; alur pemesanan, penjadwalan, dan penagihan layanan massal; daftar "semacamnya"; integrasi dengan rekanan lab/klinik; regulasi vaksinasi massal.
 Keputusan `[USER]` 2026-11-19 (Telegram): "1A, 2K" lalu "Web dan fitur ini pun masuk fase 1 dan harus"; setelah klarifikasi memilih **Y**: company profile **dan** member area korporat dibangun di Fase 1, dengan konsekuensi Fase 1 mundur atau sebagian task Fase 1 pindah ke Fase 2 (rincian dihitung dan diajukan ke user dulu). Peran login member area: HR/admin perusahaan + karyawan peserta (2K).
-Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); analisis BR/story/AC, dampak arsitektur dan phase plan menyusul untuk persetujuan user sebelum pembangunan
+Status: analisis disetujui user 2026-11-19 (skenario S3, K-01–K-12, UP-79–UP-87, PT-67 Verifikator, PT-79 wajib bukti kewenangan, PT-72 tolak NIB ganda; `docs/cr/CR-021-wawancara.md` putaran 4). ADR-027/028 Diterima; ADR-029 Diusulkan (menunggu PT-59/L-21). Pembaruan BRD/PRD/phase plan/data dictionary menyusul (task dokumen orkestrator)
 
 ## Tech Debt
 
@@ -520,5 +520,9 @@ Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); ana
 | --- | --- | --- | --- |
 | TD-01 | Pemeriksa teks migrasi (T-23) tidak dapat menutup SQL dinamis: 7 bentuk lolos (dollar-quote, `chr()`, `concat()`, `format('%s')`, `E'\x..'`, `convert_from(decode())`). Usulan: (a) tolak `EXECUTE` di berkas migrasi kecuali templat §6.2 yang cocok persis (allowlist); (b) event trigger runtime yang menolak DISABLE/DROP trigger penjaga (KEPUTUSAN-158) sebagai kontrol utama; review DBA wajib atas setiap berkas migrasi tetap berlaku | Review keamanan F1-T14/T15 putaran 2 (2026-11-19), Medium non-blokir | Sebelum migrasi pertama yang memakai `EXECUTE` (paling lambat F1-T16–F1-T19) |
 | TD-02 | Test flaky: commit merge F1-T12 sempat MERAH di `cargo-test`, ulang tanpa perubahan HIJAU; test penyebab belum teridentifikasi | Merge F1-T12 (2026-11-19) | Task berikutnya yang menyentuh test HTTP/Rust |
+| TD-03 | Pelanggaran CHECK di `data_key` menaruh baris lengkap (termasuk `wrapped_dek`) di DETAIL galat PostgreSQL → log server dan galat ke klien. Usulan: validasi sebelum INSERT di aplikasi, masking galat sqlx, dan/atau `log_error_verbosity` untuk role aplikasi | Review keamanan F1-T17 (Low) | Task enkripsi/kunci data (EN-09) |
+| TD-04 | `stored_file.purged_at`: pekerja privasi menghapus objek tetapi tidak punya UPDATE; pengisi `purged_at` `[TIDAK DIKETAHUI]`. Usulan CR teknis: `GRANT UPDATE (purged_at, updated_at, updated_by)` ke `rs_privacy_worker` + pengecualian T-08 | Review DBA F1-T17 | Sebelum task pekerja privasi (EN-23) |
+| TD-05 | `rs_privacy_worker` dapat membaca `wrapped_dek` padahal tugasnya memusnahkan; pertimbangkan hak per kolom lewat CR/ADR | Review keamanan F1-T17 | Task kunci data |
+| TD-06 | Kesalahan sebelumnya: commit merge F1-T12 merah sekali di `cargo-test`, dan merge F1-T06 merah di `migrasi-db`; penyebab kedua dipastikan: variabel `GIT_*` warisan hook pre-merge-commit. Langkah DB kini dibungkus `tanpa_env_git`; TD-02 kemungkinan sebab yang sama (sebelum F1-T06 cargo-test belum dibungkus) | Merge F1-T06 (2026-11-19) | Dipantau; TD-02 ditutup bila tidak terulang |
 
 _Belum ada._

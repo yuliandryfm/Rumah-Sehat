@@ -39,3 +39,12 @@ Catatan orkestrator selama Fase 1 (bahan `docs/fase-1-laporan.md` di F1-T71). St
 | --- | --- | --- |
 | 2026-11-19 | "blm ada server storage gunakan server saat ini dengan membuat folder khusus" (Telegram) | Pengembangan dan test memakai SeaweedFS di server pengembangan, data di folder host khusus (`RS_OBJECT_STORAGE_DIR`, default `~/ruang-sehat-data/object-storage`). Target production tetap NEO sesuai ADR-018/`docs/05-stack.md`; verifikasi NEO (11 celah spike F1-T03) menjadi PT-58, wajib sebelum production (EN-26) |
 | 2026-11-19 | "kita fokus pada BE kemudian web based. flutter dijalankan terpisah di laptop" (Telegram) | Urutan pengerjaan Claude: backend Rust dulu, lalu web Next.js. Task Flutter (F1-T44, T45, T47, T48, T52, T53, T54, T58, T63, T77, T78) dikerjakan terpisah di laptop (mobile developer, sesuai `[USER] T5-Q7` dan C2-Q3), tidak dijalankan Claude di server ini. Dampak: jalur kritis Fase 1 memuat task mobile (F1-T58, F1-T63; phase plan §7.4) dan demo end-to-end F1-T70 butuh aplikasi pasien, sehingga keduanya bergantung pada kecepatan pengembangan mobile di laptop. Kontrak API (OpenAPI) menjadi antarmuka utama dengan tim mobile |
+
+## Posisi saat sesi berhenti (2026-11-19, batas kuota)
+
+- Di-merge ke `tahap-08-fase-1`: F1-T04/05, T07–T15 (+ spike T02, T03). verify.sh 10 langkah hijau.
+- Menunggu sebelum merge:
+  - F1-T06 (branch `worktree-agent-ae01385c7094662bc`, HEAD 6be5add): perbaikan B-1 dan merge selesai, verify 14 langkah hijau, test-verify 30/30. **Belum dicek ulang security auditor (T1)**. Ada folder `fx-target` dan `dl` di scratchpad yang perlu dihapus user.
+  - TD-01(a) + F1-T16 + F1-T17 (branch `worktree-agent-ae5db0b532d091f0e`: 8c7ec79, 4c46e11, 65389a7): verify hijau, 506 pemeriksaan migrasi. **Belum direview DBA + keamanan.**
+  - F1-T19 BERHENTI: `consent_record` butuh FK ke `patient`/`care_recipient` (F1-T18), padahal phase plan menulis F1-T19 hanya bergantung F1-T16. Usulan: kerjakan F1-T19 setelah F1-T18.
+- CR-021: analisis + review kepatuhan/keamanan LULUS DENGAN CATATAN; keputusan user diajukan (Telegram, 1–4); fact-check `docs/fact-check/CR-021.md` sedang/baru berjalan.

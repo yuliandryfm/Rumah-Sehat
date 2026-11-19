@@ -1,0 +1,5 @@
+# Konfigurasi resmi osv-scanner 2.7.1 (F1-T06; review keamanan F1-T06 B-1). Diberikan eksplisit oleh
+# scripts/verify.sh lewat --config, sehingga osv-scanner.toml lain tidak dimuat otomatis; berkas
+# osv-scanner.toml lain di repo ditolak.
+# Sengaja kosong: tidak ada kerentanan yang diabaikan. Pengecualian ([[IgnoredVulns]] dengan id, reason, dan
+# ignoreUntil) hanya dengan alasan tertulis, tanggal kedaluwarsa, dan review keamanan.

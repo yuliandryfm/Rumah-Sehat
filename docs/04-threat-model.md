@@ -1,10 +1,10 @@
 # Threat Model: Ruang Sehat
 
 Tanggal: 2026-11-19
-Versi: 1.2 (2026-11-19, review keamanan F1-T02: jalur email Keycloak ADR-026 Diusulkan; menunggu gate berikutnya). Sebelumnya 1.1 (2026-11-18, tindak lanjut Checkpoint 2: MFA wajib pasien, pemulihan faktor, layar sesi aktif, UP-73 opsi B, UP-76; menunggu gate berikutnya). Sebelumnya 1.0, LULUS dan disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (sebelumnya 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4))
+Versi: 1.3 (2026-11-19, review keamanan CR-021: situs publik, member area korporat, data peserta, invoice B2B; berlaku bila CR-021 disetujui). Sebelumnya 1.2 (2026-11-19, review keamanan F1-T02: jalur email Keycloak ADR-026 Diusulkan; menunggu gate berikutnya). Sebelumnya 1.1 (2026-11-18, tindak lanjut Checkpoint 2: MFA wajib pasien, pemulihan faktor, layar sesi aktif, UP-73 opsi B, UP-76; menunggu gate berikutnya). Sebelumnya 1.0, LULUS dan disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (sebelumnya 0.2 (cek ulang setelah perbaikan desain M-01–M-09; draf untuk gate Tahap 4))
 Penyusun: Claude (subagent `security-architect`)
 Tingkat ketelitian: **T1 Kritis** (keamanan, autentikasi/otorisasi, data pribadi spesifik, uang, audit trail; `aturan-kerja.md` §1)
-Dasar: PRD v1.1 `[DOK: 03-prd.md]` (termasuk CR-008 US-309 AC6–AC8 dan CR-009 NFR-SEC-10), arsitektur v0.1 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-021 `[DOK: adr/]`, data dictionary v0.1 `[DOK: 04-data-dictionary.md]`, risk register v0.1 `[DOK: 04-risk-register.md]`, backlog `[DOK: backlog.md]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]` (T4-Q1, T4-Q2, T4-Q4, T4-Q5, T4-Q6). Dasar tambahan v1.1: jawaban Checkpoint 2 `[DOK: checkpoint-2.md]` (C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7, C2-B14), ADR-011 revisi Checkpoint 2, PRD v1.2, checklist ASVS v1.1 `[DOK: 05-asvs-checklist.md]`, risk register v1.3 (tabel "Catatan status ancaman threat model"), KEPUTUSAN-198–205 `[DOK: decision-log.md]`, review keamanan `[DOK: review/checkpoint-2-security.md]`. Dasar tambahan v1.2: `docs/spike/F1-T02-email-keycloak.md`, ADR-026 (Diusulkan), KEPUTUSAN-226–232 `[DOK: decision-log.md]`, review keamanan `[DOK: review/F1-T02-security.md]`
+Dasar: PRD v1.1 `[DOK: 03-prd.md]` (termasuk CR-008 US-309 AC6–AC8 dan CR-009 NFR-SEC-10), arsitektur v0.1 `[DOK: 04-arsitektur.md]`, ADR-001–ADR-021 `[DOK: adr/]`, data dictionary v0.1 `[DOK: 04-data-dictionary.md]`, risk register v0.1 `[DOK: 04-risk-register.md]`, backlog `[DOK: backlog.md]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]` (T4-Q1, T4-Q2, T4-Q4, T4-Q5, T4-Q6). Dasar tambahan v1.1: jawaban Checkpoint 2 `[DOK: checkpoint-2.md]` (C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7, C2-B14), ADR-011 revisi Checkpoint 2, PRD v1.2, checklist ASVS v1.1 `[DOK: 05-asvs-checklist.md]`, risk register v1.3 (tabel "Catatan status ancaman threat model"), KEPUTUSAN-198–205 `[DOK: decision-log.md]`, review keamanan `[DOK: review/checkpoint-2-security.md]`. Dasar tambahan v1.2: `docs/spike/F1-T02-email-keycloak.md`, ADR-026 (Diusulkan), KEPUTUSAN-226–232 `[DOK: decision-log.md]`, review keamanan `[DOK: review/F1-T02-security.md]`. Dasar tambahan v1.3: `docs/cr/CR-021-analisis.md` v0.1 dan v0.2, ADR-027–ADR-029 (Diusulkan), KEPUTUSAN-250–269 `[DOK: decision-log.md]`, `docs/review/CR-021-security.md` (putaran 1 dan 2), `[SRC-405]`–`[SRC-409]`
 
 Dokumen ini tidak mengubah arsitektur. Mitigasi yang belum ada di desain ditulis sebagai usulan (§6) untuk diterapkan pelaksana Tahap 4.
 
@@ -21,6 +21,8 @@ Dokumen ini tidak mengubah arsitektur. Mitigasi yang belum ada di desain ditulis
 Dua ancaman baru dari rancangan baru ditambahkan: KC-10 untuk jalur pemulihan MFA pasien lewat Layanan Pelanggan, dan KC-11 untuk layar sesi aktif US-110. Penguatan H-16 juga ditambahkan. Revisi ini **tidak** mencakup pembaruan topologi VPS setelah Tahap 5 (usulan U-09 di `docs/05-asvs-checklist.md`), sehingga istilah komponen Tahap 4 (KMS, secret manager, Redis) dipertahankan. Padanan Tahap 5-nya adalah OpenBao dan Valkey (ADR-024, ADR-025). Riwayat lengkap di §9.
 
 **Perubahan v1.2 (F1-T02).** Komponen baru relay email Keycloak (ADR-026, berstatus Diusulkan) dinilai di §4.18 (EML-01–EML-09), dengan boundary baru TB-14 dan AS-10 yang diperluas. Ancaman berlaku bila ADR-026 diterima. Bila user memilih opsi lain, EML-01, EML-03, EML-05, dan EML-07 dinilai ulang. EML-02, EML-04, EML-06, EML-08, dan EML-09 berlaku untuk opsi mana pun. Tidak ada ancaman Tinggi baru. Status tetap LULUS.
+
+**Perubahan v1.3 (CR-021).** Komponen baru `web/situs`, `web/korporat`, realm `korporat`, tenant perusahaan, impor berkas peserta, dan invoice B2B dinilai di §4.19–§4.22 (SIT, KOR, IMP, B2B). Ancaman berlaku bila CR-021 dan ADR-027–ADR-029 disetujui. Ancaman lama tidak berubah status. TB-15 dan TB-16 baru; AS-19–AS-21 baru; AK-08 baru; M-40–M-56 dan H-18 baru.
 
 ---
 
@@ -99,6 +101,11 @@ Klasifikasi mengikuti legenda sensitivitas data dictionary §0.5 (`PII`, `Spesif
 | AS-16 | Ketersediaan layanan inti (login, pemesanan, pembayaran, konsultasi, portal) dan RME | Semua proses | — | A | NFR-AVL-01, NFR-AVL-02 |
 | AS-17 | Konfigurasi dan artefak: konfigurasi realm, konfigurasi server media, infrastruktur sebagai kode, image kontainer, biner aplikasi mobile dan kunci penandatangannya, dependensi | Repositori, pipeline, registri | — | I | ADR-011 konsekuensi; ADR-016 butir 4; ADR-019 butir 2; ADR-021 butir 4 |
 | AS-18 | Keaslian resep digital dan halaman verifikasinya | PDF resep, `prescription.verification_code_*`, halaman verifikasi publik | Enc (kode); data resep Spesifik | I, K | US-309 AC6–AC8; A9.8; ADR-012 butir 3 |
+| AS-19 | Data peserta korporat dan turunannya: nama, kontak, tanggal lahir, NIK opsional, status undangan dan kehadiran, persetujuan berbagi, ringkasan hasil (v1.3) | `corporate_participant`, `participant_import_row`, `corporate_invitation*`, `corporate_attendance_record`, `corporate_share_consent_record`, `corporate_result_summary`; berkas impor mentah | PII; NIK dan ringkasan Spesifik, Enc | K, I | CR-021 §5; ADR-028 butir 2–4 |
+| AS-20 | Data dan dokumen perusahaan klien serta keanggotaan HR (v1.3) | `corporate_client`, `corporate_client_document`, `corporate_member`; bucket dokumen | Badan usaha; dokumen dapat memuat PII pengurus | K, I | CR-021 §5; US-1901–US-1904 |
+| AS-21 | Konten dan gambar situs publik, integritas dan keaslian (v1.3) | `cms_content` kanal situs; endpoint `/v1/public/content/*` | — | I, A | ADR-027 butir 5; US-1801, US-1802 |
+
+AS-06 diperluas (v1.3): invoice B2B, harga terkunci korporat, penerimaan transfer manual, jurnal korporat (ADR-029). AS-10 diperluas (v1.3): sesi BFF `web/korporat`, faktor TOTP HR, token undangan peserta (hash).
 
 ---
 
@@ -113,6 +120,7 @@ Klasifikasi mengikuti legenda sensitivitas data dictionary §0.5 (`PII`, `Spesif
 | AK-05 | Penyerang internet | Tanpa akun; dapat melakukan credential stuffing, phishing, bot, dan pemindaian | Pengambilalihan akun, pencurian data, gangguan layanan, pemalsuan resep |
 | AK-06 | Penyedia pihak ketiga terkompromi | Kendali atas payment gateway, email, kurir, penyedia video, penyedia cloud, pustaka/SDK, atau endpoint yang menyamar sebagai SATUSEHAT | Membaca atau memalsukan data yang melintas, mengirim data ke luar Indonesia |
 | AK-07 | Orang dalam teknis atau identitas pipeline terkompromi | Akses konsol cloud, database, KMS, secret manager, atau pipeline CI/CD | Membaca data terenkripsi, mengubah transaksi atau audit, mendeploy kode jahat |
+| AK-08 | HR perusahaan jahat atau akun HR terkompromi (v1.3) | Akun realm `korporat` aktif dengan keanggotaan di satu perusahaan; dapat memanggil API korporat langsung dan mengunggah berkas | Membaca hasil atau ringkasan karyawan tanpa persetujuan, data perusahaan lain, menyalahgunakan undangan, injeksi lewat berkas |
 
 ---
 
@@ -185,6 +193,13 @@ flowchart LR
   ADM -->|TB-13 akses darurat| KMS & DBRS & DBAU & DBRME & KC
   KC -->|TB-14 SMTP STARTTLS| ER
   ER -->|TB-11 SES API| EM
+  HRB[Peramban HR, v1.3] -->|TB-1| LB
+  HRB -->|TB-9 realm korporat| KC
+  PUB[Peramban publik, v1.3] -->|TB-1| LB
+  LB --> SITUS[web/situs tanpa sesi] & KORP[web/korporat BFF]
+  SITUS -->|hanya /v1/public| API
+  KORP -->|TB-15 /v1/corporate| API
+  WK -->|TB-16 berkas impor| OS
 ```
 
 ### 3.2 Daftar boundary
@@ -207,6 +222,10 @@ TB-1 sampai TB-13 tercantum di arsitektur §7.
 | TB-12 | Perangkat pengguna (penyimpanan aplikasi mobile dan peramban) | Token, antrean pesan offline, berkas yang diunduh | Token di penyimpanan aman platform (ADR-011 butir 7); isi klinis tidak persisten, kunci aplikasi nakes, kendali SDK (ADR-021 butir 1–2); cookie `HttpOnly` untuk web | APP-01, APP-02, APP-05, OS-01 |
 | TB-13 | Akses administratif manusia ke infrastruktur production | Konsol cloud, superuser database, KMS, secret manager, admin Keycloak | MFA, tanpa hak tetap untuk manusia, akses darurat dengan persetujuan orang kedua, log audit cloud ke security log (ADR-021 butir 3, ADR-010 butir 5) | KMS-01, AUD-01, KC-06, DB-05 |
 | TB-14 | Keycloak (dan Alertmanager) ke relay email, di jaringan Docker khusus per host (v1.2; relay per host app-1, app-2, ops, stg-app, KEPUTUSAN-232) | Pesan MIME berisi token aksi, alamat penerima, peringatan operasional | STARTTLS wajib dengan CA internal dan verifikasi hostname, `debug` dilarang (ADR-026 butir 6); jaringan khusus per host tanpa jalur antar-host, satu penerima, daftar izin `From`, batas ukuran dan laju, tanpa log isi (ADR-026 butir 1, 4) | EML-01, EML-03, EML-05, EML-07 |
+| TB-15 | Domain pemberi kerja (HR, tenant perusahaan) ke data kesehatan peserta, batas logis di backend (v1.3) | Rekap kehadiran, status undangan, ringkasan berpersetujuan | `CorporateScope` dari sesi, 404, fungsi akses sensitif yang memeriksa persetujuan saat baca dan menulis E-05, tanpa jalur hasil lengkap (ADR-028 butir 1–3) | KOR-07, KOR-09, KOR-10, KOR-13 |
+| TB-16 | Berkas CSV/XLSX tak tepercaya dari HR ke pengurai di backend (v1.3) | Isi berkas, baris pratinjau | Validasi isi, batas PB-23, berkas terenkripsi ditolak, pembatasan sumber daya, pratinjau terenkripsi berumur (ADR-028 butir 6) | IMP-01–IMP-04 |
+
+TB-1 diperluas (v1.3): situs publik, member area korporat, endpoint konten dan gambar publik. TB-9 diperluas (v1.3): realm `korporat`.
 
 Catatan lintas sistem: Ruang Sehat dan RME memakai instans Redis terpisah (ADR-007 butir 6, ADR-006 butir 4). Keycloak tetap dipakai bersama dengan realm, admin realm, dan klien Admin REST API terpisah per realm (ADR-011 butir 2, 11).
 
@@ -432,20 +451,71 @@ Dasar: ADR-026 (Diusulkan), spike F1-T02 (eksperimen E1: token aksi `login-actio
 | EML-08 | I | AK-06 | Alamat dan isi email diproses atau disimpan di luar Indonesia: komitmen AWS bersifat umum dengan pengecualian "necessary to provide the services you initiated" `[SRC-295]`; daftar supresi menyimpan alamat sampai dihapus `[SRC-296]`; server penerima di lokasi `[TIDAK DIKETAHUI]` `[USER] T4-Q1` | S | S | Sedang | Region `ap-southeast-3`; tanpa `EndpointId` multi-region dan penolakan IAM-nya `[SRC-297]` `[SRC-298]`. Kesesuaian dengan T4-Q1/CR-007 dibawa ke user dan tim legal | ADR-026 butir 4–5 (Diusulkan); KEPUTUSAN-230 | **Sebagian** (menunggu user dan legal; M-39) |
 | EML-09 | I | AK-07, AK-05 | Email aplikasi bertoken (tautan konfirmasi reset MFA KEPUTUSAN-204) dikirim modul notifikasi lewat outbox dengan coba ulang (ADR-016), sehingga token tersimpan di database dan backup, dan dikirim dengan TLS oportunistik karena configuration set wajib TLS hanya untuk email Keycloak | S | S | Sedang | Tautan sekali pakai 60 menit dan password tetap diminta (KEPUTUSAN-204), sehingga token saja tidak cukup. Usulan di ADR-026 butir 7 (Diusulkan) untuk rancangan US-207 AC5 | KEPUTUSAN-204; ADR-026 butir 7 (Diusulkan) | **Belum** (M-37) |
 
+### 4.19 Situs publik `web/situs` dan konten publik (TB-1), baru di v1.3
+
+Dasar §4.19–§4.22: `docs/cr/CR-021-analisis.md` v0.1, ADR-027–ADR-029 (Diusulkan), `docs/review/CR-021-security.md` (B-01–B-05). Status mengikuti cek ulang putaran 2 atas analisis v0.2 (`docs/review/CR-021-security.md` §5.3).
+
+| ID | STRIDE | Aktor | Ancaman | K | D | Tingkat | Mitigasi dalam desain | Tercermin di | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| SIT-01 | T, I, E | AK-03 (Konten), AK-05 (akun Konten terkompromi) | XSS tersimpan dari Markdown CMS (HTML mentah, tautan `javascript:`, sumber gambar eksternal) di situs publik dan di pratinjau CMS backoffice. Di backoffice, skrip berjalan di origin sesi admin lain dan memanggil BFF dengan token CSRF yang sah | S | T | **Tinggi** | Target ASVS L2; cookie `HttpOnly`; CSP situs disebut di F1-T89; sanitasi CMS "Tertunda Tahap 8" | WEB-05; H-03; F1-T89; `05-asvs-checklist.md` V1 | Tercermin (putaran 2: ADR-027 butir 5; US-1802 AC6–AC9; F1-T111; KEPUTUSAN-264) |
+| SIT-02 | I | AK-05 | Konten draf, terjadwal, atau terhapus bocor lewat endpoint publik, ID gambar yang ditebak, atau cache basi setelah konten diturunkan | S | S | Sedang | Hanya konten Tayang; gambar lewat endpoint yang memeriksa status; object storage privat; tanpa `use cache`; test draf tidak bocor | ADR-027 butir 5; US-1801 AC3; F1-T93, F1-T94; KEPUTUSAN-252 | Tercermin |
+| SIT-03 | E, T | AK-05 | RCE di `web/situs` `[SRC-246]` dipakai untuk menjangkau layanan internal di jaringan Docker yang sama, atau untuk menanam cookie di domain induk (cookie tossing) terhadap `web/korporat` | S | S | Sedang | Tanpa identitas OpenBao, Valkey, atau kunci JWE; patch ≤ 7 hari; cookie host terpisah (F1-T90). Belum ada: segmentasi jaringan dan prefiks cookie | ADR-027 butir 1, 6; KEPUTUSAN-75 | Tercermin (putaran 2: ADR-027 butir 6; KEPUTUSAN-269) |
+| SIT-04 | D | AK-05 | Scraping atau banjir permintaan ke halaman yang dirender server tanpa cache dan ke endpoint gambar, membebani proses `api` yang sama dengan layanan pasien (NFR-AVL-01) | S | S | Sedang | Batas laju endpoint publik; cache HTTP ditetapkan Tahap 8 dengan review keamanan | ADR-027 butir 5; ADR-019 butir 3 | **Sebagian** (M-47) |
+| SIT-05 | I | AK-06 | Skrip analitik, peta, font, atau sematan pihak ketiga di situs mengirim data pengunjung (IP, perilaku) ke luar Indonesia, atau disusupi sebagai rantai pasok skrip | S | S | Sedang | Tidak ada aturan pihak ketiga untuk situs | — | Tercermin (putaran 2: ADR-027 butir 5; US-1802 AC9) |
+
+### 4.20 Realm `korporat`, BFF `web/korporat`, dan tenant perusahaan (TB-1, TB-9, TB-15), baru di v1.3
+
+| ID | STRIDE | Aktor | Ancaman | K | D | Tingkat | Mitigasi dalam desain | Tercermin di | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| KOR-01 | S | AK-05 | Pengambilalihan akun HR lewat credential stuffing atau phishing | S | T | **Tinggi** | MFA TOTP wajib dengan kode pemulihan sejak login pertama; deteksi brute force 5/15 menit; pesan seragam; atur ulang password ber-OTP; sesi web 30 menit/12 jam; penonaktifan seketika | ADR-027 butir 3; US-1904 AC1, AC5, AC6; KEPUTUSAN-253; F1-T85, F1-T88 | Tercermin (risiko sisa seperti APP-04: TOTP tidak tahan phishing `[SRC-276]`) |
+| KOR-02 | S, E | AK-05 (rekayasa sosial ke staf Ruang Sehat) | HR yang mengaku kehilangan TOTP dan kode pemulihan meminta reset MFA ke Ruang Sehat, lalu penyerang mendaftarkan TOTP miliknya. Paling rawan untuk HR aktif terakhir | S | T | **Tinggi** | Tidak ada jalur reset MFA untuk realm `korporat`; ADR-011 baris 84 hanya mencakup nakes, admin, dan RME | — | Tercermin (putaran 2: ADR-027 butir 3; US-1904 AC7–AC9; KEPUTUSAN-265; dibangun Fase 2; sub-peran PT-67) |
+| KOR-03 | S | AK-05, AK-03 | Penyerang mendaftarkan perusahaan nyata dengan salinan NIB/NPWP (dokumen tidak membuktikan kewenangan pendaftar), atau admin/sales membuat perusahaan Aktif tanpa verifikasi kedua, lalu menerima persetujuan berbagi ringkasan atas nama perusahaan itu | R | T | Sedang | Verifikasi admin atas NIB/NPWP; invoice harus lunas sebelum layanan; E-10 mencatat sumber pembuatan. Sub-peran (PT-67) dan NIB ganda (PT-72) `[TIDAK DIKETAHUI]` | US-1901–US-1903; AB-83 | **Sebagian** (M-49; keputusan user) |
+| KOR-04 | D, S | AK-08, AK-05 | Undangan peserta dan kirim ulang dipakai sebagai meriam email ber-DKIM sah (spam, email bombing, phishing berlabel nama perusahaan), menghabiskan kuota SES yang dipakai bersama email autentikasi (EML-04); injeksi HTML dari nama peserta ke templat email; pendaftaran perusahaan palsu massal mengisi antrean verifikasi dan penyimpanan dokumen | S | S | Sedang | Templat tanpa data kesehatan (AB-73); batas laju pendaftaran (RT-45). Waktu pengiriman undangan `[TIDAK DIKETAHUI]` (PT-63) | US-1908 AC1, AC7; US-1901 | **Sebagian** (putaran 2: US-1908 AC1b; ADR-028 butir 2. Sisa: waktu kirim setelah Lunas masih usulan untuk PT-63) |
+| KOR-05 | E | AK-01, AK-04, AK-08 | Token realm `korporat` diterima di API pasien, backoffice, atau portal, atau sebaliknya | S | T | **Tinggi** | Validasi issuer dan audience; namespace `/v1/corporate/*` dengan audience sendiri; test dua arah | ADR-027 butir 2; US-1904 AC4; F1-T86, F1-T90; ADR-011 butir 8 | Tercermin |
+| KOR-06 | E, I | AK-08 | `CorporateScope` ambigu bila satu akun punya lebih dari satu keanggotaan, bila keanggotaan dipindah atau dicabut saat sesi masih terbuka, atau bila HR yang keluar dari perusahaan adalah HR terakhir | R | T | Sedang | Scope dari keanggotaan aktif di sesi; penolakan sesi seketika (KU-10); HR terakhir tidak dapat dinonaktifkan. Kardinalitas keanggotaan tidak dinyatakan | ADR-028 butir 1; US-1904 AC2, AC5 | Tercermin (putaran 2: ADR-028 butir 1, UQ parsial dan pencabutan sesi) |
+| KOR-07 | I, E | AK-08 | IDOR lintas perusahaan pada perusahaan, anggota HR, pesanan, peserta, batch impor, pratinjau, undangan, invoice, unduhan berkas, rekap, dan ekspor, termasuk lewat ID anak dan job asinkron | S | T | **Tinggi** | `CorporateScope` dari sesi; 404; test isolasi otomatis semua endpoint `/v1/corporate/*` di `scripts/verify.sh` | ADR-028 butir 1; US-1904 AC3; US-1907 AC8; US-1909 AC4; US-1912 AC4; F1-T100; KEPUTUSAN-254 | Tercermin; penguatan H-18 |
+| KOR-08 | I | AK-05, AK-08 | Enumerasi: tanggapan atas NIB/NPWP yang sudah terdaftar membocorkan daftar klien; undangan HR ke email yang sudah menjadi HR perusahaan lain membocorkan keanggotaan; status token undangan membocorkan nama perusahaan | S | S | Sedang | Pesan seragam untuk email terdaftar; tautan undangan yang tidak valid tidak membocorkan perusahaan. NIB ganda dan undangan HR lintas perusahaan belum diatur | US-1901 AC4; US-1908 AC5; ADR-011 butir 4 | **Sebagian** (M-52) |
+| KOR-09 | I | AK-08 | HR memperoleh status kesehatan peserta tanpa persetujuan lewat kanal turunan: agregat atau statistik pada kelompok kecil, status "hasil tersedia" atau "tindak lanjut", baris invoice tambahan yang bergantung pada hasil, ringkasan yang tersimpan di cache BFF atau ekspor lama | S | T | **Tinggi** | Jalur langsung, detail, dan ekspor memeriksa persetujuan saat baca; teks seragam UP-85; hasil lengkap tanpa jalur HR | ADR-028 butir 3; AB-84; US-1912 AC2; US-1914 AC2, AC5 | Tercermin (putaran 2: ADR-028 butir 3, AB-87; US-1909 AC6; US-1912 AC5–AC6; US-1914 AC7–AC8; KEPUTUSAN-266) |
+| KOR-10 | I | AK-03, AK-04, AK-07 | Admin Ruang Sehat atau rekanan membaca ringkasan atau hasil peserta korporat | S | T | **Tinggi** | Tanpa kebijakan baca admin; wadah enkripsi `corporate_result_summary`; hanya fungsi akses sensitif; E-05 | ADR-028 butir 3–4; US-1914 AC4; US-1915 AC2; KEPUTUSAN-258 | Tercermin |
+| KOR-11 | S, T, R | AK-08, AK-03, AK-07 | Persetujuan berbagi dipalsukan (diberikan HR atau admin atas nama peserta), diubah, atau disangkal | R | T | Sedang | Hanya akun pasien yang tertaut dapat memberi atau menarik; tabel Log append-only dengan versi teks; E-13 | ADR-028 butir 3; US-1913 AC2–AC3; ADR-008 | Tercermin |
+| KOR-12 | S, I | AK-05, kesalahan HR | Undangan tertaut ke orang yang salah: tautan diteruskan atau disadap; HR salah ketik email ke alamat milik orang lain yang nyata (lolos syarat email sama); deep link skema kustom ditangkap aplikasi lain. Jadwal dan kemudian hasil lengkap mengalir ke akun itu | S | T | **Tinggi** | Penautan hanya oleh peserta yang sudah masuk; token sekali pakai di-hash; masa berlaku PB-24 `[TIDAK DIKETAHUI]`; UP-83 masih usulan | ADR-028 butir 2; AB-85; US-1908 AC3–AC5; UP-83 | **Sebagian** (putaran 2: desain lengkap di ADR-028 butir 2, US-1908 AC1a, AC4a, US-1915 AC4, KEPUTUSAN-267; menunggu user: UP-83, PT-78/UP-87; menjadi Tercermin bila disetujui atau risiko sisa diterima secara tercatat) |
+| KOR-13 | I | AK-08 | HR membaca data akun pasien peserta (profil, identitas, riwayat layanan lain) | R | T | Sedang | HR hanya melihat data yang diunggahnya dan status undangan | ADR-028 butir 2; US-1908 AC8 | Tercermin |
+
+### 4.21 Impor berkas peserta (TB-16), baru di v1.3
+
+| ID | STRIDE | Aktor | Ancaman | K | D | Tingkat | Mitigasi dalam desain | Tercermin di | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IMP-01 | D, I | AK-08 | XLSX (arsip ZIP berisi XML) berupa zip bomb atau XML bomb/"billion laughs" `[SRC-409]` `[SRC-405]`, entitas eksternal (XXE) `[SRC-406]`, atau shared strings dan baris raksasa yang menghabiskan memori atau CPU proses `api` | S | S | Sedang | Batas ukuran dan baris PB-23; berkas terenkripsi ditolak; "pembacaan XLSX dibatasi sumber dayanya". Belum ada: batas setelah dekompresi, DTD mati, isolasi worker | ADR-028 butir 6; US-1907 AC3; KEPUTUSAN-256 | Tercermin (putaran 2: ADR-028 butir 6; US-1907 AC11) |
+| IMP-02 | T | AK-08 | Sel diawali `=`, `+`, `-`, `@`, tab, CR, atau LF `[SRC-407]` dijalankan saat ekspor dibuka di spreadsheet oleh HR lain, Keuangan, Layanan Pelanggan, atau rekanan; nama peserta berisi HTML/skrip tampil di web korporat, backoffice, portal, atau email (XSS tersimpan) | S | S | Sedang | Isi sel diperlakukan sebagai teks dan dinetralkan saat ekspor rekap | ADR-028 butir 6; US-1907 AC6; US-1912 AC3; M-18 (Terbuka) | Tercermin (putaran 2: ADR-028 butir 6, semua ekspor; US-1908 AC1b) |
+| IMP-03 | I | AK-07 | Berkas mentah (dengan NIK tanpa enkripsi tingkat aplikasi) tertinggal sebagai versi objek lama, di backup object storage, di log, atau dalam pesan galat yang menggemakan isi sel | S | S | Sedang | Berkas asli dan pratinjau dihapus setelah impor, pembatalan, atau kedaluwarsa; log tanpa isi baris; pratinjau terenkripsi. ADR-018 butir 5 mengaktifkan versi objek | ADR-028 butir 6; US-1907 AC7; ADR-018 butir 5 | Tercermin (putaran 2: ADR-028 butir 6, bucket impor tanpa versi; US-1907 AC12) |
+| IMP-04 | T | AK-08 | Berkas berjenis lain disamarkan sebagai CSV/XLSX (makro `.xlsm`, wadah OLE, poliglot) | R | S | Rendah | Validasi isi, bukan ekstensi; berkas terenkripsi ditolak; berkas tidak pernah disajikan kembali ke siapa pun | ADR-028 butir 6; US-1907 AC3; ADR-018 butir 2 | Tercermin |
+
+### 4.22 Invoice B2B dan penerimaan manual (TB-1), baru di v1.3
+
+| ID | STRIDE | Aktor | Ancaman | K | D | Tingkat | Mitigasi dalam desain | Tercermin di | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| B2B-01 | T | AK-03 (Keuangan), kolusi dengan perusahaan | Penerimaan fiktif atau salah dicatat (termasuk berdasarkan bukti transfer palsu kiriman perusahaan), sehingga invoice Lunas dan layanan dilaksanakan tanpa dana masuk | S | T | **Tinggi** | Penerimaan immutable dengan bukti; jurnal berpasangan; entri pembalik; E-08; status Lunas hanya dari penerimaan tercatat. Pemisahan tugas menunggu UP-84 | ADR-029 butir 3–5; US-1910 AC1–AC7; UP-84 | **Sebagian** (M-45; menjadi Tercermin bila user menerima UP-84 atau menerima risiko sisa secara tercatat) |
+| B2B-02 | T | AK-03, kesalahan Keuangan | Satu transfer bank yang sama dicatat sebagai pelunasan beberapa invoice, karena keunikan referensi hanya per invoice | S | T | **Tinggi** | UQ referensi bank per invoice | ADR-029 butir 3; US-1910 AC4; CR-021 §5 `b2b_payment_receipt` | Tercermin (putaran 2: ADR-029 butir 3; US-1910 AC1, AC1a, AC4; KEPUTUSAN-268; catatan DBA R2-01) |
+| B2B-03 | T, S | AK-03, AK-05 (business email compromise) | Rekening tujuan di invoice diganti, atau invoice palsu dengan rekening lain dikirim ke perusahaan atas nama Ruang Sehat | S | S | Sedang | Invoice diunduh dari member area (E-12). Rekening tujuan `[TIDAK DIKETAHUI]` (PT-59) | US-1909 AC1, AC3 | **Sebagian** (putaran 2: US-1909 AC7, berlaku setelah PT-59. Sisa: DMARC belum tertulis) |
+| B2B-04 | T | AK-08, AK-03 | Manipulasi harga dari klien, pesanan dan invoice ganda, atau penjadwalan sebelum lunas | S | T | **Tinggi** | Harga dihitung server dan dikunci saat konfirmasi; idempotensi; AB-83 ditegakkan server; nilai berubah harus disetujui ulang | ADR-029 butir 2, 5; AB-80, AB-81, AB-83; US-1906 AC2–AC4; US-1911 AC2 | Tercermin |
+| B2B-05 | R | AK-03 | Pencatat atau pembalik penerimaan menyangkal tindakannya | R | S | Rendah | Baris immutable dengan pelaku; E-08; koreksi lewat pembalik | ADR-029 butir 3–4; ADR-004; ADR-005 | Tercermin |
+
 ---
 
 ## 5. Ringkasan
 
 ### 5.1 Jumlah ancaman per tingkat dan status
 
-Angka v1.2. Dibanding v1.1: EML-01–EML-09 ditambahkan (8 Sedang, 1 Rendah). Angka v1.1 dibanding v1.0: API-10 dan WEB-07 (Sedang) berubah dari Sebagian ke Tercermin; KC-10 (Tinggi) dan KC-11 (Sedang) ditambahkan.
+Angka v1.3 setelah cek ulang putaran 2 CR-021. Dibanding v1.2: 27 ancaman ditambahkan (11 Tinggi, 14 Sedang, 2 Rendah), semuanya di §4.19–§4.22 (lingkup CR-021). Dua ancaman Tinggi yang belum Tercermin (KOR-12, B2B-01) hanya menunggu keputusan user. Angka v1.2 dibanding v1.1: EML-01–EML-09 ditambahkan (8 Sedang, 1 Rendah). Angka v1.1 dibanding v1.0: API-10 dan WEB-07 (Sedang) berubah dari Sebagian ke Tercermin; KC-10 (Tinggi) dan KC-11 (Sedang) ditambahkan.
 
 | Tingkat | Jumlah | Tercermin | Sebagian | Belum |
 | --- | --- | --- | --- | --- |
-| Tinggi | 55 | 55 | 0 | 0 |
-| Sedang | 61 | 40 | 16 | 5 |
-| Rendah | 6 | 5 | 1 | 0 |
-| **Total** | **122** | **100** | **17** | **5** |
+| Tinggi | 66 | 64 | 2 | 0 |
+| Sedang | 75 | 50 | 20 | 5 |
+| Rendah | 8 | 7 | 1 | 0 |
+| **Total** | **149** | **121** | **23** | **5** |
+
+Angka v1.2 sebagai pembanding: Tinggi 55 (55/0/0), Sedang 61 (40/16/5), Rendah 6 (5/1/0), total 122 (100/17/5).
 
 Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 - RX-02 dan RX-03 (diterima user, T4-Q5);
@@ -476,6 +546,10 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | 4.16 Email dan kurir | 3 | 0 | — |
 | 4.17 Halaman verifikasi resep | 3 | 2 | — |
 | 4.18 Relay email Keycloak dan SES | 9 | 0 | — |
+| 4.19 Situs publik (v1.3) | 5 | 1 | — |
+| 4.20 Realm korporat, BFF, tenant perusahaan (v1.3) | 13 | 7 | KOR-12 (menunggu user) |
+| 4.21 Impor berkas peserta (v1.3) | 4 | 0 | — |
+| 4.22 Invoice B2B (v1.3) | 5 | 3 | B2B-01 (menunggu user) |
 
 ### 5.3 Butir yang diminta khusus
 
@@ -499,6 +573,12 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | Penyalahgunaan kredensial SATUSEHAT per fasyankes | SS-01, SS-02 | Tinggi | SS-01 Tercermin; SS-02 Sebagian (Sedang) |
 | SDK mobile mengirim data ke luar Indonesia (T4-Q1) | APP-05, CI-02 | Tinggi | Tercermin |
 | Pemalsuan resep dan halaman verifikasi | API-13, RX-01, RX-02, RX-03 | Tinggi | Tercermin; RX-02 dan RX-03 dengan risiko sisa diterima user; RX-01 Sebagian (Sedang) |
+| Isolasi antar-perusahaan dan HR vs hasil peserta (v1.3) | KOR-07, KOR-09, KOR-10, KOR-13 | Tinggi | Tercermin |
+| Pengambilalihan akun HR dan pemulihan MFA (v1.3) | KOR-01, KOR-02 | Tinggi | Tercermin |
+| Penautan undangan ke akun pasien (v1.3) | KOR-12 | Tinggi | Sebagian, menunggu user (UP-83, PT-78/UP-87) |
+| Impor CSV/XLSX (v1.3) | IMP-01–IMP-04 | Sedang | Tercermin |
+| XSS dari CMS di situs publik (v1.3) | SIT-01, WEB-05 | Tinggi | Tercermin |
+| Pencatatan pembayaran manual (v1.3) | B2B-01, B2B-02 | Tinggi | B2B-02 Tercermin; B2B-01 menunggu UP-84 |
 
 ---
 
@@ -552,6 +632,23 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | M-37 | EML-09 | Outbox notifikasi hanya menyimpan referensi, token dibangkitkan saat pengiriman dan database hanya menyimpan hash; configuration set wajib TLS (bila dipilih user) juga untuk email bertoken aplikasi; kalimat ADR-026 Konsekuensi dipersempit ke token Keycloak | Revisi ADR-026 butir 7 (C-04); rancangan US-207 AC5 bersama H-16 (Fase 2) | Baru |
 | M-38 | EML-02 | Masa berlaku undangan `execute-actions-email` untuk semua realm ditetapkan (usulan ≤ 24 jam, setara US-208 AC4) dan sifat sekali pakainya diverifikasi di Keycloak 26.8.2; aktivasi undangan memberi tahu admin pembuat; keputusan TLS wajib dari user | ADR-011 butir 4 atau ADR-026; F1-T50/F1-T51; keputusan user ADR-026 butir 3 | Baru |
 | M-39 | EML-08 | Penilaian lokasi data oleh user dan legal (KEPUTUSAN-230); alamat di daftar supresi SES dihapus sebagai bagian dari penghapusan/anonimisasi hak subjek data; event publishing SES hanya ke tujuan di region Jakarta, bila dipakai | Keputusan user; EP-16; ADR-013 | Baru |
+| M-40 | SIT-01 | (a) Markdown tanpa HTML mentah; (b) daftar izin skema URL `https`, `mailto`, relatif; (c) gambar hanya dari endpoint gambar publik backend; (d) validasi saat simpan di backend dan render aman yang sama di situs dan pratinjau; (e) pratinjau backoffice di iframe `sandbox` tanpa `allow-same-origin` atau di origin terpisah; (f) CSP tanpa skrip inline untuk `web/situs` dan backoffice; (g) test payload XSS | ADR-027 butir 5; AC baru US-1802; F1-T89, F1-T92, F1-T95, F1-T111; U-03 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-41 | KOR-02 | Kode pemulihan didahulukan; reset oleh sub-peran berwenang (PT-67) setelah konfirmasi lewat kanal berbeda (HR aktif lain atau kontak resmi perusahaan); tautan sekali pakai ke email akun ditambah password (KEPUTUSAN-204); TOTP lama berlaku sampai TOTP baru tersimpan (H-16 a); cabut semua sesi; beri tahu semua HR aktif; E-04 | ADR-027 butir 3; AC baru US-1904; prosedur H-05 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-42 | KOR-09 | Invarian: HR hanya menerima data turunan hasil (nilai, ringkasan, ketersediaan hasil, status tindak lanjut, agregat, baris tagihan yang bergantung pada hasil) untuk peserta dengan persetujuan aktif saat permintaan; agregat hanya atas data yang memang terlihat oleh HR; rekap tanpa status hasil; BFF tidak menyimpan ringkasan di cache; test negatif per kanal | ADR-028 butir 3; AC US-1912, US-1914; masukan PT-63, PT-65, DPIA | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-43 | KOR-12 | (1) UP-83 sebagai syarat keamanan, atau risiko sisa diterima user; (2) usulan ke user: konfirmasi tanggal lahir saat menerima undangan dengan batas percobaan; (3) hasil dirilis setelah identitas dicocokkan di lokasi layanan (PT-66); (4) App Links/Universal Links terverifikasi, token ditukar setelah login realm `pasien`; masa berlaku PB-24 ditetapkan | ADR-028 butir 2; US-1908 AC3–AC4; US-1915; UP baru | Diterapkan (di ADR Diusulkan, CR-021 v0.2); keputusan user UP-83, PT-78/UP-87 |
+| M-44 | B2B-02 | Mutasi bank sebagai baris tersendiri dengan kunci unik global (rekening tujuan, tanggal valuta, referensi, nominal; diverifikasi terhadap format mutasi saat task); alokasi ke invoice dengan jumlah ≤ nominal mutasi (aplikasi dan constraint); test alokasi ganda | ADR-029 butir 3; data dictionary A20; US-1910 AC4 | Diterapkan (di ADR Diusulkan, CR-021 v0.2); catatan DBA R2-01 |
+| M-45 | B2B-01 | Empat mata (UP-84); rekonsiliasi harian terhadap mutasi bank oleh orang selain pencatat; Lunas hanya dari mutasi bank yang diperiksa Keuangan, bukan dari bukti kiriman perusahaan; laporan piutang ke Auditor | Keputusan user UP-84; ADR-029 butir 3; prosedur Keuangan | Menunggu user (UP-84) |
+| M-46 | SIT-03 | `web/situs` di jaringan Docker sendiri, hanya menjangkau backend lewat Caddy pada `/v1/public/*`, tanpa egress lain; cookie `web/korporat` berprefiks `__Host-` `[SRC-408]`; CSRF dengan synchronizer token, bukan double-submit cookie | ADR-027 butir 6; ADR-025; F1-T89, F1-T90 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-47 | SIT-04 | Respons konten publik tanpa personalisasi di-cache Caddy dengan TTL pendek dan dibuang saat konten berubah status; anggaran batas laju publik terpisah dari API pasien | ADR-027 butir 5 (keputusan cache Tahap 8); ADR-019 butir 3 | Sebagian |
+| M-48 | SIT-05 | Situs tanpa skrip, font, atau sematan pihak ketiga; CSP `default-src 'self'`; penambahan pihak ketiga lewat CR dengan penilaian lokasi data (T4-Q1) | ADR-027 butir 1; U-03 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-49 | KOR-03 | Verifikasi menuntut bukti kewenangan pendaftar (misalnya surat penunjukan atau konfirmasi lewat telepon kantor dari sumber independen) — keputusan user; perusahaan buatan admin/sales disetujui orang kedua; aturan NIB ganda (PT-72) tanpa membocorkan keanggotaan | Keputusan user (PT-67, PT-72, PT baru); US-1902, US-1903 | Menunggu user (PT-79) |
+| M-50 | KOR-04 | Undangan dikirim setelah Lunas (usulan untuk PT-63); jumlah undangan ≤ jumlah peserta pesanan; batas kirim ulang per peserta dan per perusahaan per hari; templat tanpa teks bebas dari HR dan pengodean keluaran HTML; verifikasi email sebelum unggah dokumen; pendaftaran tak terverifikasi kedaluwarsa (PT-24) | US-1908; US-1901; PT-63; ADR-016 butir 5 | Sebagian |
+| M-51 | KOR-06 | Satu keanggotaan aktif per akun HR (UQ parsial); perpindahan atau pencabutan keanggotaan mencabut sesi; HR terakhir yang keluar ditangani lewat M-41 | ADR-028 butir 1; data dictionary A20 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-52 | KOR-08 | Tanggapan generik untuk NIB/NPWP terdaftar dan undangan HR ke akun yang sudah menjadi HR perusahaan lain; konflik diselesaikan admin di luar layar | US-1901 AC7 (PT-72); US-1904 AC2 | Terbuka |
+| M-53 | IMP-01 | Penguraian di worker dengan batas waktu dan memori; batas ukuran setelah dekompresi, jumlah entri, dan rasio kompresi sebelum mengurai `[SRC-409]`; DTD dimatikan `[SRC-405]` `[SRC-406]`; tolak `.xlsm`, OLE, dan `vbaProject.bin` | ADR-028 butir 6; pemilihan pustaka saat task | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-54 | IMP-02 | Penetralan formula `[SRC-407]` di semua ekspor CSV (rekap, backoffice, portal) dan pengodean keluaran field peserta di web dan email; memperluas M-18 | Coding standards; ADR-028 butir 6 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-55 | IMP-03 | Bucket impor tanpa versi objek dengan aturan kedaluwarsa siklus hidup; dikecualikan dari backup object storage atau berumur sama; pesan galat per baris tanpa menggemakan isi sel | ADR-018 butir 1, 5 (revisi); ADR-028 butir 6 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
+| M-56 | B2B-03 | Rekening tujuan invoice sebagai konfigurasi dengan persetujuan orang kedua dan E-14; email invoice tanpa lampiran dan mengarah ke member area; DMARC ditegakkan untuk domain pengirim | ADR-029 butir 6 (setelah PT-59); ADR-012 butir 7; ADR-026 | Sebagian |
 
 ### 6.3 Penguatan untuk ancaman yang sudah tercermin (checklist Tahap 5, tidak memblokir)
 
@@ -574,6 +671,7 @@ Enam ancaman Tinggi berstatus Tercermin dengan risiko sisa yang dicatat:
 | H-15 | SS-01 | Job SATUSEHAT mencocokkan Organization ID pada resource dengan kredensial fasyankes yang dipakai sebelum mengirim; test lintas fasyankes untuk job | ADR-020 butir 6 | Terbuka |
 | H-16 | KC-10 | **Baru v1.1.** (a) Konfirmasi reset berlanjut langsung ke pendaftaran TOTP baru di peramban yang sama; TOTP lama baru diganti dan reset baru berlaku setelah TOTP baru dan kode pemulihan baru tersimpan, sehingga tidak ada keadaan akun berpassword tanpa MFA. (b) Pemberitahuan permintaan reset dikirim saat reset dimulai (email akun dan sesi aktif lain bila ada), dengan tautan pembatalan. (c) Satu permintaan tertunda per akun; permintaan baru membatalkan tautan lama. (d) Pemeriksaan password di langkah konfirmasi didokumentasikan sebagai jalur autentikasi (6.3.4 `[SRC-265]`), kegagalannya dihitung ke penguncian yang sama dengan login, tanpa grant password langsung pada klien publik (ADR-011 Alternatif ditolak). (e) Batas jumlah reset per staf per hari dengan peringatan security log; reset atas akun milik staf sendiri ditolak. (f) E-04 mencatat "reset dimulai" (aktor admin) dan "reset dikonfirmasi" (aktor pasien) | KEPUTUSAN-204 butir 2; US-207 AC5; ADR jalur email (KEPUTUSAN-183) atau ADR baru yang dijanjikan KEPUTUSAN-204; prosedur H-05. Rinciannya `docs/review/checkpoint-2-security.md` C-01–C-03, C-05 | Terbuka; (a)–(d) disarankan masuk AC sebelum task US-207 AC5 (Fase 2) |
 | H-17 | EML-06 | Prosedur rotasi dan pencabutan kunci akses AWS akun email; policy OpenBao per proses/host hanya membaca kunci SES; `aws:SourceIp` memuat semua IP keluar host relay dan notifikasi; kemungkinan kredensial AWS dinamis dari OpenBao diperiksa (`[TIDAK DIKETAHUI]`) | ADR-026 butir 1, 5; ADR-025; F1-T36 | Terbuka |
+| H-18 | KOR-07 | **Baru v1.3.** Harness isolasi mencakup ekspor, unduhan invoice dan berkas, pratinjau impor, endpoint ID anak (`corporate_order_participant`, undangan), job asinkron yang membangkitkan berkas, dan route handler BFF `web/korporat` | F1-T100; NFR-SEC-06 | Diterapkan (di ADR Diusulkan, CR-021 v0.2) |
 
 ---
 
@@ -611,6 +709,8 @@ Yang tetap terbuka dan tidak memblokir:
 
 Versi 1.2: seluruh 55 ancaman Tinggi tetap berstatus Tercermin. Sembilan ancaman relay email (EML-01–EML-09, 8 Sedang dan 1 Rendah) ditambahkan. Lima di antaranya Sebagian dan satu Belum, dengan mitigasi M-34–M-39 dan H-17. Butir yang bergantung pada keputusan user: penerimaan ADR-026, TLS wajib (EML-02), dan lokasi data (EML-08). Status **LULUS**.
 
+Versi 1.3 (setelah cek ulang review keamanan CR-021 putaran 2): ancaman lama tidak berubah status; lingkup yang sudah disetujui tetap **LULUS**. Di lingkup CR-021, blokir B-01–B-05 tertutup. Dua ancaman Tinggi masih Sebagian dan hanya menunggu keputusan user: KOR-12 (UP-83, PT-78/UP-87) dan B2B-01 (UP-84). Bila user menyetujui usulan itu atau menerima risiko sisanya secara tercatat, keduanya menjadi Tercermin (§0.4) dan lingkup CR-021 **LULUS**. Sampai saat itu lingkup CR-021 berstatus **LULUS BERSYARAT keputusan user**, tanpa celah desain yang tersisa bagi penyusun. ADR-029 tetap tidak dapat Diterima sebelum PT-59, L-21, dan UP-84 diputuskan.
+
 ---
 
 ## 9. Riwayat revisi
@@ -622,3 +722,4 @@ Versi 1.2: seluruh 55 ancaman Tinggi tetap berstatus Tercermin. Sembilan ancaman
 | 1.0 | 2026-11-18 | LULUS dan disetujui di gate Tahap 4 | `[USER] T4-G5` |
 | 1.1 | 2026-11-18 | Tindak lanjut Checkpoint 2:<br>- APP-04: MFA wajib pasien, risiko sisa diganti;<br>- API-10: Tercermin (M-12 diterapkan);<br>- KC-02: jalur pasien;<br>- KC-10 dan KC-11 baru;<br>- WEB-07: Tercermin (M-16 diterapkan);<br>- APP-01, API-11, API-15, KC-01, WEB-11, CI-04, EXT-01: mitigasi ditambah;<br>- H-01, H-04, H-05: sebagian diterapkan; H-16 baru;<br>- §5 dihitung ulang (113 ancaman);<br>- §7 butir 5 (DPIA) dan butir 6;<br>- §0.1 label `[USER] C2-*`;<br>- AS-10 dan TB-1/TB-8/TB-9 disesuaikan.<br>Topologi VPS (U-09) tidak tercakup | `[USER] C2-Q9, C2-Q10, C2-Q11, C2-B4, C2-B7` (`docs/checkpoint-2.md`); risk register v1.3 catatan status ancaman; ADR-011 revisi Checkpoint 2; PRD v1.2; KEPUTUSAN-198–205; `docs/review/checkpoint-2-security.md` |
 | 1.2 | 2026-11-19 | Review keamanan F1-T02:<br>- §4.18 baru (EML-01–EML-09);<br>- TB-14 baru, TB-11 diperluas;<br>- AS-10 diperluas;<br>- M-34–M-39 dan H-17 baru;<br>- §5 dihitung ulang (122 ancaman).<br>Status tetap LULUS | `docs/spike/F1-T02-email-keycloak.md`; ADR-026 (Diusulkan); KEPUTUSAN-226–232; `docs/review/F1-T02-security.md` |
+| 1.3 | 2026-11-19 | Review keamanan CR-021:<br>- §4.19–§4.22 baru (SIT-01–05, KOR-01–13, IMP-01–04, B2B-01–05);<br>- AS-19–AS-21, AK-08, TB-15, TB-16 baru; TB-1, TB-9, AS-06, AS-10 diperluas;<br>- M-40–M-56 dan H-18 baru;<br>- §5 dihitung ulang (149 ancaman).<br>Putaran 1: lingkup lama tetap LULUS; lingkup CR-021 TIDAK LULUS (B-01–B-05, UP-84).<br>Cek ulang putaran 2: SIT-01, KOR-02, KOR-09, B2B-02, SIT-03, SIT-05, KOR-06, IMP-01–03 ke Tercermin; KOR-04, B2B-03 ke Sebagian; KOR-12 dan B2B-01 menunggu user; §5.1 menjadi 121/23/5; lingkup CR-021 LULUS BERSYARAT keputusan user | `docs/cr/CR-021-analisis.md` v0.1 dan v0.2; ADR-027–ADR-029 (Diusulkan); KEPUTUSAN-250–269; `docs/review/CR-021-security.md` putaran 1 dan 2 |

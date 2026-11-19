@@ -1,0 +1,4 @@
+# Pengecualian gitleaks per fingerprint (F1-T06). Diberikan eksplisit oleh scripts/verify.sh lewat
+# --gitleaks-ignore-path. Satu fingerprint per temuan, dengan alasan tertulis dan review keamanan.
+# Komentar "gitleaks:allow" di kode tidak berlaku (verify.sh: --ignore-gitleaks-allow).
+# Saat ini kosong; positif palsu yang ada dikecualikan lewat allowlist sempit di .gitleaks.toml.

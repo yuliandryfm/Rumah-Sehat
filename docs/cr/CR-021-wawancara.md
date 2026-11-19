@@ -35,3 +35,16 @@ Sumber semua jawaban: `[USER]` lewat Telegram, 2026-11-19. Konteks: `docs/backlo
 | P3-2 | Lokasi pelaksanaan | **OK**: on-site di kantor perusahaan atau di klinik/lab rekanan, dipilih per pesanan |
 | P3-3 | Syarat invoice bawaan | **D**: invoice terbit saat pesanan dikonfirmasi, jatuh tempo 14 hari, layanan dijadwalkan setelah lunas |
 | P3-4 | Pengelola konten company profile | **C**: admin Ruang Sehat lewat CMS (US-1101) |
+
+## Putaran 4: keputusan atas analisis (§17 `docs/cr/CR-021-analisis.md`)
+
+Jawaban `[USER]` Telegram 2026-11-19 15:35 UTC: "1S3 2Y 3Y 4aV 4bY4cT".
+
+| Q | Keputusan |
+| --- | --- |
+| 1 | **Skenario S3**: Fase 1 tetap selesai 2026-12-11; 7 task Fase 1 pindah ke Fase 2; pemesanan, peserta, dan invoice korporat di Fase 3. Fase 1 memuat website, CMS, pendaftaran dan verifikasi perusahaan, akun HR |
+| 2 | Semua usulan kontradiksi disetujui: K-01 (a) peserta memakai aplikasi mobile; K-02 menunggu L-21, bila (a) butuh izin BI maka (b) dua tagihan + pengecualian AB-13; K-03 BR-141 pengecualian korporat dari pembayaran lewat PG; K-04 (a) harga lewat integrasi; K-05 hanya vaksinasi korporat yang maju, vaksinasi pasien tetap CR-015; K-12 dasar unggah HR ditetapkan legal (L-17); K-06–K-11 disetujui (CMS ke Fase 1, revisi ADR-006/011/018/024, unggah CSV/XLSX, tafsiran on-site, BR-126 lewat PT-74) |
+| 3 | UP-79–UP-87 disetujui semua (termasuk UP-83, UP-84, UP-87 sebagai syarat keamanan) |
+| 4a | PT-67: **Verifikator** yang memverifikasi/membuat akun perusahaan dan memulai reset MFA HR |
+| 4b | PT-79: **wajib** bukti kewenangan pendaftar (surat kuasa/penunjukan dari perusahaan) |
+| 4c | PT-72: NIB sudah terdaftar → **tolak** dan arahkan menghubungi Layanan Pelanggan |
