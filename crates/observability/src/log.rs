@@ -142,7 +142,11 @@ impl Fields {
     fn text_field(&mut self, field: &Field, raw: &str) {
         let key = field.name();
         if key == "correlation_id" {
-            self.put(key, Val::UnverifiedCorrelation(raw.to_string()));
+            // Hanya UUID valid yang disimpan; nilai tidak valid dibuang dan tidak boleh menimpa
+            // ID valid dari span induk (KEPUTUSAN-123).
+            if CorrelationId::parse(raw).is_ok() {
+                self.put(key, Val::UnverifiedCorrelation(raw.to_string()));
+            }
         } else if is_sensitive_key(key) {
             self.put(key, Val::Redacted);
         } else {
@@ -152,6 +156,9 @@ impl Fields {
 
     fn raw_field(&mut self, field: &Field, literal: String) {
         let key = field.name();
+        if key == "correlation_id" {
+            return;
+        }
         if is_sensitive_key(key) {
             self.put(key, Val::Redacted);
         } else {

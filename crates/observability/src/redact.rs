@@ -6,25 +6,133 @@
 //!    `kunci=nilai` dengan kunci sensitif (termasuk parameter URL bertanda tangan), email, nomor
 //!    kartu/rekening/NIK (deretan 13 digit atau lebih, atau kelompok 4-4-4-4) dan nomor HP Indonesia.
 //!
-//! Batas yang diketahui: ini jaring pengaman, bukan izin. Kode tetap dilarang mencatat data terlarang
-//! (nama, alamat, isi klinis, objek domain utuh) dan memakai `Sensitive<T>`; deteksi pola tidak dapat
-//! mengenali nama orang atau alamat dalam teks bebas. Deretan digit sepanjang 13 atau lebih (mis. epoch
-//! milidetik) ikut tersamar: lebih baik berlebihan daripada bocor.
+//! Nama field dipecah per token (`_`, `-`, camelCase) dan dicocokkan per token, pasangan token, dan potongan.
+//! Untuk kunci sensitif di teks, nilai disamarkan sampai pembatas pada tingkat kurung yang sama, termasuk
+//! `Some("x")`, `["a","b"]`, `Nama { .. }`, dan JSON ber-escape.
+//!
+//! Batas yang diketahui (jaring pengaman, bukan izin):
+//! - Skema `Authorization` selain Bearer/Basic/Digest: seluruh nilai header disamarkan (aman, berlebih).
+//!   Skema itu sendiri tidak dikenali di teks bebas tanpa kunci `authorization`.
+//! - Nilai tanpa kutip yang memuat spasi (`password=abc def`) hanya disamarkan sampai spasi pertama.
+//! - Nomor HP bersekat (`0812-3456-7890`) dan rekening 10-12 digit di teks bebas tanpa kunci sensitif
+//!   TIDAK dikenali; yang dikenali: deret 13 digit ke atas, kelompok 4-4-4-4, HP `08`/`628` tanpa sekat.
+//!   Lindungi lewat nama field (`no_rek`, `phone`) dan `Sensitive<T>`.
+//! - Lainnya: ini jaring pengaman, bukan izin. Kode tetap dilarang mencatat data terlarang
+//!   (nama, alamat, isi klinis, objek domain utuh) dan memakai `Sensitive<T>`; deteksi pola tidak dapat
+//!   mengenali nama orang atau alamat dalam teks bebas. Deretan digit sepanjang 13 atau lebih (mis. epoch
+//!   milidetik) ikut tersamar: lebih baik berlebihan daripada bocor.
 
 /// Pengganti nilai terlarang.
 pub const REDACTED: &str = "[REDACTED]";
 
-/// Nama field yang cocok persis (setelah dinormalkan ke huruf kecil alfanumerik).
-const EXACT_KEYS: &[&str] = &[
-    "pin", "otp", "pan", "nik", "ktp", "cvv", "cvc", "sig", "jwt", "name", "nama", "dob", "hp",
-    "sid", "session", "body", "payload", "phone", "email", "cookie", "cookies",
+/// Token (hasil pemecahan nama field per `_`, `-`, spasi, dan camelCase) yang sendirian sudah sensitif.
+const SENSITIVE_TOKENS: &[&str] = &[
+    "pin",
+    "otp",
+    "totp",
+    "hotp",
+    "mfa",
+    "nik",
+    "ktp",
+    "npwp",
+    "bpjs",
+    "hp",
+    "msisdn",
+    "phone",
+    "telepon",
+    "telp",
+    "mobile",
+    "pan",
+    "cvv",
+    "cvc",
+    "sandi",
+    "pwd",
+    "passphrase",
+    "passcode",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "cookie",
+    "cookies",
+    "jwt",
+    "sid",
+    "sig",
+    "email",
+    "alamat",
+    "lahir",
+    "birth",
+    "dob",
+    "kartu",
+    "card",
+    "rek",
+    "rekening",
+    "sex",
+    "gender",
+    "postal",
+    "zip",
+    "notes",
+    "body",
+    "payload",
+    "signature",
+    "credential",
+    "credentials",
+    "authorization",
+    "bearer",
+    "verification",
+    "verifier",
+    "recovery",
+    "dek",
+    "bidx",
+    "diagnosis",
+    "diagnosa",
+    "anamnesis",
+    "clinical",
+    "prescription",
 ];
 
-/// Nama field yang mengandung salah satu potongan ini (setelah dinormalkan).
+/// Pasangan token yang bersama-sama sensitif: (salah satu dari kiri) dan (salah satu dari kanan).
+const TOKEN_PAIRS: &[(&[&str], &[&str])] = &[
+    (
+        &[
+            "account", "document", "dokumen", "bank", "identity", "passport", "paspor", "license",
+        ],
+        &["number", "no", "num", "nomor", "last4", "holder"],
+    ),
+    (&["api", "private", "signing", "access"], &["key"]),
+    (&["auth"], &["code"]),
+    (&["medical", "rekam"], &["record", "medis"]),
+    (&["ibu"], &["kandung"]),
+];
+
+/// Konteks orang: token `name`/`nama` bersama salah satunya menjadi nama orang.
+const PERSON_CONTEXT: &[&str] = &[
+    "full",
+    "first",
+    "last",
+    "display",
+    "user",
+    "patient",
+    "pasien",
+    "recipient",
+    "holder",
+    "officer",
+    "customer",
+    "lengkap",
+    "doctor",
+    "dokter",
+    "nakes",
+    "member",
+    "family",
+];
+
+/// Potongan pada nama yang digabung (untuk bentuk tanpa pemisah seperti `nohp`, `apikey`); hanya kata panjang
+/// yang aman dari kecocokan tidak sengaja.
 const SUBSTRING_KEYS: &[&str] = &[
     "password",
     "passwd",
     "passcode",
+    "passphrase",
     "secret",
     "token",
     "authorization",
@@ -41,6 +149,10 @@ const SUBSTRING_KEYS: &[&str] = &[
     "email",
     "phonenumber",
     "nomorhp",
+    "nohp",
+    "nokartu",
+    "nomorkartu",
+    "katasandi",
     "sessionid",
     "fullname",
     "firstname",
@@ -48,6 +160,8 @@ const SUBSTRING_KEYS: &[&str] = &[
     "displayname",
     "username",
     "patientname",
+    "namalengkap",
+    "namapasien",
     "homeaddress",
     "streetaddress",
     "alamat",
@@ -57,6 +171,7 @@ const SUBSTRING_KEYS: &[&str] = &[
     "kodeverifikasi",
     "birthdate",
     "tanggallahir",
+    "tgllahir",
     "diagnosis",
     "diagnosa",
     "anamnesis",
@@ -64,16 +179,59 @@ const SUBSTRING_KEYS: &[&str] = &[
     "rekammedis",
     "medicalrecord",
     "prescription",
+    "beforevalues",
+    "aftervalues",
 ];
 
-/// Benar bila nilai field dengan nama ini tidak boleh dicatat. Nilai kolom `_enc` selalu terlarang.
+fn key_tokens(key: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut cur = String::new();
+    let mut prev_lower = false;
+    for c in key.chars() {
+        if !c.is_ascii_alphanumeric() {
+            if !cur.is_empty() {
+                tokens.push(std::mem::take(&mut cur));
+            }
+            prev_lower = false;
+            continue;
+        }
+        if c.is_ascii_uppercase() && prev_lower && !cur.is_empty() {
+            tokens.push(std::mem::take(&mut cur));
+        }
+        cur.push(c.to_ascii_lowercase());
+        prev_lower = c.is_ascii_lowercase();
+    }
+    if !cur.is_empty() {
+        tokens.push(cur);
+    }
+    tokens
+}
+
+/// Benar bila nilai field dengan nama ini tidak boleh dicatat. Nama dipecah per token (`_`, `-`, camelCase)
+/// dan dicocokkan per token, per pasangan token, dan per potongan nama gabungan. Kolom `*_enc` selalu terlarang.
 pub fn is_sensitive_key(key: &str) -> bool {
-    let lower = key.to_ascii_lowercase();
-    if lower.ends_with("_enc") {
+    let tokens = key_tokens(key);
+    let has = |t: &str| tokens.iter().any(|x| x == t);
+    let has_any = |set: &[&str]| set.iter().any(|t| has(t));
+    if tokens.last().is_some_and(|t| t == "enc") {
         return true;
     }
-    let norm: String = lower.chars().filter(char::is_ascii_alphanumeric).collect();
-    EXACT_KEYS.contains(&norm.as_str()) || SUBSTRING_KEYS.iter().any(|s| norm.contains(s))
+    if has_any(SENSITIVE_TOKENS) {
+        return true;
+    }
+    if TOKEN_PAIRS.iter().any(|(l, r)| has_any(l) && has_any(r)) {
+        return true;
+    }
+    // Alamat IP boleh dicatat (ADR-010 butir 6); alamat tempat tinggal tidak.
+    if has("address") && !has("ip") && !has("mac") {
+        return true;
+    }
+    if (has("name") || has("nama")) && (tokens.len() == 1 || has_any(PERSON_CONTEXT)) {
+        return true;
+    }
+    let joined = tokens.concat();
+    matches!(joined.as_str(), "session" | "name" | "nama")
+        || SUBSTRING_KEYS.iter().any(|s| joined.contains(s))
 }
 
 fn is_ident(c: char) -> bool {
@@ -148,11 +306,19 @@ fn sensitive_digits_end(chars: &[char], at: usize, out_ends_plus: bool) -> Optio
 }
 
 /// Akhir (eksklusif) nilai bagi kunci sensitif yang nilainya mulai di `vstart`.
+///
+/// - Bernilai berkutip: sampai kutip penutup; bila kutip pembuka ber-escape (JSON di dalam string),
+///   garis miring sebelum kutip penutup tidak ikut.
+/// - Tanpa kutip: sampai pembatas pada tingkat kurung yang sama (`,` `;` `&` spasi, atau kurung penutup
+///   yang tidak berpasangan); isi di dalam `(...)`, `[...]`, `{...}` dan string di dalamnya ikut tersamar,
+///   sehingga `Some("x")`, `["a","b"]`, dan `Nama { a: "x" }` hilang seluruhnya.
 fn sensitive_value_end(
     chars: &[char],
     vstart: usize,
     quote: Option<char>,
+    escaped_quote: bool,
     key_is_cookie: bool,
+    key_is_auth: bool,
 ) -> usize {
     if key_is_cookie {
         return chars.len();
@@ -162,19 +328,70 @@ fn sensitive_value_end(
         while chars.get(i).is_some_and(|&c| c != q) {
             i += 1;
         }
+        if escaped_quote {
+            while i > vstart && chars.get(i - 1) == Some(&'\\') {
+                i -= 1;
+            }
+        }
         return i;
     }
-    let mut end = run_end(chars, vstart, |c| !is_value_delim(c));
-    // `Authorization: Bearer <token>`: skema dan kredensial dua kata.
-    let first_word = slice(chars, vstart, end);
+    if key_is_auth {
+        // Skema apa pun (Bearer, Basic, Digest, Token, ...): seluruh nilai header.
+        return run_end(chars, vstart, |c| {
+            !matches!(c, '\n' | '\r' | '"' | '\'' | ',')
+        });
+    }
+    let word_end = run_end(chars, vstart, |c| !is_value_delim(c));
+    let first_word = slice(chars, vstart, word_end);
     if (first_word.eq_ignore_ascii_case("bearer")
         || first_word.eq_ignore_ascii_case("basic")
         || first_word.eq_ignore_ascii_case("digest"))
-        && chars.get(end) == Some(&' ')
+        && chars.get(word_end) == Some(&' ')
     {
-        end = run_end(chars, end + 1, is_token_char);
+        return run_end(chars, word_end + 1, is_token_char);
     }
-    end
+    let mut depth = 0usize;
+    let mut in_str: Option<char> = None;
+    let mut i = vstart;
+    while let Some(&c) = chars.get(i) {
+        if let Some(q) = in_str {
+            if c == '\\' {
+                i += 2;
+                continue;
+            }
+            if c == q {
+                in_str = None;
+            }
+            i += 1;
+            continue;
+        }
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => {
+                if depth == 0 {
+                    break;
+                }
+                depth -= 1;
+            }
+            '"' | '\'' => {
+                if depth == 0 {
+                    break;
+                }
+                in_str = Some(c);
+            }
+            '&' | ';' | ',' if depth == 0 => break,
+            c if c.is_whitespace() && depth == 0 => {
+                // Struct Debug bernama: `Nama { ... }` dilanjutkan.
+                let next = chars.iter().skip(i).find(|x| !x.is_whitespace());
+                if !(i > vstart && next == Some(&'{')) {
+                    break;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    i.min(chars.len())
 }
 
 /// Menyamarkan pola data terlarang di teks bebas. Lihat dokumentasi modul untuk cakupan dan batasnya.
@@ -215,24 +432,42 @@ pub fn scrub_text(input: &str) -> String {
                 }
             }
 
-            // "kunci=nilai" / "kunci: nilai" / "\"kunci\":\"nilai\"" dengan kunci sensitif.
+            // "kunci=nilai" / "kunci: nilai" / JSON ber-escape dengan kunci sensitif.
             if is_sensitive_key(&ident) {
                 let mut k = end;
-                while chars.get(k).is_some_and(|&x| x == '"' || x == '\'') {
+                while chars
+                    .get(k)
+                    .is_some_and(|&x| x == '"' || x == '\'' || x == '\\')
+                {
                     k += 1;
                 }
                 while chars.get(k) == Some(&' ') {
                     k += 1;
                 }
-                if matches!(chars.get(k), Some(':') | Some('=')) {
+                // Tuple Debug `("kunci", "nilai")`: kunci berkutip diikuti koma juga pasangan.
+                let sep = matches!(chars.get(k), Some(':') | Some('='))
+                    || (k > end && chars.get(k) == Some(&','));
+                if sep {
                     k += 1;
                     while chars.get(k) == Some(&' ') {
                         k += 1;
                     }
-                    let quote = chars.get(k).copied().filter(|&x| x == '"' || x == '\'');
-                    let vstart = if quote.is_some() { k + 1 } else { k };
-                    let is_cookie = ident.to_ascii_lowercase().contains("cookie");
-                    let vend = sensitive_value_end(&chars, vstart, quote, is_cookie);
+                    let mut q_at = k;
+                    while chars.get(q_at) == Some(&'\\') {
+                        q_at += 1;
+                    }
+                    let quote = chars.get(q_at).copied().filter(|&x| x == '"' || x == '\'');
+                    let escaped_quote = quote.is_some() && q_at > k;
+                    let vstart = if quote.is_some() { q_at + 1 } else { k };
+                    let lower = ident.to_ascii_lowercase();
+                    let vend = sensitive_value_end(
+                        &chars,
+                        vstart,
+                        quote,
+                        escaped_quote,
+                        lower.contains("cookie"),
+                        lower.contains("authorization"),
+                    );
                     if vend > vstart {
                         out.push_str(&slice(&chars, i, vstart));
                         out.push_str(REDACTED);

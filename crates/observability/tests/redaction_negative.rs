@@ -1,0 +1,294 @@
+//! Test negatif redaksi tambahan (review keamanan F1-T10): variasi nama field, nilai Debug bersarang,
+//! JSON ber-escape, dan kolom sensitif yang dibaca dari kamus data.
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // berkas test
+
+use foundation::{CorrelationId, FixedClock};
+use observability::LogLevel;
+use observability::log::{Component, JsonLogLayer, LogSink, MemorySink, subscriber};
+use observability::redact::{REDACTED, is_sensitive_key, scrub_text};
+use std::sync::Arc;
+use time::OffsetDateTime;
+
+fn capture(level: LogLevel, f: impl FnOnce()) -> (String, String) {
+    let app = MemorySink::default();
+    let sec = MemorySink::default();
+    let layer = JsonLogLayer::new(
+        Component::Api,
+        level,
+        Arc::new(FixedClock::new(OffsetDateTime::UNIX_EPOCH)),
+    )
+    .with_sinks(
+        Arc::new(app.clone()) as Arc<dyn LogSink>,
+        Arc::new(sec.clone()),
+    );
+    tracing::subscriber::with_default(subscriber(layer), f);
+    (app.text(), sec.text())
+}
+
+#[test]
+fn key_name_variants_are_sensitive() {
+    for k in [
+        "otp_code",
+        "pin_code",
+        "user_pin",
+        "new_pin",
+        "mfa_code",
+        "totp",
+        "kata_sandi",
+        "sandi",
+        "pwd",
+        "passphrase",
+        "no_hp",
+        "nohp",
+        "telepon",
+        "msisdn",
+        "mobile_number",
+        "nik_pasien",
+        "no_kartu",
+        "nomor_kartu",
+        "card_no",
+        "account_no",
+        "no_rekening_bank",
+        "nama_lengkap",
+        "nama_pasien",
+        "tgl_lahir",
+        "address",
+        "alamat_rumah",
+        "recipient_phone",
+        "npwp",
+        "bpjs_number",
+        "auth_code",
+        "code_verifier",
+        "x-api-key",
+        "verification_code",
+        "ibu_kandung",
+        "otpCode",
+        "userPin",
+        "recipientPhone",
+        "accessToken",
+        "fullName",
+        "refreshToken",
+        "name",
+        "nama",
+        "patient_name",
+        "account_holder_name",
+        "before_values",
+        "after_values",
+    ] {
+        assert!(is_sensitive_key(k), "{k} harus sensitif");
+    }
+}
+
+#[test]
+fn technical_key_names_are_not_over_matched() {
+    for k in [
+        "correlation_id",
+        "account_id",
+        "actor_account_id",
+        "order_id",
+        "route",
+        "status",
+        "duration_ms",
+        "component_name",
+        "event_name",
+        "ip_address",
+        "source_ip",
+        "user_agent",
+        "event_type",
+        "reason",
+        "lag_seconds",
+        "entity",
+        "entity_id",
+        "shipping",
+        "mapping",
+        "footprint",
+        "region_code",
+        "message",
+    ] {
+        assert!(!is_sensitive_key(k), "{k} tidak boleh sensitif");
+    }
+}
+
+#[test]
+fn free_text_pairs_with_variant_keys_are_scrubbed() {
+    for (input, secret) in [
+        ("otp_code=123456 sent", "123456"),
+        ("user_pin: 4321", "4321"),
+        ("kata_sandi=hunter2 x", "hunter2"),
+        ("nik=3174012345678901", "3174012345678901"),
+        ("Authorization: Token abcSECRET", "abcSECRET"),
+        ("authorization: Negotiate YIIabcSECRET", "YIIabcSECRET"),
+        ("[(\"x-api-key\", \"k-SECRET\")]", "k-SECRET"),
+        ("no_hp=081234567890", "081234567890"),
+    ] {
+        let out = scrub_text(input);
+        assert!(!out.contains(secret), "{input} -> {out}");
+        assert!(out.contains(REDACTED), "{out}");
+    }
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct Inner {
+    value: String,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct Req {
+    user_id: u32,
+    token: Option<String>,
+    pin: Option<u32>,
+    refresh_token: Vec<String>,
+    password: Inner,
+    note: String,
+}
+
+#[test]
+fn nested_debug_values_are_fully_redacted() {
+    let r = Req {
+        user_id: 7,
+        token: Some("tokSECRET1".into()),
+        pin: Some(4321),
+        refresh_token: vec!["rtSECRET2".into(), "rtSECRET2b".into()],
+        password: Inner {
+            value: "pwSECRET4".into(),
+        },
+        note: "aman".into(),
+    };
+    let text = scrub_text(&format!("{r:?} | {r:#?}"));
+    for secret in ["tokSECRET1", "4321", "rtSECRET2", "rtSECRET2b", "pwSECRET4"] {
+        assert!(!text.contains(secret), "bocor {secret}: {text}");
+    }
+    // Sisa bidang tidak sensitif tetap terbaca dan sisa penutup tidak tertinggal di dalam nilai.
+    assert!(
+        text.contains("user_id: 7") && text.contains("aman"),
+        "{text}"
+    );
+    assert!(!text.contains("[REDACTED]\""), "sisa kutip: {text}");
+    assert!(!text.contains("[REDACTED])"), "sisa kurung: {text}");
+
+    let (app, _) = capture(LogLevel::Info, || {
+        tracing::info!(request = ?r, "dbg");
+    });
+    for secret in ["tokSECRET1", "4321", "rtSECRET2", "pwSECRET4"] {
+        assert!(!app.contains(secret), "bocor {secret}: {app}");
+    }
+}
+
+#[test]
+fn json_and_escaped_json_values_are_redacted() {
+    let body = String::from("{\"password\":\"pwSECRET3\",\"user\":\"budi\"}");
+    // Debug dari String meng-escape kutip: \"password\":\"pwSECRET3\".
+    let debug = format!("{body:?}");
+    assert!(debug.contains("\\\"password\\\""));
+    let out = scrub_text(&debug);
+    assert!(!out.contains("pwSECRET3"), "{out}");
+    assert!(out.contains("budi"), "{out}");
+    assert!(!scrub_text(&body).contains("pwSECRET3"));
+    let double = format!("{debug:?}");
+    assert!(!scrub_text(&double).contains("pwSECRET3"));
+
+    let (app, _) = capture(LogLevel::Info, || {
+        tracing::info!(detail = ?body, "dbg");
+        tracing::info!(detail = %body, "disp");
+        tracing::info!("body {body}");
+    });
+    assert!(!app.contains("pwSECRET3"), "{app}");
+}
+
+#[test]
+fn invalid_correlation_id_on_event_does_not_override_valid_span_id() {
+    let id = CorrelationId::new().to_string();
+    let (app, _) = capture(LogLevel::Error, || {
+        let span = tracing::info_span!("request", correlation_id = %id);
+        let _g = span.enter();
+        tracing::error!(correlation_id = "not-a-uuid\n{}", "override");
+    });
+    assert!(
+        app.contains(&format!("\"correlation_id\":\"{id}\"")),
+        "{app}"
+    );
+    assert!(!app.contains("not-a-uuid"), "{app}");
+}
+
+#[test]
+fn multiline_message_cannot_forge_a_line() {
+    let (app, _) = capture(LogLevel::Info, || {
+        tracing::info!("multi\nline {}", "x\r\n{\"level\":\"error\"}");
+    });
+    assert_eq!(app.lines().count(), 1, "{app}");
+}
+
+#[test]
+fn security_stream_cannot_be_forged_from_app_events() {
+    let (app, sec) = capture(LogLevel::Info, || {
+        tracing::info!(log_stream = "security", component = "evil", "forged");
+    });
+    assert!(sec.is_empty(), "{sec}");
+    assert!(
+        !app.contains("evil") && !app.contains("log_stream"),
+        "{app}"
+    );
+}
+
+/// Kriteria yang dapat dibaca dari dokumen: kamus data (docs/04-data-dictionary.md §0.5) menandai kolom
+/// dengan sensitivitas `Enc`, `Rahasia`, `PII`, atau `Spesifik`. Semua kolom bertanda itu harus tersamar,
+/// kecuali yang dikecualikan dengan alasan tertulis di bawah.
+#[test]
+fn sensitive_columns_from_data_dictionary_are_redacted() {
+    let doc = include_str!("../../../docs/04-data-dictionary.md");
+    // Pengecualian: pengenal teknis (ID akun/berkas/IdP) dan alamat IP/user agent boleh di log
+    // (ADR-010 butir 6: ID akun dan IP dicatat); kode wilayah, hubungan keluarga, dan params generik
+    // bukan data pribadi yang mengidentifikasi orang.
+    let excluded = |name: &str| {
+        name.ends_with("_id")
+            || matches!(
+                name,
+                "idp_subject"
+                    | "rs_recipient_alias"
+                    | "satusehat_patient_ihs"
+                    | "satusehat_practitioner_ihs"
+                    | "source_ip"
+                    | "user_agent"
+                    | "region_code"
+                    | "relationship"
+                    | "params"
+            )
+    };
+    let mut checked = 0;
+    for line in doc.lines().filter(|l| l.starts_with('|')) {
+        let cells: Vec<&str> = line
+            .trim()
+            .trim_matches('|')
+            .split('|')
+            .map(str::trim)
+            .collect();
+        if cells.len() < 5 {
+            continue;
+        }
+        let name = cells[0].trim_matches('`');
+        let is_ident = !name.is_empty()
+            && name.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+            && name
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+        let sens = cells[4];
+        let flagged = ["Enc", "Rahasia", "PII", "Spesifik"]
+            .iter()
+            .any(|t| sens.contains(t));
+        if !is_ident || !flagged || excluded(name) {
+            continue;
+        }
+        checked += 1;
+        assert!(
+            is_sensitive_key(name),
+            "kolom {name} ({sens}) lolos redaksi"
+        );
+    }
+    assert!(
+        checked >= 40,
+        "parser kamus data hanya menemukan {checked} kolom"
+    );
+}
