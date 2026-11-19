@@ -12,6 +12,10 @@
 # - Hijau berarti: nol langkah gagal dan minimal satu langkah lulus.
 # - Setiap perubahan skrip ini meminta persetujuan user.
 # - Portabel Linux dan macOS (bash 3.2): tanpa array asosiatif, tanpa `head`.
+# - Pemindai rahasia dan dependensi (gitleaks, osv-scanner, cargo-deny, cargo-audit) wajib ada di PATH
+#   dengan versi persis di bawah (docs/05-stack.md §1.6, §1.1); bila tidak ada atau versinya lain, langkahnya
+#   GAGAL, tidak dilewati. Basis data advisory diambil dari jaringan setiap kali (tanpa mode offline).
+# - Perilaku skrip ini diuji oleh scripts/test/test-verify.sh (fixture merah harus MERAH), dijalankan CI.
 
 set -euo pipefail
 
@@ -22,6 +26,13 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# Versi alat pemindai (docs/05-stack.md §1.6: SRC-151, SRC-152; §1.1: SRC-183, SRC-184).
+# Harus sama dengan scripts/ci/pasang-alat.sh supaya CI memakai alat yang sama dengan lokal.
+VERSI_GITLEAKS="8.30.1"
+VERSI_OSV_SCANNER="2.7.1"
+VERSI_CARGO_DENY="0.21.0"
+VERSI_CARGO_AUDIT="0.23.0"
 
 LULUS=0
 GAGAL=0
@@ -101,13 +112,97 @@ pakai_sqlx() { # benar bila workspace sudah memakai sqlx
   [ -f Cargo.lock ] && grep -q '^name = "sqlx"$' Cargo.lock
 }
 
+tanpa_env_git() { # tanpa_env_git <perintah...>: jalankan perintah tanpa variabel GIT_* warisan git hook
+  # Hook pre-commit mengeset GIT_INDEX_FILE ke index repo ini. Alat yang menjalankan git di repo lain
+  # ikut memakainya: cargo-audit 0.23.0 yang mengambil advisory-db menimpa index repo ini dengan index
+  # advisory-db (direproduksi saat F1-T06). Hanya git dan gitleaks yang memakai GIT_* warisan hook.
+  local v hapus
+  hapus=()
+  for v in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
+    hapus+=(-u "$v")
+  done
+  env ${hapus[@]+"${hapus[@]}"} "$@"
+}
+
+versi_alat() { # versi_alat <biner>: cetak nomor versi alat pemindai
+  case "$1" in
+    gitleaks) gitleaks version ;;
+    osv-scanner) osv-scanner --version | sed -n 's/^osv-scanner version: //p' ;;
+    cargo-deny) cargo-deny --version | sed -n 's/^cargo-deny //p' ;;
+    cargo-audit) cargo-audit --version | sed -n 's/^cargo-audit //p' ;;
+    *) return 1 ;;
+  esac
+}
+
+alat_siap() { # alat_siap <biner> <versi>: alat ada di PATH dan versinya persis sama
+  local aktif
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "$1 tidak ditemukan di PATH (dibutuhkan versi $2, docs/05-stack.md)" >&2
+    return 1
+  fi
+  aktif="$(versi_alat "$1" 2>/dev/null | sed -n '1p' || true)"
+  if [ "$aktif" != "$2" ]; then
+    echo "$1 aktif '${aktif}', dibutuhkan $2 (docs/05-stack.md)" >&2
+    return 1
+  fi
+  echo "$1 $aktif ($(command -v "$1"))"
+}
+
+periksa_cargo_deny() { # lisensi, advisory, larangan, dan sumber crate menurut deny.toml
+  alat_siap cargo-deny "$VERSI_CARGO_DENY" || return 1
+  if [ ! -f deny.toml ]; then
+    echo "deny.toml tidak ada" >&2
+    return 1
+  fi
+  tanpa_env_git cargo-deny --locked --config deny.toml check
+}
+
+periksa_cargo_audit() { # advisory RustSec atas Cargo.lock; peringatan (unmaintained, unsound, yanked) = gagal
+  alat_siap cargo-audit "$VERSI_CARGO_AUDIT" || return 1
+  if [ ! -f Cargo.lock ]; then
+    echo "Cargo.lock tidak ada" >&2
+    return 1
+  fi
+  tanpa_env_git cargo-audit audit --file Cargo.lock --deny warnings
+}
+
+periksa_gitleaks() { # rahasia di riwayat HEAD, perubahan ter-stage, dan perubahan belum di-stage
+  alat_siap gitleaks "$VERSI_GITLEAKS" || return 1
+  # --ignore-gitleaks-allow: komentar "gitleaks:allow" tidak berlaku; pengecualian hanya lewat .gitleaksignore.
+  echo "-- riwayat commit yang dapat dicapai dari HEAD"
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --log-opts="--full-history HEAD" . || return 1
+  echo "-- perubahan ter-stage"
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --pre-commit --staged . || return 1
+  echo "-- perubahan belum di-stage"
+  gitleaks git --no-banner --redact --ignore-gitleaks-allow --pre-commit . || return 1
+}
+
+periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau belum dilacak, tidak diabaikan)
+  local berkas opsi
+  alat_siap osv-scanner "$VERSI_OSV_SCANNER" || return 1
+  # Daftar eksplisit dari git, bukan pemindaian rekursif: pemindai rekursif ikut menghormati .gitignore
+  # di direktori induk repo (misalnya checkout utama yang mengabaikan .claude/worktrees/).
+  opsi=()
+  while IFS= read -r berkas; do
+    if [ -f "$berkas" ]; then
+      opsi+=(--lockfile "$berkas")
+    fi
+  done < <(git ls-files --cached --others --exclude-standard | grep -E '(^|/)(Cargo\.lock|pnpm-lock\.yaml|package-lock\.json|yarn\.lock|pubspec\.lock)$' || true)
+  if [ "${#opsi[@]}" -eq 0 ]; then
+    echo "tidak ada lockfile yang dapat dipindai" >&2
+    return 1
+  fi
+  tanpa_env_git osv-scanner scan source --all-vulns "${opsi[@]}"
+}
+
 echo "verify.sh: $ROOT"
 
 # --- Langkah 0: lingkungan tidak boleh mengubah hasil (review keamanan F1-T05, B-1) ---
 # Variabel berikut dapat mematikan lint atau mengganti runner test sehingga hasil hijau palsu.
-# Ditolak (GAGAL), tidak di-unset diam-diam. Konfigurasi cargo di luar repo (~/.cargo/config.toml
-# dan .cargo/config.toml di direktori induk repo) hanya tertutup oleh CI di lingkungan bersih (F1-T06).
-VAR_TERLARANG="$(env | grep -E '^(RUSTFLAGS|CARGO_ENCODED_RUSTFLAGS|RUSTDOCFLAGS|RUSTC|RUSTC_WRAPPER|RUSTC_WORKSPACE_WRAPPER|CARGO_TARGET_[A-Za-z0-9_]*_RUNNER|CARGO_ALIAS_[A-Za-z0-9_]*|CARGO_BUILD_[A-Za-z0-9_]*|CARGO_PROFILE_[A-Za-z0-9_]*)=' | cut -d= -f1 | tr '\n' ' ' || true)"
+# Ditolak (GAGAL), tidak di-unset diam-diam. GITLEAKS_CONFIG(_TOML) dapat mengganti aturan gitleaks.
+# Konfigurasi di luar repo (~/.cargo/config.toml, ~/.cargo/audit.toml, .cargo/config.toml di direktori
+# induk repo) ditutup oleh CI: runner bersih + scripts/ci/periksa-lingkungan-bersih.sh (F1-T06).
+VAR_TERLARANG="$(env | grep -E '^(RUSTFLAGS|CARGO_ENCODED_RUSTFLAGS|RUSTDOCFLAGS|RUSTC|RUSTC_WRAPPER|RUSTC_WORKSPACE_WRAPPER|CARGO_TARGET_[A-Za-z0-9_]*_RUNNER|CARGO_ALIAS_[A-Za-z0-9_]*|CARGO_BUILD_[A-Za-z0-9_]*|CARGO_PROFILE_[A-Za-z0-9_]*|GITLEAKS_CONFIG|GITLEAKS_CONFIG_TOML)=' | cut -d= -f1 | tr '\n' ' ' || true)"
 if [ -n "$VAR_TERLARANG" ]; then
   gagal "lingkungan" "variabel yang dapat mengubah hasil verifikasi diset: ${VAR_TERLARANG}; hapus dari lingkungan lalu jalankan ulang"
 fi
@@ -123,8 +218,9 @@ elif ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; t
 else
   jalankan "rust-toolchain" periksa_toolchain
   jalankan "cargo-fmt" cargo fmt --all --check
-  jalankan "cargo-clippy" cargo clippy --workspace --all-targets --locked -- -D warnings
-  jalankan "cargo-test" cargo test --workspace --locked
+  # clippy dan test menjalankan build script dan test, yang dapat memanggil git: tanpa GIT_* warisan hook.
+  jalankan "cargo-clippy" tanpa_env_git cargo clippy --workspace --all-targets --locked -- -D warnings
+  jalankan "cargo-test" tanpa_env_git cargo test --workspace --locked
 fi
 
 if pakai_sqlx; then
@@ -132,8 +228,8 @@ if pakai_sqlx; then
 else
   belum "sqlx-prepare" "task pertama yang memakai sqlx; belum ditetapkan di phase plan §7.3"
 fi
-belum "cargo-deny" "F1-T06" "deny.toml"
-belum "cargo-audit" "F1-T06"
+jalankan "cargo-deny" periksa_cargo_deny
+jalankan "cargo-audit" periksa_cargo_audit
 
 # --- Langkah 2: Migrasi dan hak role (§6 butir 2; KEPUTUSAN-140, KEPUTUSAN-158) ---
 belum "migrasi-db" "F1-T15" "db/migrations/*/*.sql" "db/roles/*.sql"
@@ -153,8 +249,8 @@ belum "web" "F1-T39" "web/package.json" "web/pnpm-workspace.yaml" "web/*/package
 belum "mobile" "F1-T44" "mobile/pubspec.yaml" "mobile/apps/*/pubspec.yaml" "mobile/packages/*/pubspec.yaml"
 
 # --- Langkah 7: Rahasia dan dependensi (§6 butir 7, §3.2) ---
-belum "gitleaks" "F1-T06"
-belum "osv-scanner" "F1-T06"
+jalankan "gitleaks" periksa_gitleaks
+jalankan "osv-scanner" periksa_osv_scanner
 
 # --- Ringkasan ---
 echo ""

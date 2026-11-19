@@ -1,0 +1,6 @@
+# Pengecualian gitleaks (F1-T06). Hanya lewat berkas ini, satu fingerprint per temuan, dengan alasan tertulis
+# dan review keamanan. Komentar "gitleaks:allow" di kode tidak berlaku (verify.sh: --ignore-gitleaks-allow).
+#
+# Positif palsu generic-api-key: teks dokumen "Loki/Prometheus/Grafana/GlitchTip" (nama produk observability)
+# setelah kata "secret manager" di docs/backlog.md, commit 74830c2b (2026-11-18). Bukan rahasia.
+74830c2b28daa21b472bad0a5197ad47468ba054:docs/backlog.md:generic-api-key:313
