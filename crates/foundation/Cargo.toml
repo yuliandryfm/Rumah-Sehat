@@ -4,4 +4,20 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
+# Versi dan fitur: docs/05-stack.md §1.1 (uuid 1.29.3 std+v7 [SRC-176][SRC-238]; time 0.3.55 [SRC-177]).
 [dependencies]
+uuid = { version = "=1.29.3", default-features = false, features = ["std", "v7"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+
+# Larangan unwrap/expect/panic/indeks di kode non-test (coding-standards §3.4, KEPUTUSAN-121).
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+disallowed_methods = "deny"
