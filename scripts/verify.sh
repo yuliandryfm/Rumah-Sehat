@@ -249,7 +249,16 @@ belum "cargo-deny" "F1-T06" "deny.toml"
 belum "cargo-audit" "F1-T06"
 
 # --- Langkah 2: Migrasi dan hak role (§6 butir 2; KEPUTUSAN-140, KEPUTUSAN-158) ---
-belum "migrasi-db" "F1-T15" "db/migrations/*/*.sql" "db/roles/*.sql"
+# 2a. Bootstrap klaster db/roles/ (F1-T13): dijalankan dua kali (idempoten) ke PostgreSQL 18 sekali
+#     pakai (butuh docker), lalu test katalog dan test negatif hak role (skema fisik §3.5, §11.1, §12).
+#     Sejak F1-T13 berkas bootstrap wajib ada; hilangnya berkas itu GAGAL.
+if ada_pola "db/roles/*.sql"; then
+  jalankan "bootstrap-role-db" bash scripts/db-roles-check.sh ephemeral
+else
+  gagal "bootstrap-role-db" "db/roles/*.sql (bootstrap klaster, F1-T13) tidak ada"
+fi
+# 2b. Migrasi + test katalog lengkap (F1-T15).
+belum "migrasi-db" "F1-T15" "db/migrations/*/*.sql"
 
 # --- Langkah 3: Kontrak API (§6 butir 3) ---
 if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
