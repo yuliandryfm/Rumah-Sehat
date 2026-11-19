@@ -1,6 +1,6 @@
 # ADR-026: Email Keycloak lewat relay SMTP internal ke Amazon SES API Jakarta
 
-Status: Diusulkan (hasil spike F1-T02, 2026-11-19; direvisi setelah review keamanan putaran 1 `docs/review/F1-T02-security.md`; menunggu cek ulang review dan keputusan user `[KEPUTUSAN-183]`)
+Status: Diterima (2026-11-19, `[USER]` lewat Telegram: "1Y 2A 3W"; review keamanan LULUS DENGAN CATATAN putaran 2 `docs/review/F1-T02-security.md`)
 Tanggal: 2026-11-19
 
 Rincian temuan, eksperimen, dan perbandingan opsi: `docs/spike/F1-T02-email-keycloak.md`.
@@ -82,3 +82,11 @@ Keycloak (semua realm) dan Alertmanager mengirim email lewat SMTP ke **relay int
 1. Menerima ADR ini (relay internal ke SES API), atau memilih alternatif yang mengubah ADR-024 (provider Keycloak kustom) atau menambah penyedia (SMTP di Indonesia).
 2. Menilai, bersama tim legal, apakah komitmen umum AWS dan penyerahan email ke server penerima memenuhi ketentuan data di Indonesia (T4-Q1, CR-007) `[KEPUTUSAN-230]`.
 3. TLS wajib ke server penerima untuk email Keycloak (usulan) atau TLS oportunistik `[KEPUTUSAN-229]`. Catatan: kegagalan TLS terjadi setelah SES menerima pesan ("It's possible for Amazon SES to accept a message without sending it" `[SRC-366]`), sehingga relay, Keycloak, dan pengguna tetap melihat sukses. Mendeteksinya memerlukan event publishing SES, yang menyimpan alamat penerima di layanan AWS lain dan menambah pertanyaan lokasi data butir 2.
+
+## Keputusan user (2026-11-19)
+
+| Butir | Keputusan `[USER]` |
+| --- | --- |
+| 1 | ADR ini diterima: relay SMTP internal per host ke SES API v2 Jakarta |
+| 2 | Lanjut; kepatuhan lokasi data jalur email dinilai tim legal sebagai L-16 (`docs/02-brd.md`), sebelum go-live |
+| 3 | TLS wajib ke server penerima untuk email Keycloak (KEPUTUSAN-229) |
