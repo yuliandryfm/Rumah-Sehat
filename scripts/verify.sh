@@ -285,7 +285,15 @@ else
 fi
 
 # --- Langkah 4: Test arsitektur (§6 butir 4) ---
-belum "test-arsitektur" "F1-T12" "apps/*/module-tables.toml"
+# F1-T12: crate arch-check memeriksa kepemilikan tabel modul (apps/*/module-tables.toml), konfigurasi
+# lint tidak dilemahkan (workspace.lints, clippy.toml root), jam sistem/env/aws-lc-rs langsung, pola log
+# terlarang, dan pengecualian sempit (architecture-exceptions.toml), lengkap dengan uji negatifnya.
+# Sejak F1-T12 berkas module-tables.toml wajib ada; hilangnya GAGAL.
+if ada_pola "apps/*/module-tables.toml"; then
+  jalankan "test-arsitektur" cargo test --locked -p arch-check
+else
+  gagal "test-arsitektur" "apps/*/module-tables.toml (F1-T12) tidak ada"
+fi
 
 # --- Langkah 5: Web (§6 butir 5) ---
 belum "web" "F1-T39" "web/package.json" "web/pnpm-workspace.yaml" "web/*/package.json" "web/packages/*/package.json"

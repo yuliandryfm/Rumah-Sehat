@@ -4,3 +4,16 @@
 [workspace]
 resolver = "3"
 members = ["apps/*", "crates/*"]
+
+# Larangan berlaku untuk SELURUH workspace (F1-T12, coding-standards §3.4, §5.7, §6).
+# Setiap crate wajib `[lints] workspace = true` dan tidak boleh punya [lints.*] atau clippy.toml sendiri;
+# crate `arch-check` (test arsitektur) memeriksa hal itu. Nilai konfigurasinya ada di clippy.toml root.
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+dbg_macro = "deny"
+disallowed_methods = "deny"

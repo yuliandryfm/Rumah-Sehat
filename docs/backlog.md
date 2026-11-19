@@ -498,6 +498,22 @@ Dampak: dokumen skema fisik diperbarui; kode sudah menerapkan di F1-T13 (commit 
 Keputusan: keputusan teknis orkestrator (tanpa dampak bisnis), dilaporkan di Checkpoint 3
 Status: diterapkan di kode; pembaruan teks `docs/05-physical-schema.md` menyusul (task dokumen orkestrator)
 
+### CR-021: Web Ruang Sehat (company profile) dengan member area layanan korporat
+
+Diajukan: 2026-11-19 (Tahap 8 Fase 1), `[USER]` lewat Telegram: "ada tambahan requirement. kita butuh web ruang sehat. web tersebut merupakan semacam company profile. tetapi ada member area untuk layanan corporate seperti vaksin masal, mcu masal dan semacamnya"
+Deskripsi:
+- Situs web publik Ruang Sehat bergaya company profile.
+- Member area untuk klien korporat dengan layanan seperti vaksinasi massal dan MCU massal ("dan semacamnya").
+Alasan: kebutuhan bisnis baru dari user.
+Dampak ke scope / waktu / arsitektur (awal, belum dianalisis rinci):
+- Scope baru di luar BRD/PRD v1.2 dan di luar tujuh layanan rilis 1. Tidak ada BR induk; perlu BR, story, dan AC baru.
+- Bersinggungan dengan CR-015 (vaksinasi, sudah diputuskan rilis berikutnya) dan layanan MCU/lab (EP-09, info biaya MCU; dilepas di Opsi C).
+- Pengguna baru (akun korporat, kemungkinan admin perusahaan dan peserta) → dampak ke autentikasi (realm baru atau pemakaian realm yang ada, ADR-011), otorisasi dan isolasi data (ADR-012), persetujuan data karyawan (UU PDP), pembayaran/penagihan korporat (ADR-015).
+- Kapasitas: phase plan v0.2 sudah menyatakan scope penuh kemungkinan besar tidak layak sampai 1 Maret 2027 (Fase 2 ±43 jam-task per hari kerja).
+Fakta bisnis `[TIDAK DIKETAHUI]`: penempatan rilis; isi company profile dan pengelola kontennya; siapa klien korporat dan peserta; alur pemesanan, penjadwalan, dan penagihan layanan massal; daftar "semacamnya"; integrasi dengan rekanan lab/klinik; regulasi vaksinasi massal.
+Keputusan `[USER]` 2026-11-19 (Telegram): "1A, 2K" lalu "Web dan fitur ini pun masuk fase 1 dan harus"; setelah klarifikasi memilih **Y**: company profile **dan** member area korporat dibangun di Fase 1, dengan konsekuensi Fase 1 mundur atau sebagian task Fase 1 pindah ke Fase 2 (rincian dihitung dan diajukan ke user dulu). Peran login member area: HR/admin perusahaan + karyawan peserta (2K).
+Status: disetujui masuk Fase 1; wawancara requirement berjalan (2026-11-19); analisis BR/story/AC, dampak arsitektur dan phase plan menyusul untuk persetujuan user sebelum pembangunan
+
 ## Tech Debt
 
 _Belum ada._

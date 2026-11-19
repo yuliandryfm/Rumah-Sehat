@@ -1,0 +1,15 @@
+[package]
+name = "arch-check"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Test arsitektur (F1-T12): pemeriksa kepemilikan tabel modul, lint larangan, dan pola log terlarang.
+# Dipakai hanya oleh test (langkah "test-arsitektur" di skrip verifikasi); tidak ikut biner produksi.
+# toml 1.2.1 (MIT OR Apache-2.0): docs/sources.md SRC-388. serde 1.0.229: SRC-167.
+[dependencies]
+toml = { version = "=1.2.1", default-features = false, features = ["std", "parse", "serde"] }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+
+[lints]
+workspace = true
