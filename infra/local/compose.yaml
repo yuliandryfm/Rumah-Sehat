@@ -140,11 +140,17 @@ services:
       timeout: 5s
       retries: 20
 
-  # Swagger UI hanya lokal dan staging. Berkas spesifikasi dihasilkan task lain (utoipa);
-  # direktori openapi/ dipasang baca-saja di /openapi.
+  # Swagger UI hanya lokal dan staging. Spesifikasi dihasilkan utoipa (F1-T11) dan di-commit di openapi/,
+  # dipasang baca-saja di /openapi. Entrypoint image (docker/docker-entrypoint.d/40-swagger-ui.sh, v5.35.0)
+  # hanya mengarahkan root nginx untuk *.json ke direktori SWAGGER_JSON bila SWAGGER_JSON berupa berkas;
+  # karena itu SWAGGER_JSON menunjuk satu spesifikasi (penentu root), sedangkan URLS memuat daftar
+  # spesifikasi di menu. Tambahkan entri URLS setiap ada berkas baru di openapi/.
   swagger-ui:
     image: swaggerapi/swagger-ui:v5.35.0@sha256:3e7305b17cb806a2925ed16145eae469a6084ab50d82fcec7ede600bba91650b
     restart: unless-stopped
+    environment:
+      SWAGGER_JSON: /openapi/ops.json
+      URLS: '[{"url":"./ops.json","name":"ops (operasional)"}]'
     volumes:
       - ../../openapi:/openapi:ro
     ports:

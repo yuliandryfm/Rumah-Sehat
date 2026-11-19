@@ -2,7 +2,7 @@
 
 Tanggal: 2026-11-19
 Task: F1-T02 (EN-13), tingkat ketelitian **T1** (autentikasi; `aturan-kerja.md` §1) `[DOK: 07-phase-plan.md]` §7.3
-Status: selesai sebagai usulan; menunggu review keamanan dan keputusan user atas `docs/adr/ADR-026-jalur-email-keycloak.md` (Diusulkan)
+Status: selesai sebagai usulan; revisi setelah review keamanan putaran 1 (`docs/review/F1-T02-security.md`, B-01, B-02, C-01–C-05); menunggu cek ulang review dan keputusan user atas `docs/adr/ADR-026-jalur-email-keycloak.md` (Diusulkan)
 Dasar: RT-32 `[DOK: 04-risk-register.md]`, `[KEPUTUSAN-183]`, ADR-011 butir 4–6, ADR-016 butir 5, `docs/05-stack.md` §13.2 butir 18, jawaban user T5-Q4 (SES Jakarta lewat API, akun AWS khusus email) `[USER] T5-Q4`, CR-007 dan T4-Q1 (semua penyedia memproses data di Indonesia) `[USER] T4-Q1`.
 
 ## 1. Pertanyaan spike
@@ -60,7 +60,7 @@ log Keycloak: KC-SERVICES0029: Failed to send email ... ; jumlah kemunculan "act
 Kesimpulan E1:
 - Keycloak bekerja dengan server SMTP minimal (subset perintah di atas) dan mengirim satu penerima per pesan dalam bentuk MIME standar. Relay tidak perlu mengurai MIME; cukup meneruskan data mentah.
 - Badan email memuat **token aksi** dalam bentuk tautan. Siapa pun yang melihat isi email sebelum token kedaluwarsa dapat memakainya. Untuk atur ulang password, MFA tetap diminta sesudah tautan dibuka (ADR-011 butir 5, `[KEPUTUSAN-199]`), tetapi verifikasi email dan undangan tetap bergantung pada kerahasiaan tautan.
-- Pengiriman bersifat sinkron. Bila SMTP gagal, Admin REST mengembalikan 500 dan Keycloak tidak mencoba ulang. Pemanggil (backend, F1-T50/F1-T51) yang menangani kegagalan dan kirim ulang.
+- Pengiriman bersifat sinkron. **Pada jalur Admin REST** (yang diuji E1: pendaftaran, kirim ulang verifikasi, undangan lewat backend F1-T50/F1-T51), bila SMTP gagal Admin REST mengembalikan 500 dan Keycloak tidak mencoba ulang; backend yang menangani kegagalan dan kirim ulang. Jalur lain berperilaku berbeda (§2.6).
 - Log Keycloak saat gagal tidak memuat token pada percobaan ini. Opsi `debug` tidak diuji; isinya `[TIDAK DIKETAHUI]`.
 
 ### 2.4 Lokasi data SES (stack §13.2 butir 18)
@@ -78,7 +78,16 @@ Penilaian:
 
 ### 2.5 Pengirim SMTP lain di stack
 
-Alertmanager mengirim peringatan ke email tim teknis lewat SES `[DOK: 05-stack.md]` §4 `[KEPUTUSAN-80]`. Penerima `email_configs` Alertmanager memakai SMTP ("The SMTP host through which emails are sent"), dengan `smtp_require_tls` bawaan `true` `[SRC-302]`. Jadi Alertmanager menghadapi masalah yang sama dengan Keycloak. Relay di opsi 1 dapat melayani keduanya `[KEPUTUSAN-231]`.
+Alertmanager mengirim peringatan ke email tim teknis lewat SES `[DOK: 05-stack.md]` §4 `[KEPUTUSAN-80]`. Penerima `email_configs` Alertmanager memakai SMTP ("The SMTP host through which emails are sent"), dengan `smtp_require_tls` bawaan `true` `[SRC-302]`. Jadi Alertmanager menghadapi masalah yang sama dengan Keycloak. Karena Keycloak berjalan di app-1/app-2 dan Alertmanager di host ops `[DOK: adr/ADR-025-hosting-vps-openbao.md]`, relay opsi 1 dipasang per host, termasuk satu di ops untuk Alertmanager `[KEPUTUSAN-231]` `[KEPUTUSAN-232]`.
+
+### 2.6 Kegagalan email pada alur "lupa password" (temuan review B-01)
+
+Alur "lupa password" di halaman login Keycloak 26.8.2 menangkap `EmailException`, mencatat event `SEND_RESET_PASSWORD` dengan galat `EMAIL_SEND_FAILED` (detail `REASON` berisi pesan exception) dan log server, lalu **tetap menampilkan pesan sukses yang sama** dengan pengiriman berhasil. Pesan sukses yang sama juga dipakai bila user tidak ditemukan `[SRC-364]`. Pesan exception dari pengirim bawaan bernilai tetap ("Error when attempting to send the email to the server..."), sedangkan penyebabnya dicatat ke log server `[SRC-301]`.
+
+Akibatnya:
+- Kegagalan relay atau SES (kuota habis, 429) pada alur ini **tidak terlihat** oleh pengguna maupun backend. Perilaku ini tidak membuka oracle enumerasi akun, sehingga yang diubah adalah klaim dan kontrol deteksi, bukan rancangan.
+- Kontrol deteksi diperlukan: peringatan Alertmanager atas laju galat relay/SES dan atas event Keycloak `EMAIL_SEND_FAILED` yang sudah diambil worker ke audit dan security log (ADR-011 butir 10) `[KEPUTUSAN-227]`.
+- Perilaku required action verifikasi email yang dipicu saat login (bukan lewat Admin REST) belum diuji `[TIDAK DIKETAHUI]` (§9).
 
 ## 3. Opsi
 
@@ -96,9 +105,13 @@ Alertmanager mengirim peringatan ke email tim teknis lewat SES `[DOK: 05-stack.m
 ### 3.1 Rincian opsi 1 (relay SMTP internal → SES API)
 
 - **Bentuk**: proses `email-relay` di workspace Rust (subcommand `apps/rs-backend`, pola yang sama dengan `audit-relay`; letak final ditetapkan di F1-T36) `[KEPUTUSAN-228]`. Adaptor SES v2 dibuat sekali di pustaka bersama dan dipakai juga oleh modul notifikasi (ADR-016 butir 5).
+- **Topologi (revisi B-02)**: satu relay **per host** yang menjalankan pengirim SMTP: app-1 dan app-2 (Keycloak, ADR-025 menempatkan satu node Keycloak per host), ops (Alertmanager), dan stg-app. Relay berada di jaringan Docker khusus yang hanya berisi relay dan Keycloak (di ops: relay dan Alertmanager); kontainer `api`/`worker` tidak ikut jaringan itu. Relay tidak pernah dicapai lewat jaringan privat antar-host, sehingga tidak ada port baru di daftar izin firewall `[KEPUTUSAN-144]` `[KEPUTUSAN-232]`.
+  - Alasan memilih per host dibanding satu relay lintas host: token aksi tidak melintasi jaringan antar-host; AUTH SMTP tetap opsional sehingga mekanisme penyimpanan password realm (§9 butir 2) tidak menjadi syarat; kegagalan satu relay hanya memengaruhi host itu.
+  - Biayanya: kunci AWS berada di lebih banyak host. Di app-1/app-2 kunci itu sudah dipegang modul notifikasi (butir 7 ADR-026), sehingga tambahan nyatanya hanya ops dan stg-app. Mitigasi: policy OpenBao per host yang hanya membaca kunci SES, `aws:SourceIp` memuat IP keluar semua host itu, serta prosedur rotasi dan pencabutan kunci (H-17). IP keluar host Biznet yang sebenarnya, termasuk dampak Magic Transit, `[TIDAK DIKETAHUI]` dan diverifikasi di F1-T36.
 - **Protokol**: subset SMTP yang terbukti cukup untuk Keycloak di E1 (EHLO, MAIL FROM, RCPT TO, DATA, QUIT), ditambah STARTTLS. AUTH dipakai bila password SMTP di konfigurasi realm dapat disimpan tanpa menulis rahasia ke berkas realm (§9 butir 2) `[KEPUTUSAN-231]`.
-- **Sinkron, tanpa penyimpanan**: relay membalas sukses ke Keycloak hanya setelah SES mengembalikan HTTP 200 dan `MessageId` `[SRC-297]`. Galat SES 429/5xx dipetakan ke balasan sementara (4xx SMTP), galat 400 ke balasan permanen (5xx SMTP). Pesan hanya ada di memori `[KEPUTUSAN-227]`.
-- **Pembatasan**: hanya mendengarkan di jaringan Docker internal yang diikuti Keycloak (dan Alertmanager); satu penerima per pesan (sesuai perilaku Keycloak di E1); daftar izin alamat `From`; batas ukuran pesan; batas laju; `EndpointId` multi-region tidak dipakai; pelacakan klik dan buka dimatikan `[KEPUTUSAN-229]`.
+- **Sinkron, tanpa penyimpanan**: relay membalas sukses ke Keycloak hanya setelah SES mengembalikan HTTP 200 dan `MessageId` `[SRC-297]`. Galat SES 429/5xx dipetakan ke balasan sementara (4xx SMTP), galat 400 ke balasan permanen (5xx SMTP). Pesan hanya ada di memori `[KEPUTUSAN-227]`. Batas waktu panggilan SES di relay lebih pendek dari batas tulis Keycloak 10000 ms `[SRC-301]`, supaya relay tidak membalas sukses setelah Keycloak menyerah. Teks balasan SMTP tetap per kelas galat ditambah ID korelasi acak, tanpa menggemakan header, badan, atau alamat, karena penyebab exception masuk log server Keycloak (§2.6) `[KEPUTUSAN-229]`.
+- **Pembatasan**: hanya mendengarkan di jaringan Docker khusus per host; satu penerima per pesan (sesuai perilaku Keycloak di E1); daftar izin alamat `From`; batas ukuran pesan dan panjang baris, pemisah CRLF ketat; batas laju global dan per penerima (di memori, kunci di-hash; saat batas per penerima tercapai relay membalas 250 dan membuang pesan, dihitung di metrik, supaya tidak ada sinyal berbeda bagi pemanggil); `EndpointId` multi-region tidak dipakai; pelacakan klik dan buka dimatikan `[KEPUTUSAN-229]`.
+- **Permintaan SES disusun relay, bukan dari header MIME (revisi C-01)**: SES membaca header khusus dari isi pesan Raw (`X-SES-SOURCE-ARN`, `X-SES-FROM-ARN`) dan `Destination` tidak wajib `[SRC-365]`. Relay selalu mengisi `Destination.ToAddresses` dari RCPT, `FromEmailAddress` dari daftar izin, dan `ConfigurationSetName` secara eksplisit, lalu menolak pesan bila header `From` tidak cocok dengan amplop/daftar izin, bila To/Cc/Bcc memuat alamat selain penerima amplop, atau bila ada header `X-SES-*` `[KEPUTUSAN-229]`.
 - **Pustaka**: relay pihak ketiga dan crate server SMTP yang diperiksa tidak aktif dirilis (pembaruan terakhir 2022–2024) `[SRC-303]`, sehingga subset SMTP ditulis sendiri. Pustaka TLS dan penandatangan SigV4 dipilih di F1-T36 dengan cek registry dan dicatat di `docs/sources.md` `[KEPUTUSAN-228]`.
 
 ### 3.2 Rincian opsi 2 dan 3 (provider Keycloak kustom)
@@ -118,11 +131,12 @@ Penyedia SMTP yang memproses data di Indonesia tidak diteliti dalam spike ini. B
 | --- | --- | --- | --- | --- |
 | Token aksi di email (E1) | Hanya di memori relay selama satu request | Hanya di memori Keycloak | **Tersimpan** di tabel outbox dan ikut PITR/backup sampai baris dibersihkan; perlu enkripsi kolom dan penghapusan segera setelah terkirim | Melewati infrastruktur penyedia lain |
 | Log | Relay tidak mencatat badan, subjek, atau alamat; cukup hasil, ukuran, dan `MessageId` SES. Opsi `debug` SMTP Keycloak dilarang di berkas realm (`mail.debug` `[SRC-301]`; isinya `[TIDAK DIKETAHUI]`) | Provider tidak mencatat badan; `debug` tidak relevan | Seperti opsi 1, ditambah aturan untuk tabel outbox | `debug` dilarang |
-| Rahasia | Kunci akses AWS (akun khusus email `[USER] T5-Q4`) hanya dipegang proses relay dan modul notifikasi, dari OpenBao KV `[KEPUTUSAN-79]`. Bila AUTH SMTP dipakai, password relay perlu disimpan di konfigurasi realm (§9 butir 2) | Kunci AWS dipegang proses Keycloak; memperluas permukaan rahasia Keycloak | Kredensial Keycloak → backend; kunci AWS tetap di backend | Kredensial SMTP penyedia di konfigurasi realm |
-| Penyalahgunaan sebagai open relay | Dicegah: jaringan internal saja, daftar izin `From`, satu penerima, batas ukuran dan laju. Lapis kedua IAM: `ses:FromAddress`, ARN identitas Jakarta, `aws:SourceIp`, `ses:MultiRegionEndpointId` `[SRC-298]` | Tidak ada port SMTP baru | Endpoint internal backend perlu autentikasi klien | Bergantung penyedia |
+| Rahasia | Kunci akses AWS (akun khusus email `[USER] T5-Q4`) hanya dipegang proses relay (per host: app-1, app-2, ops, stg-app) dan modul notifikasi, dari OpenBao KV dengan policy per host yang hanya membaca kunci SES `[KEPUTUSAN-79]` `[KEPUTUSAN-232]`. Kunci IAM jangka panjang: perlu prosedur rotasi dan pencabutan; kredensial AWS dinamis dari OpenBao `[TIDAK DIKETAHUI]`. Bila AUTH SMTP dipakai, password relay perlu disimpan di konfigurasi realm (§9 butir 2) | Kunci AWS dipegang proses Keycloak; memperluas permukaan rahasia Keycloak | Kredensial Keycloak → backend; kunci AWS tetap di backend | Kredensial SMTP penyedia di konfigurasi realm |
+| Penyalahgunaan sebagai open relay | Dicegah: jaringan Docker khusus per host saja, permintaan SES disusun dari amplop dan header divalidasi, daftar izin `From`, satu penerima, batas ukuran dan laju. Lapis kedua IAM: `ses:FromAddress`, ARN identitas Jakarta, `aws:SourceIp`, `ses:MultiRegionEndpointId` `[SRC-298]` | Tidak ada port SMTP baru | Endpoint internal backend perlu autentikasi klien | Bergantung penyedia |
 | Pelacakan tautan SES | Dimatikan per pesan (`ConfigurationOverrides.Tracking`) dan di configuration set, supaya tautan token tidak dialihkan lewat domain pelacakan `[SRC-297]` `[SRC-294]` | Sama | Sama | Bergantung penyedia |
 | TLS ke server penerima | Configuration set untuk email Keycloak diusulkan **wajib TLS** (bukan oportunistik) karena memuat token `[SRC-296]`; dampaknya ke keterkiriman dipantau `[KEPUTUSAN-229]` | Sama | Sama | Bergantung penyedia |
-| Permukaan serangan baru | Pengurai SMTP buatan sendiri (T1, test negatif wajib), hanya terjangkau dari jaringan internal | Kode Java di dalam proses Keycloak (berjalan dengan hak penuh Keycloak) | Endpoint HTTP internal baru | Tidak ada di sisi kita |
+| Kegagalan tidak terlihat | Alur "lupa password" menampilkan sukses walau gagal `[SRC-364]`; dideteksi lewat peringatan laju galat relay/SES dan event `EMAIL_SEND_FAILED` | Sama (perilaku Keycloak) | Coba ulang outbox menutupi sebagian kegagalan, tetapi token tersimpan | Sama (perilaku Keycloak) |
+| Permukaan serangan baru | Pengurai SMTP buatan sendiri (T1, test negatif wajib), hanya terjangkau dari jaringan Docker khusus di host yang sama | Kode Java di dalam proses Keycloak (berjalan dengan hak penuh Keycloak) | Endpoint HTTP internal baru | Tidak ada di sisi kita |
 
 ## 5. Effort (estimasi penyusun, jam-task, dasar `[ASUMSI-01]`)
 
@@ -144,34 +158,43 @@ Alasan:
 1. Tetap pada pilihan user: SES Jakarta lewat API `[USER] T5-Q4`, tanpa penyedia baru dan tanpa biaya penyedia tambahan.
 2. Keycloak tetap memakai konfigurasi SMTP bawaan yang didukung `[SRC-264]` `[SRC-301]`, tanpa provider di SPI internal yang dapat berubah tanpa pemberitahuan `[SRC-299]` `[SRC-300]`.
 3. Tidak menambah bahasa ke stack (ADR-024 tetap) dan sejalan dengan ADR-016 butir 5 yang sudah menyebut relay SMTP.
-4. Token aksi tidak pernah disimpan di disk atau database (berbeda dengan opsi 3/4).
-5. Satu relay juga melayani Alertmanager `[SRC-302]` `[KEPUTUSAN-231]`.
+4. Token aksi Keycloak tidak pernah disimpan di disk atau database oleh sistem Ruang Sehat (berbeda dengan opsi 3/4).
+5. Komponen relay yang sama juga melayani Alertmanager (instans di host ops) `[SRC-302]` `[KEPUTUSAN-231]` `[KEPUTUSAN-232]`.
 
-Risiko yang diterima: pengurai SMTP buatan sendiri (dimitigasi dengan subset kecil, jaringan internal, dan test negatif), dan tidak ada coba ulang otomatis untuk email Keycloak. Kegagalan sampai ke pengguna sebagai galat, dan pengguna dapat meminta kirim ulang (US-101 AC2).
+Risiko yang diterima:
+- Pengurai SMTP buatan sendiri, dimitigasi dengan subset kecil, jaringan Docker khusus per host, dan test negatif.
+- Tidak ada coba ulang otomatis untuk email Keycloak. Pada jalur Admin REST (pendaftaran, kirim ulang verifikasi, undangan), kegagalan sampai ke backend sebagai HTTP 500, lalu backend menampilkan galat dan pengguna dapat meminta kirim ulang (US-101 AC2). Pada alur "lupa password", kegagalan **tidak terlihat** oleh pengguna maupun backend karena Keycloak tetap menampilkan pesan sukses `[SRC-364]`. Pengguna hanya menyadari karena email tidak datang. Kontrol deteksinya: peringatan laju galat relay/SES dan event `EMAIL_SEND_FAILED` (§7) `[KEPUTUSAN-227]`.
+- Perlindungan token di ADR-026 hanya berlaku untuk email Keycloak. Email aplikasi bertoken (tautan konfirmasi reset MFA `[KEPUTUSAN-204]`) dikirim modul notifikasi lewat outbox dengan coba ulang (ADR-016), sehingga token dapat tersimpan di database dan dikirim dengan TLS oportunistik. Usulan untuk rancangan US-207 AC5 (Fase 2): outbox hanya menyimpan referensi dan token dibangkitkan saat pengiriman; configuration set wajib TLS (bila dipilih user) juga untuk email bertoken aplikasi (review C-04).
 
 ## 7. Prasyarat sebelum F1-T36
 
-- SES production access dan kenaikan kuota sebelum staging dipakai pengguna nyata dan sebelum uji beban Januari 2027. Kuota bawaan 200 email/24 jam dan 1 email/detik `[SRC-294]` akan menolak email saat beban tinggi, dan karena pengiriman sinkron, penolakan itu langsung menjadi galat registrasi.
+- SES production access dan kenaikan kuota sebelum staging dipakai pengguna nyata dan sebelum uji beban Januari 2027. Kuota bawaan 200 email/24 jam dan 1 email/detik `[SRC-294]` akan menolak email saat beban tinggi, dan karena pengiriman sinkron, penolakan itu langsung menjadi galat registrasi, atau kegagalan diam pada alur "lupa password" (§2.6).
 - Identitas domain pengirim terverifikasi dan DKIM di `ap-southeast-3` `[SRC-210]`.
-- Akun AWS khusus email dengan kebijakan IAM minimum `[USER] T5-Q4` `[SRC-298]`.
+- Akun AWS khusus email dengan kebijakan IAM minimum `[USER] T5-Q4` `[SRC-298]`, ditambah prosedur rotasi dan pencabutan kunci.
+- Peringatan Alertmanager (tabel ADR-010): laju galat relay/SES, event Keycloak `EMAIL_SEND_FAILED` dari worker event (ADR-011 butir 10), dan pemakaian kuota SES `[KEPUTUSAN-227]`.
+- Batas laju di endpoint "lupa password" dan kirim ulang verifikasi (Caddy/WAF, ADR-019 butir 3), karena banjir permintaan dapat menghabiskan kuota SES yang dipakai bersama modul notifikasi.
+- Alamat di daftar supresi SES (tetap ada sampai dihapus `[SRC-296]`) masuk prosedur penghapusan hak subjek data (EP-16).
 
 ## 8. Butuh keputusan user
 
 1. **Persetujuan ADR-026** (opsi 1). Opsi 2 dan 3 mengubah ADR-024; opsi 5 menambah penyedia dan biaya. Ketiganya hanya bisa dipilih user.
 2. **Lokasi data email** (§2.4): komitmen AWS yang ditemukan bersifat umum, dengan pengecualian "necessary to provide the services you initiated" `[SRC-295]`, dan setiap email pasti diserahkan ke server penerima yang lokasinya `[TIDAK DIKETAHUI]`. Apakah ini diterima terhadap ketentuan data di Indonesia (T4-Q1, CR-007) perlu dinilai user dan tim legal. Penilaian ini juga berlaku untuk email notifikasi aplikasi (ADR-016), bukan hanya Keycloak.
-3. **Wajib TLS ke server penerima** untuk email Keycloak `[KEPUTUSAN-229]`: lebih aman bagi token, tetapi email ke server penerima tanpa TLS tidak terkirim. Usulan penyusun: wajib TLS. User dapat memilih oportunistik.
+3. **Wajib TLS ke server penerima** untuk email Keycloak `[KEPUTUSAN-229]`: lebih aman bagi token, tetapi email ke server penerima tanpa TLS tidak terkirim. Kegagalan itu terjadi setelah SES menerima pesan ("It's possible for Amazon SES to accept a message without sending it" `[SRC-366]`), sehingga relay, Keycloak, dan pengguna tetap melihat sukses. Mendeteksinya memerlukan event publishing SES, yang menyimpan alamat penerima di layanan AWS lain dan menambah pertanyaan lokasi data butir 2 `[SRC-296]`. Usulan penyusun: wajib TLS. User dapat memilih oportunistik.
 
 ## 9. `[TIDAK DIKETAHUI]` dan verifikasi di F1-T36
 
 1. Isi keluaran opsi `debug` SMTP Keycloak (`mail.debug`). Opsi ini tetap dilarang.
-2. Cara menyimpan password SMTP realm tanpa menulisnya di berkas realm keycloak-config-cli (dukungan vault Keycloak untuk field SMTP, atau substitusi variabel keycloak-config-cli). Bila tidak ada, relay tidak memakai AUTH dan bergantung pada isolasi jaringan dan TLS `[KEPUTUSAN-231]`.
+2. Cara menyimpan password SMTP realm tanpa menulisnya di berkas realm keycloak-config-cli (dukungan vault Keycloak untuk field SMTP, atau substitusi variabel keycloak-config-cli). Bila tidak ada, relay tidak memakai AUTH dan bergantung pada jaringan Docker khusus per host dan TLS `[KEPUTUSAN-231]`. Karena relay per host, butir ini bukan syarat `[KEPUTUSAN-232]`.
 3. Kompatibilitas Alertmanager dengan relay (STARTTLS dan sertifikat CA internal).
-4. Perilaku SES untuk pesan Raw bila `Destination` diisi dari amplop SMTP; diuji terhadap SES sandbox.
+4. Perilaku SES untuk pesan Raw bila `Destination` diisi dari amplop SMTP dan header To berbeda; diuji terhadap SES sandbox. Relay tetap memvalidasi header (§3.1).
+7. Perilaku required action verifikasi email yang dipicu saat login (bukan lewat Admin REST) ketika SMTP gagal: galat ke pengguna atau sukses diam seperti §2.6.
+8. Apakah OpenBao dapat menerbitkan kredensial AWS dinamis untuk akun email; IP keluar host Biznet (Magic Transit) untuk `aws:SourceIp`.
 5. Penyedia SMTP di Indonesia (opsi 5) dan kebijakan port 25 keluar Biznet Gio (opsi 7).
 6. Lokasi server email penerima (di luar kendali Ruang Sehat).
 
 ## 10. Register
 
-- Sumber: SRC-294–SRC-303 (`docs/sources.md`).
-- Keputusan: KEPUTUSAN-226–KEPUTUSAN-231 (`docs/decision-log.md`). KEPUTUSAN-232 tidak terpakai.
+- Sumber: SRC-294–SRC-303, SRC-364–SRC-366 (`docs/sources.md`).
+- Keputusan: KEPUTUSAN-226–KEPUTUSAN-232 (`docs/decision-log.md`).
+- Threat model: `docs/04-threat-model.md` v1.2 §4.18 (EML-01–EML-09, M-34–M-39, H-17).
 - Bukti eksekusi: Eksperimen E1 (§2.3). Skrip penangkap SMTP disimpan di scratchpad sesi dan tidak masuk repo.

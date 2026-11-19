@@ -1,0 +1,211 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ruang Sehat: API operasional",
+    "description": "Endpoint operasional tanpa autentikasi (kesehatan). Format respons: ADR-023.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Liveness: proses hidup dan dapat melayani HTTP. Tidak memeriksa dependensi.",
+        "operationId": "health_live",
+        "responses": {
+          "200": {
+            "description": "Proses hidup.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthEnvelope"
+                },
+                "example": {
+                  "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                  "data": {
+                    "status": "ok"
+                  },
+                  "response_code": "2000000",
+                  "response_description": "Berhasil"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Readiness: semua dependensi terdaftar siap. Gagal dengan 503 (`5030001`) bila ada yang tidak siap.",
+        "operationId": "health_ready",
+        "responses": {
+          "200": {
+            "description": "Siap menerima lalu lintas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthEnvelope"
+                },
+                "example": {
+                  "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                  "data": {
+                    "status": "ok"
+                  },
+                  "response_code": "2000000",
+                  "response_description": "Berhasil"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ada dependensi yang belum siap.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                  "response_code": "5030001",
+                  "response_description": "Layanan sedang tidak tersedia",
+                  "type": "https://problems.ruang-sehat.invalid/5030001"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
+        "required": [
+          "type",
+          "response_code",
+          "response_description",
+          "correlation_id"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan; selalu ada pada galat.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorSchema"
+            },
+            "description": "Galat per isian; hanya pada galat validasi."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Pola rute (bukan URL dengan ID)."
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "4040001"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Data tidak ditemukan"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI jenis masalah: `<awalan>/<response_code>`.",
+            "example": "https://problems.ruang-sehat.invalid/4040001"
+          }
+        }
+      },
+      "FieldErrorSchema": {
+        "type": "object",
+        "description": "Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kode galat isian, snake_case Inggris.",
+            "example": "invalid_format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path isian.",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan Bahasa Indonesia untuk pengguna.",
+            "example": "Format email tidak valid"
+          }
+        }
+      },
+      "HealthData": {
+        "type": "object",
+        "description": "Isi `data` respons kesehatan.",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          }
+        }
+      },
+      "HealthEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons sukses kesehatan (ADR-023 butir 1). Dipakai hanya untuk skema\nOpenAPI; isi sebenarnya dibangun `envelope::Success`. Test `tests/openapi_schema_drift.rs`\nmenjaga keduanya tetap sama.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "data": {
+            "$ref": "#/components/schemas/HealthData"
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "string",
+        "description": "Status kesehatan.",
+        "enum": [
+          "ok"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ops",
+      "description": "Operasional"
+    }
+  ]
+}
