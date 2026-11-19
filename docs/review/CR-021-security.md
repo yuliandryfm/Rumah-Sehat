@@ -2,7 +2,8 @@
 
 Tanggal: 2026-11-19
 Reviewer: security-architect (independen, tidak ikut menyusun dokumen yang direview)
-Tingkat ketelitian: T1 Kritis (autentikasi, isolasi tenant, data pribadi spesifik, uang; `aturan-kerja.md` §1), putaran 1 dari maksimal 2
+Tingkat ketelitian: T1 Kritis (autentikasi, isolasi tenant, data pribadi spesifik, uang; `aturan-kerja.md` §1), 2 putaran (maksimal 2)
+**Status akhir (putaran 2): LULUS DENGAN CATATAN.** B-01–B-05 tertutup. Lampiran A sudah diterapkan dengan benar ke threat model v1.3. Status ancaman yang harus diubah ada di §5.3. Lingkup CR-021 di threat model baru menjadi LULUS setelah user memutuskan UP-83/PT-78/UP-87 (KOR-12) dan UP-84 (B2B-01); tidak ada lagi celah desain yang menjadi milik penyusun. Rinciannya di §5.
 Dokumen yang direview (branch `tahap-08-fase-1`, commit `9530155`):
 - `docs/cr/CR-021-analisis.md` v0.1
 - `docs/adr/ADR-027-situs-publik-dan-member-area-korporat.md` (Diusulkan)
@@ -17,11 +18,13 @@ Metode:
 - Halaman yang saya buka sendiri hari ini dan dicatat di Lampiran B (usulan SRC-405–SRC-409): OWASP XML Security Cheat Sheet, OWASP XXE Prevention Cheat Sheet, OWASP CSV Injection, MDN `Set-Cookie` (prefix `__Host-`), dan OWASP File Upload Cheat Sheet (dibuka ulang, melengkapi SRC-50).
 - Reproduksi temuan: setiap temuan menyebut berkas dan baris. Cara memeriksanya adalah membaca baris itu dan mencari kontrol yang disebut. Ketiadaan kontrol itulah temuannya.
 
+Nomor baris di §1–§4 merujuk ke working tree saat putaran 1. Nomor baris di §5 merujuk ke working tree saat putaran 2.
+
 ---
 
 ## 1. Verdict
 
-**TIDAK LULUS (putaran 1): 5 blokir (B-01–B-05).** Semuanya dapat ditutup di tingkat teks ADR/AC tanpa mengubah arah desain. Cek ulang cukup memeriksa baris yang berubah.
+**TIDAK LULUS (putaran 1): 5 blokir (B-01–B-05).** (Hasil putaran 2 di §5.) Semuanya dapat ditutup di tingkat teks ADR/AC tanpa mengubah arah desain. Cek ulang cukup memeriksa baris yang berubah.
 
 Arah desain utama **aman dan saya dukung**:
 - Realm `korporat` terpisah (KEPUTUSAN-250) lebih baik daripada realm `admin` (pendaftaran anonim di realm Super Admin) atau `pasien` (batas sesi 30/90 hari). MFA TOTP wajib, pesan seragam, dan atur ulang password ber-OTP sudah mengikuti ADR-011.
@@ -156,6 +159,115 @@ Unggahan massal membuat salah ketik bukan kejadian langka.
 - Lampiran A dimasukkan ke `docs/04-threat-model.md` sebagai v1.3 oleh pelaksana, dengan pola review F1-T02. Saya tidak mengedit berkas itu langsung karena alat yang tersedia hanya dapat menulis ulang berkas penuh, dan itu berisiko merusak 625 baris yang tidak berubah.
 - Lampiran B dimasukkan ke `docs/sources.md`. Nomor SRC-405–SRC-409 diperiksa ulang terhadap branch lain sebelum digabung.
 - Status ancaman Tinggi baru yang masih Sebagian/Belum berubah menjadi Tercermin setelah B-01–B-05 diterapkan dan user memutuskan UP-83, UP-84, serta usulan tanggal lahir di M-43.
+
+---
+
+## 5. Putaran 2 (cek ulang, 2026-11-19)
+
+Yang diperiksa (working tree belum di-commit):
+- Baris yang berubah di `docs/cr/CR-021-analisis.md` v0.2, ADR-027, ADR-028, dan ADR-029.
+- KEPUTUSAN-264–269 di `docs/decision-log.md` (6 baris tercatat).
+- SRC-405–SRC-409 di `docs/sources.md` baris 400–404 (tercatat). SRC-440, yang dirujuk ADR-028 baris 58, juga tercatat di baris 398. Isinya bukan bagian review ini.
+- `docs/04-threat-model.md` v1.3.
+
+### 5.1 Status blokir
+
+| Blokir | Hasil | Bukti (berkas:baris) |
+| --- | --- | --- |
+| B-01 (SIT-01) | **Tertutup** | `ADR-027:38–40`: render aman, aturan sama divalidasi saat simpan dan dipakai saat render, iframe `sandbox` tanpa `allow-same-origin`, CSP tanpa skrip inline. `CR-021-analisis.md:179–182`: US-1802 AC6–AC9, termasuk payload XSS di situs dan pratinjau. `:692–693`: F1-T95/T96 bergantung pada F1-T111 |
+| B-02 (KOR-02) | **Tertutup** | `ADR-027:34`: jalur pemulihan HR, KEPUTUSAN-265, usulan revisi ADR-011 butir 5. `CR-021-analisis.md:252–254`: US-1904 AC7–AC9, termasuk penolakan tanpa konfirmasi kanal kedua dan reset atas akun milik staf sendiri. AC dibangun di Fase 2 (KEPUTUSAN-179). Sub-peran tetap PT-67 |
+| B-03 (KOR-09) | **Tertutup** | `ADR-028:44–49`: invarian AB-87 beserta konsekuensinya. `CR-021-analisis.md:121` (AB-87), `:324` (US-1909 AC6), `:360–361` (US-1912 AC5–AC6, `no-store`), `:384–385` (US-1914 AC7 agregat, AC8 penarikan) |
+| B-04 (KOR-12) | **Tertutup** (sebagai blokir reviewer) | `ADR-028:32–37`: UP-83 sebagai syarat keamanan, App Links/Universal Links, PT-78 dan UP-87 diajukan ke user, batas undangan. `CR-021-analisis.md:303` (AC1a), `:308` (AC4a), `:395` (US-1915 AC4), `:424`, `:428`, `:776`. Desain sudah lengkap. Status Tercermin menunggu keputusan user (§0.4) |
+| B-05 (B2B-02) | **Tertutup** | `ADR-029:20–26`: `bank_statement_entry` dengan UQ global, alokasi ≤ nominal mutasi di aplikasi dan database, test negatif. `CR-021-analisis.md:332–336` (US-1910 AC1, AC1a, AC4: lintas invoice ditolak), `:453–454` (tabel) |
+
+N-01–N-05 juga ditangani:
+- N-01: `ADR-027:50`, koreksi v0.2 ditambah rencana revisi ADR-018 butir 1, H-11, dan checklist (`CR-021-analisis.md:566`, `:728`).
+- N-02: US-1910 AC6 di `:338`.
+- N-03: `ADR-028:24` dan `ADR-027:35`.
+- N-04: `ADR-028:57–59` dan US-1907 AC10–AC12.
+- N-05: `ADR-027:41–42`, US-1908 AC1b, dan PT-79.
+
+### 5.2 Perbandingan threat model v1.3 dengan v1.2
+
+**Keterbatasan:** saya tidak dapat menjalankan `git diff`, karena alat yang tersedia tidak termasuk shell. Perbandingan dilakukan terhadap isi v1.2 yang saya baca di putaran 1 (HEAD `9530155`).
+
+Hasil:
+- Kepala dokumen (baris 4, 7, 25), AS-19–AS-21, AK-08, TB-15/TB-16, §4.19–§4.22 (baris 460–501), §5.1, M-40–M-56, H-18, §8, dan §9 baris 1.3 cocok dengan Lampiran A.
+- Urutan §4.1–§4.18 utuh.
+- Paragraf status v1.0–v1.2 dan baris riwayat 0.1–1.2 tidak berubah.
+- Angka v1.2 dicatat sebagai pembanding (baris 518).
+
+Tidak ditemukan perubahan pada ancaman lama.
+
+Yang perlu dikoreksi pelaksana (non-blokir):
+- (a) Baris 7 "Dasar tambahan v1.3" masih "KEPUTUSAN-250–263". Ganti menjadi 250–269, tambahkan `CR-021-analisis.md` v0.2 dan SRC-405–SRC-409.
+- (b) Baris 719 "Catatan pelaksana" dihapus dan diganti paragraf status di §5.4.
+- (c) Kolom Status di §4.19–§4.22, §5.1–§5.3, §6, dan §9 diperbarui sesuai §5.3–§5.4.
+
+### 5.3 Status ancaman yang harus diubah di threat model v1.3
+
+| ID | Tingkat | Status putaran 1 | Status putaran 2 | Dasar |
+| --- | --- | --- | --- | --- |
+| SIT-01 | Tinggi | Sebagian | **Tercermin** | ADR-027 butir 5; US-1802 AC6–AC9; F1-T111; KEPUTUSAN-264 |
+| KOR-02 | Tinggi | Belum | **Tercermin** | ADR-027 butir 3; US-1904 AC7–AC9; KEPUTUSAN-265 (dibangun Fase 2; sub-peran PT-67) |
+| KOR-09 | Tinggi | Sebagian | **Tercermin** | ADR-028 butir 3 (AB-87); US-1909 AC6; US-1912 AC5–AC6; US-1914 AC7–AC8; KEPUTUSAN-266 |
+| B2B-02 | Tinggi | Sebagian | **Tercermin** | ADR-029 butir 3; US-1910 AC1, AC1a, AC4; KEPUTUSAN-268 |
+| KOR-12 | Tinggi | Sebagian | **Sebagian (desain lengkap; menunggu user: UP-83, PT-78/UP-87)** | ADR-028 butir 2; US-1908 AC1a, AC4a; US-1915 AC4; KEPUTUSAN-267. Menjadi Tercermin bila user menyetujui, atau menerima risiko sisa secara tercatat |
+| B2B-01 | Tinggi | Sebagian | Sebagian (tetap; menunggu UP-84) | US-1910 AC6 |
+| SIT-03 | Sedang | Sebagian | **Tercermin** | ADR-027 butir 6; KEPUTUSAN-269 |
+| SIT-05 | Sedang | Belum | **Tercermin** | ADR-027 butir 5; US-1802 AC9 |
+| KOR-04 | Sedang | Belum | **Sebagian** | US-1908 AC1b; ADR-028 butir 2. Sisa: waktu kirim setelah Lunas masih usulan untuk PT-63 |
+| KOR-06 | Sedang | Sebagian | **Tercermin** | ADR-028 butir 1 (UQ parsial, pencabutan sesi) |
+| IMP-01 | Sedang | Sebagian | **Tercermin** | ADR-028 butir 6; US-1907 AC11 |
+| IMP-02 | Sedang | Sebagian | **Tercermin** | ADR-028 butir 6 (semua ekspor); US-1908 AC1b |
+| IMP-03 | Sedang | Sebagian | **Tercermin** | ADR-028 butir 6 (bucket impor tanpa versi); US-1907 AC12 |
+| B2B-03 | Sedang | Belum | **Sebagian** | US-1909 AC7 (berlaku setelah PT-59). Sisa: DMARC belum tertulis |
+| SIT-04, KOR-03, KOR-08 | Sedang | Sebagian | Sebagian (tetap) | Cache ditetapkan Tahap 8; PT-79/PT-72 menunggu user; M-52 belum diterapkan |
+
+Status mitigasi di §6:
+- **Diterapkan (di ADR Diusulkan, CR-021 v0.2):** M-40, M-41, M-42, M-43, M-44, M-46, M-48, M-51, M-53, M-54, M-55, dan H-18 (`CR-021-analisis.md:506`).
+- **Sebagian:** M-47, M-50, M-56.
+- **Menunggu user:** M-45 (UP-84) dan M-49 (PT-79).
+- **Terbuka:** M-52.
+
+### 5.4 Angka §5.1 v1.3 dan paragraf status
+
+| Tingkat | Jumlah | Tercermin | Sebagian | Belum |
+| --- | --- | --- | --- | --- |
+| Tinggi | 66 | 64 | 2 | 0 |
+| Sedang | 75 | 50 | 20 | 5 |
+| Rendah | 8 | 7 | 1 | 0 |
+| **Total** | **149** | **121** | **23** | **5** |
+
+Kolom §5.2 "Tinggi belum tercermin":
+- 4.19: —
+- 4.20: KOR-12 (menunggu user)
+- 4.21: —
+- 4.22: B2B-01 (menunggu user)
+
+§5.3 butir v1.3:
+- HR vs hasil: Tercermin.
+- Akun HR dan pemulihan MFA: Tercermin.
+- Penautan undangan: Sebagian, menunggu user.
+- Impor: Tercermin.
+- XSS CMS: Tercermin.
+- Pembayaran manual: B2B-02 Tercermin; B2B-01 menunggu UP-84.
+
+Paragraf §8 v1.3 (pengganti baris 712–719): "Versi 1.3 (setelah cek ulang review keamanan CR-021 putaran 2): ancaman lama tidak berubah status; lingkup yang sudah disetujui tetap **LULUS**. Di lingkup CR-021, blokir B-01–B-05 tertutup. Dua ancaman Tinggi masih Sebagian dan hanya menunggu keputusan user: KOR-12 (UP-83, PT-78/UP-87) dan B2B-01 (UP-84). Bila user menyetujui usulan itu atau menerima risiko sisanya secara tercatat, keduanya menjadi Tercermin (§0.4) dan lingkup CR-021 **LULUS**. Sampai saat itu lingkup CR-021 berstatus **LULUS BERSYARAT keputusan user**, tanpa celah desain yang tersisa bagi penyusun. ADR-029 tetap tidak dapat Diterima sebelum PT-59, L-21, dan UP-84 diputuskan."
+
+Riwayat §9: tambahkan ke baris 1.3, "Cek ulang putaran 2: SIT-01, KOR-02, KOR-09, B2B-02, SIT-03, SIT-05, KOR-06, IMP-01–03 ke Tercermin; KOR-04, B2B-03 ke Sebagian; KOR-12 dan B2B-01 menunggu user".
+
+### 5.5 Catatan baru (non-blokir)
+
+- **R2-01 (`bank_statement_entry`).** Nominal ikut menjadi bagian kunci unik, sehingga salah ketik nominal untuk referensi yang sama lolos sebagai mutasi kedua. Selain itu, membalik mutasi lalu mencatat ulang dengan kunci identik akan ditolak UQ. Saat task (DBA), tetapkan dua hal: (i) kunci tanpa nominal, atau peringatan bila referensi sama dengan nominal berbeda; (ii) UQ yang mengecualikan mutasi yang sudah dibalik, atau koreksi lewat alokasi pembalik tanpa mencatat ulang mutasi (`ADR-029:21`, `CR-021-analisis.md:453`).
+- **R2-02.** KOR-02 dan KOR-12 bergantung pada keputusan user (PT-67, PT-78, UP-83, UP-87). Pastikan pertanyaan itu tampil di §16 analisis. Di baris 819–820 sudah tampil, kecuali PT-67, yang sudah ada sejak v0.1 (butir 5).
+
+### 5.6 Verdict putaran 2
+
+**LULUS DENGAN CATATAN.**
+- B-01–B-05 tertutup.
+- Catatan non-blokir R2-01, R2-02, dan §5.2 (a)–(c) tidak memicu putaran baru.
+- Status lingkup CR-021 di threat model mengikuti §5.4 dan menjadi LULUS penuh setelah keputusan user atas UP-83/PT-78/UP-87 dan UP-84.
 
 ---
 

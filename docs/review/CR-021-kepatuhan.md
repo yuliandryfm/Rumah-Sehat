@@ -5,7 +5,9 @@ Peninjau: compliance-reviewer (subagent). Bukan pengacara; laporan ini bukan nas
 Objek: `docs/cr/CR-021-analisis.md` v0.1, `docs/adr/ADR-027-*.md`, `ADR-028-*.md`, `ADR-029-*.md` (draf), KEPUTUSAN-250–263 (`docs/decision-log.md`), terhadap `docs/cr/CR-021-wawancara.md`, `docs/02-brd.md` (BR-040/041, BR-100–BR-118, L-01–L-16), ADR-013, `docs/03-prd.md` (§3.1, US-104, EP-16).
 Kriteria blokir: `aturan-kerja.md` §2.
 
-## Verdict: **TIDAK LULUS** (1 blokir, perbaikan kecil di dokumen)
+**Status terkini (putaran 2): LULUS DENGAN CATATAN.** B-1 tertutup. Rincian di §8.
+
+## Verdict putaran 1: **TIDAK LULUS** (1 blokir, perbaikan kecil di dokumen)
 
 Setelah B-1 diperbaiki, status menjadi **LULUS DENGAN CATATAN**. Analisis jujur menunda hal yang belum diketahui ke `[TIDAK DIKETAHUI]`/L-17–L-21, tidak memuat isi pasal dari ingatan, dan semua `SRC` yang dirujuk (SRC-15, SRC-50, SRC-63, SRC-246, SRC-265) terdaftar. Pekerjaan K1 Fase 1 (situs, CMS, pendaftaran/verifikasi perusahaan, akun HR) tidak memproses data peserta atau data kesehatan, sehingga temuan di bawah tidak menghambat K1. Temuan itu wajib selesai sebelum gerbang usulan G-26 (data peserta nyata pertama).
 
@@ -13,7 +15,7 @@ Setelah B-1 diperbaiki, status menjadi **LULUS DENGAN CATATAN**. Analisis jujur 
 
 ## 1. Sumber eksternal baru
 
-`docs/sources.md` **belum** saya ubah. Saya hanya punya alat tulis-ulang-penuh (tanpa edit sebagian), dan menulis ulang register ±400 baris berisiko merusaknya. Mohon orkestrator menambahkan dua baris ini apa adanya:
+Pada putaran 1, `docs/sources.md` belum saya ubah, karena saya hanya punya alat tulis-ulang-penuh dan menulis ulang register ±400 baris berisiko merusaknya. Di putaran 2, orkestrator sudah menambahkan kedua baris di bawah ini ke `docs/sources.md` (baris 398–399; sudah saya periksa).
 
 | ID | Judul / nama sumber | URL | Tingkat | Tanggal akses | Mendukung klaim | Dipakai di |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -88,3 +90,43 @@ Disajikan jujur. Setiap butir menyebut dokumen gate, isi yang berbenturan, opsi,
 6. Cakupan PSE untuk situs dan member area (L-20).
 7. Penerimaan dana invoice B2B terhadap BR-041, BR-115, dan izin BI; faktur dan pemotongan pajak (L-21, PT-73).
 8. Kanal hak subjek data bagi peserta tanpa akun, dan peserta anak.
+
+---
+
+## 8. Putaran 2 (cek ulang baris yang berubah, 2026-11-19)
+
+Yang diperiksa hanya baris yang berubah (`aturan-kerja.md` §2), dalam versi kerja yang belum di-commit.
+
+### 8.1 Blokir
+
+| # | Status | Bukti |
+| --- | --- | --- |
+| B-1 | **Tertutup** | `CR-021-analisis.md` baris 140–141: kolom Sensitif berbunyi "perlu konfirmasi legal (L-08, L-18); sampai dijawab diperlakukan Ya", dan baris peserta kini mencakup keikutsertaan dalam pesanan. Baris 146 memberi dasar `[SRC-440]` (Penjelasan Pasal 4 ayat (2) huruf a) dan menyatakan bahwa E-05/KU-03 berlaku selama belum dijawab. L-18 butir (i) di baris 784 ikut diperbarui. ADR-028 baris 15 konsisten. Keputusan user P2-4 tetap dihormati. |
+
+### 8.2 Non-blokir dan butir tabel §3
+
+| Butir | Status | Bukti |
+| --- | --- | --- |
+| K-12 (BR-103) | Terpenuhi | Baris 68; ringkasan baris 25 dan pengantar §2 baris 53 ikut diperbarui |
+| K-02 opsi (b) vs AB-13 | Terpenuhi | Baris 58; L-21 butir (b) baris 787 |
+| Hak subjek data peserta tidak tertaut, pemberitahuan di undangan (PT-76) | Terpenuhi sebagai pertanyaan terbuka | PT-76 baris 774; §6.4 baris 513; US-1908 AC1 baris 302 (pemberitahuan menunggu L-17/PT-76); tabel §14 baris 803 memblokir data nyata (G-26) |
+| Peserta anak (PT-77) | Terpenuhi sebagai pertanyaan terbuka | Baris 775, 514 |
+| Kolom di luar skema | Terpenuhi | US-1907 AC10 baris 293; ADR-028 baris 58 |
+| L-17 diperluas (enam dasar, peran rekanan, prosesor/pengendali bersama) | Terpenuhi, dengan catatan N-1 | Baris 783 |
+| L-18 (SRC-441, BR-143, ekspor setelah penarikan) | Terpenuhi | Baris 784; ADR-028 baris 14 |
+| L-19 (L-13, L-03, hanya SRC-18 yang dinyatakan) | Terpenuhi | Baris 785; tidak ada nomor regulasi imunisasi yang dikutip |
+| L-20 (SRC-13, teks persetujuan HR) | Terpenuhi | Baris 786 |
+| L-21 (BR-115/SRC-20) | Terpenuhi | Baris 787; ADR-029 baris 31 |
+| DPIA syarat G-26 | Terpenuhi, dengan catatan N-2 | Analisis baris 512, 722; ADR-028 baris 75 |
+| Bukti transfer berisi rekening lengkap | Terpenuhi | Matriks baris 144; ADR-029 baris 24 (bucket privat, hanya Keuangan, URL berumur pendek, isi tidak masuk log/audit) |
+| SRC-440/441 terdaftar | Terpenuhi | `docs/sources.md` baris 398–399, isi sama dengan §1 |
+
+### 8.3 Catatan baru (non-blokir, tidak memicu putaran ulang)
+
+- **N-1.** L-17 baris 783 menyebut "kewajiban memberi tahu perusahaan bila terjadi kegagalan pelindungan" sebagai akibat bila PT. Arunika prosesor, tanpa sumber. Pasal 52 `[SRC-440]` hanya memperluas Pasal 29, 31, 35–39 ke prosesor, dan Pasal 46 tentang pemberitahuan tidak termasuk di dalamnya. Usulan rumusan: "kewajiban memberi tahu perusahaan bila terjadi kegagalan pelindungan `[TIDAK DIKETAHUI]`, umumnya diatur di perjanjian pemrosesan". Kesalahan ini berasal dari usulan saya di §4 putaran 1, yang tidak saya tandai sebagai pertanyaan.
+- **N-2.** ADR-028 baris 75 menulis "MCU massal **memenuhi** dua pemicu", sedangkan analisis baris 512 menulis "**dapat** memenuhi". "Skala besar" belum terukur, jadi samakan menjadi "dapat memenuhi".
+- **N-3.** Kolom "Dipakai di" pada SRC-440/441 hanya menyebut berkas review. Tambahkan `cr/CR-021-analisis.md` dan `adr/ADR-028`, `adr/ADR-029`. Ini kosmetik.
+
+### 8.4 Verdict putaran 2: **LULUS DENGAN CATATAN**
+
+Tidak ada blokir. N-1 dan N-2 cukup diperbaiki saat F1-T81/F1-T82. Daftar konfirmasi legal di §7 tetap berlaku dan menjadi syarat G-26 sebelum data peserta nyata diproses.
