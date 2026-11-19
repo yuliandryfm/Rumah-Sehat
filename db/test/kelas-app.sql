@@ -1,5 +1,6 @@
 -- db/test/kelas-app.sql: test katalog kelas data dan trigger penolak database ruang_sehat
--- (T-06, T-07, T-08, T-09, T-22) atas skema app nyata dan atas tabel fixture.
+-- (T-06, T-07, T-08, T-09, T-22) atas skema app nyata dan atas tabel fixture, ditambah test negatif
+-- pemeriksa T-20 (CHECK *_enc/*_bidx, F1-T18) atas fixture; T-20 skema nyata di db/test/katalog.sql.
 -- Didahului db/test/lib.sql; dijalankan superuser di database ruang_sehat setelah migrasi.
 --
 -- Fixture dibuat di skema uji_kelas (milik rs_migration) dan, bila belum ada, fixture minimal
@@ -40,7 +41,11 @@ CREATE TABLE uji_kelas.uji_m (
   updated_at timestamptz NOT NULL DEFAULT now(), updated_by uuid NULL,
   deleted_at timestamptz NULL, deleted_by uuid NULL, delete_reason text NULL,
   full_name text NULL, anonymized_at timestamptz NULL,
-  CONSTRAINT pk_uji_m PRIMARY KEY (id));
+  nik_enc bytea NULL, nik_bidx bytea NULL, nik_bidx_key_version smallint NULL,
+  CONSTRAINT pk_uji_m PRIMARY KEY (id),
+  CONSTRAINT ck_uji_m_nik_enc_format CHECK (nik_enc IS NULL OR (octet_length(nik_enc) >= 29 AND get_byte(nik_enc, 0) = 1)),
+  CONSTRAINT ck_uji_m_nik_bidx CHECK (octet_length(nik_bidx) = 32),
+  CONSTRAINT ck_uji_m_nik_bidx_key_version CHECK (nik_bidx_key_version >= 1));
 COMMENT ON TABLE uji_kelas.uji_m IS 'class:M module:uji';
 COMMENT ON COLUMN uji_kelas.uji_m.full_name IS 'anonymize';
 REVOKE ALL ON uji_kelas.uji_m FROM PUBLIC;
@@ -168,6 +173,10 @@ SELECT pg_temp.uji_nol('T-06/T-07/T-08 fixture sembilan kelas (M, M berlaku-mula
 SELECT pg_temp.uji_nol('T-01 fixture: nama objek sesuai pola', ARRAY(SELECT pg_temp.uji_t01('{uji_kelas}')));
 SELECT pg_temp.uji_nol('T-04 fixture: objek milik rs_migration', ARRAY(SELECT pg_temp.uji_t04('{uji_kelas}')));
 SELECT pg_temp.uji_nol('T-24 fixture: argumen trigger hanya role rs_*', ARRAY(SELECT pg_temp.uji_t24('{uji_kelas}', 'rs_')));
+SELECT pg_temp.uji_nol('T-20 fixture: kolom *_enc/*_bidx/*_bidx_key_version uji_m sesuai (3 kolom)',
+  ARRAY(SELECT pg_temp.uji_t20('{uji_kelas}')
+        UNION ALL
+        SELECT format('jumlah kolom T-20 fixture %s, diharapkan 3', count(*)) FROM pg_temp.uji_t20_kolom('{uji_kelas}') HAVING count(*) <> 3));
 
 -- C. Test negatif atas pemeriksa: kerusakan yang disengaja wajib terdeteksi.
 DO $$
@@ -216,6 +225,17 @@ BEGIN
          $q$SELECT pg_temp.uji_rutin('{app,util}')$q$, 'fn_uji_tanpa_path\(\): SET search_path bukan persis'),
       ('T-24 badan fungsi menyebut role sistem lain', 'SET LOCAL ROLE rs_migration; CREATE FUNCTION util.fn_uji_role() RETURNS boolean LANGUAGE sql SET search_path = pg_catalog AS ''SELECT pg_has_role(''''rme_app'''', ''''MEMBER'''')''; RESET ROLE',
          $q$SELECT pg_temp.uji_t24('{app,util}', 'rs_')$q$, 'T-24 badan util.fn_uji_role\(\) menyebut role rme_app'),
+      ('T-20 CHECK amplop *_enc dihapus', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_enc_format', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_enc: tanpa CHECK'),
+      ('T-20 CHECK amplop *_enc dilonggarkan (>= 1 byte)', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_enc_format; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_enc_format CHECK (nik_enc IS NULL OR octet_length(nik_enc) >= 1)', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_enc: tanpa CHECK'),
+      ('T-20 CHECK amplop *_enc tanpa byte versi', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_enc_format; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_enc_format CHECK (nik_enc IS NULL OR octet_length(nik_enc) >= 29)', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_enc: tanpa CHECK'),
+      ('T-20 CHECK amplop *_enc NOT VALID', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_enc_format; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_enc_format CHECK (nik_enc IS NULL OR (octet_length(nik_enc) >= 29 AND get_byte(nik_enc, 0) = 1)) NOT VALID', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_enc: tanpa CHECK'),
+      ('T-20 CHECK amplop *_enc digabung kolom lain', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_enc_format; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_enc_format CHECK (full_name IS NOT NULL OR nik_enc IS NULL OR (octet_length(nik_enc) >= 29 AND get_byte(nik_enc, 0) = 1))', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_enc: tanpa CHECK'),
+      ('T-20 kolom *_enc baru tanpa CHECK', 'ALTER TABLE uji_kelas.uji_t ADD COLUMN payload_enc bytea NULL', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_t.payload_enc: tanpa CHECK'),
+      ('T-20 kolom *_enc bertipe text', 'ALTER TABLE uji_kelas.uji_r ADD COLUMN note_enc text NULL', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_r.note_enc: tipe text, diharapkan bytea'),
+      ('T-20 CHECK *_bidx 16 byte (dipotong)', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_bidx; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_bidx CHECK (octet_length(nik_bidx) = 16)', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_bidx: tanpa CHECK'),
+      ('T-20 kolom *_bidx baru tanpa CHECK', 'ALTER TABLE uji_kelas.uji_m ADD COLUMN code_bidx bytea NULL', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.code_bidx: tanpa CHECK'),
+      ('T-20 versi kunci blind index boleh 0', 'ALTER TABLE uji_kelas.uji_m DROP CONSTRAINT ck_uji_m_nik_bidx_key_version; ALTER TABLE uji_kelas.uji_m ADD CONSTRAINT ck_uji_m_nik_bidx_key_version CHECK (nik_bidx_key_version >= 0)', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_bidx_key_version: tanpa CHECK'),
+      ('T-20 versi kunci blind index bertipe integer', 'ALTER TABLE uji_kelas.uji_m ALTER COLUMN nik_bidx_key_version TYPE integer', $q$SELECT pg_temp.uji_t20('{uji_kelas}')$q$, 'T-20 uji_kelas.uji_m.nik_bidx_key_version: tipe integer, diharapkan smallint'),
       ('T-02 skema liar', 'CREATE SCHEMA uji_liar', $q$SELECT pg_temp.uji_t02('{app,util,ext,uji_kelas}', 'app')$q$, 'T-02 skema tidak terdaftar: uji_liar'),
       ('T-02 objek liar di ext', 'CREATE TABLE ext.uji_liar (x int)', $q$SELECT pg_temp.uji_t02('{app,util,ext,uji_kelas}', 'app')$q$, 'objek bukan milik ekstensi di skema ext: uji_liar')
     ) AS t(label, stmt, pemeriksa, pola)
