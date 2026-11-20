@@ -78,9 +78,9 @@ pub struct DataEncryptionKey {
 }
 
 impl DataEncryptionKey {
-    /// Membuat DEK dari 32 byte bahan kunci (DEK dari OpenBao Transit). Pemanggil wajib menolkan
-    /// salinan bahan kuncinya sendiri.
-    pub fn from_bytes(data_key_id: Uuid, key_bytes: &[u8]) -> Result<Self, CryptoError> {
+    /// Membuat DEK dari 32 byte bahan kunci. Hanya pengelola kunci di crate ini yang memegang bahan
+    /// kunci DEK (dari OpenBao Transit); kode lain memakai [`crate::DataKey`].
+    pub(crate) fn from_bytes(data_key_id: Uuid, key_bytes: &[u8]) -> Result<Self, CryptoError> {
         if key_bytes.len() != DEK_LEN {
             return Err(CryptoError::InvalidKey);
         }

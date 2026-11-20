@@ -21,6 +21,27 @@ pub enum CryptoError {
     EncryptionFailed,
     /// Data tambahan terautentikasi (AAD) tidak dapat disusun (bidang terlalu panjang).
     InvalidAad,
+    /// Konfigurasi tidak valid (alamat, token, nama mount/kunci/path, TTL, kapasitas).
+    InvalidConfig,
+    /// OpenBao tidak dapat dihubungi.
+    KmsUnavailable,
+    /// OpenBao tidak menjawab dalam batas waktu.
+    KmsTimeout,
+    /// OpenBao menolak permintaan (kode status HTTP saja; isi respons tidak dibawa).
+    KmsRejected {
+        /// Kode status HTTP.
+        status: u16,
+    },
+    /// Respons OpenBao tidak sesuai bentuk yang diharapkan.
+    KmsInvalidResponse,
+    /// `kek_ref` bukan milik KEK yang dikonfigurasi atau versinya tidak cocok dengan DEK terbungkus.
+    KekMismatch,
+    /// DEK terbungkus tidak berbentuk ciphertext Transit.
+    MalformedWrappedKey,
+    /// Wadah DEK (`container_type`/`container_id`) atau konteks kolom tidak cocok dengan yang diharapkan.
+    ContainerMismatch,
+    /// DEK sudah dimusnahkan (crypto-shredding); data wadahnya tidak dapat dibuka lagi.
+    KeyShredded,
 }
 
 impl fmt::Display for CryptoError {
@@ -33,6 +54,15 @@ impl fmt::Display for CryptoError {
             Self::Rng => "pembangkit bilangan acak gagal",
             Self::EncryptionFailed => "enkripsi gagal",
             Self::InvalidAad => "AAD tidak valid",
+            Self::InvalidConfig => "konfigurasi kripto tidak valid",
+            Self::KmsUnavailable => "OpenBao tidak dapat dihubungi",
+            Self::KmsTimeout => "OpenBao melewati batas waktu",
+            Self::KmsRejected { .. } => "OpenBao menolak permintaan",
+            Self::KmsInvalidResponse => "respons OpenBao tidak valid",
+            Self::KekMismatch => "rujukan KEK tidak cocok",
+            Self::MalformedWrappedKey => "DEK terbungkus rusak",
+            Self::ContainerMismatch => "wadah DEK tidak cocok",
+            Self::KeyShredded => "DEK sudah dimusnahkan",
         };
         f.write_str(msg)
     }
