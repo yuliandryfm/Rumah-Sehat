@@ -88,6 +88,30 @@ pub fn audit_relay_delayed(lag_seconds: u64) {
     warn!(target: SECURITY_TARGET, event_type = "audit_relay_delayed", lag_seconds = lag_seconds, "security_event");
 }
 
+/// Tahap kegagalan penulisan event audit (daftar tertutup).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditWriteFailure {
+    /// Event ditolak pustaka audit (field wajib, daftar izin, masking).
+    InvalidEvent,
+    /// Penulisan ke `audit_outbox` gagal di database.
+    StoreError,
+}
+
+impl AuditWriteFailure {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::InvalidEvent => "invalid_event",
+            Self::StoreError => "store_error",
+        }
+    }
+}
+
+/// Penulisan event audit gagal; aksi pemanggil dibatalkan (ADR-009 butir 2, klarifikasi T-21 US-1501 AC3).
+/// Hanya kode event dan tahap kegagalan; isi event dan pesan galat database tidak dicatat.
+pub fn audit_write_failed(event_code: &'static str, stage: AuditWriteFailure) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_write_failed", event_code = event_code, stage = stage.as_str(), "security_event");
+}
+
 /// Proyeksi status tidak cocok dengan ledger status (ADR-008).
 pub fn status_projection_mismatch(entity: &'static str, entity_id: Uuid) {
     warn!(target: SECURITY_TARGET, event_type = "status_projection_mismatch", entity = entity, entity_id = %entity_id.hyphenated(), "security_event");

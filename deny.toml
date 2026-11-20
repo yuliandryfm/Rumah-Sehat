@@ -20,16 +20,18 @@ unused-ignored-advisory = "deny"
 ignore = []
 
 [licenses]
-# Daftar izin awal docs/coding-standards.md §9.1 (KEPUTUSAN-136). Lisensi lain, termasuk ekspresi gabungan
-# yang memuat lisensi di luar daftar ini (misalnya Unicode-3.0), dibawa ke user sebelum ditambahkan.
-allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC"]
+# Daftar izin awal docs/coding-standards.md §9.1 (KEPUTUSAN-136), ditambah Unicode-3.0 dan Zlib secara
+# global (KEPUTUSAN-282, user 2026-11-20; pemicu: sqlx 0.9.1 menarik icu_*/unicode-normalization/
+# unicode-properties dan foldhash, SRC-493). Pengecualian sempit unicode-ident (KEPUTUSAN-245) kini tercakup
+# sehingga dihapus. Lisensi lain, termasuk ekspresi gabungan yang memuat lisensi di luar daftar ini, dibawa
+# ke user sebelum ditambahkan.
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib"]
 confidence-threshold = 0.8
 # Dependensi pengembangan ikut diperiksa (lebih ketat dari default).
 include-dev = true
 # Daftar izin adalah kebijakan, bukan inventaris: lisensi yang belum dipakai tidak dilaporkan.
 unused-allowed-license = "allow"
-# Pengecualian sempit: Unicode-3.0 hanya untuk crate unicode-ident (disetujui user, KEPUTUSAN-245).
-exceptions = [{ crate = "unicode-ident", allow = ["Unicode-3.0"] }]
+exceptions = []
 
 [licenses.private]
 # Crate workspace dengan `publish = false` tidak diperiksa lisensinya (kode milik proyek, tidak diterbitkan).

@@ -3,6 +3,8 @@
 //! Isi (F1-T22): kode event PRD §7.1 ([`EventCode`], E-01–E-18), field PRD §7.2 ([`AuditEvent`]),
 //! daftar izin per jenis objek dan masking PRD §7.3 ([`ObjectPolicy`], [`Value`]), serta payload
 //! `audit_outbox` (DD A19.1) yang dibentuk [`AuditEvent::finish`].
+//! F1-T23: [`record`] menulis event ke `audit_outbox` di transaksi pemanggil; gagal tulis membatalkan
+//! transaksi itu (ADR-009 butir 2, KEPUTUSAN-15).
 //!
 //! Larangan yang dijamin API (ADR-009 butir 7, coding-standards §4.4 butir 5):
 //! - Tidak ada parameter untuk password, PIN, OTP, token, rahasia MFA, atau kode pemulihan; nama field
@@ -16,8 +18,11 @@
 mod code;
 mod error;
 mod event;
+mod outbox;
 mod policy;
 mod value;
+
+pub use outbox::record;
 
 pub use code::{CODE_MAX_DIGIT_RUN, CODE_MAX_LEN, Code, EventCode};
 pub use error::{AuditError, AuditErrorKind};

@@ -244,3 +244,22 @@ fn security_log_obeys_the_same_denylist() {
         assert!(!text.contains(secret), "bocor {secret}: {text}");
     }
 }
+
+#[test]
+fn audit_write_failure_goes_to_security_stream_only() {
+    let c = capture(LogLevel::Error, || {
+        security::audit_write_failed("e_09", security::AuditWriteFailure::StoreError);
+        security::audit_write_failed("e_05", security::AuditWriteFailure::InvalidEvent);
+    });
+    assert!(!c.app.text().contains("audit_write_failed"));
+    let sec = c.security.lines();
+    assert_eq!(sec.len(), 2, "{sec:?}");
+    let first = sec.first().unwrap();
+    assert!(
+        first.contains("\"event_type\":\"audit_write_failed\""),
+        "{first}"
+    );
+    assert!(first.contains("\"event_code\":\"e_09\""), "{first}");
+    assert!(first.contains("\"stage\":\"store_error\""), "{first}");
+    assert!(sec.get(1).unwrap().contains("\"stage\":\"invalid_event\""));
+}
