@@ -22,6 +22,8 @@ pub const PAYLOAD_VERSION: u16 = 1;
 pub const USER_AGENT_MAX_CHARS: usize = 512;
 /// Batas jumlah subjek per event; lebih dari ini dipecah pemanggil (mis. export besar).
 pub const MAX_SUBJECTS: usize = 10_000;
+/// Batas versi objek (6 digit).
+pub const OBJECT_VERSION_MAX: i32 = 999_999;
 
 /// Jenis aktor (DD B1 `actor_type`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -412,6 +414,17 @@ impl AuditEvent {
             .outcome
             .ok_or(AuditError::new(AuditErrorKind::MissingField, "outcome"))?;
         let source = context.source;
+        // Versi objek kecil; nilai besar (mis. nomor rekening 10 digit sebagai versi) ditolak.
+        if self
+            .object
+            .version
+            .is_some_and(|v| !(0..=OBJECT_VERSION_MAX).contains(&v))
+        {
+            return Err(AuditError::new(
+                AuditErrorKind::InvalidValue,
+                "object_version",
+            ));
+        }
 
         // Alamat IP wajib untuk aksi pengguna dan integrasi (PRD §7.2 "Sumber").
         let needs_ip = matches!(
@@ -556,22 +569,48 @@ impl AuditEvent {
     }
 }
 
+/// Versi aplikasi: `[0-9A-Za-z.+_-]`, 1–32 karakter, paling banyak 8 digit seluruhnya (mis.
+/// `1.0.3+20271101`), sehingga nomor identitas/kartu/rekening tidak dapat diselipkan.
 fn is_valid_app_version(v: &str) -> bool {
     !v.is_empty()
         && v.len() <= 32
         && v.chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '+' | '_' | '-'))
+        && v.chars().filter(char::is_ascii_digit).count() <= APP_VERSION_MAX_DIGITS
 }
 
+/// Batas digit seluruhnya di versi aplikasi.
+const APP_VERSION_MAX_DIGITS: usize = 8;
+/// Deret digit di user agent yang lebih panjang dari ini disamarkan (versi peramban punya deret ≤ 4).
+const USER_AGENT_MAX_DIGIT_RUN: usize = 5;
+
+/// User agent: karakter kontrol dibuang, pola terlarang disamarkan (`scrub_text`), deret angka lebih dari
+/// 5 digit diganti `[REDACTED]`, lalu dipotong. User agent wajar memuat banyak angka versi, sehingga
+/// jumlah angka seluruhnya tidak dibatasi (batas yang diketahui: nomor yang dipecah menjadi kelompok
+/// ≤ 5 digit dapat lolos; nilai ini berasal dari klien peminta sendiri).
 fn clean_user_agent(ua: &str) -> String {
     let no_control: String = ua
         .chars()
         .map(|c| if c.is_control() { ' ' } else { c })
         .collect();
-    observability::redact::scrub_text(&no_control)
-        .chars()
-        .take(USER_AGENT_MAX_CHARS)
-        .collect()
+    let scrubbed = observability::redact::scrub_text(&no_control);
+    let mut out = String::with_capacity(scrubbed.len());
+    let mut run = String::new();
+    for c in scrubbed.chars().chain(std::iter::once(' ')) {
+        if c.is_numeric() {
+            run.push(c);
+            continue;
+        }
+        if run.chars().count() > USER_AGENT_MAX_DIGIT_RUN {
+            out.push_str("[REDACTED]");
+        } else {
+            out.push_str(&run);
+        }
+        run.clear();
+        out.push(c);
+    }
+    out.pop();
+    out.chars().take(USER_AGENT_MAX_CHARS).collect()
 }
 
 /// Bentuk payload `audit_outbox` versi 1. Nama field = kolom DD B1/B3 (dipetakan relay, F1-T24).

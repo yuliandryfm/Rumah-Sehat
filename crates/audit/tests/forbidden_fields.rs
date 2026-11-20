@@ -591,3 +591,104 @@ fn debug_output_of_event_and_record_does_not_leak() {
         }
     }
 }
+
+static CONTACT: ObjectPolicy = ObjectPolicy::non_clinical(
+    "contact_preference",
+    &[FieldRule::value("phone"), FieldRule::text("note")],
+);
+
+/// Probe review keamanan F1-T22 BLOKIR-1: nomor yang masuk lewat nilai (bukan nama field) ditolak atau
+/// disamarkan.
+#[test]
+fn numbers_smuggled_through_values_are_blocked() {
+    let base = |change: FieldChange| {
+        AuditEvent::new(
+            EventCode::E10,
+            code("contact_changed"),
+            user(),
+            ObjectRef::with_uuid(&CONTACT, new_id()),
+        )
+        .change(change)
+        .outcome(Outcome::success())
+        .context(&user_ctx())
+        .finish(&clock())
+    };
+    // Bilangan besar di field Value dan Text.
+    for (field, n) in [
+        ("phone", 3_174_012_345_678_901_i64),
+        ("phone", 81_234_567_890),
+        ("note", 4_111_111_111_111_111),
+    ] {
+        let e = base(FieldChange::new(field, None, Some(Value::Int(n)))).unwrap_err();
+        assert_eq!(e.kind(), AuditErrorKind::ValueNotAllowed, "{field} {n}");
+    }
+    // Kode dengan digit dipecah pemisah.
+    assert!(Value::code("n_31740_12345_67890_1").is_err());
+    assert!(Code::new("otp_48291").is_err());
+    // Teks dengan OTP/PIN dan nomor dipecah.
+    for t in [
+        "otp 482913",
+        "PIN: 4321",
+        "kode 1234 5678",
+        "3174 01 23 45 67 89 01",
+    ] {
+        let rec = base(FieldChange::new("note", None, Some(Value::text(t)))).unwrap();
+        let out = rec.payload()["after_values"]["note"].to_string();
+        assert!(
+            out.chars().filter(char::is_ascii_digit).count() <= 3,
+            "{t} -> {out}"
+        );
+    }
+    // Versi objek dan versi aplikasi yang memuat nomor.
+    let e = AuditEvent::new(
+        EventCode::E06,
+        code("note_updated"),
+        user(),
+        ObjectRef::with_uuid(&NOTE, new_id()).version(1_234_567_890),
+    )
+    .outcome(Outcome::success())
+    .context(&user_ctx())
+    .finish(&clock())
+    .unwrap_err();
+    assert_eq!(e.what(), "object_version");
+    let ctx = AuditContext::new(
+        CorrelationId::new(),
+        Source::component(SourceComponent::PatientApp)
+            .ip(IpAddr::V4(Ipv4Addr::LOCALHOST))
+            .app_version("3174.0123.4567.8901"),
+    );
+    let e = AuditEvent::new(
+        EventCode::E01,
+        code("login"),
+        user(),
+        ObjectRef::with_uuid(&ACCOUNT, new_id()),
+    )
+    .outcome(Outcome::success())
+    .context(&ctx)
+    .finish(&clock())
+    .unwrap_err();
+    assert_eq!(e.what(), "app_version");
+    // User agent: deret angka panjang disamarkan.
+    let ctx = AuditContext::new(
+        CorrelationId::new(),
+        Source::component(SourceComponent::PatientApp)
+            .ip(IpAddr::V4(Ipv4Addr::LOCALHOST))
+            .user_agent("App/1.0 rek 1234567890 hp 081234567"),
+    );
+    let rec = AuditEvent::new(
+        EventCode::E01,
+        code("login"),
+        user(),
+        ObjectRef::with_uuid(&ACCOUNT, new_id()),
+    )
+    .outcome(Outcome::success())
+    .context(&ctx)
+    .finish(&clock())
+    .unwrap();
+    let ua = rec.payload()["user_agent"].to_string();
+    assert!(
+        !ua.contains("1234567890") && !ua.contains("081234567"),
+        "{ua}"
+    );
+    assert!(ua.contains("App/1.0"), "{ua}");
+}

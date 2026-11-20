@@ -28,6 +28,8 @@ Dokumen ini mengunci cara menulis kode sebelum baris kode pertama. Kalau dokumen
 
 Semua blok kode di dokumen ini adalah **ilustrasi pola**. Nama fungsi, tipe, dan makro pustaka di dalamnya **bukan API final**. API final ditetapkan di reference implementation Tahap 8 Fase 1, dan setiap pemanggilan pustaka pihak ketiga diverifikasi ke dokumentasi resmi versi terpasang `[DOK: .claude/skills/runbook/references/anti-halu.md]` §5.
 
+Pembaruan Tahap 8: ilustrasi audit trail §4.4 (`audit::record(&mut tx, ...)`, `record_committed`, `record_detached`) **digantikan** API crate `audit` F1-T23 `audit::in_audited_tx` (pustaka memegang transaksi tingkat atas), karena API berbasis transaksi milik pemanggil dapat dilewati lewat savepoint (review keamanan F1-T22/T23 BLOKIR-2).
+
 ### 0.3 Kata kunci aturan
 
 - **Wajib**: pelanggaran membuat review gagal.
@@ -460,38 +462,45 @@ Audit trail dibuat aplikasi lewat **satu pustaka**, crate `audit`, yang dipakai 
 4. **Aksi sistem dan integrasi**: job tidak ditandai selesai sebelum event-nya tertulis (ADR-009 butir 2).
 5. **Pemanggil tidak melakukan masking.** Masking dan larangan PRD §7.3 diterapkan pustaka (ADR-009 butir 7). API pustaka **tidak menyediakan** tempat untuk password, PIN, OTP, token, atau rahasia MFA; nilai before/after hanya untuk field di daftar izin per jenis objek; NIK dan nomor rekening hanya 4 digit terakhir; field klinis dan dokumen hanya nama field dan versinya.
 6. Field wajib PRD §7.2 (aktor, aksi, objek, sumber, hasil, ID korelasi, dan subjek data bila ada) diisi dari `RequestContext`, bukan disusun ulang di setiap handler.
-7. Kode event mengikuti PRD §7.1 (E-01–E-17). Story yang menyentuh aksi sensitif wajib mencatat event-nya (ADR-005 konsekuensi, Definition of Done).
+7. Kode event mengikuti PRD §7.1 (E-01–E-18; E-18 dari CR-021, PRD v1.3). Story yang menyentuh aksi sensitif wajib mencatat event-nya (ADR-005 konsekuensi, Definition of Done).
+8. **Transaksi yang mencatat audit dipegang pustaka** (F1-T23, review keamanan BLOKIR-2): use case memanggil `audit::in_audited_tx(&pool, &clock, |conn| ...)`. Pustaka memulai transaksi tingkat atas, menjalankan aksi bisnis dengan `conn` (`&mut PgConnection`, diteruskan ke repository dan fungsi `api.rs` modul lain sebagai `&mut Tx`, §1.3), menulis event yang dikembalikan aksi ke `audit_outbox`, lalu commit. Aksi tidak pernah memegang objek transaksi tingkat atas, jadi savepoint di dalamnya ikut batal bila event gagal ditulis. Tidak ada API publik untuk menulis event ke transaksi milik pemanggil. Test arsitektur menolak penyebutan `audit_outbox` di luar crate `audit` (aturan `audit-outbox`) dan literal SQL kendali transaksi (`COMMIT`, `ROLLBACK`, `BEGIN`, `SAVEPOINT`, ...; aturan `tx-control`) di kode non-test. Ini **menggantikan** ilustrasi `audit::record(&mut tx, ...)` / `record_committed` / `record_detached` versi 1.0 dokumen ini.
 
 ```rust
-// Ilustrasi, API final di reference implementation Tahap 8
+// API reference implementation F1-T23 (crate audit); nama modul bisnis tetap ilustrasi.
 // (1) Transisi status pesanan + E-09 dalam satu transaksi (ADR-008 butir 2, ADR-009 butir 2)
-let mut tx = db.begin().await?;
-let change = ordering_repo::apply_transition(&mut tx, order_id, expected_version, to_status, clock.now()).await?;
-audit::record(
-    &mut tx,
-    AuditEvent::new(EventCode::E09, ctx.actor(), ObjectRef::patient_order(order_id))
-        .subject(change.care_recipient_id)
-        .change(FieldChange::status(change.from_status, change.to_status))  // daftar izin per jenis objek
-        .outcome(Outcome::Success)
-        .context(&ctx),                                                  // sumber + correlation_id
-).await?;                     // gagal di sini → tx batal → pengguna menerima galat
-tx.commit().await?;
+let order = audit::in_audited_tx(&pool, clock.as_ref(), move |conn| {
+    Box::pin(async move {
+        let change = ordering_repo::apply_transition(conn, order_id, expected_version, to_status).await?;
+        let event = AuditEvent::new(EventCode::E09, Code::new("order_status_changed")?, actor,
+                                    ObjectRef::with_uuid(&PATIENT_ORDER_POLICY, order_id))
+            .subject(Subject::care_recipient(change.care_recipient_id))
+            .change(FieldChange::new("status", Some(change.from_value()), Some(change.to_value()))) // daftar izin
+            .outcome(Outcome::success())
+            .context(&audit_ctx);                                        // sumber + correlation_id
+        Ok((change, vec![event]))
+    })
+})
+.await?;  // event ditolak / gagal tulis / aksi gagal → semuanya di-rollback → pengguna menerima galat
 ```
 
 ```rust
-// Ilustrasi, API final di reference implementation Tahap 8
+// API reference implementation F1-T23; authz/crypto/repo tetap ilustrasi.
 // (2) Tenaga kesehatan membuka riwayat chat: E-05 di-commit sebelum data dikirim
 match authz.check(&ctx, Action::ReadChatHistory, Resource::consultation(session_id)).await {
     Decision::Allow => {}
     Decision::Deny(denial) => {
-        audit::record_detached(&db, AuditEvent::denied(EventCode::E05, &ctx, ObjectRef::consultation(session_id))).await; // transaksi sendiri, dicoba ulang
+        // transaksi teraudit tersendiri berisi event gagal; percobaan ulang oleh pemanggil (F1-T38)
+        let _ = audit::in_audited_tx(&pool, clock.as_ref(), move |_conn| {
+            Box::pin(async move { Ok::<_, Infallible>(((), vec![denied_event])) })
+        }).await;
         security_log::access_denied(&ctx, "consultation", denial);
         return Err(ConsultationError::NotFound);                       // 404, keberadaan tidak bocor
     }
 }
-audit::record_committed(&db, AuditEvent::read(EventCode::E05, &ctx, ObjectRef::consultation(session_id))
-    .subject(patient_id)).await?;  // gagal → akses ditolak
-let messages = consultation_repo::chat_messages(&db, session_id, cursor).await?;
+audit::in_audited_tx(&pool, clock.as_ref(), move |_conn| {
+    Box::pin(async move { Ok::<_, Infallible>(((), vec![read_event])) })  // E-05, subjek = pasien
+}).await?;  // gagal → akses ditolak; sukses → event sudah di-commit
+let messages = consultation_repo::chat_messages(&pool, session_id, cursor).await?;
 let plaintext = crypto.open_all(&messages, Container::ConsultationChat(session_id)).await?;
 ```
 

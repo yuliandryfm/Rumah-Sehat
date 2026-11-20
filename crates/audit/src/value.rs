@@ -11,6 +11,14 @@ use time::format_description::well_known::Rfc3339;
 
 /// Batas panjang nilai teks non-klinis setelah disaring (karakter).
 pub const TEXT_MAX_CHARS: usize = 200;
+/// Batas nilai mutlak [`Value::Int`] (6 digit): cukup untuk basis poin, durasi, jumlah baris, dan versi,
+/// tetapi NIK, nomor kartu, nomor rekening, dan nomor HP tidak dapat masuk sebagai bilangan
+/// (review keamanan F1-T22 BLOKIR-1).
+pub const INT_MAX_ABS: u64 = 999_999;
+/// Batas nilai mutlak [`Value::Idr`] (12 digit, < Rp1 triliun): NIK (16 digit) dan nomor kartu (13–19
+/// digit) tidak dapat masuk sebagai nominal. Nomor rekening 10–12 digit TIDAK dapat dibedakan dari
+/// nominal; field nominal wajib bernama nominal (`*_idr`) dan direview di daftar izin.
+pub const IDR_MAX_ABS: u64 = 999_999_999_999;
 
 /// Nilai satu field. Nomor identitas/kartu/rekening hanya dapat masuk sebagai [`Value::Digits`]
 /// (dibungkus [`Sensitive`]) dan hanya keluar sebagai 4 digit terakhir.
@@ -133,8 +141,20 @@ fn typed(value: &Value) -> Result<Json, AuditError> {
     Ok(match value {
         Value::Null => Json::Null,
         Value::Bool(b) => Json::Bool(*b),
-        Value::Int(i) => json!(i),
-        Value::Idr(v) => json!(v.get()),
+        Value::Int(i) if i.unsigned_abs() <= INT_MAX_ABS => json!(i),
+        Value::Int(_) => {
+            return Err(AuditError::new(
+                AuditErrorKind::ValueNotAllowed,
+                "int_too_large",
+            ));
+        }
+        Value::Idr(v) if v.get().unsigned_abs() <= IDR_MAX_ABS => json!(v.get()),
+        Value::Idr(_) => {
+            return Err(AuditError::new(
+                AuditErrorKind::ValueNotAllowed,
+                "idr_too_large",
+            ));
+        }
         Value::Uuid(u) => Json::String(u.hyphenated().to_string()),
         Value::Code(c) => Json::String(c.as_str().to_string()),
         Value::Timestamp(t) => Json::String(rfc3339(*t)?),
@@ -174,14 +194,58 @@ fn last4(d: &Sensitive<String>) -> Result<Json, AuditError> {
 }
 
 /// Teks non-klinis: karakter kontrol dibuang, pola terlarang (token, email, deret nomor panjang, HP)
-/// disamarkan dengan redaksi yang sama dengan log (`observability::redact::scrub_text`), lalu dipotong.
+/// disamarkan dengan redaksi yang sama dengan log (`observability::redact::scrub_text`), lalu angka
+/// dibatasi (lihat [`mask_digits`]) dan dipotong.
 pub(crate) fn clean_text(input: &str) -> String {
     let no_control: String = input
         .chars()
         .map(|c| if c.is_control() { ' ' } else { c })
         .collect();
     let scrubbed = observability::redact::scrub_text(&no_control);
-    scrubbed.chars().take(TEXT_MAX_CHARS).collect()
+    mask_digits(&scrubbed)
+        .chars()
+        .take(TEXT_MAX_CHARS)
+        .collect()
+}
+
+/// Pengganti deret angka yang disamarkan di teks.
+const DIGITS_REDACTED: &str = "[REDACTED]";
+
+/// Batas angka di teks non-klinis (review keamanan F1-T22 BLOKIR-1 dan non-blokir 1):
+/// 1. setiap deret angka 4 digit atau lebih (termasuk OTP/PIN 4–8 digit setelah kata `otp`, `pin`,
+///    `sandi`, `password`, `kode`) diganti `[REDACTED]`;
+/// 2. bila sisa angka seluruhnya masih 4 atau lebih (nomor yang dipecah spasi atau tanda baca, mis.
+///    `3 1 7 4 0 1`), semua angka diganti `#`.
+///
+/// Angka Unicode non-ASCII (mis. angka lebar penuh) ikut dihitung. Akibatnya teks yang tercatat memuat
+/// paling banyak 3 angka; teks label yang sah jarang membutuhkan lebih.
+pub(crate) fn mask_digits(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut run = String::new();
+    let flush = |run: &mut String, out: &mut String| {
+        if run.chars().count() >= 4 {
+            out.push_str(DIGITS_REDACTED);
+        } else {
+            out.push_str(run);
+        }
+        run.clear();
+    };
+    for c in input.chars() {
+        if c.is_numeric() {
+            run.push(c);
+        } else {
+            flush(&mut run, &mut out);
+            out.push(c);
+        }
+    }
+    flush(&mut run, &mut out);
+    if out.chars().filter(|c| c.is_numeric()).count() >= 4 {
+        out = out
+            .chars()
+            .map(|c| if c.is_numeric() { '#' } else { c })
+            .collect();
+    }
+    out
 }
 
 #[cfg(test)]
@@ -254,5 +318,61 @@ mod tests {
             Value::digits(s("3174012345678901"))
         );
         assert!(!v.contains("Budi") && !v.contains("3174"), "{v}");
+    }
+
+    /// Probe review keamanan BLOKIR-1: nomor sebagai bilangan di field Value/Text ditolak.
+    #[test]
+    fn large_numbers_rejected_in_value_and_text_fields() {
+        for kind in [FieldKind::Value, FieldKind::Text] {
+            for n in [
+                3_174_012_345_678_901_i64,
+                4_111_111_111_111_111,
+                1_234_567_890,
+                81_234_567_890,
+                1_000_000,
+                -1_000_000,
+                i64::MIN,
+            ] {
+                let e = mask(kind, &Value::Int(n)).unwrap_err();
+                assert_eq!(e.kind(), AuditErrorKind::ValueNotAllowed, "{kind:?} {n}");
+            }
+            for n in [0_i64, 10_000, 999_999, -999_999] {
+                assert_eq!(mask(kind, &Value::Int(n)).unwrap(), Some(json!(n)));
+            }
+            for n in [3_174_012_345_678_901_i64, 1_000_000_000_000] {
+                assert!(mask(kind, &Value::Idr(Idr::new(n))).is_err(), "{n}");
+            }
+            assert_eq!(
+                mask(kind, &Value::Idr(Idr::new(999_999_999_999))).unwrap(),
+                Some(json!(999_999_999_999_i64))
+            );
+        }
+    }
+
+    /// Probe review keamanan non-blokir 1 dan BLOKIR-1: angka di teks dibatasi.
+    #[test]
+    fn digits_in_text_are_masked() {
+        for (input, leak) in [
+            ("kode OTP: 482913", "482913"),
+            ("pin 4321 jangan dibagikan", "4321"),
+            ("password=12345678", "12345678"),
+            ("sandi 9876", "9876"),
+            ("kode verifikasi 55443322", "55443322"),
+            ("rek 1234567890", "1234567890"),
+            ("hp 0812 3456 7890", "3456"),
+            ("nik 317401 234567 8901", "317401"),
+            ("3 1 7 4 0 1 2 3", "3 1 7 4"),
+            ("ktp ３１７４０１２３４５６７８９０１", "３１７４"),
+            ("12-34-56-78", "12-34"),
+        ] {
+            let out = clean_text(input);
+            assert!(!out.contains(leak), "{input:?} -> {out:?}");
+            assert!(
+                out.chars().filter(|c| c.is_numeric()).count() <= 3,
+                "{input:?} -> {out:?}"
+            );
+        }
+        assert_eq!(clean_text("anak ke-2"), "anak ke-2");
+        assert_eq!(clean_text("lantai 12 B"), "lantai 12 B");
     }
 }

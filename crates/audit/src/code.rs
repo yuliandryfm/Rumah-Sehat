@@ -100,12 +100,13 @@ impl fmt::Display for EventCode {
 
 /// Panjang maksimum kode.
 pub const CODE_MAX_LEN: usize = 64;
-/// Deret digit terpanjang yang boleh ada di kode. Lebih dari ini ditolak supaya NIK, nomor kartu,
-/// nomor rekening, atau nomor HP tidak dapat diselipkan lewat kode (PRD §7.3).
-pub const CODE_MAX_DIGIT_RUN: usize = 5;
+/// Jumlah digit SELURUHNYA (bukan per deret) yang boleh ada di satu kode. Lebih dari ini ditolak supaya
+/// NIK, nomor kartu, nomor rekening, atau nomor HP tidak dapat diselipkan lewat kode, termasuk yang
+/// dipecah pemisah (`n_31740_12345_...`) (PRD §7.3, review keamanan F1-T22 BLOKIR-1).
+pub const CODE_MAX_DIGITS: usize = 4;
 
-/// Kode teks tertutup: huruf kecil ASCII, digit, dan `_`; diawali huruf; 1–64 karakter; tanpa deret
-/// digit lebih dari 5. Dipakai untuk nama aksi, jenis objek, jenis akun, peran, kode alasan, tujuan dan
+/// Kode teks tertutup: huruf kecil ASCII, digit, dan `_`; diawali huruf; 1–64 karakter; paling banyak 4
+/// digit seluruhnya. Dipakai untuk nama aksi, jenis objek, jenis akun, peran, kode alasan, tujuan dan
 /// jenis data E-17, serta nilai berupa kode (mis. status). Teks bebas tidak dapat masuk lewat tipe ini.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Code(String);
@@ -140,16 +141,14 @@ pub(crate) fn is_valid_code(value: &str) -> bool {
     if value.len() > CODE_MAX_LEN || !first.is_ascii_lowercase() {
         return false;
     }
-    let mut run = 0usize;
+    let mut digits = 0usize;
     for c in value.chars() {
         if c.is_ascii_digit() {
-            run += 1;
-            if run > CODE_MAX_DIGIT_RUN {
+            digits += 1;
+            if digits > CODE_MAX_DIGITS {
                 return false;
             }
-        } else if c.is_ascii_lowercase() || c == '_' {
-            run = 0;
-        } else {
+        } else if !(c.is_ascii_lowercase() || c == '_') {
             return false;
         }
     }
@@ -179,7 +178,8 @@ mod tests {
             "e_01",
             "rs_admin",
             "v2",
-            "a12345",
+            "a1234",
+            "http_4_0_4",
         ] {
             assert!(Code::new(ok).is_ok(), "{ok}");
         }
@@ -197,7 +197,12 @@ mod tests {
             "budi@example.com",
             "x-y",
             "x.y",
+            "a12345",
             "a123456",
+            // Probe review keamanan: digit dipecah pemisah tetap dihitung seluruhnya.
+            "n_31740_12345_67890_1",
+            "n_3_1_7_4_0",
+            "a12_34_5",
             "nik_3174012345678901",
             "card_4111111111111111",
             long.as_str(),

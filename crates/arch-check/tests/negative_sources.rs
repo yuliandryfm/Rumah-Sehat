@@ -236,6 +236,12 @@ fn lexer_handles_raw_strings_chars_and_lifetimes() {
     let src = "fn f<'a>(x: &'a str) { let _c = '\"'; let _s = r#\"now_utc\"#; let _t = \"a\\\"now_utc\"; }";
     assert!(rules(SRC, src).is_empty(), "{:?}", rules(SRC, src));
     assert!(!rules(SRC, "fn f<'a>(x: &'a str) { now_utc(); }").is_empty());
+    // Identifier berawalan `br` (mis. `break`) bukan pembuka byte raw string; sebelum F1-T23 lexer
+    // menganggapnya literal sehingga kode sesudahnya tersembunyi dari pemeriksaan.
+    let src = "fn f() { loop { break; } now_utc(); let _b = br\"x\"; let _c = b\"y\"; }";
+    assert!(has(SRC, src, "clock:now_utc"), "{:?}", rules(SRC, src));
+    let src = "fn f() { loop { break; } let _ = br#\"now_utc\"#; }";
+    assert!(rules(SRC, src).is_empty(), "{:?}", rules(SRC, src));
 }
 
 // ---- pengecualian
@@ -288,4 +294,89 @@ fn exception_beyond_count_or_stale_or_without_reason_fails() {
     let loose = format!("{EX}count = 3\n");
     let l = apply_to(file, "fn now() { OffsetDateTime::now_utc() }", &loose);
     assert_eq!(l, ["exceptions:now_utc"]);
+}
+
+/// Review keamanan F1-T23 BLOKIR-2: tabel outbox audit hanya disebut di crate audit, termasuk lewat
+/// SQL dinamis atau konstanta nama tabel yang tidak terlihat oleh aturan `table-owner`.
+#[test]
+fn audit_outbox_only_in_audit_crate() {
+    for src in [
+        r#"const T: &str = "app.audit_outbox";"#,
+        r#"fn q(t: &str) -> String { format!("INSERT INTO {} (id) VALUES ($1)", "AUDIT_OUTBOX") }"#,
+        r#"const T: &str = "rme_audit_outbox";"#,
+        "struct audit_outbox;",
+    ] {
+        let found = rules(SRC, src);
+        assert!(
+            found.iter().any(|r| r.starts_with("audit-outbox:")),
+            "lolos: {src} -> {found:?}"
+        );
+        assert!(
+            rules("crates/platform-jobs/src/lib.rs", src)
+                .iter()
+                .any(|r| r.starts_with("audit-outbox:")),
+            "lolos di crate lain: {src}"
+        );
+        assert!(
+            !rules("crates/audit/src/outbox.rs", src)
+                .iter()
+                .any(|r| r.starts_with("audit-outbox:")),
+            "crate audit ditolak: {src}"
+        );
+    }
+    // Test boleh menyebut tabel (mis. memeriksa hak role); komentar tidak dihitung.
+    let src = r#"// audit_outbox
+fn f() {}"#;
+    assert!(rules(SRC, src).is_empty());
+    assert!(rules("crates/x/tests/t.rs", r#"const T: &str = "audit_outbox";"#).is_empty());
+}
+
+/// Review keamanan F1-T23 BLOKIR-2: SQL kendali transaksi mentah dapat mengakhiri transaksi teraudit
+/// dari dalam aksi bisnis; literal semacam itu ditolak di semua kode non-test, termasuk crate audit.
+#[test]
+fn raw_transaction_control_sql_is_rejected() {
+    for stmt in [
+        "COMMIT",
+        "commit;",
+        "ROLLBACK",
+        "rollback to savepoint sp1",
+        "END",
+        "ABORT",
+        "BEGIN",
+        "begin isolation level serializable",
+        "START TRANSACTION",
+        "SAVEPOINT sp1",
+        "RELEASE SAVEPOINT sp1",
+        "SELECT 1; COMMIT",
+        "COMMIT PREPARED 'x'",
+        "SET TRANSACTION READ ONLY",
+    ] {
+        let src = format!("fn f() {{ let _ = sqlx::raw_sql({stmt:?}); }}");
+        for file in [SRC, "crates/audit/src/outbox.rs"] {
+            assert!(
+                rules(file, &src)
+                    .iter()
+                    .any(|r| r.starts_with("tx-control:")),
+                "lolos di {file}: {stmt}"
+            );
+        }
+    }
+    for ok in [
+        "commit message",
+        "release notes",
+        "end of list",
+        "begin_at",
+        "SELECT committed FROM t",
+        "rollback_reason",
+        "set timezone",
+    ] {
+        let src = format!("fn f() {{ let _ = {ok:?}; }}");
+        assert!(
+            !rules(SRC, &src)
+                .iter()
+                .any(|r| r.starts_with("tx-control:")),
+            "salah tolak: {ok}"
+        );
+    }
+    assert!(rules("crates/audit/tests/x.rs", r#"const S: &str = "COMMIT";"#).is_empty());
 }

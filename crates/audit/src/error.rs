@@ -24,8 +24,10 @@ pub enum AuditErrorKind {
     InvalidValue,
     /// Serialisasi payload gagal.
     Serialization,
-    /// Penulisan ke `audit_outbox` gagal; transaksi pemanggil dibatalkan (ADR-009 butir 2).
+    /// Penulisan ke `audit_outbox` gagal; transaksi dibatalkan (ADR-009 butir 2).
     Write,
+    /// Aksi bisnis mengakhiri transaksi pustaka (SQL kendali transaksi mentah); event tidak ditulis.
+    TransactionEscaped,
 }
 
 /// Galat pustaka audit.

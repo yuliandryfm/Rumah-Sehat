@@ -95,6 +95,8 @@ pub enum AuditWriteFailure {
     InvalidEvent,
     /// Penulisan ke `audit_outbox` gagal di database.
     StoreError,
+    /// Aksi bisnis mengakhiri transaksi teraudit (SQL kendali transaksi mentah).
+    TransactionEscaped,
 }
 
 impl AuditWriteFailure {
@@ -102,6 +104,7 @@ impl AuditWriteFailure {
         match self {
             Self::InvalidEvent => "invalid_event",
             Self::StoreError => "store_error",
+            Self::TransactionEscaped => "transaction_escaped",
         }
     }
 }
