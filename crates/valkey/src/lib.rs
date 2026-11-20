@@ -12,6 +12,9 @@
 //! - TTL dalam milidetik dan **dibulatkan ke atas** (minimal 1 ms), supaya entri pencabutan tidak pernah
 //!   kedaluwarsa lebih awal dari yang diminta.
 //!
+//! Server wajib `maxmemory-policy noeviction` (bawaan Valkey, ditulis eksplisit di Compose): entri
+//! pencabutan sesi tidak boleh dibuang diam-diam saat memori penuh.
+//!
 //! Kompatibilitas dengan Valkey 9.1.3 (image `infra/local/compose.yaml`) dibuktikan test integrasi
 //! `tests/valkey_compat.rs` (SRC-572). TLS antar-host belum diaktifkan di sini (fitur TLS crate tidak
 //! dinyalakan); konfigurasinya menyusul bersama butir 9a docs/05-stack.md §13.

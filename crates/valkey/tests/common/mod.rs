@@ -54,7 +54,7 @@ impl ValkeyContainer {
                 &image_from_compose(),
                 "sh",
                 "-c",
-                "exec valkey-server --requirepass \"$VALKEY_PASSWORD\" --save '' --appendonly no",
+                "exec valkey-server --requirepass \"$VALKEY_PASSWORD\" --save '' --appendonly no --maxmemory-policy noeviction",
             ]));
         assert!(
             out.status.success(),

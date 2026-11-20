@@ -26,7 +26,7 @@
 //! event berhasil-gagal, percobaan ulang oleh pemanggil (F1-T38).
 
 use crate::error::{AuditError, AuditErrorKind};
-use crate::event::{AuditEvent, AuditRecord};
+use crate::event::{AuditEvent, AuditRecord, FailedAccessRecord};
 use foundation::Clock;
 use observability::security::{self, AuditWriteFailure};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
@@ -159,14 +159,25 @@ where
     Ok(value)
 }
 
-/// Menulis satu event yang **sudah dibentuk** ([`AuditEvent::finish`]) ke `app.audit_outbox` di
-/// transaksi tersendiri, idempoten: event dengan ID yang sama yang sudah ada tidak ditulis ulang
-/// (`ON CONFLICT DO NOTHING`). Untuk event berhasil-gagal yang dicoba ulang di luar aksi bisnis
+/// Menulis satu event penolakan akses ke data sensitif ([`FailedAccessRecord`], E-05 hasil gagal) ke
+/// `app.audit_outbox` di transaksi tersendiri, idempoten: event dengan ID yang sama yang sudah ada tidak
+/// ditulis ulang (`ON CONFLICT DO NOTHING`). Target konflik `(id)` tidak ditulis karena PostgreSQL
+/// mensyaratkan hak `SELECT` atas kolom target, sedangkan role aplikasi sengaja hanya punya `INSERT` di
+/// `audit_outbox` (ADR-009 butir 2); satu-satunya constraint unik tabel ini adalah `pk_audit_outbox (id)`,
+/// dijaga test `failed_access_insert_is_idempotent_for_retries`. Untuk percobaan ulang di luar jalur permintaan
 /// (coding-standards §4.4 butir 3, F1-T38): event dan ID-nya dibentuk sekali, sehingga percobaan ulang
-/// setelah commit yang balasannya hilang tidak menggandakan event. Bila baris sudah dipindah relay,
-/// event yang ditulis ulang dilewati relay berdasarkan ID event (F1-T24). Tidak menerima transaksi milik
-/// pemanggil.
-pub async fn insert_finished(pool: &PgPool, record: &AuditRecord) -> Result<(), AuditError> {
+/// setelah commit yang balasannya hilang tidak menggandakan event; bila baris sudah dipindah relay, event
+/// yang ditulis ulang dilewati relay berdasarkan ID event (F1-T24).
+///
+/// Hanya event penolakan akses yang diterima (tipe [`FailedAccessRecord`]); event aksi bisnis tetap wajib
+/// lewat [`in_audited_tx`] supaya atomisitas aksi dan event (KEPUTUSAN-283) tidak dapat dilewati. Test
+/// arsitektur (aturan `audit-failed-access`) membatasi pemanggilnya ke
+/// `apps/rs-backend/src/access_audit.rs`.
+pub async fn insert_failed_access(
+    pool: &PgPool,
+    failed: &FailedAccessRecord,
+) -> Result<(), AuditError> {
+    let record = failed.record();
     let result = sqlx::query!(
         "INSERT INTO app.audit_outbox (id, occurred_at, payload) VALUES ($1, $2, $3) \
          ON CONFLICT DO NOTHING",

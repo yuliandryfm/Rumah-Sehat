@@ -301,6 +301,24 @@ fn dead_valkey() -> Valkey {
     .unwrap()
 }
 
+/// Pencabutan sesi seperti use case keluar: catat di transaksi sendiri, commit, lalu salin ke Valkey
+/// (tanpa event audit; use case sungguhan menjalankannya di `audit::in_audited_tx`).
+async fn revoke(
+    pool: &PgPool,
+    dir: &AccountDirectory,
+    account_id: Uuid,
+    sid: &str,
+    reason: RevocationReason,
+    expires_at: OffsetDateTime,
+) -> Result<(), IdentityError> {
+    let mut tx = pool.begin().await.unwrap();
+    let rec = dir
+        .record_revocation(&mut tx, account_id, sid, reason, expires_at)
+        .await?;
+    tx.commit().await.unwrap();
+    dir.publish_revocation(&rec).await
+}
+
 // ----- test -----
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -359,7 +377,9 @@ async fn revoked_session_is_rejected_on_next_request_and_other_sessions_continue
     let tb = token(&keys.pasien, "pasien", &sub, &sid_b);
     assert_eq!(get(addr, "/patient/v1/me", &ta).await.status, 200);
 
-    dir.revoke_session(
+    revoke(
+        &pool,
+        &dir,
         id,
         &sid_a,
         RevocationReason::Logout,
@@ -424,7 +444,9 @@ async fn revocation_survives_valkey_content_loss_and_cache_is_rebuilt() {
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
     let sid = format!("sid-{}", random_hex(6));
     let t = token(&keys.pasien, "pasien", &sub, &sid);
-    dir.revoke_session(
+    revoke(
+        &pool,
+        &dir,
         id,
         &sid,
         RevocationReason::AdminRevoke,
@@ -531,7 +553,9 @@ async fn valkey_down_or_frozen_falls_back_to_database() {
     assert_eq!(get(addr, "/patient/v1/me", &ti).await.code(), "4010002");
     // Pencabutan tercatat walaupun penyalinan ke Valkey gagal; pemeriksaan lewat PostgreSQL.
     assert_eq!(
-        dir.revoke_session(
+        revoke(
+            &pool,
+            &dir,
             active,
             &sid,
             RevocationReason::Logout,

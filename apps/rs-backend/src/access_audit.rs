@@ -3,7 +3,7 @@
 //!
 //! [`AuditDenialRecorder`] adalah `authz::DenialAuditor` backend Ruang Sehat: setiap penolakan atas data
 //! sensitif ditulis sebagai event E-05 dengan hasil gagal (`access_denied`). Event dibentuk dan
-//! difinalisasi sekali per penolakan (`prepare`), lalu ditulis idempoten lewat `audit::insert_finished` di
+//! difinalisasi sekali per penolakan (`prepare`), lalu ditulis idempoten lewat `audit::insert_failed_access` di
 //! transaksi tersendiri, tanpa perubahan bisnis. Dipanggil antrean penolakan `authz` di luar jalur
 //! permintaan dan dicoba ulang di sana dengan event yang sama bila gagal sementara.
 //!
@@ -12,8 +12,8 @@
 //! dicatat di application log oleh antrean penolakan.
 
 use audit::{
-    Actor, AuditContext, AuditEvent, AuditRecord, Code, EventCode, ObjectPolicy, ObjectRef,
-    Outcome, Source, SourceComponent, Subject, insert_finished,
+    Actor, AuditContext, AuditEvent, Code, EventCode, FailedAccessRecord, ObjectPolicy, ObjectRef,
+    Outcome, Source, SourceComponent, Subject, insert_failed_access,
 };
 use authz::{
     AccountType, DenialAuditError, DenialAuditFuture, DenialAuditor, DeniedAccess,
@@ -87,7 +87,7 @@ impl DenialAuditor for AuditDenialRecorder {
     /// Event dibentuk dan difinalisasi sekali (ID event dan waktu server tetap untuk semua percobaan).
     fn prepare(&self, denial: &DeniedAccess) -> Result<PreparedDenialAudit, DenialAuditError> {
         let record = denied_event(denial)?
-            .finish(self.clock.as_ref())
+            .finish_failed_access(self.clock.as_ref())
             .map_err(|_| DenialAuditError::Permanent)?;
         Ok(PreparedDenialAudit::new(record))
     }
@@ -95,10 +95,10 @@ impl DenialAuditor for AuditDenialRecorder {
     fn write<'a>(&'a self, prepared: &'a PreparedDenialAudit) -> DenialAuditFuture<'a> {
         Box::pin(async move {
             let record = prepared
-                .get::<AuditRecord>()
+                .get::<FailedAccessRecord>()
                 .ok_or(DenialAuditError::Permanent)?;
             // Idempoten: percobaan ulang dengan ID yang sama tidak menggandakan event.
-            insert_finished(&self.pool, record)
+            insert_failed_access(&self.pool, record)
                 .await
                 .map_err(|_| DenialAuditError::Retryable)
         })

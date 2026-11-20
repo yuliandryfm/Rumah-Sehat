@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM pg_indexes\n           WHERE schemaname = 'app' AND tablename = 'audit_outbox' AND indexdef LIKE 'CREATE UNIQUE INDEX%'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "bc2703a3bb9b953d49925ae28c555a6c44022086363600bc6470f9aca4b81756"
+}

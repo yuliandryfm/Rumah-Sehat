@@ -11,6 +11,8 @@
 //! - `audit-outbox`: penyebutan `audit_outbox`/`rme_audit_outbox` di luar crate `audit` (ADR-009 butir 2).
 //! - `tx-control`: literal SQL kendali transaksi (`COMMIT`, `ROLLBACK`, `BEGIN`, `SAVEPOINT`, ...);
 //!   transaksi lewat API sqlx dan transaksi teraudit lewat `audit::in_audited_tx` (F1-T23).
+//! - `audit-failed-access`: `audit::insert_failed_access`/`finish_failed_access`/`FailedAccessRecord`
+//!   hanya di crate `audit` dan `apps/rs-backend/src/access_audit.rs` (KEPUTUSAN-283).
 //! - `router-bypass` (TD-15): di `apps/*/src`, rute hanya lewat `authz::PolicyRouter` dan penyajian hanya
 //!   lewat `authz::EnforcedRouter::serve`. Ditolak: router axum/utoipa sendiri (`Router`, `OpenApiRouter`,
 //!   `MethodRouter`, `axum::routing`), pemanggilan `.route/.route_service/.nest/.nest_service/.merge`
@@ -166,6 +168,25 @@ pub fn check_source_text(file: &str, src: &str) -> Vec<Finding> {
     if !test && is_app_source(file) {
         out.extend(router_bypass_findings(file, &sc));
     }
+    if !test && !file.starts_with("crates/audit/") && file != "apps/rs-backend/src/access_audit.rs"
+    {
+        for tok in [
+            "insert_failed_access",
+            "finish_failed_access",
+            "FailedAccessRecord",
+        ] {
+            for off in find_tokens(code, tok) {
+                out.push(Finding::new(
+                    "audit-failed-access",
+                    file,
+                    line_of(code, off),
+                    tok,
+                    "penulisan audit di luar in_audited_tx hanya untuk penolakan akses, dari \
+                     apps/rs-backend/src/access_audit.rs (KEPUTUSAN-283, review keamanan F1-T33)",
+                ));
+            }
+        }
+    }
     if !test {
         out.extend(attribute_findings(file, &sc));
         out.extend(macro_findings(file, &sc));
@@ -291,76 +312,127 @@ fn router_bypass_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
             ));
         }
     }
-    // Alias crate axum (`use axum as x`, `use axum::{self as x}`, `extern crate axum as x`) menyembunyikan
-    // token di atas; alias ditolak dan pemakaian `x::serve`/`x::routing`/`x::Router` ikut dilaporkan.
-    for (off, alias) in axum_aliases(code) {
-        out.push(Finding::new(
-            "router-bypass",
-            file,
-            line_of(code, off),
-            "axum-alias",
-            msg,
-        ));
-        for item in ["serve", "routing", "Router"] {
-            let tok = format!("{alias}::{item}");
-            for at in find_tokens(code, &tok) {
-                out.push(Finding::new(
-                    "router-bypass",
-                    file,
-                    line_of(code, at),
-                    item,
-                    msg,
-                ));
+    // Impor dari crate axum dalam bentuk apa pun (review keamanan F1-T33 blokir 2): pohon `use`
+    // dinormalisasi (spasi dan baris baru, `::` di depan, grup `{}` bertingkat, `pub use`,
+    // `extern crate`). Impor `serve`, `routing`, `Router`, glob `*`, dan alias crate ditolak, sehingga
+    // pemanggilan tanpa prefiks (`serve(..)`, `get(..)`) tidak mungkin.
+    for (off, stmt) in import_statements(code) {
+        if find_tokens(&stmt, "axum").is_empty() {
+            continue;
+        }
+        let line = line_of(code, off);
+        let mut push = |detail: &str| {
+            out.push(Finding::new("router-bypass", file, line, detail, msg));
+        };
+        for tok in [
+            "serve",
+            "routing",
+            "Router",
+            "MethodRouter",
+            "into_make_service",
+        ] {
+            if !find_tokens(&stmt, tok).is_empty() {
+                push(tok);
+            }
+        }
+        if stmt.contains('*') {
+            push("axum-glob");
+        }
+        for alias in aliases(&stmt) {
+            push("axum-alias");
+            for item in ["serve", "routing", "Router"] {
+                let tok = format!("{alias}::{item}");
+                if !find_tokens(&compact(code).0, &tok).is_empty() {
+                    push(item);
+                }
             }
         }
     }
-    // `use axum::{serve, routing::get}`: nama yang diimpor dari dalam kurung kurawal.
-    for off in find_tokens(code, "use axum") {
-        let end = code
-            .get(off..)
-            .and_then(|s| s.find(';'))
-            .map_or(code.len(), |p| off + p);
-        let stmt = code.get(off..end).unwrap_or("");
-        for tok in ["serve", "routing"] {
-            if !find_tokens(stmt, tok).is_empty() {
-                out.push(Finding::new(
-                    "router-bypass",
-                    file,
-                    line_of(code, off),
-                    tok,
-                    msg,
-                ));
-            }
+    // Path lengkap yang dipisah spasi atau baris baru (`axum :: serve`, `::axum::routing`).
+    let (packed, map) = compact(code);
+    for pat in ["axum::serve", "axum::routing", "axum::Router"] {
+        for at in find_tokens(&packed, pat) {
+            let orig = map.get(at).copied().unwrap_or(0);
+            out.push(Finding::new(
+                "router-bypass",
+                file,
+                line_of(code, orig),
+                pat,
+                msg,
+            ));
         }
     }
     out
 }
 
-/// Alias crate axum: (offset, nama alias).
-fn axum_aliases(code: &str) -> Vec<(usize, String)> {
+/// Kode tanpa whitespace beserta peta offset ke kode asli.
+fn compact(code: &str) -> (String, Vec<usize>) {
+    let mut packed = String::with_capacity(code.len());
+    let mut map = Vec::with_capacity(code.len());
+    for (i, c) in code.char_indices() {
+        if !c.is_whitespace() {
+            packed.push(c);
+            for _ in 0..c.len_utf8() {
+                map.push(i);
+            }
+        }
+    }
+    (packed, map)
+}
+
+/// Pernyataan `use ...;` dan `extern crate ...;`: (offset, teks dinormalisasi). Whitespace dirapatkan
+/// menjadi satu spasi lalu dihapus di sekitar `::`, `{`, `}`, dan `,`; `::` di awal path dibuang.
+fn import_statements(code: &str) -> Vec<(usize, String)> {
     let mut out = Vec::new();
-    for start in ["use axum", "extern crate axum"] {
-        for off in find_tokens(code, start) {
-            let end = code
-                .get(off..)
-                .and_then(|s| s.find(';'))
-                .map_or(code.len(), |p| off + p);
-            let stmt = code.get(off + start.len()..end).unwrap_or("");
-            let words: Vec<&str> = stmt
-                .split(|c: char| c.is_whitespace() || matches!(c, '{' | '}' | ','))
-                .filter(|w| !w.is_empty())
+    let mut starts: Vec<usize> = find_tokens(code, "use");
+    for off in find_tokens(code, "extern") {
+        let rest = code.get(off + "extern".len()..).unwrap_or("");
+        if rest.trim_start().starts_with("crate") {
+            starts.push(off);
+        }
+    }
+    for off in starts {
+        let end = code
+            .get(off..)
+            .and_then(|s| s.find(';'))
+            .map_or(code.len(), |p| off + p);
+        let raw = code.get(off..end).unwrap_or("");
+        let mut norm = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+        for sep in ["::", "{", "}", ","] {
+            norm = norm
+                .replace(&format!(" {sep}"), sep)
+                .replace(&format!("{sep} "), sep);
+        }
+        // `use ::axum` / `{::axum` → path tanpa `::` depan.
+        norm = norm
+            .replace("use::", "use ")
+            .replace("{::", "{")
+            .replace(",::", ",");
+        out.push((off, norm));
+    }
+    out
+}
+
+/// Nama alias yang mengganti nama crate axum di satu pernyataan impor (`axum as x`, `self as x`).
+fn aliases(stmt: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for marker in ["axum as ", "self as "] {
+        for (pos, _) in stmt.match_indices(marker) {
+            let before_ok = stmt
+                .get(..pos)
+                .and_then(|h| h.chars().last())
+                .is_none_or(|c| !(c.is_ascii_alphanumeric() || c == '_'));
+            if !before_ok {
+                continue;
+            }
+            let name: String = stmt
+                .get(pos + marker.len()..)
+                .unwrap_or("")
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
                 .collect();
-            for (i, w) in words.iter().enumerate() {
-                if *w != "as" {
-                    continue;
-                }
-                let crate_alias = i == 0;
-                let self_alias = i > 0 && words.get(i - 1) == Some(&"self");
-                if (crate_alias || self_alias)
-                    && let Some(name) = words.get(i + 1)
-                {
-                    out.push((off, (*name).to_string()));
-                }
+            if !name.is_empty() {
+                out.push(name);
             }
         }
     }

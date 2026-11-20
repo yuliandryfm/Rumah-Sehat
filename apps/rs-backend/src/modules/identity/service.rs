@@ -379,27 +379,6 @@ impl AccountDirectory {
         });
     }
 
-    /// Mencatat (transaksi sendiri, tanpa event audit) lalu menyalin pencabutan. Untuk pemanggil yang
-    /// mencatat audit sendiri, pakai [`AccountDirectory::record_revocation`] di transaksinya.
-    pub async fn revoke_session(
-        &self,
-        account_id: Uuid,
-        idp_session_id: &str,
-        reason: RevocationReason,
-        expires_at: OffsetDateTime,
-    ) -> Result<(), IdentityError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|_| IdentityError::Database)?;
-        let rec = self
-            .record_revocation(&mut tx, account_id, idp_session_id, reason, expires_at)
-            .await?;
-        tx.commit().await.map_err(|_| IdentityError::Database)?;
-        self.publish_revocation(&rec).await
-    }
-
     /// Menghapus baris pencabutan yang sudah lewat (DD A1.4; dijalankan job berkala).
     pub async fn purge_expired_revocations(&self) -> Result<u64, IdentityError> {
         repo::purge_expired(&self.pool, self.clock.now())

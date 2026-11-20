@@ -20,6 +20,11 @@ async fn server_is_valkey_9_1_3() {
     let v = c.client(OP);
     v.ping().await.unwrap();
     assert_eq!(v.server_version().await.unwrap(), "9.1.3");
+    // Entri pencabutan tidak boleh dibuang saat memori penuh (infra/local/compose.yaml).
+    assert!(
+        c.cli(&["CONFIG", "GET", "maxmemory-policy"])
+            .contains("noeviction")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
