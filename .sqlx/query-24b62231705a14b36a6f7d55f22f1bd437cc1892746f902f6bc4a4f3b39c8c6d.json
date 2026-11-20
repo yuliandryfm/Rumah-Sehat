@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM app.idp_event_receipt WHERE idp_realm = $1 AND event_time < $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24b62231705a14b36a6f7d55f22f1bd437cc1892746f902f6bc4a4f3b39c8c6d"
+}

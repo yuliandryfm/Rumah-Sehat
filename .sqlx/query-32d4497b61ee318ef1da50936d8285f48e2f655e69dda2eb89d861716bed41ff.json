@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT sub_role FROM app.rs_admin_role WHERE account_id = $1 AND deleted_at IS NULL ORDER BY sub_role",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "rs_admin_role",
+            "name": "sub_role"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "32d4497b61ee318ef1da50936d8285f48e2f655e69dda2eb89d861716bed41ff"
+}

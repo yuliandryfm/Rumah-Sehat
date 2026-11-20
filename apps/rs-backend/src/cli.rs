@@ -1,15 +1,15 @@
 //! Pemilihan subcommand dan siklus hidup proses. Satu biner, satu argumen: nama subcommand.
 //!
-//! Yang berfungsi: `api`, `audit-relay` (F1-T24), dan `audit-verify` (F1-T25). `worker` adalah kerangka:
-//! proses mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
-//! penyebaran yang mengira proses itu berjalan.
+//! Semua subcommand berfungsi: `api`, `worker` (F1-T34: pengambil event Keycloak, kunci 7001002; antrean job
+//! menyusul di task pemakainya), `audit-relay` (F1-T24), dan `audit-verify` (F1-T25).
 
 use crate::app::{AppState, build_router};
-use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig};
+use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig, WorkerConfig};
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
+use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,7 +23,7 @@ pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-ver
 pub enum Command {
     /// Server HTTP API.
     Api,
-    /// Pekerja job (kerangka).
+    /// Pekerja latar: pengambil event Keycloak (F1-T34).
     Worker,
     /// Relay audit (F1-T24).
     AuditRelay,
@@ -83,27 +83,27 @@ impl Command {
 /// Konfigurasi bertipe per subcommand (KEPUTUSAN-132): setiap proses hanya memuat yang dibutuhkannya.
 enum Loaded {
     Api(ApiConfig),
+    Worker(WorkerConfig),
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
-    Skeleton(Command, BaseConfig),
 }
 
 impl Loaded {
     fn load(command: Command, env: &EnvSource) -> Result<Self, ConfigError> {
         Ok(match command {
             Command::Api => Self::Api(ApiConfig::load(env)?),
+            Command::Worker => Self::Worker(WorkerConfig::load(env)?),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
-            other => Self::Skeleton(other, BaseConfig::load(env)?),
         })
     }
 
     fn base(&self) -> &BaseConfig {
         match self {
             Self::Api(c) => &c.base,
+            Self::Worker(c) => &c.base,
             Self::AuditRelay(c) => &c.base,
             Self::AuditVerify(c) => &c.base,
-            Self::Skeleton(_, b) => b,
         }
     }
 }
@@ -136,9 +136,9 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     }
     match loaded {
         Loaded::Api(config) => run_api(config),
+        Loaded::Worker(config) => run_worker(config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
-        Loaded::Skeleton(other, base) => not_implemented(other, &base),
     }
 }
 
@@ -189,12 +189,41 @@ fn run_audit_relay(config: AuditRelayConfig) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
-    tracing::error!(
-        subcommand = command.name(),
-        "subcommand_not_implemented: kerangka F1-T11, belum berfungsi"
+/// `worker`: pengambil event Keycloak E-01–E-04 ke `audit_outbox`, satu aktif (kunci 7001002), instans lain
+/// siaga; berhenti pada SIGINT/SIGTERM (ADR-011 butir 10, F1-T34).
+fn run_worker(config: WorkerConfig) -> ExitCode {
+    use crate::modules::identity::api::{PullerSettings, run_puller};
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
+    };
+    let events = config.keycloak_events;
+    let client = match events.client() {
+        Ok(c) => Arc::new(c),
+        Err(_) => {
+            tracing::error!("keycloak_event_client_invalid");
+            return ExitCode::FAILURE;
+        }
+    };
+    let settings = PullerSettings {
+        options: events.options(),
+        database_url: config.database_url,
+        poll_interval: events.poll_interval(),
+        retry_interval: events.retry_interval(),
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    tracing::info!(
+        lock_key = RS_KEYCLOAK_EVENT_PULLER.key(),
+        realms = settings.options.realms.len(),
+        "worker_starting"
     );
-    ExitCode::FAILURE
+    runtime.block_on(async move {
+        tokio::select! {
+            () = run_puller(settings, client, clock) => {}
+            () = shutdown_signal() => {}
+        }
+    });
+    tracing::info!("worker_stopped");
+    ExitCode::SUCCESS
 }
 
 /// `audit-verify`: verifikasi rantai harian (kunci 7001003) atau sekali (`AUDIT_VERIFY_ONCE`).

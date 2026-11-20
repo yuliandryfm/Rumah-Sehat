@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM app.idp_event_receipt",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ab32a8dc56583ef3505f77f7bcf735bf6cd2ec732bedc97b69a26a2c0b977dec"
+}

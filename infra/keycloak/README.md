@@ -32,7 +32,7 @@ Sama di `pasien` dan `admin`, kecuali batas sesi dan klien:
 - **Direct grant**: tidak ada klien dengan grant password (termasuk `admin-cli` realm), dan alur `rs-direct-grant-mfa` tetap mewajibkan OTP bila kelak diaktifkan tanpa sengaja.
 - **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage`, `invalidEmailMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); penyamaan struktur halaman menjadi bagian tema (F1-T35).
 - **SMTP** ke relay internal ADR-026: STARTTLS wajib, tanpa AUTH, tanpa `debug`, host/port/pengirim dari variabel lingkungan (KEPUTUSAN-231). Sampai relay F1-T36 ada, pengiriman email gagal (aman).
-- **Event** login dan admin disimpan 7 hari, tanpa detail representasi admin (ADR-011 butir 10).
+- **Event** login dan admin disimpan 7 hari, tanpa detail representasi admin (ADR-011 butir 10). Event login diambil `rs-backend worker` lewat Admin REST dengan klien `rs-backend-event-reader` (F1-T34). Event menyimpan `details.username` (= email) dan ID token; backend tidak menyalinnya ke audit (`apps/rs-backend/src/modules/identity/domain.rs`).
 
 Klien:
 
@@ -40,6 +40,7 @@ Klien:
 | --- | --- | --- | --- |
 | `pasien` | `rs-pasien-mobile` | Publik | Authorization Code + PKCE S256 wajib, redirect URI tepat satu dari `RS_KC_PASIEN_MOBILE_REDIRECT_URI` (ADR-011 butir 7, RFC 8252) |
 | `admin` | `rs-backoffice-bff`, `rs-portal-bff` | Rahasia | Authorization Code + PKCE S256, secret dari `RS_KC_*_BFF_SECRET` (lokal: `infra/local/.env`; staging/production: OpenBao lewat skrip deploy) |
+| `pasien`, `admin` | `rs-backend-event-reader` | Rahasia, service account | Pengambil event `rs-backend worker` (F1-T34, ADR-011 butir 10): hanya client credentials, `fullScopeAllowed` mati, peran service account dan scope mapping hanya `realm-management/view-events`, cakupan bawaan hanya `kc-admin-api` (audience Admin REST yang diwajibkan Keycloak 26.8.2). Secret dari `RS_KC_EVENT_READER_<REALM>_SECRET` (satu per realm) |
 
 Audience API backend dan pemeta klaim belum diatur; ditetapkan bersama validasi token F1-T32.
 

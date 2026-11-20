@@ -1,0 +1,12 @@
+//! Modul `identity` (kode modul 01, "Identitas dan akses" docs/04-arsitektur.md §3; tabel DD A1).
+//!
+//! F1-T34: pengambil event Keycloak E-01–E-04 ke `audit_outbox` (ADR-009 butir 2, ADR-011 butir 10) untuk
+//! `rs-backend worker`, dengan posisi baca `idp_event_cursor` dan tanda terima `idp_event_receipt`.
+//! Endpoint HTTP modul ini (registrasi, akun) menyusul di task masing-masing. Hanya `api` yang terlihat
+//! dari luar modul (coding-standards §1.3).
+
+pub mod api;
+mod domain;
+mod jobs;
+mod keycloak;
+mod repo;

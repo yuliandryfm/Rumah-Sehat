@@ -7,7 +7,8 @@
 //!
 //! Jenis yang belum punya fungsi (percobaan ubah/hapus audit, penguncian akun, kegagalan MFA, log audit
 //! penyedia cloud) ditambahkan oleh task pemilik fiturnya dengan pola yang sama. Relay dan verifikasi
-//! rantai audit: F1-T24/F1-T25.
+//! rantai audit: F1-T24/F1-T25. Event Keycloak yang diambil worker dan kegagalan/keterlambatan
+//! pengambilannya: F1-T34.
 
 use foundation::Uuid;
 use tracing::{info, warn};
@@ -237,6 +238,67 @@ impl AuditWriteFailure {
 /// Hanya kode event dan tahap kegagalan; isi event dan pesan galat database tidak dicatat.
 pub fn audit_write_failed(event_code: &'static str, stage: AuditWriteFailure) {
     warn!(target: SECURITY_TARGET, event_type = "audit_write_failed", event_code = event_code, stage = stage.as_str(), "security_event");
+}
+
+/// Event autentikasi Keycloak (E-01–E-04) yang sudah ditulis ke `audit_outbox`, diteruskan juga ke
+/// security log (ADR-011 butir 10; F1-T34). Semua parameter dari daftar tertutup pemetaan; email,
+/// username, alamat IP, dan token tidak pernah masuk ke sini. `failure_reason` = kode alasan bila gagal.
+pub fn idp_event(
+    realm: &'static str,
+    event_code: &'static str,
+    action: &'static str,
+    account_id: Option<Uuid>,
+    failure_reason: Option<&'static str>,
+) {
+    match failure_reason {
+        None => {
+            info!(target: SECURITY_TARGET, event_type = "idp_event", realm = realm, event_code = event_code, action = action, account_id = %opt(account_id), outcome = "success", "security_event");
+        }
+        Some(reason) => {
+            warn!(target: SECURITY_TARGET, event_type = "idp_event", realm = realm, event_code = event_code, action = action, account_id = %opt(account_id), outcome = "failure", reason = reason, "security_event");
+        }
+    }
+}
+
+/// Tahap kegagalan pengambil event Keycloak (daftar tertutup; F1-T34).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdpEventPullFailure {
+    /// Admin REST Keycloak tidak tersedia, melewati batas waktu, atau menjawab status tak terduga.
+    KeycloakUnavailable,
+    /// Kredensial klien layanan pembaca event ditolak endpoint token.
+    KeycloakAuth,
+    /// Event dari Keycloak tidak valid; pengambilan realm itu berhenti di event ini (posisi tidak maju).
+    InvalidEvent,
+    /// Event ditolak pustaka audit atau `audit_outbox` gagal ditulis.
+    AuditWrite,
+    /// Database (posisi baca, tanda terima) atau koneksi kunci gagal.
+    Database,
+    /// Terlalu banyak event dalam satu milidetik untuk diselesaikan.
+    TooManyEvents,
+}
+
+impl IdpEventPullFailure {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::KeycloakUnavailable => "keycloak_unavailable",
+            Self::KeycloakAuth => "keycloak_auth",
+            Self::InvalidEvent => "invalid_event",
+            Self::AuditWrite => "audit_write",
+            Self::Database => "database",
+            Self::TooManyEvents => "too_many_events",
+        }
+    }
+}
+
+/// Pengambilan event Keycloak satu realm gagal; posisi baca tidak maju dan dicoba lagi putaran berikutnya.
+/// `realm` = nama realm, atau `-` untuk kegagalan sesi pengambil.
+pub fn idp_event_pull_failed(realm: &'static str, stage: IdpEventPullFailure) {
+    warn!(target: SECURITY_TARGET, event_type = "idp_event_pull_failed", realm = realm, stage = stage.as_str(), "security_event");
+}
+
+/// Pengambilan event Keycloak satu realm terlambat melewati ambang (ADR-011 butir 10: lebih dari 5 menit).
+pub fn idp_event_pull_delayed(realm: &'static str, lag_seconds: u64) {
+    warn!(target: SECURITY_TARGET, event_type = "idp_event_pull_delayed", realm = realm, lag_seconds = lag_seconds, "security_event");
 }
 
 /// Proyeksi status tidak cocok dengan ledger status (ADR-008).

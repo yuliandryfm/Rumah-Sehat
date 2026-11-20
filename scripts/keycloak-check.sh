@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/keycloak-check.sh: menerapkan realm Keycloak sebagai kode (infra/keycloak/realms/*.json) dengan
-# keycloak-config-cli, lalu menjalankan test konfigurasi dan perilaku ke Keycloak sungguhan (F1-T31).
+# keycloak-config-cli, lalu menjalankan test konfigurasi dan perilaku ke Keycloak sungguhan (F1-T31; klien
+# layanan pengambil event berhak minimum: F1-T34).
 #
 # Modul kritis T1 (ADR-011, CLAUDE.md). Dasar: docs/05-stack.md §7, KEPUTUSAN-85, KEPUTUSAN-190,
 # KEPUTUSAN-199, KEPUTUSAN-201, KEPUTUSAN-203, KEPUTUSAN-231, ADR-026.
@@ -89,7 +90,8 @@ baca_env() { # baca_env <NAMA> [bawaan]
 }
 
 VAR_REALM="RS_KC_SMTP_HOST RS_KC_SMTP_PORT RS_KC_SMTP_FROM RS_KC_PASIEN_MOBILE_REDIRECT_URI \
-RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET"
+RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET \
+RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET"
 
 acak() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
 
@@ -136,7 +138,10 @@ else
   export RS_KC_PORTAL_BFF_REDIRECT_URI="http://127.0.0.1:3001/auth/callback"
   RS_KC_BACKOFFICE_BFF_SECRET="$(acak)"
   RS_KC_PORTAL_BFF_SECRET="$(acak)"
-  export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET
+  # Klien layanan pengambil event rs-backend worker (F1-T34), satu rahasia per realm.
+  RS_KC_EVENT_READER_PASIEN_SECRET="$(acak)"
+  RS_KC_EVENT_READER_ADMIN_SECRET="$(acak)"
+  export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET
   echo "==> Keycloak ephemeral ($IMG_KC)"
   # Nilai rahasia diteruskan lewat `-e NAMA` (diambil dari lingkungan), tidak muncul di argumen proses.
   KC_BOOTSTRAP_ADMIN_USERNAME="$KC_CHECK_ADMIN_USER" KC_BOOTSTRAP_ADMIN_PASSWORD="$KC_CHECK_ADMIN_PASSWORD" \
