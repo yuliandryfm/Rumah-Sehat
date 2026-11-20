@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Nakes 5/5 Resep - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Aplikasi Tenaga Kesehatan &middot; 5/5 Resep</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="04-catatan.html">Sebelumnya</a><a href="../pasien/19-catatan-resep.html">Lihat sisi pasien</a></span></div>
+<main class="stage"><div class="phone">
+<div class="sb"><span>10.33</span><span></span></div>
+<div class="appbar"><a class="icon-btn" href="04-catatan.html" aria-label="Kembali">&larr;</a><h2>Resep</h2></div>
+<form class="phone-body" action="../pasien/19-catatan-resep.html">
+  <p class="t-small muted">Hanya dokter yang dapat menerbitkan resep.</p>
+  <div class="card"><p class="t-sub">Obat 1</p>
+    <div class="field"><label for="o1">Nama obat</label><input id="o1" class="input" value="[Nama obat contoh]"></div>
+    <div class="field"><label for="o2">Aturan pakai</label><input id="o2" class="input" value="[Aturan pakai contoh]"></div></div>
+  <button class="btn btn-secondary btn-block" type="button">+ Tambah obat</button>
+  <div class="alert info"><span aria-hidden="true">i</span><span><b>Resep terbit memuat</b>Nomor unik, SIP, klinik, tanggal, kode verifikasi, dan QR di PDF.</span></div>
+  <button class="btn btn-primary btn-block" type="submit">Terbitkan resep</button>
+</form>
+</div></main></body></html>

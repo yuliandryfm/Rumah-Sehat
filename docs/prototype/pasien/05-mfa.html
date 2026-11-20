@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pasien 5/19 MFA - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Aplikasi Pasien &middot; 5/19 Verifikasi dua langkah (MFA)</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="04-persetujuan.html">Sebelumnya</a><a href="06-beranda.html">Berikutnya</a></span></div>
+<main class="stage"><div class="phone">
+<div class="sb"><span>09.44</span><span></span></div>
+<div class="appbar"><h2 style="padding-left:8px">Lindungi akun Anda</h2></div>
+<form class="phone-body" action="06-beranda.html">
+  <p class="t-small">Pasang aplikasi authenticator di ponsel, lalu pindai kode QR atau masukkan kunci teks.</p>
+  <div class="row" style="justify-content:center"><div class="qr" role="img" aria-label="Contoh kode QR, bukan kode asli"></div></div>
+  <p class="t-small" style="text-align:center">Kunci teks: <span class="ref">ABCD EFGH IJKL MNOP</span> (contoh)</p>
+  <div class="field"><label for="otp">Kode 6 digit</label><input id="otp" class="input otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="123456"><span class="hint">Boleh ditempel.</span></div>
+  <div class="alert warning"><span aria-hidden="true">!</span><span><b>Simpan kode pemulihan</b>12 kode pemulihan tampil sekali dan masing-masing berlaku sekali. Tanpa kode ini, pemulihan akun lewat Layanan Pelanggan.</span></div>
+  <label class="check"><input type="checkbox" checked><span>Saya sudah menyimpan kode pemulihan</span></label>
+  <button class="btn btn-primary btn-block" type="submit">Aktifkan dan masuk</button>
+</form>
+</div></main></body></html>

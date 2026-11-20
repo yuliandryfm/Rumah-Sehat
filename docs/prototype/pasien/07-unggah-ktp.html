@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pasien 7/19 Unggah KTP - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Aplikasi Pasien &middot; 7/19 Unggah NIK dan KTP</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="06-beranda.html">Sebelumnya</a><a href="08-status-menunggu.html">Berikutnya</a></span></div>
+<main class="stage"><div class="phone">
+<div class="sb"><span>09.47</span><span></span></div>
+<div class="appbar"><a class="icon-btn" href="06-beranda.html" aria-label="Kembali">&larr;</a><h2>Verifikasi identitas</h2></div>
+<form class="phone-body" action="08-status-menunggu.html">
+  <p class="t-small">Unggah KTP agar Anda dapat memesan layanan. Dokumen hanya dipakai untuk verifikasi identitas.</p>
+  <div class="field"><label for="nik">NIK</label><input id="nik" class="input" inputmode="numeric" value="&bull;&bull;&bull;&bull; 1234" aria-describedby="nik-h"><span class="hint" id="nik-h">NIK contoh, disamarkan. Data asli tidak dipakai di prototipe.</span></div>
+  <div class="field"><span class="t-small" style="font-weight:600">Foto KTP</span><div class="id-photo" role="img" aria-label="Pratinjau foto KTP contoh">Pratinjau foto KTP (contoh)<br>JPG atau PNG, maksimal 5 MB</div></div>
+  <div class="row"><button class="btn btn-secondary" type="button">Ambil foto</button><button class="btn btn-secondary" type="button">Pilih dari galeri</button></div>
+  <p class="t-cap">Pratinjau foto tidak disimpan di galeri aplikasi.</p>
+  <button class="btn btn-primary btn-block" type="submit">Kirim untuk diverifikasi</button>
+</form>
+</div></main></body></html>

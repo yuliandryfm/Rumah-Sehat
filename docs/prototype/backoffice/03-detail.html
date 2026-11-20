@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Backoffice 3/4 Periksa KTP - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Backoffice &middot; 3/4 Periksa dokumen dan putuskan</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="02-antrean.html">Sebelumnya</a><a href="04-selesai.html">Berikutnya</a></span></div>
+<main class="web">
+  <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span><span class="grow"></span><span class="t-small">Verifikator &middot; verifikator@example.test</span><a class="btn btn-secondary btn-sm" href="01-masuk.html">Keluar</a></div>
+  <nav class="web-side" aria-label="Menu"><span class="sec">Verifikasi</span><a class="on" href="02-antrean.html" aria-current="page">Identitas pasien (3)</a><a href="#">Tenaga kesehatan (2)</a><a href="#">Rekanan (1)</a><span class="sec">Akun</span><a href="#">Pasien</a><a href="#">Admin mitra</a></nav>
+  <div class="web-main">
+    <a href="02-antrean.html">&larr; Kembali ke antrean</a>
+    <h1 class="t-title">Pasien Contoh &middot; Pemilik akun &middot; KTP</h1>
+    <div class="split">
+      <div class="panel"><p class="t-sub">Dokumen</p><div class="id-photo" role="img" aria-label="Foto KTP contoh" style="min-height:260px">Foto KTP (contoh, bukan dokumen asli)<br>Membuka dokumen tercatat di jejak audit</div></div>
+      <div class="panel">
+        <p class="t-sub">Data pengajuan</p>
+        <dl class="kv"><dt>Nama</dt><dd>Pasien Contoh</dd><dt>NIK</dt><dd>&bull;&bull;&bull;&bull; 1234 (data contoh)</dd><dt>Diajukan</dt><dd>1 Mar 2027 09.47</dd></dl>
+        <label class="check"><input type="checkbox" checked><span>Foto terbaca jelas dan nama serta NIK sesuai dokumen</span></label>
+        <div class="field"><label for="ar">Alasan penolakan (hanya bila menolak)</label><select id="ar" class="input"><option>Pilih alasan</option><option>Foto buram</option><option>Data tidak cocok</option></select><span class="hint">Daftar alasan final <span class="td">[TIDAK DIKETAHUI]</span></span></div>
+        <div class="field"><label for="kt">Keterangan tambahan (opsional, tampil ke pasien)</label><textarea id="kt" class="input"></textarea></div>
+        <div class="row" style="justify-content:flex-end"><a class="btn btn-danger" href="04-selesai.html?hasil=tolak">Tolak</a><a class="btn btn-primary" href="04-selesai.html">Setujui</a></div>
+      </div>
+    </div>
+  </div>
+</main></body></html>
