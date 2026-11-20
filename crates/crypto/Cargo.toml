@@ -1,0 +1,21 @@
+[package]
+name = "crypto"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Pustaka kripto tunggal (T1, ADR-013, KEPUTUSAN-74, KEPUTUSAN-129): hanya crate ini yang boleh
+# bergantung langsung pada aws-lc-rs (diperiksa test arsitektur).
+# Versi dipin persis untuk pustaka kriptografi (KEPUTUSAN-137):
+# - aws-lc-rs 1.19.0 (docs/05-stack.md §1.1, [SRC-173]); API yang dipakai diverifikasi ke source 1.19.0 [SRC-480];
+#   fitur bawaan dimatikan (tanpa ring-io/ring-sig-verify/untrusted), hanya backend non-FIPS aws-lc-sys
+#   0.47.0 [SRC-481] dan `alloc`.
+# - zeroize 1.9.2 [SRC-482]: menghapus salinan DEK dan plaintext di memori saat dibuang.
+[dependencies]
+foundation = { path = "../foundation" }
+aws-lc-rs = { version = "=1.19.0", default-features = false, features = ["aws-lc-sys", "alloc"] }
+zeroize = { version = "=1.9.2", default-features = false, features = ["alloc"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true
