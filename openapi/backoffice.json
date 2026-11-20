@@ -1,0 +1,1735 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ruang Sehat: API backoffice",
+    "description": "Endpoint backoffice admin Ruang Sehat (realm admin, sub-peran per endpoint, UP-18). Format respons: ADR-023.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/backoffice/v1/content-images/upload-slots": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Slot unggah gambar konten: URL bertanda tangan berumur pendek ke object storage (ADR-018). Berkas baru\ndapat dipakai setelah dipasang ke draf (validasi isi JPG/PNG, ukuran, metadata dibuang).",
+        "operationId": "cms_content_image_upload_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Slot unggah diterbitkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ukuran melebihi 5 MiB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis bukan image/jpeg atau image/png, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents": {
+      "get": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Daftar konten dengan saringan status, kanal, dan halaman situs (wireframe C14).",
+        "operationId": "cms_content_list",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Status tampilan; `deleted` menampilkan konten terhapus yang dapat dipulihkan.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DisplayStatus"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "Kanal.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          },
+          {
+            "name": "site_page",
+            "in": "query",
+            "description": "Halaman situs.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SitePage"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah item (1-100, bawaan 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar konten.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Saringan tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Membuat konten baru berstatus Draf (US-1101 AC1).",
+        "operationId": "cms_content_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Draf dibuat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid (galat per isian).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}": {
+      "get": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Detail dan pratinjau konten yang tidak terhapus, apa pun statusnya (US-1101 AC1).",
+        "operationId": "cms_content_get",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Konten.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Mengubah draf. Konten terjadwal atau diarsipkan tidak dapat diubah (409); buat versi baru.",
+        "operationId": "cms_content_update",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Draf diperbarui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konten bukan draf.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid (galat per isian).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}/archive": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Mengarsipkan draf atau konten terjadwal; konten tidak tampil lagi (US-1101 AC2).",
+        "operationId": "cms_content_archive",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Konten diarsipkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konten sudah diarsipkan.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}/delete": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Soft delete dengan alasan wajib; dapat dipulihkan (US-1101 AC3, ADR-003). Dicatat E-16.",
+        "operationId": "cms_content_delete",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Konten dihapus (soft delete).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau sudah terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Alasan wajib diisi.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}/image": {
+      "put": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Memasang gambar yang sudah diunggah ke draf, dengan teks alternatif wajib (US-1802 AC5).",
+        "operationId": "cms_content_image_attach",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Gambar dipasang.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten atau slot tidak ada, kedaluwarsa, atau milik akun lain.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konten bukan draf.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Berkas melebihi 5 MiB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Isi berkas bukan JPG/PNG yang sah, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Teks alternatif kosong atau berkas belum diunggah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}/restore": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Memulihkan konten terhapus (US-1101 AC3, ADR-003). Dicatat E-16.",
+        "operationId": "cms_content_restore",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Konten dipulihkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau tidak terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Halaman tetap lain sedang terjadwal tanpa batas akhir.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/contents/{content_id}/schedule": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Menjadwalkan draf untuk tayang (US-1101 AC2). Halaman tetap situs: versi lama berakhir saat versi baru\nmulai (US-1802 AC2); gambar tanpa teks alternatif ditolak (US-1802 AC5).",
+        "operationId": "cms_content_schedule",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Konten dijadwalkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten tidak ada atau terhapus.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konten bukan draf, atau versi halaman tetap lain bentrok.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Jadwal atau teks alternatif tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AttachImageRequest": {
+        "type": "object",
+        "description": "Memasang gambar yang sudah diunggah ke draf.",
+        "required": [
+          "upload_slot_id",
+          "image_alt_text"
+        ],
+        "properties": {
+          "image_alt_text": {
+            "type": "string",
+            "description": "Teks alternatif gambar (wajib, 1-300 karakter; US-1802 AC5).",
+            "example": "Dokter memeriksa pasien di klinik (ilustrasi)",
+            "maxLength": 300
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "description": "ID slot dari `upload-slots`.",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Channel": {
+        "type": "string",
+        "description": "Kanal tayang (`ck_cms_content_channel`).",
+        "enum": [
+          "app",
+          "site",
+          "app_and_site"
+        ]
+      },
+      "ContentDto": {
+        "type": "object",
+        "description": "Konten di backoffice (termasuk isi untuk pratinjau, US-1101 AC1).",
+        "required": [
+          "content_id",
+          "content_type",
+          "title",
+          "channel",
+          "editorial_status",
+          "display_status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Channel"
+          },
+          "content_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delete_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "display_status": {
+            "$ref": "#/components/schemas/DisplayStatus",
+            "description": "Status tampilan menurut jam server (Draf, Tayang (terjadwal), Tayang, Selesai, Diarsipkan, Terhapus)."
+          },
+          "editorial_status": {
+            "$ref": "#/components/schemas/EditorialStatus",
+            "description": "Status tersimpan."
+          },
+          "image_alt_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_file_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ID berkas gambar (bucket konten publik, disajikan lewat endpoint gambar publik bila tayang).",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "link_target_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "link_target_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LinkTargetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publish_end_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "publish_start_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "site_page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SitePage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ContentEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons sukses satu konten (ADR-023 butir 1); isi sebenarnya `envelope::Success`.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ContentDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "ContentListEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar konten.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MetaSchema"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "ContentRequest": {
+        "type": "object",
+        "description": "Isian simpan draf (buat atau ubah).",
+        "required": [
+          "content_type",
+          "title",
+          "channel"
+        ],
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Isi Markdown tanpa HTML mentah (US-1802 AC6).",
+            "maxLength": 100000
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kategori (opsional).",
+            "maxLength": 100
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Channel",
+            "description": "Kanal tayang: aplikasi, situs, atau keduanya (US-1802 AC1)."
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "description": "Jenis konten."
+          },
+          "image_alt_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Teks alternatif gambar; wajib sebelum konten bergambar ditayangkan (US-1802 AC5).",
+            "maxLength": 300
+          },
+          "link_target_ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Rujukan tujuan tautan.",
+            "maxLength": 500
+          },
+          "link_target_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LinkTargetType",
+                "description": "Tujuan tautan banner."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "site_page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SitePage",
+                "description": "Halaman situs tujuan; wajib bila kanal memuat situs."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Judul (1-200 karakter).",
+            "example": "Tentang Ruang Sehat",
+            "maxLength": 200
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentType": {
+        "type": "string",
+        "description": "Jenis konten (`ck_cms_content_content_type`).",
+        "enum": [
+          "banner",
+          "info_page",
+          "article",
+          "promo"
+        ]
+      },
+      "DeleteRequest": {
+        "type": "object",
+        "description": "Soft delete dengan alasan wajib (ADR-003).",
+        "required": [
+          "delete_reason"
+        ],
+        "properties": {
+          "delete_reason": {
+            "type": "string",
+            "description": "Alasan penghapusan (1-500 karakter).",
+            "example": "Konten usang",
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeletedDto": {
+        "type": "object",
+        "description": "Hasil soft delete.",
+        "required": [
+          "content_id",
+          "display_status"
+        ],
+        "properties": {
+          "content_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "display_status": {
+            "$ref": "#/components/schemas/DisplayStatus"
+          }
+        }
+      },
+      "DeletedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons soft delete.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DeletedDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "DisplayStatus": {
+        "type": "string",
+        "description": "Status tampilan yang dihitung (wireframe C14: Draf, Tayang (terjadwal), Tayang, Selesai, Diarsipkan,\nTerhapus).",
+        "enum": [
+          "draft",
+          "scheduled",
+          "live",
+          "ended",
+          "archived",
+          "deleted"
+        ]
+      },
+      "EditorialStatus": {
+        "type": "string",
+        "description": "Status editorial tersimpan (`ck_cms_content_editorial_status`).",
+        "enum": [
+          "draft",
+          "scheduled",
+          "archived"
+        ]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
+        "required": [
+          "type",
+          "response_code",
+          "response_description",
+          "correlation_id"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan; selalu ada pada galat.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorSchema"
+            },
+            "description": "Galat per isian; hanya pada galat validasi."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Pola rute (bukan URL dengan ID)."
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "4040001"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Data tidak ditemukan"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI jenis masalah: `<awalan>/<response_code>`.",
+            "example": "https://problems.ruang-sehat.invalid/4040001"
+          }
+        }
+      },
+      "FieldErrorSchema": {
+        "type": "object",
+        "description": "Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kode galat isian, snake_case Inggris.",
+            "example": "invalid_format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path isian.",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan Bahasa Indonesia untuk pengguna.",
+            "example": "Format email tidak valid"
+          }
+        }
+      },
+      "ImageSlotRequest": {
+        "type": "object",
+        "description": "Permintaan slot unggah gambar konten.",
+        "required": [
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Jenis yang dinyatakan: `image/jpeg` atau `image/png` (isi tetap diperiksa setelah unggah).",
+            "example": "image/png"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ukuran berkas (byte), maksimal 5 MiB (NFR-SEC-08).",
+            "example": 204800,
+            "maximum": 5242880,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkTargetType": {
+        "type": "string",
+        "description": "Tujuan tautan banner (`ck_cms_content_link_target_type`).",
+        "enum": [
+          "article",
+          "service",
+          "partner",
+          "product"
+        ]
+      },
+      "MetaSchema": {
+        "type": "object",
+        "description": "Pagination cursor `meta` (ADR-023 butir 1), sama dengan `envelope::Meta`.",
+        "required": [
+          "has_more"
+        ],
+        "properties": {
+          "has_more": {
+            "type": "boolean",
+            "description": "Apakah masih ada data setelah halaman ini."
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor halaman berikutnya; `null` bila tidak ada."
+          }
+        }
+      },
+      "NameValueDto": {
+        "type": "object",
+        "description": "Pasangan nama-nilai (field formulir POST atau header PUT).",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleRequest": {
+        "type": "object",
+        "description": "Jadwal tayang (US-1101 AC2). Tanpa `publish_start_at` = tayang sekarang menurut jam server.",
+        "properties": {
+          "publish_end_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu selesai tayang (opsional), ISO 8601 dengan offset; harus setelah waktu mulai."
+          },
+          "publish_start_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu mulai tayang, ISO 8601 dengan offset; tidak boleh di masa lalu.",
+            "example": "2027-03-01T08:00:00+07:00"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SitePage": {
+        "type": "string",
+        "description": "Halaman situs tujuan (BR-130, `ck_cms_content_site_page`).",
+        "enum": [
+          "home",
+          "about",
+          "services",
+          "for_business",
+          "partners",
+          "articles",
+          "contact",
+          "download_app",
+          "privacy_terms"
+        ]
+      },
+      "UploadMethodDto": {
+        "type": "string",
+        "description": "Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).",
+        "enum": [
+          "post",
+          "put"
+        ]
+      },
+      "UploadSlotDto": {
+        "type": "object",
+        "description": "Slot unggah yang diterbitkan.",
+        "required": [
+          "upload_slot_id",
+          "expires_at",
+          "method",
+          "url",
+          "fields",
+          "headers"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Field formulir (POST); kosong untuk PUT."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Header wajib (PUT); kosong untuk POST."
+          },
+          "method": {
+            "$ref": "#/components/schemas/UploadMethodDto"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadSlotEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons slot unggah.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UploadSlotDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "cms",
+      "description": "Konten (CMS) aplikasi dan situs"
+    }
+  ]
+}

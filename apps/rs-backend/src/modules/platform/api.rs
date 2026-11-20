@@ -57,6 +57,30 @@ pub trait ReadinessCheck: Send + Sync {
     fn check(&self) -> ReadinessFuture<'_>;
 }
 
+/// Kesiapan database aplikasi: satu koneksi dari pool dapat diambil (sqlx memeriksa koneksi sebelum
+/// diserahkan). Tanpa query ke tabel mana pun.
+#[derive(Debug, Clone)]
+pub struct DatabaseReadiness {
+    pool: PgPool,
+}
+
+impl DatabaseReadiness {
+    /// Pemeriksaan atas pool proses `api`.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl ReadinessCheck for DatabaseReadiness {
+    fn name(&self) -> &'static str {
+        "database_app"
+    }
+
+    fn check(&self) -> ReadinessFuture<'_> {
+        Box::pin(async move { self.pool.acquire().await.is_ok() })
+    }
+}
+
 /// Bawaan umur slot dan URL unggah (detik). Usulan teknis F1-T29: ADR-018 hanya menyebut "berumur pendek";
 /// 10 menit memberi ruang unggah 5 MiB lewat jaringan seluler lambat.
 pub const DEFAULT_UPLOAD_SLOT_TTL_SECONDS: u64 = 600;
@@ -431,6 +455,35 @@ pub async fn record_stored_file(
     container: Option<FileContainer>,
 ) -> Result<Uuid, FileError> {
     service::record_stored_file(conn, clock, upload, container).await
+}
+
+/// Isi berkas konten publik (gambar konten CMS) untuk disajikan backend (ADR-027 butir 5).
+pub struct PublicFile {
+    /// Tipe MIME menurut isi tervalidasi (`image/jpeg` atau `image/png`).
+    pub mime_type: &'static str,
+    /// Isi berkas.
+    pub bytes: Vec<u8>,
+}
+
+impl fmt::Debug for PublicFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PublicFile")
+            .field("mime_type", &self.mime_type)
+            .field("len", &self.bytes.len())
+            .finish()
+    }
+}
+
+/// Membaca berkas tervalidasi di bucket `public_content` (F1-T93). Pemanggil wajib lebih dulu memastikan
+/// berkas dipakai konten yang sedang tayang; fungsi ini hanya menjamin bucket, status hapus, dan jenis.
+/// `None` bila tidak ada.
+pub async fn read_public_content_file(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    stored_file_id: Uuid,
+) -> Result<Option<PublicFile>, FileError> {
+    service::read_public_content_file(pool, clock, storage, stored_file_id).await
 }
 
 /// Membuang berkas tervalidasi yang tidak jadi dicatat (transaksi pemanggil gagal).

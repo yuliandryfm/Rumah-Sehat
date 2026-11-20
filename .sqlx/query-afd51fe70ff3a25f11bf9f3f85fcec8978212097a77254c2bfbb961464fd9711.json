@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.cms_content SET editorial_status = 'scheduled', publish_start_at = $3, publish_end_at = $4, updated_at = now(), updated_by = $2 WHERE id = $1 AND deleted_at IS NULL AND editorial_status = 'draft'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "afd51fe70ff3a25f11bf9f3f85fcec8978212097a77254c2bfbb961464fd9711"
+}

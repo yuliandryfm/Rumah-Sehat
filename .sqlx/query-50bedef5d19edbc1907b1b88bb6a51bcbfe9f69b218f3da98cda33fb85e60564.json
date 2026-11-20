@@ -1,0 +1,233 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, created_at, updated_at, deleted_at, delete_reason, content_type, title, body, category, image_file_id, image_alt_text, link_target_type, link_target_ref, publish_start_at, publish_end_at, editorial_status, channel, site_page FROM app.cms_content WHERE id = $1 AND channel IN ('site', 'app_and_site') AND editorial_status = 'scheduled' AND deleted_at IS NULL AND publish_start_at <= $2 AND (publish_end_at IS NULL OR publish_end_at > $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "deleted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "delete_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "delete_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "content_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "body",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "image_file_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "image_file_id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "image_alt_text",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "image_alt_text"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "link_target_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "link_target_type"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "link_target_ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "link_target_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "publish_start_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "publish_start_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "publish_end_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "publish_end_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "editorial_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "editorial_status"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "channel",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "channel"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "site_page",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "site_page"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "50bedef5d19edbc1907b1b88bb6a51bcbfe9f69b218f3da98cda33fb85e60564"
+}

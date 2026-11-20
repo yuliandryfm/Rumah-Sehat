@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.cms_content SET deleted_at = now(), deleted_by = $2, delete_reason = $3,\n                updated_at = now(), updated_by = $2\n         WHERE id = $1 AND deleted_at IS NULL\n         RETURNING deleted_at AS \"deleted_at!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deleted_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "deleted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "a45ffc14c373e74c30bb9ea8d6ef7bb74b129616cd3bcdebcc54f7c6e3ed0e6b"
+}

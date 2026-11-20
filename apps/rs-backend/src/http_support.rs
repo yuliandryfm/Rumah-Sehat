@@ -5,12 +5,16 @@
 //! kode tidak mungkin berbeda. Respons galat memakai `application/problem+json`, sukses
 //! `application/json` (ADR-023 butir 3).
 
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use axum::http::{HeaderValue, StatusCode, header::CONTENT_TYPE};
 use axum::response::{IntoResponse, Response};
 use envelope::CommonError;
 use envelope::{ApiError, CONTENT_TYPE_JSON, CONTENT_TYPE_PROBLEM, Success};
 use foundation::CorrelationId;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::net::IpAddr;
 use std::sync::Arc;
 
 fn json_response<B: Serialize>(
@@ -87,5 +91,20 @@ impl EnvelopeRenderer {
 impl authn::ErrorRenderer for EnvelopeRenderer {
     fn render(&self, error: CommonError, correlation_id: CorrelationId) -> Response {
         ApiFailure::new(error, correlation_id, &self.type_base).into_response()
+    }
+}
+
+/// Alamat IP klien dari `authz::ClientIp` (dipasang middleware IP klien `app.rs` dari alamat peer TCP), untuk sumber
+/// event audit (PRD §7.2) dan batas laju per sumber. `None` bila server dijalankan tanpa `ConnectInfo`.
+/// Di balik reverse proxy alamat ini milik proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md,
+/// PT-39), sehingga tidak ada header klien (misalnya `X-Forwarded-For`) yang dipercaya di sini.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientAddr(pub Option<IpAddr>);
+
+impl<S: Send + Sync> FromRequestParts<S> for ClientAddr {
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self(parts.extensions.get::<authz::ClientIp>().map(|c| c.0)))
     }
 }

@@ -4,19 +4,30 @@
 //! menyusul di task pemakainya), `audit-relay` (F1-T24), `audit-verify` (F1-T25), dan `email-relay` (F1-T36,
 //! ADR-026).
 
-use crate::app::{AppState, build_router};
+use crate::access_audit::AuditDenialRecorder;
+use crate::app::{AppServices, AppState, build_router};
 use crate::config::{
     ApiConfig, AuditRelayConfig, AuditVerifyConfig, EmailRelayConfig, WorkerConfig,
 };
+use crate::http_support::EnvelopeRenderer;
+use crate::modules::identity::api::AccountDirectory;
+use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
+use crate::rate_limit::RateLimiter;
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
+use authn::{
+    Algorithm, AuthState, Authenticator, AuthnConfig, Backend, HttpJwksSource, Realm, RealmConfig,
+};
+use authz::{DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DenialSink};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
+use sqlx::postgres::PgPoolOptions;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use valkey::{Valkey, ValkeyConfig};
 
 /// Teks bantuan.
 pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-verify|email-relay>";
@@ -90,7 +101,7 @@ impl Command {
 
 /// Konfigurasi bertipe per subcommand (KEPUTUSAN-132): setiap proses hanya memuat yang dibutuhkannya.
 enum Loaded {
-    Api(ApiConfig),
+    Api(Box<ApiConfig>),
     Worker(WorkerConfig),
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
@@ -100,7 +111,7 @@ enum Loaded {
 impl Loaded {
     fn load(command: Command, env: &EnvSource) -> Result<Self, ConfigError> {
         Ok(match command {
-            Command::Api => Self::Api(ApiConfig::load(env)?),
+            Command::Api => Self::Api(Box::new(ApiConfig::load(env)?)),
             Command::Worker => Self::Worker(WorkerConfig::load(env)?),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
@@ -146,7 +157,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
         return ExitCode::FAILURE;
     }
     match loaded {
-        Loaded::Api(config) => run_api(config),
+        Loaded::Api(config) => run_api(*config),
         Loaded::Worker(config) => run_worker(config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
@@ -368,14 +379,88 @@ fn run_api(config: ApiConfig) -> ExitCode {
 
 async fn serve(config: ApiConfig) -> std::io::Result<()> {
     let listener = TcpListener::bind(config.base.http_bind).await?;
-    tracing::info!(bind = %listener.local_addr()?, "api_listening");
-    let state = AppState::new(&config.problem_type_base, Vec::new());
-    let router = build_router(state).map_err(|e| {
+    // Galat penyiapan dicatat dengan nama bagian saja (tanpa nilai konfigurasi, KEPUTUSAN-132).
+    let setup_failed = |part: &'static str| {
+        tracing::error!(part = part, "api_setup_failed");
+        std::io::Error::other("api_setup_failed")
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    let pool = PgPoolOptions::new()
+        // Skema fisik §10.3 (KEPUTUSAN-139): acquire 3 dtk untuk api, idle 10 mnt, umur 30 mnt.
+        .max_connections(config.database_max_connections.get())
+        .acquire_timeout(Duration::from_secs(3))
+        .idle_timeout(Duration::from_secs(600))
+        .max_lifetime(Duration::from_secs(1800))
+        .connect_lazy(config.database_url.expose())
+        .map_err(|_| setup_failed("api_database_url"))?;
+    let files = FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
+    let jwks = HttpJwksSource::new(&config.admin_realm.jwks_url, Duration::from_secs(5))
+        .map_err(|_| setup_failed("auth_admin_jwks_url"))?;
+    let authenticator = Authenticator::new(
+        AuthnConfig::with_defaults(
+            Backend::RuangSehat,
+            vec![RealmConfig {
+                realm: Realm::Admin,
+                issuer: config.admin_realm.issuer.clone(),
+                audiences: vec![config.admin_realm.audience.clone()],
+                algorithms: vec![Algorithm::RS256],
+                authorized_parties: Vec::new(),
+                jwks: Arc::new(jwks),
+            }],
+        ),
+        Arc::clone(&clock),
+    )
+    .map_err(|_| setup_failed("auth_admin"))?;
+    let auth = AuthState::new(
+        Arc::new(authenticator),
+        Arc::new(EnvelopeRenderer::new(&config.problem_type_base)),
+    );
+    let valkey = Valkey::connect_lazy(&ValkeyConfig {
+        url: config.valkey_url.clone(),
+        op_timeout: Duration::from_millis(config.valkey_op_timeout_ms),
+    })
+    .map_err(|_| setup_failed("api_valkey_url"))?;
+    // Resolver akun + penjaga sesi yang dicabut (F1-T33): Valkey dengan cadangan PostgreSQL (RT-18).
+    let directory = Arc::new(AccountDirectory::new(
+        pool.clone(),
+        valkey,
+        Arc::clone(&clock),
+        Duration::from_secs(crate::modules::identity::api::DEFAULT_ACCOUNT_CACHE_TTL_SECONDS),
+    ));
+    // Penolakan objek data sensitif dicatat E-05 hasil gagal (F1-T38).
+    let denials = DenialSink::start(
+        DEFAULT_DENIAL_QUEUE_CAPACITY,
+        DEFAULT_DENIAL_AUDIT_CONCURRENCY,
+        Some(Arc::new(AuditDenialRecorder::new(
+            pool.clone(),
+            Arc::clone(&clock),
+        ))),
+    )
+    .map_err(|_| setup_failed("denial_sink"))?;
+    let readiness: Vec<Arc<dyn ReadinessCheck>> =
+        vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
+    let state = AppState::new(
+        &config.problem_type_base,
+        readiness,
+        AppServices {
+            pool,
+            clock,
+            files: Arc::new(files),
+            public_content_limit: Arc::new(RateLimiter::new(config.public_rate)),
+            public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
+        },
+    );
+    let router = build_router(state, auth, directory.clone(), directory, denials).map_err(|e| {
         // Rute tanpa kebijakan atau kebijakan tidak valid: start gagal (KEPUTUSAN-127).
         tracing::error!("policy_setup_failed: {e}");
         std::io::Error::other("policy_setup_failed")
     })?;
-    router.serve(listener, shutdown_signal()).await
+    tracing::info!(bind = %listener.local_addr()?, "api_listening");
+    // Alamat peer TCP (ConnectInfo -> authz::ClientIp) untuk sumber audit dan batas laju per sumber. Di balik
+    // reverse proxy alamat ini milik proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md, PT-39).
+    router
+        .serve_with_peer_addr(listener, shutdown_signal())
+        .await
 }
 
 /// Selesai pada SIGINT atau SIGTERM (Docker Compose mengirim SIGTERM).

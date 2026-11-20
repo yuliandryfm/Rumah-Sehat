@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.cms_content SET content_type = $3, title = $4, body = $5, category = $6, image_alt_text = $7, link_target_type = $8, link_target_ref = $9, channel = $10, site_page = $11, updated_at = now(), updated_by = $2 WHERE id = $1 AND deleted_at IS NULL AND editorial_status = 'draft'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c5922a99928319840927b1573b1ac002cd7bcd09ff9e1d53cc3761eac1195347"
+}
