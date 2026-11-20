@@ -7,7 +7,8 @@
 //! Lapisan: [`cli`] (pemilihan subcommand dan siklus hidup proses), [`config`] (konfigurasi bertipe),
 //! [`access_audit`] (event E-05 hasil gagal untuk penolakan akses ke data sensitif, F1-T38),
 //! [`app`] (perakitan router, middleware, fallback), [`http_support`] (adaptor envelope ADR-023 ke
-//! axum), [`modules`] (modul bisnis dan platform), [`openapi`] (pembangkitan spesifikasi, ADR-022).
+//! axum), [`modules`] (modul bisnis dan platform), [`openapi`] (pembangkitan spesifikasi, ADR-022),
+//! [`rate_limit`] (batas laju endpoint publik, F1-T94).
 
 pub mod access_audit;
 pub mod app;
@@ -16,3 +17,4 @@ pub mod config;
 pub mod http_support;
 pub mod modules;
 pub mod openapi;
+pub mod rate_limit;
