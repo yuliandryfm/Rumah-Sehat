@@ -770,15 +770,40 @@ def cek_halaman_mfa_tema(realm):
     periksa(k.Page(r.body).form("kc-totp-settings-form") is not None and "Siapkan aplikasi autentikator" in r.body and 'lang="id"' in r.body,
             f"[{realm}] halaman pendaftaran TOTP bertema dan berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman pendaftaran TOTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    # F1-T73: kode QR (gambar data: dari Keycloak sendiri) dan kunci teks pada mode manual.
+    periksa(re.search(r'<img id="kc-totp-secret-qr-code" src="data:image/png;base64,[^"]{200,}"', r.body) is not None
+            and "kc-totp-secret-key" not in r.body and "mode-manual" in r.body and "Tidak bisa memindai?" in r.body,
+            f"[{realm}] pendaftaran TOTP menampilkan kode QR dan tautan 'Tidak bisa memindai?' berbahasa Indonesia")
+    tautan = next((h for i, h in k.Page(r.body).links if i == "mode-manual"), None)
+    if tautan:
+        rm = ikuti(b, b.open(urllib.parse.urljoin(BASE, tautan)))
+        kunci = k.Page(rm.body).text("kc-totp-secret-key") or ""
+        periksa(re.fullmatch(r"[A-Z2-7]{4}( [A-Z2-7]{4}){3,}", kunci) is not None and "Algoritma" in rm.body and "Pindai kode QR" in rm.body
+                and k.Page(rm.body).form("kc-totp-settings-form") is not None,
+                f"[{realm}] mode manual menampilkan kunci teks (basis 32, berkelompok) dan tautan kembali ke kode QR", kunci)
+        periksa(user.otp_key is None and k.Page(rm.body).form("kc-totp-settings-form")["inputs"].get("totpSecret", "").replace(" ", "")
+                == k.Page(r.body).form("kc-totp-settings-form")["inputs"].get("totpSecret", "").replace(" ", ""),
+                f"[{realm}] kunci teks dan kode QR memakai rahasia yang sama (formulir tersembunyi identik)")
     r = daftar_mfa(b, r, user)
     periksa(k.Page(r.body).form("kc-recovery-codes-settings-form") is not None and "Kode pemulihan hanya ditampilkan sekali" in r.body,
             f"[{realm}] halaman kode pemulihan bertema dan berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman kode pemulihan tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    kode_tampil = re.findall(r"<li>([A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})</li>", r.body)
+    kode_form = k.Page(r.body).form("kc-recovery-codes-settings-form")["inputs"].get("generatedRecoveryAuthnCodes", "").split(",")
+    periksa(len(kode_tampil) == 12 and [c.replace("-", "") for c in kode_tampil] == kode_form and len(set(kode_tampil)) == 12,
+            f"[{realm}] halaman kode pemulihan menampilkan 12 kode berbeda yang sama dengan yang disimpan", str(len(kode_tampil)))
+    periksa("Warning alert" not in r.body and "en-US" not in r.body and "Peringatan" in r.body and "kcRecoveryCodesConfirmationCheck" in r.body,
+            f"[{realm}] halaman kode pemulihan: teks pembaca layar dan tanggal unduhan berbahasa Indonesia, ada kotak konfirmasi simpan")
     simpan_kode_pemulihan(b, r, user)
     b, _, r = mulai(realm)
     r = kirim_password(b, r, user.email, user.password)
+    periksa("kc-cs-hint" in r.body and "Layanan Pelanggan" in r.body and "Kehilangan perangkat autentikator dan kode pemulihan" in r.body,
+            f"[{realm}] layar kode OTP memuat petunjuk menghubungi Layanan Pelanggan (US-103 AC8)")
     periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode OTP" in r.body and "Pakai cara lain" in r.body and 'lang="id"' in r.body,
             f"[{realm}] halaman OTP berbahasa Indonesia dengan tautan kode pemulihan")
+    br, rr = buka_kode_pemulihan(realm, user)
+    periksa(rr is not None and "kc-cs-hint" in rr.body and "Layanan Pelanggan" in rr.body and "Kode pemulihan #" in rr.body,
+            f"[{realm}] layar kode pemulihan memuat petunjuk Layanan Pelanggan dan label berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman OTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
     r = kirim_otp(b, r, user.kode_salah())
     periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode tidak sesuai." in r.body,
