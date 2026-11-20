@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO audit.audit_event_subject (id, recorded_at, event_id, subject_id, subject_kind)\n           SELECT u.id, $2, $3, u.subject_id, u.subject_kind\n             FROM unnest($1::uuid[], $4::uuid[], $5::text[]) AS u(id, subject_id, subject_kind)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Timestamptz",
+        "Uuid",
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ec0b567f4f99b255477a636b5a4daf09634e61f8b0bea8adb7cc83cfdf8b123b"
+}

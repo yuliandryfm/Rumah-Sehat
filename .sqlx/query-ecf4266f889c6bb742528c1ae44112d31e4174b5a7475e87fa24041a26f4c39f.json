@@ -1,0 +1,397 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT event_id, recorded_at, seq, occurred_at, event_code, action_name, actor_type,\n                  actor_account_id, actor_account_type, actor_roles, actor_partner_id, object_type,\n                  object_id, object_version, subject_id, subject_count, tenant_id, source_component,\n                  host(source_ip) AS source_ip, user_agent, app_version, changed_fields, before_values,\n                  after_values, disclosure_recipient, disclosure_data_categories, outcome,\n                  outcome_reason_code, correlation_id, canonical_version, prev_hash, event_hash\n             FROM audit.audit_event\n            WHERE (seq, event_id) > ($1, $2)\n            ORDER BY seq, event_id\n            LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "event_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "recorded_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "recorded_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "seq"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "occurred_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "event_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "event_code"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "action_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "action_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "actor_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "actor_type"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "actor_account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "actor_account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "actor_account_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "actor_account_type"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "actor_roles",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "actor_roles"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "actor_partner_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "actor_partner_id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "object_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "object_type"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "object_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "object_id"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "object_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "object_version"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "subject_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "subject_id"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "subject_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "subject_count"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "tenant_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "tenant_id"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "source_component",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "source_component"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "source_ip",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 19,
+        "name": "user_agent",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "user_agent"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "app_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "app_version"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "changed_fields",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "changed_fields"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "before_values",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "before_values"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "after_values",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "after_values"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "disclosure_recipient",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "disclosure_recipient"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "disclosure_data_categories",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "disclosure_data_categories"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "outcome",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "outcome"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "outcome_reason_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "outcome_reason_code"
+          }
+        }
+      },
+      {
+        "ordinal": 28,
+        "name": "correlation_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "correlation_id"
+          }
+        }
+      },
+      {
+        "ordinal": 29,
+        "name": "canonical_version",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "canonical_version"
+          }
+        }
+      },
+      {
+        "ordinal": 30,
+        "name": "prev_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "prev_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 31,
+        "name": "event_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "audit_event",
+            "name": "event_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ecf4266f889c6bb742528c1ae44112d31e4174b5a7475e87fa24041a26f4c39f"
+}

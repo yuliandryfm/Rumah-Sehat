@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"count!\"\n             FROM audit.audit_event_subject s\n            WHERE NOT EXISTS (SELECT 1 FROM audit.audit_event e WHERE e.event_id = s.event_id)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5cf12a8058a48402d4ac27b4996073686d07aa16201b05bac755e57839cabad6"
+}

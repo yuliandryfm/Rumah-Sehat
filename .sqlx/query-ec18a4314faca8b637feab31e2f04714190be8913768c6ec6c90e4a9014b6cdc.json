@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT min(created_at) AS oldest FROM app.audit_outbox",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "oldest",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ec18a4314faca8b637feab31e2f04714190be8913768c6ec6c90e4a9014b6cdc"
+}

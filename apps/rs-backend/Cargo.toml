@@ -13,6 +13,10 @@ default-run = "rs-backend"
 foundation = { path = "../../crates/foundation" }
 envelope = { path = "../../crates/envelope" }
 observability = { path = "../../crates/observability" }
+# audit-relay (F1-T24): relay di crate audit, kunci registri di platform-jobs, batas batch dari audit-store.
+audit = { path = "../../crates/audit" }
+audit-store = { path = "../../crates/audit-store" }
+platform-jobs = { path = "../../crates/platform-jobs" }
 authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
 axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }

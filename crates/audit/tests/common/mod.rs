@@ -45,6 +45,31 @@ pub async fn relay_pool() -> PgPool {
     pool("RS_TEST_DB_RELAY_URL").await
 }
 
+/// Login `rs_audit_writer_login` di `ruang_sehat_audit` (relay: INSERT + `audit.fn_chain_head`).
+pub async fn audit_writer_pool() -> PgPool {
+    pool("RS_TEST_DB_AUDIT_WRITER_URL").await
+}
+
+/// Login `rs_audit_verifier_login` di `ruang_sehat_audit` (SELECT; untuk memeriksa hasil relay).
+pub async fn audit_verifier_pool() -> PgPool {
+    pool("RS_TEST_DB_AUDIT_VERIFIER_URL").await
+}
+
+/// URL rahasia dari lingkungan test (db-ephemeral).
+pub fn secret_url(var: &str) -> Sensitive<String> {
+    EnvSource::from_process()
+        .required_secret(var)
+        .unwrap_or_else(|_| panic!("{var} tidak diset: jalankan lewat scripts/db-ephemeral.sh"))
+}
+
+/// Koneksi khusus di luar pool (kunci advisory, koneksi writer relay).
+pub async fn connection(var: &str) -> sqlx::PgConnection {
+    use sqlx::Connection;
+    sqlx::PgConnection::connect(secret_url(var).expose())
+        .await
+        .unwrap_or_else(|_| panic!("koneksi {var} gagal"))
+}
+
 pub fn code(s: &str) -> Code {
     Code::new(s).unwrap()
 }

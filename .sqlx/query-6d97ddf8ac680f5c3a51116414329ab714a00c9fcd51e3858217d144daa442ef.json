@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT outcome, first_mismatch_seq, audit_chain_anchor_id FROM audit.audit_chain_verification WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "outcome",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_chain_verification",
+            "name": "outcome"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "first_mismatch_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "audit_chain_verification",
+            "name": "first_mismatch_seq"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "audit_chain_anchor_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_chain_verification",
+            "name": "audit_chain_anchor_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "6d97ddf8ac680f5c3a51116414329ab714a00c9fcd51e3858217d144daa442ef"
+}

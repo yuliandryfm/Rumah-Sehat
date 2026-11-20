@@ -6,6 +6,8 @@
 //! F1-T23: [`in_audited_tx`] memegang begin/commit transaksi tingkat atas, menjalankan aksi bisnis, lalu
 //! menulis event-nya ke `audit_outbox` di transaksi yang sama; gagal tulis membatalkan semuanya
 //! (ADR-009 butir 2, KEPUTUSAN-15). Tidak ada API publik untuk menulis ke transaksi milik pemanggil.
+//! F1-T24: [`relay`] memindahkan event dari `audit_outbox` ke database audit (rantai hash lewat crate
+//! `audit-store`) dengan satu relay aktif (kunci advisory `platform_jobs::lock`), ADR-009 butir 3.
 //!
 //! Yang ditegakkan pustaka (ADR-009 butir 7, coding-standards §4.4 butir 5), dibuktikan test di
 //! `tests/forbidden_fields.rs`, `tests/outbox_pg*.rs`, dan unit test modul:
@@ -30,6 +32,7 @@ mod error;
 mod event;
 mod outbox;
 mod policy;
+pub mod relay;
 mod value;
 
 pub use code::{CODE_MAX_DIGITS, CODE_MAX_LEN, Code, EventCode};

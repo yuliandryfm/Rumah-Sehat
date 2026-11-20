@@ -1,0 +1,7 @@
+# Makro query sqlx crate ini dicek terhadap database AUDIT (ruang_sehat_audit), bukan database aplikasi:
+# variabel URL-nya `AUDIT_DATABASE_URL` (sqlx 0.9.1 fitur `sqlx-toml`, `[common] database-url-var`;
+# docs/sources.md SRC-540). Di verify.sh (`cargo sqlx prepare --check`) dan test, nilainya diisi
+# scripts/db-ephemeral.sh (role dinamis pemilik skema audit, hanya untuk describe query). Build normal
+# memakai metadata offline .sqlx (SQLX_OFFLINE=true).
+[common]
+database-url-var = "AUDIT_DATABASE_URL"
