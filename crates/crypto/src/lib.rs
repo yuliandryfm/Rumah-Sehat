@@ -17,6 +17,8 @@ mod error;
 mod keyring;
 mod openbao;
 mod primitives;
+#[cfg(feature = "test-keys")]
+pub mod test_keys;
 mod transit;
 
 pub use blind_index::{
