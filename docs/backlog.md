@@ -560,6 +560,15 @@ Tafsiran orkestrator (dilaporkan ke user): (1) **urutan pengerjaan**: task basel
 Keputusan: disetujui user 2026-11-19
 Status: berlaku untuk urutan task Tahap 8; phase plan diperbarui (task dokumen orkestrator)
 
+### CR-023: Jenis layanan dari data master Ruang Sehat, rekanan memilih saat onboarding
+
+Diajukan: 2026-11-20, `[USER]` Telegram: "jenis layanan di ruang sehat lebih baik dari data master saja, bukan dari rekanan. nanti saat onboard rekanan mereka memilih layanan apa saja yg tersedia. ini lebih menghemat resources API dan waktu"
+Deskripsi: katalog jenis layanan (konsultasi, pemeriksaan lab, paket MCU, vaksinasi korporat, dsb.) dikelola sebagai data master Ruang Sehat; rekanan saat onboarding memilih jenis layanan yang mereka sediakan dari master itu, alih-alih jenis layanan dikirim rekanan lewat Partner Integration API.
+**Mengubah keputusan lama** (perlu analisis dampak): ADR-014 (kontrak integrasi rekanan) dan EP-04/EP-06/EP-09 bila jenis layanan bersumber dari rekanan; K-04 CR-021 (harga katalog korporat lewat integrasi rekanan, opsi a); peran portal rekanan (AB-62 read-only).
+`[TIDAK DIKETAHUI]`: apakah **harga** juga ditetapkan di master atau tetap dari rekanan (per rekanan per layanan); apakah rekanan boleh mengusulkan jenis layanan baru; granularitas master (jenis vs item pemeriksaan per lab); siapa pengelola master (sub-peran admin).
+Keputusan: menunggu analisis + konfirmasi butir terbuka ke user
+Status: diajukan 2026-11-20
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
