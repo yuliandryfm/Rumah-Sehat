@@ -83,8 +83,9 @@ SELECT pg_temp.uji_nol('A3 CHECK enum persis DD (consent_type, action, channel)'
                    FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = v.t::regclass) z
          WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)));
 -- Fungsi trigger app.* (di luar util.*, sehingga tidak tercakup T-08 generik).
-SELECT pg_temp.uji_nol('A3 fungsi app.fn_consent_*_published_lock: plpgsql, SECURITY INVOKER, search_path persis, milik rs_migration, EXECUTE hanya pemilik',
-  ARRAY(SELECT f FROM unnest(ARRAY['app.fn_consent_text_version_published_lock()', 'app.fn_consent_item_published_lock()']) f
+SELECT pg_temp.uji_nol('A3 fungsi app.fn_consent_* (published_lock x2, server_time): plpgsql, SECURITY INVOKER, search_path persis, milik rs_migration, EXECUTE hanya pemilik',
+  ARRAY(SELECT f FROM unnest(ARRAY['app.fn_consent_text_version_published_lock()', 'app.fn_consent_item_published_lock()',
+                                   'app.fn_consent_record_server_time()']) f
          WHERE NOT EXISTS (
            SELECT 1 FROM pg_proc p
             WHERE p.oid = to_regprocedure(f)
@@ -93,6 +94,8 @@ SELECT pg_temp.uji_nol('A3 fungsi app.fn_consent_*_published_lock: plpgsql, SECU
               AND p.proconfig = ARRAY['search_path=pg_catalog, pg_temp']
               AND p.proowner = 'rs_migration'::regrole AND p.proacl IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee <> p.proowner))));
+SELECT pg_temp.uji_nol('A3.2 fn_consent_item_published_lock mengunci baris versi dengan FOR SHARE (race READ COMMITTED dengan penerbitan)',
+  ARRAY(SELECT 'tanpa FOR SHARE' WHERE coalesce((SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure('app.fn_consent_item_published_lock()')), '') !~ 'FOR SHARE'));
 -- Semua trigger A3 persis (nama, tgtype, fungsi, argumen, aktif). tgtype: 1 ROW, 2 BEFORE, 4 INSERT,
 -- 8 DELETE, 16 UPDATE, 32 TRUNCATE.
 SELECT pg_temp.uji_nol('A3 trigger persis §4.11: versi (effective_lock, no_backdate rs_migration, published_lock), butir (published_lock INSERT/UPDATE), bukti L (reject_update, reject_truncate, guard_delete pending_pt_24 + end_action kosong)',
@@ -103,6 +106,7 @@ SELECT pg_temp.uji_nol('A3 trigger persis §4.11: versi (effective_lock, no_back
       ('app.consent_item', 'tg_consent_item_published_lock', 1 | 2 | 4 | 16, 'app.fn_consent_item_published_lock', '{}'),
       ('app.consent_record', 'tg_consent_record_reject_update', 2 | 16, 'util.fn_reject_modification', '{}'),
       ('app.consent_record', 'tg_consent_record_reject_truncate', 2 | 32, 'util.fn_reject_modification', '{}'),
+      ('app.consent_record', 'tg_consent_record_server_time', 1 | 2 | 4, 'app.fn_consent_record_server_time', '{}'),
       ('app.consent_record', 'tg_consent_record_guard_delete', 1 | 2 | 8, 'util.fn_guard_log_delete', '{pending_pt_24,created_at,"{}",rs_privacy_worker}')),
     aktual AS (
       SELECT g.tgrelid::regclass::text AS rel, g.tgname::text AS tgname, g.tgtype::int AS tgtype, g.tgfoid::regproc::text AS fn,
@@ -139,7 +143,11 @@ BEGIN
       ('T-08 effective_lock versi teks hilang', 'DROP TRIGGER tg_consent_text_version_effective_lock ON app.consent_text_version', kelas, 'T-08 consent_text_version \(kelas M\)'),
       ('T-08 no_backdate versi teks dengan role lain', 'DROP TRIGGER tg_consent_text_version_no_backdate ON app.consent_text_version; CREATE TRIGGER tg_consent_text_version_no_backdate BEFORE INSERT ON app.consent_text_version FOR EACH ROW EXECUTE FUNCTION util.fn_effective_row_no_backdate(''rs_app'')', kelas, 'T-08 consent_text_version: argumen tg_consent_text_version_no_backdate'),
       ('published_lock versi teks hilang', 'DROP TRIGGER tg_consent_text_version_published_lock ON app.consent_text_version', trg, '.'),
-      ('published_lock butir nonaktif', 'ALTER TABLE app.consent_item DISABLE TRIGGER tg_consent_item_published_lock', trg, '.')
+      ('published_lock butir nonaktif', 'ALTER TABLE app.consent_item DISABLE TRIGGER tg_consent_item_published_lock', trg, '.'),
+      ('trigger jam server bukti hilang', 'DROP TRIGGER tg_consent_record_server_time ON app.consent_record',
+       $q$SELECT 'server_time hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'app.consent_record'::regclass AND tgname = 'tg_consent_record_server_time' AND tgenabled = 'O')$q$, 'server_time hilang'),
+      ('FOR SHARE dihapus dari kunci butir', 'CREATE OR REPLACE FUNCTION app.fn_consent_item_published_lock() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS ''BEGIN RETURN NEW; END''',
+       $q$SELECT 'tanpa FOR SHARE' WHERE (SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure('app.fn_consent_item_published_lock()')) !~ 'FOR SHARE'$q$, 'tanpa FOR SHARE')
     ) AS t(label, stmt, pemeriksa, pola)
   LOOP
     PERFORM pg_temp.uji_rusak(c.label, c.stmt, c.pemeriksa, c.pola);
@@ -289,6 +297,23 @@ SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi membaca action', 'rs_privacy_
 SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi UPDATE bukti', 'rs_privacy_worker_login', 'UPDATE app.consent_record SET created_at = now()', '42501', 'permission denied for table consent_record');
 SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi TRUNCATE bukti', 'rs_privacy_worker_login', 'TRUNCATE app.consent_record', '42501', 'permission denied for table consent_record');
 SELECT pg_temp.uji_tolak('A3.3 NEG relay audit membaca bukti', 'rs_audit_relay_login', 'SELECT id FROM app.consent_record', '42501', 'permission denied for table consent_record');
+-- Waktu persetujuan dipaksa jam server (trigger tg_consent_record_server_time), untuk semua role.
+SELECT pg_temp.uji_boleh('A3.3 rs_api mengirim created_at mundur 1 tahun dan maju 1 hari: baris tetap tersimpan', 'rs_api',
+  'INSERT INTO app.consent_record (id, created_at, patient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES '
+  || '(''00000000-0000-7000-8000-0000000a3306'', now() - interval ''1 year'', ''00000000-0000-7000-8000-0000000a3011'', ''00000000-0000-7000-8000-0000000a3102'', ''00000000-0000-7000-8000-0000000a3202'', ''granted'', ''patient_app'', ''00000000-0000-7000-8000-0000000a3c07''), '
+  || '(''00000000-0000-7000-8000-0000000a3307'', now() + interval ''1 day'', ''00000000-0000-7000-8000-0000000a3011'', ''00000000-0000-7000-8000-0000000a3102'', ''00000000-0000-7000-8000-0000000a3202'', ''withdrawn'', ''patient_app'', ''00000000-0000-7000-8000-0000000a3c08'')', 2);
+SELECT pg_temp.uji_boleh('A3.3 pemilik skema mengirim created_at mundur 10 tahun', 'rs_migration',
+  'INSERT INTO app.consent_record (id, created_at, patient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3308'', now() - interval ''10 years'', ''00000000-0000-7000-8000-0000000a3011'', ''00000000-0000-7000-8000-0000000a3102'', ''00000000-0000-7000-8000-0000000a3202'', ''granted'', ''backoffice'', ''00000000-0000-7000-8000-0000000a3c09'')', 1);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM app.consent_record
+              WHERE id IN ('00000000-0000-7000-8000-0000000a3306', '00000000-0000-7000-8000-0000000a3307', '00000000-0000-7000-8000-0000000a3308')
+                AND created_at IS DISTINCT FROM now())
+     OR (SELECT count(*) FROM app.consent_record WHERE id IN ('00000000-0000-7000-8000-0000000a3306', '00000000-0000-7000-8000-0000000a3307', '00000000-0000-7000-8000-0000000a3308')) <> 3 THEN
+    RAISE EXCEPTION 'GAGAL A3.3 created_at bukti persetujuan tidak dipaksa jam server';
+  END IF;
+  RAISE NOTICE 'LULUS A3.3 created_at bukti persetujuan = now() transaksi untuk rs_api (mundur/maju) dan pemilik skema (mundur), tidak dapat diisi mundur';
+END $$;
 SELECT pg_temp.uji_tolak('A3.3 NEG rotasi kunci membaca versi teks', 'rs_key_rotation', 'SELECT id FROM app.consent_text_version', '42501', 'permission denied for table consent_text_version');
 
 -- Penjaga DELETE Log dengan fixture app.retention_policy (DD A6.6) bila tabel nyata belum ada; bila
@@ -305,6 +330,7 @@ CREATE TABLE app.retention_policy (
   effective_from timestamptz NOT NULL, deleted_at timestamptz NULL,
   CONSTRAINT pk_retention_policy PRIMARY KEY (id));
 GRANT SELECT ON app.retention_policy TO rs_privacy_worker;
+-- created_at dipaksa now() oleh trigger jam server; penjaga menolak sebelum memeriksa umur baris.
 INSERT INTO app.consent_record (id, created_at, patient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id)
   VALUES ('00000000-0000-7000-8000-0000000a3305', now() - interval '10 years', '00000000-0000-7000-8000-0000000a3011',
           '00000000-0000-7000-8000-0000000a3102', '00000000-0000-7000-8000-0000000a3202', 'granted', 'patient_app', '00000000-0000-7000-8000-0000000a3c06');

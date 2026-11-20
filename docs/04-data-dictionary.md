@@ -2404,7 +2404,7 @@ Event audit E-01–E-17 dengan field PRD §7.2. Sumber: ADR-005, ADR-009, PRD §
 | recorded_at | timestamptz | tidak | PK, kunci partisi | — | Jam server audit store saat tersimpan (ADR-009 butir 6) |
 | seq | bigint | tidak | | — | Nomor urut relay, monoton tanpa celah |
 | occurred_at | timestamptz | tidak | | — | Jam server aplikasi saat aksi; ditampilkan WIB (AB-42) |
-| event_code | text | tidak | | — | CHECK (`e_01` … `e_17`) |
+| event_code | text | tidak | | — | CHECK (`e_01` … `e_17`); sejak PRD v1.3 (CR-021) ditambah `e_18`, lihat catatan di bawah tabel |
 | action_name | text | tidak | | — | |
 | actor_type | text | tidak | | — | CHECK (`account`, `system`, `partner_system`, `ruang_sehat_system`) |
 | actor_account_id | uuid | ya | | PII | ID akun (Ruang Sehat) atau `rme_user` (RME) |
@@ -2434,6 +2434,8 @@ Event audit E-01–E-17 dengan field PRD §7.2. Sumber: ADR-005, ADR-009, PRD §
 | event_hash | bytea | tidak | | — | SHA-256(`prev_hash` ‖ bentuk kanonis) |
 
 Index (per partisi): `ix (recorded_at DESC)`; `ix (actor_account_id, recorded_at)`; `ix (subject_id, recorded_at)`; `ix (event_code, recorded_at)`; `ix (object_type, object_id)`; `ix (tenant_id, event_code, recorded_at)`; `ix (source_ip, recorded_at)`; `ix (correlation_id)`; `ix (seq)`. Filter US-1502 AC1 tercakup. Trigger menolak `UPDATE`, `DELETE`, dan `TRUNCATE` `[SRC-40]`. Retensi `[TIDAK DIKETAHUI]` (PT-24); partisi lebih tua dari 24 bulan diarsipkan dan di-*detach* (ADR-009 butir 9) `[SRC-39]`. Di database audit RME, `audit_event` dan `audit_event_subject` memakai RLS per `tenant_id` untuk role `audit_tenant_reader` (§0.6 B). Index BRIN untuk `recorded_at` dievaluasi di Tahap 5 (kemampuannya belum ada SRC) (review DBA S07).
+
+Catatan F1-T21 (review gabungan F1-T19/F1-T21): CHECK `event_code` fisik memuat `e_01` … `e_18`. E-18 (impor data peserta korporat dan pengiriman undangan) ditambahkan PRD v1.3 E-18 sebagai bagian CR-021 dan sudah ditulis crate audit; tanpa nilai ini relay gagal menyisipkan event E-18 dan berhenti. Migrasi: `db/migrations/audit/20261120110000_audit_event_chain_archive.sql`.
 
 #### B2. `audit_event_key` (L, tidak dipartisi)
 

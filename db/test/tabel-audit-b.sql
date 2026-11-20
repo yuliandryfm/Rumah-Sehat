@@ -52,9 +52,9 @@ SELECT pg_temp.uji_nol('B kolom persis DD B1-B6 (nama, tipe, NOT NULL, urutan; c
                       FROM pg_attribute att LEFT JOIN pg_attrdef d ON d.adrelid = att.attrelid AND d.adnum = att.attnum
                      WHERE att.attrelid = to_regclass('audit.' || h.t) AND att.attnum > 0 AND NOT att.attisdropped) a
      WHERE a.k IS DISTINCT FROM h.k));
-SELECT pg_temp.uji_nol('B CHECK persis (event_code e_01-e_17, actor_type, subject_count, outcome, hash 32 byte, seq >= 1, subject_kind, outcome verifikasi)',
+SELECT pg_temp.uji_nol('B CHECK persis (event_code e_01-e_18, actor_type, subject_count, outcome, hash 32 byte, seq >= 1, subject_kind, outcome verifikasi)',
   ARRAY(WITH harap(t, n, def) AS (VALUES
-      ('audit_event', 'ck_audit_event_event_code', 'CHECK ((event_code = ANY (ARRAY[''e_01''::text, ''e_02''::text, ''e_03''::text, ''e_04''::text, ''e_05''::text, ''e_06''::text, ''e_07''::text, ''e_08''::text, ''e_09''::text, ''e_10''::text, ''e_11''::text, ''e_12''::text, ''e_13''::text, ''e_14''::text, ''e_15''::text, ''e_16''::text, ''e_17''::text])))'),
+      ('audit_event', 'ck_audit_event_event_code', 'CHECK ((event_code = ANY (ARRAY[''e_01''::text, ''e_02''::text, ''e_03''::text, ''e_04''::text, ''e_05''::text, ''e_06''::text, ''e_07''::text, ''e_08''::text, ''e_09''::text, ''e_10''::text, ''e_11''::text, ''e_12''::text, ''e_13''::text, ''e_14''::text, ''e_15''::text, ''e_16''::text, ''e_17''::text, ''e_18''::text])))'),
       ('audit_event', 'ck_audit_event_actor_type', 'CHECK ((actor_type = ANY (ARRAY[''account''::text, ''system''::text, ''partner_system''::text, ''ruang_sehat_system''::text])))'),
       ('audit_event', 'ck_audit_event_subject_count', 'CHECK ((subject_count >= 0))'),
       ('audit_event', 'ck_audit_event_outcome', 'CHECK ((outcome = ANY (ARRAY[''success''::text, ''failure''::text])))'),
@@ -273,8 +273,8 @@ BEGIN
 END $$;
 -- Hasil verifikasi (V8) §6.4 butir 2 / T-19: ON CONFLICT dengan conflict_target membutuhkan SELECT atas
 -- kolom target (dokumentasi INSERT PostgreSQL 18, SRC-470), sehingga writer yang hanya punya INSERT
--- (DD §0.6 B) DITOLAK. Kiriman ulang dapat dibedakan lewat galat 23505 per nama constraint (pk vs
--- uq seq); keputusan bentuk jalur relay diserahkan ke F1-T24 (dilaporkan F1-T21). Bentuk tanpa
+-- (DD §0.6 B) DITOLAK. Kiriman ulang dibedakan lewat galat 23505 per constraint_name (pk vs uq seq),
+-- KEPUTUSAN-284 (jalur relay F1-T24). Bentuk tanpa
 -- conflict_target diterima dengan INSERT saja, tetapi juga menelan konflik seq (cabang rantai) tanpa
 -- galat, sehingga tidak aman untuk relay.
 SELECT pg_temp.uji_tolak('T-19 (V8) writer INSERT ... ON CONFLICT (event_id) DO NOTHING ditolak: conflict_target butuh SELECT event_id (SRC-470)', :'penulis',
@@ -344,7 +344,7 @@ DECLARE
                VALUES ('00000000-0000-7000-8000-00000000b108', '2027-05-01 00:00:00+00', 8, now(), %s, %s, %s, 'x', %s, 'worker', %s, '00000000-0000-7000-8000-00000000c108', 1, %s, %s)$s$;
 BEGIN
   FOR c IN SELECT * FROM (VALUES
-      ('event_code e_18', format(ev, '''e_18''', '''x''', '''system''', '0', '''success''', 'decode(repeat(''00'', 32), ''hex'')', 'decode(repeat(''00'', 32), ''hex'')'), 'ck_audit_event_event_code'),
+      ('event_code e_19', format(ev, '''e_19''', '''x''', '''system''', '0', '''success''', 'decode(repeat(''00'', 32), ''hex'')', 'decode(repeat(''00'', 32), ''hex'')'), 'ck_audit_event_event_code'),
       ('actor_type user', format(ev, '''e_01''', '''x''', '''user''', '0', '''success''', 'decode(repeat(''00'', 32), ''hex'')', 'decode(repeat(''00'', 32), ''hex'')'), 'ck_audit_event_actor_type'),
       ('subject_count negatif', format(ev, '''e_01''', '''x''', '''system''', '-1', '''success''', 'decode(repeat(''00'', 32), ''hex'')', 'decode(repeat(''00'', 32), ''hex'')'), 'ck_audit_event_subject_count'),
       ('outcome ok', format(ev, '''e_01''', '''x''', '''system''', '0', '''ok''', 'decode(repeat(''00'', 32), ''hex'')', 'decode(repeat(''00'', 32), ''hex'')'), 'ck_audit_event_outcome'),
@@ -476,6 +476,10 @@ BEGIN
   PERFORM pg_temp.uji_boleh('§5.6 reader RME melihat semua subjek di bawah FORCE RLS', 'rme_audit_reader', 'SELECT * FROM audit.audit_event_subject', 4);
   PERFORM pg_temp.uji_boleh('§5.6 pemilik (FORCE RLS) membaca lewat kebijakan migration', 'rme_audit_migration', 'SELECT * FROM audit.audit_event', 4);
 END $$;
+-- E-18 (PRD v1.3, CR-021): event_code e_18 diterima (review gabungan F1-T19/T21; negatifnya e_19 di atas).
+SELECT pg_temp.uji_boleh('B1 writer INSERT event E-18 (impor peserta korporat, PRD v1.3 CR-021) diterima CHECK event_code', :'penulis',
+  $s$INSERT INTO audit.audit_event (event_id, recorded_at, seq, occurred_at, event_code, action_name, actor_type, object_type, subject_count, source_component, outcome, correlation_id, canonical_version, prev_hash, event_hash)
+     VALUES ('00000000-0000-7000-8000-00000000b118', '2027-05-01 00:00:00+00', 18, '2027-05-01 00:00:00+00', 'e_18', 'corporate_participant_import', 'account', 'corporate_participant_import', 0, 'backoffice', 'success', '00000000-0000-7000-8000-00000000c118', 1, decode(repeat('44', 32), 'hex'), decode(repeat('55', 32), 'hex'))$s$, 1);
 ROLLBACK;
 
 DO $$

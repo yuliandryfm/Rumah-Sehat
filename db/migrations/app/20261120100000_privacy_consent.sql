@@ -18,7 +18,8 @@
 --   kunci versi terbit (§4.2 (3c)); consent_item: kunci butir milik versi terbit (§4.2 (3d)).
 --   Fungsi trigger khusus tabel berada di skema app (§4.2 (3c), (3d)); search_path persis
 --   "pg_catalog, pg_temp" (CR-020, menggantikan "pg_catalog" di teks §4.2), rujukan berkualifikasi.
--- - consent_record (L): penolak UPDATE dan TRUNCATE + penjaga DELETE tingkat baris (§4.9).
+-- - consent_record (L): penolak UPDATE dan TRUNCATE + penjaga DELETE tingkat baris (§4.9), ditambah
+--   trigger jam server created_at (review gabungan F1-T19/T21).
 --   Kategori retensi dan daftar end_action ditetapkan bersama PT-24 [TIDAK DIKETAHUI]. Sampai itu
 --   argumen kategori berupa penanda "pending_pt_24" (bukan kategori DD A6.6) dan daftar end_action
 --   kosong '{}', sehingga semua DELETE ditolak (§4.2 (2) catatan PT-24; dilaporkan F1-T19).
@@ -155,10 +156,15 @@ LANGUAGE plpgsql
 SET search_path = pg_catalog, pg_temp
 AS $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM app.consent_text_version v
-              WHERE v.id IN (NEW.consent_text_version_id,
-                             CASE WHEN TG_OP = 'UPDATE' THEN OLD.consent_text_version_id END)
-                AND v.published_at IS NOT NULL) THEN
+  -- FOR SHARE mengunci baris versi sampai transaksi selesai: penerbitan (UPDATE published_at) yang
+  -- berjalan bersamaan menunggu, dan bila penerbitan lebih dulu commit, READ COMMITTED membaca ulang
+  -- baris terbaru sehingga butir ditolak (tanpa ini butir dapat lolos ke versi yang baru terbit).
+  IF EXISTS (SELECT 1
+               FROM (SELECT v.published_at FROM app.consent_text_version v
+                      WHERE v.id IN (NEW.consent_text_version_id,
+                                     CASE WHEN TG_OP = 'UPDATE' THEN OLD.consent_text_version_id END)
+                        FOR SHARE) s
+              WHERE s.published_at IS NOT NULL) THEN
     RAISE EXCEPTION 'published_row_locked: consent_item (version published) id=%', NEW.id
       USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -209,6 +215,28 @@ CREATE TRIGGER tg_consent_record_reject_update
 CREATE TRIGGER tg_consent_record_reject_truncate
   BEFORE TRUNCATE ON app.consent_record
   FOR EACH STATEMENT EXECUTE FUNCTION util.fn_reject_modification();
+-- Waktu persetujuan = jam server saat INSERT (US-104 AC2 "waktu"; KEPUTUSAN-93 created_at dari server),
+-- dipaksa trigger untuk semua role termasuk pemilik skema, sehingga bukti tidak dapat diisi mundur
+-- atau maju. Dipilih trigger (pola pengisian jam server oleh trigger seperti shredded_at, §4.10),
+-- bukan hak INSERT per kolom tanpa created_at: hak per kolom rs_app di luar aturan kelas DD §0.6 A
+-- dan T-06 (hanya pekerja privasi dan rotasi kunci yang memakai hak per kolom).
+CREATE FUNCTION app.fn_consent_record_server_time()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, pg_temp
+AS $$
+BEGIN
+  NEW.created_at := now();
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION app.fn_consent_record_server_time() FROM PUBLIC;
+COMMENT ON FUNCTION app.fn_consent_record_server_time() IS
+  'Waktu bukti persetujuan selalu jam server saat INSERT (review gabungan F1-T19/T21)';
+
+CREATE TRIGGER tg_consent_record_server_time
+  BEFORE INSERT ON app.consent_record
+  FOR EACH ROW EXECUTE FUNCTION app.fn_consent_record_server_time();
 CREATE TRIGGER tg_consent_record_guard_delete
   BEFORE DELETE ON app.consent_record
   FOR EACH ROW EXECUTE FUNCTION util.fn_guard_log_delete('pending_pt_24', 'created_at', '{}', 'rs_privacy_worker');

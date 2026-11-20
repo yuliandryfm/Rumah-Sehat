@@ -27,6 +27,8 @@
 --   kebijakan untuk setiap role yang menyentuh tabel (F-P02). ruang_sehat_audit tanpa RLS.
 -- - CHECK 32 byte untuk event_hash anchor, boundary_event_hash, dan archive_sha256 mengikuti
 --   ck_audit_event_*_hash §6.1 (keluaran SHA-256, ADR-009 butir 5); keputusan teknis F1-T21.
+-- - ck_audit_event_event_code memuat e_01-e_18: E-18 ditambahkan PRD v1.3 (CR-021), DD B1 v1.1
+--   menulis e_01-e_17 (catatan ditambahkan di DD B1, review gabungan F1-T19/T21).
 -- - audit.pr_archive_detach / pr_archive_drop_detached (§6.5) TIDAK di berkas ini: badannya memakai
 --   SQL dinamis di luar allowlist TD-01 (a) sehingga perlu keputusan perluasan allowlist (dilaporkan).
 -- - Hak *_audit_writer persis DD §0.6 B (INSERT saja + EXECUTE fn_chain_head). Jalur relay §6.4
@@ -84,7 +86,7 @@ CREATE TABLE audit.audit_event (
   CONSTRAINT pk_audit_event PRIMARY KEY (event_id, recorded_at),
   CONSTRAINT ck_audit_event_event_code CHECK (event_code IN
     ('e_01','e_02','e_03','e_04','e_05','e_06','e_07','e_08','e_09','e_10','e_11','e_12','e_13','e_14',
-     'e_15','e_16','e_17')),
+     'e_15','e_16','e_17','e_18')),                       -- e_18: PRD v1.3 E-18 (CR-021)
   CONSTRAINT ck_audit_event_actor_type CHECK (actor_type IN
     ('account','system','partner_system','ruang_sehat_system')),
   CONSTRAINT ck_audit_event_subject_count CHECK (subject_count >= 0),
