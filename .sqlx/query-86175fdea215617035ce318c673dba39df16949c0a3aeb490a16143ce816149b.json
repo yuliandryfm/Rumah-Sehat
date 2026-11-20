@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET status = 'active', status_changed_at = $2, updated_at = $2 WHERE id = $1 AND account_type = 'rs_admin' AND status = 'pending_activation' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86175fdea215617035ce318c673dba39df16949c0a3aeb490a16143ce816149b"
+}

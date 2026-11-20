@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deleted_by FROM app.rs_admin_role WHERE account_id = $1 AND sub_role = 'verifier'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deleted_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "rs_admin_role",
+            "name": "deleted_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "0c9c977ab412504c4796d5f48fcf88251b5bb850a6daa260a7339e244c17a27a"
+}

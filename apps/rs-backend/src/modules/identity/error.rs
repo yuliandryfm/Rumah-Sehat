@@ -1,11 +1,26 @@
 //! Galat modul `identity` dan pemetaannya ke kode terdaftar (coding-standards §3.2,
-//! docs/05-response-codes.md §3). Tidak ada kode baru di modul ini: semua kasus memakai kode umum.
+//! docs/05-response-codes.md §3 dan §6 modul 01).
+//!
+//! Kode spesifik modul (F1-T65, US-208): `4090101` aksi atas akun sendiri (AC3, AC5), `4090102` Super Admin
+//! aktif terakhir (AC2), `4090103` Auditor aktif terakhir (AC7). Pemisahan tugas Auditor (AC6) memakai
+//! `4220001` dengan galat isian `sub_roles`/`auditor_exclusive`.
 
+use super::admin_domain::AdminRuleViolation;
 use envelope::{ApiError, FieldError, ResponseCode, codes};
 use std::fmt;
 
-/// Galat use case identitas dan sesi.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// `4090101`: admin mengubah sub-peran atau menonaktifkan akunnya sendiri (US-208 AC3, AC5).
+pub const SELF_ACTION_REJECTED: ResponseCode =
+    ResponseCode::new("4090101", "Aksi atas akun sendiri tidak diizinkan");
+/// `4090102`: Super Admin aktif terakhir (US-208 AC2).
+pub const LAST_SUPER_ADMIN: ResponseCode =
+    ResponseCode::new("4090102", "Super Admin aktif terakhir tidak dapat dicabut");
+/// `4090103`: Auditor aktif terakhir (US-208 AC7).
+pub const LAST_AUDITOR: ResponseCode =
+    ResponseCode::new("4090103", "Auditor aktif terakhir tidak dapat dicabut");
+
+/// Galat use case identitas, sesi, dan akun admin.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdentityError {
     /// PostgreSQL tidak tersedia atau query gagal (503; detail hanya di log).
     Database,
@@ -13,15 +28,31 @@ pub enum IdentityError {
     CacheUnavailable,
     /// Pencabutan tanpa ID sesi atau dengan `expires_at` yang sudah lewat (500: kesalahan pemanggil).
     InvalidRevocation,
+    /// Aturan akun admin dilanggar (US-208).
+    AdminRule(AdminRuleViolation),
+    /// Akun admin sasaran tidak ada (atau bukan akun admin Ruang Sehat).
+    NotFound,
+    /// Isian tidak valid.
+    Invalid(Vec<FieldError>),
+    /// Keycloak menolak atau tidak dapat dihubungi (502). Perubahan yang sudah di-commit tetap berlaku;
+    /// langkah Keycloak dicoba ulang (lihat dokumentasi use case).
+    IdentityProvider,
+    /// Pencatatan audit gagal; aksi dibatalkan (500).
+    Audit,
 }
 
 impl fmt::Display for IdentityError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Database => "database tidak tersedia",
-            Self::CacheUnavailable => "cache tidak tersedia",
-            Self::InvalidRevocation => "pencabutan sesi tidak valid",
-        })
+        match self {
+            Self::Database => f.write_str("database tidak tersedia"),
+            Self::CacheUnavailable => f.write_str("cache tidak tersedia"),
+            Self::InvalidRevocation => f.write_str("pencabutan sesi tidak valid"),
+            Self::AdminRule(v) => write!(f, "aturan akun admin dilanggar: {v:?}"),
+            Self::NotFound => f.write_str("akun admin tidak ditemukan"),
+            Self::Invalid(_) => f.write_str("isian tidak valid"),
+            Self::IdentityProvider => f.write_str("Keycloak gagal"),
+            Self::Audit => f.write_str("pencatatan audit gagal"),
+        }
     }
 }
 
@@ -29,11 +60,43 @@ impl std::error::Error for IdentityError {}
 
 impl IdentityError {
     /// Kode tetap untuk log.
-    pub fn code(self) -> &'static str {
+    pub fn code(&self) -> &'static str {
         match self {
             Self::Database => "database",
             Self::CacheUnavailable => "cache_unavailable",
             Self::InvalidRevocation => "invalid_revocation",
+            Self::AdminRule(_) => "admin_rule",
+            Self::NotFound => "not_found",
+            Self::Invalid(_) => "invalid",
+            Self::IdentityProvider => "identity_provider",
+            Self::Audit => "audit",
+        }
+    }
+
+    /// Galat isian tunggal.
+    pub fn field(field: &str, code: &str, message: &str) -> Self {
+        Self::Invalid(vec![FieldError::new(field, code, message)])
+    }
+}
+
+impl From<AdminRuleViolation> for IdentityError {
+    fn from(v: AdminRuleViolation) -> Self {
+        // Pelanggaran yang berbentuk isian dinyatakan sebagai galat validasi supaya pesannya tampil di isian.
+        match v {
+            AdminRuleViolation::AuditorNotExclusive => Self::field(
+                "sub_roles",
+                "auditor_exclusive",
+                "Pemisahan tugas: Auditor tidak dapat digabung dengan sub-peran lain",
+            ),
+            AdminRuleViolation::NoSubRole => {
+                Self::field("sub_roles", "required", "Pilih minimal satu sub-peran")
+            }
+            AdminRuleViolation::NoChange => Self::field(
+                "sub_roles",
+                "no_change",
+                "Sub-peran sama dengan yang sudah dipegang",
+            ),
+            other => Self::AdminRule(other),
         }
     }
 }
@@ -42,12 +105,33 @@ impl ApiError for IdentityError {
     fn response_code(&self) -> ResponseCode {
         match self {
             Self::Database | Self::CacheUnavailable => codes::UNAVAILABLE,
-            Self::InvalidRevocation => codes::INTERNAL,
+            Self::InvalidRevocation | Self::Audit => codes::INTERNAL,
+            Self::NotFound => codes::NOT_FOUND,
+            Self::Invalid(_) => codes::INVALID,
+            Self::IdentityProvider => codes::UPSTREAM_BAD_GATEWAY,
+            Self::AdminRule(v) => match v {
+                AdminRuleViolation::SelfRoleChange | AdminRuleViolation::SelfDeactivation => {
+                    SELF_ACTION_REJECTED
+                }
+                AdminRuleViolation::LastSuperAdmin => LAST_SUPER_ADMIN,
+                AdminRuleViolation::LastAuditor => LAST_AUDITOR,
+                AdminRuleViolation::ActorNotSuperAdmin => codes::FORBIDDEN,
+                AdminRuleViolation::TargetInactive
+                | AdminRuleViolation::SuperAdminExists
+                | AdminRuleViolation::NoPendingBootstrapAccount => codes::STATUS_CONFLICT,
+                // Dipetakan ke Invalid lewat From; bila dibangun langsung tetap 422.
+                AdminRuleViolation::AuditorNotExclusive
+                | AdminRuleViolation::NoSubRole
+                | AdminRuleViolation::NoChange => codes::INVALID,
+            },
         }
     }
 
     fn field_errors(&self) -> &[FieldError] {
-        &[]
+        match self {
+            Self::Invalid(e) => e,
+            _ => &[],
+        }
     }
 }
 
@@ -66,5 +150,40 @@ mod tests {
             IdentityError::InvalidRevocation.response_code().as_str(),
             "5000001"
         );
+        let code = |v: AdminRuleViolation| IdentityError::from(v).response_code().as_str();
+        assert_eq!(code(AdminRuleViolation::SelfRoleChange), "4090101");
+        assert_eq!(code(AdminRuleViolation::SelfDeactivation), "4090101");
+        assert_eq!(code(AdminRuleViolation::LastSuperAdmin), "4090102");
+        assert_eq!(code(AdminRuleViolation::LastAuditor), "4090103");
+        assert_eq!(code(AdminRuleViolation::ActorNotSuperAdmin), "4030001");
+        assert_eq!(code(AdminRuleViolation::TargetInactive), "4090001");
+        assert_eq!(code(AdminRuleViolation::AuditorNotExclusive), "4220001");
+        assert_eq!(IdentityError::NotFound.response_code().as_str(), "4040001");
+        assert_eq!(
+            IdentityError::IdentityProvider.response_code().as_str(),
+            "5020001"
+        );
+    }
+
+    #[test]
+    fn auditor_exclusivity_is_a_field_error_with_separation_of_duties_message() {
+        let e = IdentityError::from(AdminRuleViolation::AuditorNotExclusive);
+        let f = e.field_errors();
+        assert_eq!(f.len(), 1);
+        assert_eq!(
+            f.first().map(|x| x.code.as_str()),
+            Some("auditor_exclusive")
+        );
+        assert!(
+            f.first()
+                .is_some_and(|x| x.message.contains("Pemisahan tugas"))
+        );
+    }
+
+    #[test]
+    fn specific_codes_belong_to_module_01_and_match_http() {
+        for c in [SELF_ACTION_REJECTED, LAST_SUPER_ADMIN, LAST_AUDITOR] {
+            assert!(c.as_str().starts_with("40901"), "{}", c.as_str());
+        }
     }
 }

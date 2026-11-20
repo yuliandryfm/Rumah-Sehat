@@ -580,6 +580,33 @@
       "optionalClientScopes": []
     },
     {
+      "clientId": "rs-backend-admin-manager",
+      "name": "Pengelola pengguna admin (rs-backend api dan bootstrap-super-admin)",
+      "description": "Klien layanan rs-backend: client credentials saja, hanya realm-management/manage-users dan cakupan kc-admin-api untuk membuat pengguna admin, mengirim undangan aktivasi, menonaktifkan, dan menghapus (F1-T65, US-208, ADR-011)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "$(env:RS_KC_ADMIN_MANAGER_SECRET)",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "consentRequired": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "kc-admin-api"
+      ],
+      "optionalClientScopes": []
+    },
+    {
       "clientId": "admin-cli",
       "directAccessGrantsEnabled": false
     },
@@ -595,6 +622,12 @@
         "roles": [
           "view-events"
         ]
+      },
+      {
+        "client": "rs-backend-admin-manager",
+        "roles": [
+          "manage-users"
+        ]
       }
     ]
   },
@@ -606,6 +639,16 @@
       "clientRoles": {
         "realm-management": [
           "view-events"
+        ]
+      }
+    },
+    {
+      "username": "service-account-rs-backend-admin-manager",
+      "enabled": true,
+      "serviceAccountClientId": "rs-backend-admin-manager",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
         ]
       }
     }

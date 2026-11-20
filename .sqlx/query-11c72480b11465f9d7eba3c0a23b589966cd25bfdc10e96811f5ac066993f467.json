@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.rs_admin_role (id, created_by, updated_by, account_id, sub_role, created_at, updated_at) VALUES ($1, $2, $2, $3, $4, $5, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "11c72480b11465f9d7eba3c0a23b589966cd25bfdc10e96811f5ac066993f467"
+}

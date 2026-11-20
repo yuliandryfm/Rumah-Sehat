@@ -9,11 +9,14 @@
 //! - Blind index NIK HMAC-SHA256 dengan kunci berversi dari OpenBao KV (skema fisik §7.2).
 //! - Pembacaan rahasia OpenBao KV v2 untuk kredensial pihak ketiga ([`read_kv_secret`], F1-T36) dan
 //!   penyedia kripto TLS rustls berbasis aws-lc-rs ([`tls_crypto_provider`], F1-T36).
+//! - Verifikasi persetujuan orang kedua lewat Control Group OpenBao ([`verify_control_group_approval`],
+//!   F1-T65, US-208 AC4).
 //! - Kunci, DEK, dan plaintext tidak pernah muncul di `Debug`/`Display` maupun galat; crate ini tidak
 //!   menulis log.
 
 mod blind_index;
 mod context;
+mod control_group;
 mod envelope;
 mod error;
 mod keyring;
@@ -30,6 +33,10 @@ pub use blind_index::{
     Nik, NikBlindIndexKeyring, load_nik_blind_index_keyring,
 };
 pub use context::{ContainerType, EncryptionContext, System};
+pub use control_group::{
+    ApprovalError, ControlGroupRequest, MAX_APPROVERS, VerifiedApproval,
+    verify_control_group_approval,
+};
 pub use envelope::{
     AAD_LABEL_V1, AadV1, DEK_LEN, ENVELOPE_OVERHEAD, ENVELOPE_V1, SecretBytes, TAG_LEN,
     secret_bytes,

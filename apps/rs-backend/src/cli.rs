@@ -19,7 +19,8 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 
 /// Teks bantuan.
-pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-verify|email-relay>";
+pub const USAGE: &str =
+    "pemakaian: rs-backend <api|worker|audit-relay|audit-verify|email-relay|bootstrap-super-admin>";
 
 /// Subcommand yang dikenal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,8 @@ pub enum Command {
     AuditVerify,
     /// Relay SMTP ke SES API v2 (F1-T36, ADR-026).
     EmailRelay,
+    /// Bootstrap Super Admin pertama, perintah satu kali (F1-T65, US-208 AC4).
+    BootstrapSuperAdmin,
 }
 
 /// Galat argumen baris perintah. Nilai argumen tidak pernah disertakan di pesan.
@@ -61,6 +64,7 @@ impl Command {
             "audit-relay" => Ok(Self::AuditRelay),
             "audit-verify" => Ok(Self::AuditVerify),
             "email-relay" => Ok(Self::EmailRelay),
+            "bootstrap-super-admin" => Ok(Self::BootstrapSuperAdmin),
             _ => Err(CliError::Unknown),
         }
     }
@@ -73,6 +77,7 @@ impl Command {
             Self::AuditRelay => Component::AuditRelay,
             Self::AuditVerify => Component::AuditVerify,
             Self::EmailRelay => Component::EmailRelay,
+            Self::BootstrapSuperAdmin => Component::AdminBootstrap,
         }
     }
 
@@ -84,6 +89,7 @@ impl Command {
             Self::AuditRelay => "audit-relay",
             Self::AuditVerify => "audit-verify",
             Self::EmailRelay => "email-relay",
+            Self::BootstrapSuperAdmin => "bootstrap-super-admin",
         }
     }
 }
@@ -95,6 +101,7 @@ enum Loaded {
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
     EmailRelay(Box<EmailRelayConfig>),
+    BootstrapSuperAdmin(Box<crate::admin_bootstrap::BootstrapConfig>),
 }
 
 impl Loaded {
@@ -105,6 +112,9 @@ impl Loaded {
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
             Command::EmailRelay => Self::EmailRelay(Box::new(EmailRelayConfig::load(env)?)),
+            Command::BootstrapSuperAdmin => Self::BootstrapSuperAdmin(Box::new(
+                crate::admin_bootstrap::BootstrapConfig::load(env)?,
+            )),
         })
     }
 
@@ -115,6 +125,7 @@ impl Loaded {
             Self::AuditRelay(c) => &c.base,
             Self::AuditVerify(c) => &c.base,
             Self::EmailRelay(c) => &c.base,
+            Self::BootstrapSuperAdmin(c) => &c.base,
         }
     }
 }
@@ -151,6 +162,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
         Loaded::EmailRelay(config) => run_email_relay(*config),
+        Loaded::BootstrapSuperAdmin(config) => crate::admin_bootstrap::run(*config),
     }
 }
 
@@ -425,6 +437,10 @@ mod tests {
             Command::parse(&a(&["email-relay"])),
             Ok(Command::EmailRelay)
         );
+        assert_eq!(
+            Command::parse(&a(&["bootstrap-super-admin"])),
+            Ok(Command::BootstrapSuperAdmin)
+        );
     }
 
     #[test]
@@ -443,6 +459,7 @@ mod tests {
             Command::AuditRelay,
             Command::AuditVerify,
             Command::EmailRelay,
+            Command::BootstrapSuperAdmin,
         ] {
             assert_eq!(Command::parse(&a(&[c.name()])), Ok(c));
         }

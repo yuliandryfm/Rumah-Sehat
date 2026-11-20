@@ -165,6 +165,8 @@ services:
       # Klien layanan pengambil event rs-backend worker (F1-T34, ADR-011 butir 10), satu rahasia per realm.
       RS_KC_EVENT_READER_PASIEN_SECRET: ${RS_KC_EVENT_READER_PASIEN_SECRET:?isi di infra/local/.env}
       RS_KC_EVENT_READER_ADMIN_SECRET: ${RS_KC_EVENT_READER_ADMIN_SECRET:?isi di infra/local/.env}
+      # Klien layanan pengelola pengguna admin (F1-T65, US-208): manage-users realm `admin` saja.
+      RS_KC_ADMIN_MANAGER_SECRET: ${RS_KC_ADMIN_MANAGER_SECRET:?isi di infra/local/.env}
     volumes:
       - ../keycloak/realms:/config:ro
 

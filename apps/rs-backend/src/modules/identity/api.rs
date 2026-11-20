@@ -4,6 +4,11 @@
 //! `rs-backend worker`: konfigurasi bertipe [`KeycloakEventConfig`], klien Admin REST [`KeycloakClient`],
 //! satu putaran [`Puller::round`] (dipakai test), dan perulangan proses [`run_puller`].
 //!
+//! F1-T65 (US-208): [`AdminAccounts`] untuk bootstrap Super Admin pertama (perintah
+//! `rs-backend bootstrap-super-admin`, persetujuan orang kedua lewat Control Group OpenBao), pembuatan akun
+//! admin beserta undangan aktivasi sekali pakai 24 jam, perubahan sub-peran, dan penonaktifan, semuanya
+//! dengan E-10/E-11 lewat `audit::in_audited_tx`.
+//!
 //! F1-T33: resolver akun dan penjaga sesi yang dicabut untuk perakitan aplikasi dan modul lain:
 //! - [`AccountDirectory`]: dipasang ke `authz::Enforcement::new(auth, directory.clone(), directory, denials)`
 //!   sebagai resolver akun dan penjaga sesi yang dicabut.
@@ -20,6 +25,14 @@ use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::time::Duration;
 
+pub use super::admin_domain::{
+    ACTIVATION_INVITE_LIFESPAN_SECONDS, AdminRuleViolation, RoleDiff, is_sensitive,
+};
+pub use super::admin_service::{
+    AccountChangeListener, AdminAccounts, AdminActor, AdminIdentityProvider, BootstrapApproval,
+    CreatedAdmin, Deactivated, IdpFailure, IdpFuture, InviteDelivery, KeycloakAdminUsers,
+    NewAdminInput, NoAccountCache,
+};
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
 pub use super::error::IdentityError;
 pub use super::jobs::{
@@ -27,7 +40,8 @@ pub use super::jobs::{
     RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,
 };
 pub use super::keycloak::{
-    InvalidKeycloakAddress, KeycloakAddress, KeycloakClient, KeycloakError, RealmCredential,
+    ACTIVATION_ACTIONS, InvalidKeycloakAddress, KeycloakAddress, KeycloakClient, KeycloakError,
+    RealmCredential,
 };
 pub use super::service::{
     AccountDirectory, DEFAULT_ACCOUNT_CACHE_TTL_SECONDS, RecordedRevocation, RevocationReason,

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET deleted_at = now(), delete_reason = 'uji_f1_t65_reset' WHERE account_type = 'rs_admin' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7a40d82dce0fdd385769e3997e878a02a8355f7eb5b7f52d372bb1601c93c56a"
+}
