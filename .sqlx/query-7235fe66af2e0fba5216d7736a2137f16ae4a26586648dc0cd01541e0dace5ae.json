@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.rs_admin_role SET sub_role = 'verifier' WHERE account_id = (SELECT id FROM app.account WHERE idp_subject = $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7235fe66af2e0fba5216d7736a2137f16ae4a26586648dc0cd01541e0dace5ae"
+}

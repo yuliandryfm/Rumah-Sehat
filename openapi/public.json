@@ -6,6 +6,75 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/v1/public/content/images/{image_id}": {
+      "get": {
+        "tags": [
+          "public-content"
+        ],
+        "summary": "Gambar konten yang sedang tayang di situs, disajikan backend dari object storage privat (bukan bucket\npublik, ADR-027 butir 5), dengan batas laju. Selain itu 404 (tidak membedakan draf dan ID tebakan).",
+        "operationId": "public_content_image",
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "description": "ID gambar (UUID) dari `image.url` konten tayang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Isi gambar (JPG/PNG hasil kode ulang tanpa metadata).",
+            "content": {
+              "image/png": {},
+              "image/jpeg": {}
+            }
+          },
+          "404": {
+            "description": "Tidak ada atau tidak dipakai konten yang sedang tayang.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Object storage tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/content/items": {
       "get": {
         "tags": [

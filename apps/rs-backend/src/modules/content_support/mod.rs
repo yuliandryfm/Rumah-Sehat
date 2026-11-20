@@ -3,6 +3,8 @@
 //! pratinjau, jadwal, arsip, soft delete dan pulihkan (E-16), kebijakan sub-peran Konten.
 //! F1-T111: aturan render aman isi Markdown divalidasi saat simpan (`markdown`, M-40).
 //! F1-T94: konten situs yang sedang tayang tanpa login (`/v1/public/content`), dengan batas laju.
+//! F1-T93: gambar konten lewat upload slot (modul platform), teks alternatif wajib, dan gambar tayang
+//! disajikan backend (bukan bucket publik).
 //! Submodul privat (coding-standards §1.3); modul lain tidak memakai modul ini.
 
 mod domain;

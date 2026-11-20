@@ -13,12 +13,16 @@ pub enum ContentError {
     NotFound,
     /// Transisi status tidak sah atau kalah balapan, atau versi halaman tetap lain bentrok (409).
     StatusConflict,
-    /// Jenis media tidak didukung (415): badan bukan JSON.
+    /// Berkas gambar terlalu besar (413).
+    PayloadTooLarge,
+    /// Jenis media tidak didukung (415): badan bukan JSON, atau jenis gambar menurut isi bukan JPG/PNG.
     UnsupportedMediaType,
     /// Validasi gagal dengan galat per isian (422, KU-01).
     Validation(Vec<FieldError>),
     /// Batas laju jalur publik terlampaui (429).
     RateLimited,
+    /// Object storage tidak tersedia (503).
+    Unavailable,
     /// Galat tak terduga (500); sumbernya hanya untuk log, tidak pernah ke respons.
     Internal(&'static str),
 }
@@ -29,9 +33,11 @@ impl fmt::Display for ContentError {
             Self::BadRequest => f.write_str("permintaan tidak dapat dibaca"),
             Self::NotFound => f.write_str("konten tidak ditemukan"),
             Self::StatusConflict => f.write_str("konflik status konten"),
+            Self::PayloadTooLarge => f.write_str("berkas terlalu besar"),
             Self::UnsupportedMediaType => f.write_str("jenis media tidak didukung"),
             Self::Validation(_) => f.write_str("data tidak valid"),
             Self::RateLimited => f.write_str("batas laju"),
+            Self::Unavailable => f.write_str("layanan tidak tersedia"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
         }
     }
@@ -45,9 +51,11 @@ impl ApiError for ContentError {
             Self::BadRequest => codes::BAD_REQUEST,
             Self::NotFound => codes::NOT_FOUND,
             Self::StatusConflict => codes::STATUS_CONFLICT,
+            Self::PayloadTooLarge => codes::PAYLOAD_TOO_LARGE,
             Self::UnsupportedMediaType => codes::UNSUPPORTED_MEDIA_TYPE,
             Self::Validation(_) => codes::INVALID,
             Self::RateLimited => codes::RATE_LIMITED,
+            Self::Unavailable => codes::UNAVAILABLE,
             Self::Internal(_) => codes::INTERNAL,
         }
     }
@@ -89,6 +97,8 @@ mod tests {
             (ContentError::UnsupportedMediaType, "4150001"),
             (ContentError::Validation(vec![]), "4220001"),
             (ContentError::RateLimited, "4290001"),
+            (ContentError::PayloadTooLarge, "4130001"),
+            (ContentError::Unavailable, "5030001"),
             (ContentError::Internal("x"), "5000001"),
         ];
         for (e, code) in cases {

@@ -6,6 +6,112 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/backoffice/v1/content-images/upload-slots": {
+      "post": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Slot unggah gambar konten: URL bertanda tangan berumur pendek ke object storage (ADR-018). Berkas baru\ndapat dipakai setelah dipasang ke draf (validasi isi JPG/PNG, ukuran, metadata dibuang).",
+        "operationId": "cms_content_image_upload_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Slot unggah diterbitkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ukuran melebihi 5 MiB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis bukan image/jpeg atau image/png, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/backoffice/v1/contents": {
       "get": {
         "tags": [
@@ -623,6 +729,143 @@
         ]
       }
     },
+    "/backoffice/v1/contents/{content_id}/image": {
+      "put": {
+        "tags": [
+          "cms"
+        ],
+        "summary": "Memasang gambar yang sudah diunggah ke draf, dengan teks alternatif wajib (US-1802 AC5).",
+        "operationId": "cms_content_image_attach",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Gambar dipasang.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Konten.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Konten atau slot tidak ada, kedaluwarsa, atau milik akun lain.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konten bukan draf.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Berkas melebihi 5 MiB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Isi berkas bukan JPG/PNG yang sah, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Teks alternatif kosong atau berkas belum diunggah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/backoffice/v1/contents/{content_id}/restore": {
       "post": {
         "tags": [
@@ -840,6 +1083,28 @@
   },
   "components": {
     "schemas": {
+      "AttachImageRequest": {
+        "type": "object",
+        "description": "Memasang gambar yang sudah diunggah ke draf.",
+        "required": [
+          "upload_slot_id",
+          "image_alt_text"
+        ],
+        "properties": {
+          "image_alt_text": {
+            "type": "string",
+            "description": "Teks alternatif gambar (wajib, 1-300 karakter; US-1802 AC5).",
+            "example": "Dokter memeriksa pasien di klinik (ilustrasi)",
+            "maxLength": 300
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "description": "ID slot dari `upload-slots`.",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          }
+        },
+        "additionalProperties": false
+      },
       "Channel": {
         "type": "string",
         "description": "Kanal tayang (`ck_cms_content_channel`).",
@@ -1268,6 +1533,30 @@
           }
         }
       },
+      "ImageSlotRequest": {
+        "type": "object",
+        "description": "Permintaan slot unggah gambar konten.",
+        "required": [
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Jenis yang dinyatakan: `image/jpeg` atau `image/png` (isi tetap diperiksa setelah unggah).",
+            "example": "image/png"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ukuran berkas (byte), maksimal 5 MiB (NFR-SEC-08).",
+            "example": 204800,
+            "maximum": 5242880,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
       "LinkTargetType": {
         "type": "string",
         "description": "Tujuan tautan banner (`ck_cms_content_link_target_type`).",
@@ -1295,6 +1584,22 @@
               "null"
             ],
             "description": "Cursor halaman berikutnya; `null` bila tidak ada."
+          }
+        }
+      },
+      "NameValueDto": {
+        "type": "object",
+        "description": "Pasangan nama-nilai (field formulir POST atau header PUT).",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
           }
         }
       },
@@ -1336,6 +1641,81 @@
           "download_app",
           "privacy_terms"
         ]
+      },
+      "UploadMethodDto": {
+        "type": "string",
+        "description": "Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).",
+        "enum": [
+          "post",
+          "put"
+        ]
+      },
+      "UploadSlotDto": {
+        "type": "object",
+        "description": "Slot unggah yang diterbitkan.",
+        "required": [
+          "upload_slot_id",
+          "expires_at",
+          "method",
+          "url",
+          "fields",
+          "headers"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Field formulir (POST); kosong untuk PUT."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Header wajib (PUT); kosong untuk POST."
+          },
+          "method": {
+            "$ref": "#/components/schemas/UploadMethodDto"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadSlotEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons slot unggah.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UploadSlotDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
       }
     },
     "securitySchemes": {

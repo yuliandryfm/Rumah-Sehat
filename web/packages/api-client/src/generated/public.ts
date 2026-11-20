@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/v1/public/content/images/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gambar konten yang sedang tayang di situs, disajikan backend dari object storage privat (bukan bucket
+         *     publik, ADR-027 butir 5), dengan batas laju. Selain itu 404 (tidak membedakan draf dan ID tebakan).
+         */
+        get: operations["public_content_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/content/items": {
         parameters: {
             query?: never;
@@ -186,6 +206,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    public_content_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID gambar (UUID) dari `image.url` konten tayang */
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Isi gambar (JPG/PNG hasil kode ulang tanpa metadata). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description Tidak ada atau tidak dipakai konten yang sedang tayang. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Batas laju terlampaui. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat tak terduga. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Object storage tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     public_content_list: {
         parameters: {
             query?: {

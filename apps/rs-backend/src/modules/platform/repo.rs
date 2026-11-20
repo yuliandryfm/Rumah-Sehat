@@ -80,6 +80,27 @@ pub(super) async fn consume_slot(
     Ok(r.rows_affected() == 1)
 }
 
+/// Berkas konten publik tervalidasi (bucket `public_content`, tidak terhapus, belum dimusnahkan).
+pub(super) struct PublicFileRow {
+    pub(super) object_key: String,
+    pub(super) mime_type: String,
+    pub(super) size_bytes: i32,
+}
+
+pub(super) async fn find_public_content_file(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<PublicFileRow>, sqlx::Error> {
+    sqlx::query_as!(
+        PublicFileRow,
+        "SELECT object_key, mime_type, size_bytes FROM app.stored_file \
+         WHERE id = $1 AND bucket = 'public_content' AND deleted_at IS NULL AND purged_at IS NULL",
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// Baris `stored_file` baru (lolos validasi).
 pub(super) struct NewStoredFile<'a> {
     pub(super) id: Uuid,

@@ -112,12 +112,15 @@ impl LogicalBucket {
     }
 }
 
-/// Tujuan unggahan: menentukan bucket, kategori, jenis, dan batas ukuran. F1-T29 hanya foto KTP (US-106);
-/// tujuan lain ditambahkan task pemakainya.
+/// Tujuan unggahan: menentukan bucket, kategori, jenis, dan batas ukuran. F1-T29 foto KTP (US-106); F1-T93
+/// gambar konten CMS (US-1802).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadPurpose {
     /// Foto KTP pemilik akun (US-106 AC3).
     KtpPhoto,
+    /// Gambar konten CMS (US-1802, F1-T93): bucket `public_content` yang tetap privat; disajikan endpoint
+    /// gambar publik backend hanya untuk konten yang sedang tayang (ADR-027 butir 5).
+    ContentImage,
 }
 
 impl UploadPurpose {
@@ -125,6 +128,7 @@ impl UploadPurpose {
     pub const fn bucket(self) -> LogicalBucket {
         match self {
             Self::KtpPhoto => LogicalBucket::IdentityDocument,
+            Self::ContentImage => LogicalBucket::PublicContent,
         }
     }
 
@@ -132,20 +136,23 @@ impl UploadPurpose {
     pub const fn category(self) -> &'static str {
         match self {
             Self::KtpPhoto => "ktp_photo",
+            Self::ContentImage => "cms_image",
         }
     }
 
     /// Batas ukuran berkas seperti diunggah.
     pub const fn max_size_bytes(self) -> u64 {
         match self {
-            Self::KtpPhoto => MAX_PHOTO_BYTES,
+            Self::KtpPhoto | Self::ContentImage => MAX_PHOTO_BYTES,
         }
     }
 
     /// Apakah jenis foto diizinkan untuk tujuan ini.
     pub fn allows(self, format: PhotoFormat) -> bool {
         match self {
-            Self::KtpPhoto => matches!(format, PhotoFormat::Jpeg | PhotoFormat::Png),
+            Self::KtpPhoto | Self::ContentImage => {
+                matches!(format, PhotoFormat::Jpeg | PhotoFormat::Png)
+            }
         }
     }
 }
@@ -355,6 +362,12 @@ mod tests {
             "identity_document"
         );
         assert_eq!(UploadPurpose::KtpPhoto.category(), "ktp_photo");
+        assert_eq!(
+            UploadPurpose::ContentImage.bucket(),
+            LogicalBucket::PublicContent
+        );
+        assert_eq!(UploadPurpose::ContentImage.category(), "cms_image");
+        assert_eq!(UploadPurpose::ContentImage.max_size_bytes(), 5_242_880);
         assert_eq!(UploadPurpose::KtpPhoto.max_size_bytes(), 5_242_880);
         assert!(UploadPurpose::KtpPhoto.allows(PhotoFormat::Png));
         for b in LogicalBucket::ALL {

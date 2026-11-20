@@ -67,7 +67,6 @@ impl AppState {
         self.services.clock.as_ref()
     }
 
-    #[allow(dead_code)] // dipakai endpoint gambar konten (F1-T93)
     pub(crate) fn files(&self) -> &FileStorage {
         &self.services.files
     }
@@ -76,7 +75,6 @@ impl AppState {
         &self.services.public_content_limit
     }
 
-    #[allow(dead_code)] // dipakai endpoint gambar konten (F1-T93)
     pub(crate) fn public_image_limit(&self) -> &RateLimiter {
         &self.services.public_image_limit
     }
@@ -146,7 +144,7 @@ mod tests {
     fn every_backoffice_route_requires_content_sub_role_only() {
         let router = backoffice_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 8);
+        assert_eq!(entries.len(), 10);
         for ((_method, path), policy) in entries {
             assert!(path.starts_with("/backoffice/v1/"), "{path}");
             assert_eq!(
@@ -162,7 +160,7 @@ mod tests {
     fn every_public_route_is_public_content_under_v1_public() {
         let router = public_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), 4);
         for ((method, path), policy) in entries {
             assert_eq!(method, "GET", "{path}");
             assert!(path.starts_with("/v1/public/content/"), "{path}");

@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/backoffice/v1/content-images/upload-slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Slot unggah gambar konten: URL bertanda tangan berumur pendek ke object storage (ADR-018). Berkas baru
+         *     dapat dipakai setelah dipasang ke draf (validasi isi JPG/PNG, ukuran, metadata dibuang).
+         */
+        post: operations["cms_content_image_upload_slot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/backoffice/v1/contents": {
         parameters: {
             query?: never;
@@ -74,6 +94,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backoffice/v1/contents/{content_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Memasang gambar yang sudah diunggah ke draf, dengan teks alternatif wajib (US-1802 AC5). */
+        put: operations["cms_content_image_attach"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/backoffice/v1/contents/{content_id}/restore": {
         parameters: {
             query?: never;
@@ -115,6 +152,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Memasang gambar yang sudah diunggah ke draf. */
+        AttachImageRequest: {
+            /**
+             * @description Teks alternatif gambar (wajib, 1-300 karakter; US-1802 AC5).
+             * @example Dokter memeriksa pasien di klinik (ilustrasi)
+             */
+            image_alt_text: string;
+            /**
+             * @description ID slot dari `upload-slots`.
+             * @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b
+             */
+            upload_slot_id: string;
+        };
         /**
          * @description Kanal tayang (`ck_cms_content_channel`).
          * @enum {string}
@@ -282,6 +332,20 @@ export interface components {
              */
             message: string;
         };
+        /** @description Permintaan slot unggah gambar konten. */
+        ImageSlotRequest: {
+            /**
+             * @description Jenis yang dinyatakan: `image/jpeg` atau `image/png` (isi tetap diperiksa setelah unggah).
+             * @example image/png
+             */
+            content_type: string;
+            /**
+             * Format: int64
+             * @description Ukuran berkas (byte), maksimal 5 MiB (NFR-SEC-08).
+             * @example 204800
+             */
+            size_bytes: number;
+        };
         /**
          * @description Tujuan tautan banner (`ck_cms_content_link_target_type`).
          * @enum {string}
@@ -293,6 +357,11 @@ export interface components {
             has_more: boolean;
             /** @description Cursor halaman berikutnya; `null` bila tidak ada. */
             next_cursor?: string | null;
+        };
+        /** @description Pasangan nama-nilai (field formulir POST atau header PUT). */
+        NameValueDto: {
+            name: string;
+            value: string;
         };
         /** @description Jadwal tayang (US-1101 AC2). Tanpa `publish_start_at` = tayang sekarang menurut jam server. */
         ScheduleRequest: {
@@ -313,6 +382,33 @@ export interface components {
          * @enum {string}
          */
         SitePage: "home" | "about" | "services" | "for_business" | "partners" | "articles" | "contact" | "download_app" | "privacy_terms";
+        /**
+         * @description Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).
+         * @enum {string}
+         */
+        UploadMethodDto: "post" | "put";
+        /** @description Slot unggah yang diterbitkan. */
+        UploadSlotDto: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @description Field formulir (POST); kosong untuk PUT. */
+            fields: components["schemas"]["NameValueDto"][];
+            /** @description Header wajib (PUT); kosong untuk POST. */
+            headers: components["schemas"]["NameValueDto"][];
+            method: components["schemas"]["UploadMethodDto"];
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            upload_slot_id: string;
+            url: string;
+        };
+        /** @description Bentuk dokumentasi respons slot unggah. */
+        UploadSlotEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["UploadSlotDto"];
+            /** @example 2010000 */
+            response_code: string;
+            /** @example Berhasil dibuat */
+            response_description: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -322,6 +418,93 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    cms_content_image_upload_slot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageSlotRequest"];
+            };
+        };
+        responses: {
+            /** @description Slot unggah diterbitkan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSlotEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Konten. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Ukuran melebihi 5 MiB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Jenis bukan image/jpeg atau image/png, atau badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     cms_content_list: {
         parameters: {
             query?: {
@@ -764,6 +947,114 @@ export interface operations {
                 };
             };
             /** @description Alasan wajib diisi. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cms_content_image_attach: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID konten (UUID) */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachImageRequest"];
+            };
+        };
+        responses: {
+            /** @description Gambar dipasang. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Konten. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Konten atau slot tidak ada, kedaluwarsa, atau milik akun lain. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Konten bukan draf. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Berkas melebihi 5 MiB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isi berkas bukan JPG/PNG yang sah, atau badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Teks alternatif kosong atau berkas belum diunggah. */
             422: {
                 headers: {
                     [name: string]: unknown;

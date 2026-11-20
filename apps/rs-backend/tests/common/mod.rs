@@ -1,7 +1,7 @@
 //! Pembantu test: server sungguhan di localhost, klien HTTP/1.1 mentah, dan perangkat autentikasi uji
 //! (kunci realm uji + JWKS statis dari `authn::testing`, tanpa Keycloak; coding-standards §7.2).
 #![allow(dead_code)] // tiap berkas test memakai sebagian
-#![allow(clippy::unwrap_used, clippy::expect_used)] // berkas pembantu test
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)] // berkas pembantu test
 
 use authn::testing::{StaticJwks, TestRealmKey, jwks_document};
 use authn::{
@@ -239,4 +239,39 @@ pub async fn request_with_body(
         headers,
         body: body.to_string(),
     }
+}
+
+/// Permintaan tanpa badan; mengembalikan status, header, dan isi mentah (untuk respons biner).
+pub async fn request_raw(
+    addr: SocketAddr,
+    method: &str,
+    path: &str,
+    extra: &[&str],
+) -> (u16, Vec<(String, String)>, Vec<u8>) {
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let mut req = format!(
+        "{method} {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: 0\r\n"
+    );
+    for h in extra {
+        req.push_str(h);
+        req.push_str("\r\n");
+    }
+    req.push_str("\r\n");
+    s.write_all(req.as_bytes()).await.unwrap();
+    let mut buf = Vec::new();
+    s.read_to_end(&mut buf).await.unwrap();
+    let split = buf.windows(4).position(|w| w == b"\r\n\r\n").unwrap();
+    let head = String::from_utf8_lossy(&buf[..split]).into_owned();
+    let body = buf[split + 4..].to_vec();
+    let mut lines = head.lines();
+    let status = lines
+        .next()
+        .and_then(|l| l.split_whitespace().nth(1))
+        .and_then(|c| c.parse().ok())
+        .unwrap();
+    let headers = lines
+        .filter_map(|l| l.split_once(':'))
+        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+        .collect();
+    (status, headers, body)
 }

@@ -5,10 +5,12 @@
 //! alasan (ADR-010).
 
 use super::api::{
-    FileContainer, FileStorage, ReadinessCheck, UploadInstruction, UploadMethod, UploadSlotRequest,
-    UploadTicket, ValidatedUpload,
+    FileContainer, FileStorage, PublicFile, ReadinessCheck, UploadInstruction, UploadMethod,
+    UploadSlotRequest, UploadTicket, ValidatedUpload,
 };
-use super::domain::{ContentRejection, PhotoFormat, UploadPurpose, sanitize_photo};
+use super::domain::{
+    ContentRejection, LogicalBucket, MAX_PHOTO_BYTES, PhotoFormat, UploadPurpose, sanitize_photo,
+};
 use super::error::FileError;
 use super::repo;
 use envelope::FieldError;
@@ -357,4 +359,44 @@ pub(super) async fn discard_validated(
         .delete_all_versions(&physical, &upload.object_key, clock.now())
         .await
         .map_err(storage_error)
+}
+
+pub(super) async fn read_public_content_file(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    stored_file_id: Uuid,
+) -> Result<Option<PublicFile>, FileError> {
+    let Some(row) = repo::find_public_content_file(pool, stored_file_id)
+        .await
+        .map_err(db_error)?
+    else {
+        return Ok(None);
+    };
+    let Some(format) = PhotoFormat::from_mime(&row.mime_type) else {
+        return Ok(None);
+    };
+    // Batas baca = ukuran tercatat (hasil kode ulang), dibatasi batas foto x2 sebagai pengaman memori.
+    let max = usize::try_from(row.size_bytes)
+        .ok()
+        .zip(usize::try_from(MAX_PHOTO_BYTES.saturating_mul(2)).ok())
+        .map(|(size, cap)| size.min(cap))
+        .ok_or(FileError::Internal("size_bytes"))?;
+    let physical = storage.bucket_name(LogicalBucket::PublicContent);
+    match storage
+        .store
+        .get_object(&physical, &row.object_key, max, clock.now())
+        .await
+        .map_err(storage_error)?
+    {
+        GetOutcome::Body(bytes) => Ok(Some(PublicFile {
+            mime_type: format.mime(),
+            bytes,
+        })),
+        GetOutcome::NotFound => {
+            tracing::error!(stored_file_id = %stored_file_id, "public_content_object_missing");
+            Ok(None)
+        }
+        GetOutcome::TooLarge => Err(FileError::Internal("public_content_size")),
+    }
 }

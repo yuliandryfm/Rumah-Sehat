@@ -385,6 +385,35 @@ pub async fn record_stored_file(
     service::record_stored_file(conn, upload, container).await
 }
 
+/// Isi berkas konten publik (gambar konten CMS) untuk disajikan backend (ADR-027 butir 5).
+pub struct PublicFile {
+    /// Tipe MIME menurut isi tervalidasi (`image/jpeg` atau `image/png`).
+    pub mime_type: &'static str,
+    /// Isi berkas.
+    pub bytes: Vec<u8>,
+}
+
+impl fmt::Debug for PublicFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PublicFile")
+            .field("mime_type", &self.mime_type)
+            .field("len", &self.bytes.len())
+            .finish()
+    }
+}
+
+/// Membaca berkas tervalidasi di bucket `public_content` (F1-T93). Pemanggil wajib lebih dulu memastikan
+/// berkas dipakai konten yang sedang tayang; fungsi ini hanya menjamin bucket, status hapus, dan jenis.
+/// `None` bila tidak ada.
+pub async fn read_public_content_file(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    stored_file_id: Uuid,
+) -> Result<Option<PublicFile>, FileError> {
+    service::read_public_content_file(pool, clock, storage, stored_file_id).await
+}
+
 /// Membuang berkas tervalidasi yang tidak jadi dicatat (transaksi pemanggil gagal).
 pub async fn discard_validated(
     clock: &dyn Clock,

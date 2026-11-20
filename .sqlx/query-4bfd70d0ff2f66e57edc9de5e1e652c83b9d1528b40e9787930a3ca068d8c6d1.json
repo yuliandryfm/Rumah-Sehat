@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT object_key, mime_type, size_bytes FROM app.stored_file WHERE id = $1 AND bucket = 'public_content' AND deleted_at IS NULL AND purged_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "object_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stored_file",
+            "name": "object_key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "mime_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stored_file",
+            "name": "mime_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "size_bytes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "stored_file",
+            "name": "size_bytes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4bfd70d0ff2f66e57edc9de5e1e652c83b9d1528b40e9787930a3ca068d8c6d1"
+}

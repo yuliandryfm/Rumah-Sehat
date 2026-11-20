@@ -13,12 +13,16 @@ use super::domain::{
 use super::error::ContentError;
 use super::markdown;
 use super::repo::{self, ContentRow, Fields};
+use crate::modules::platform::api::{
+    self as platform, FileError, FileStorage, PublicFile, UploadPurpose, UploadSlotRequest,
+    UploadTicket,
+};
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, FieldChange, FieldRule,
     ObjectPolicy, ObjectRef, Outcome, Value,
 };
 use authz::Principal;
-use envelope::Meta;
+use envelope::{FieldError, Meta};
 use foundation::{Clock, Uuid, new_id};
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -586,6 +590,153 @@ pub(super) async fn public_items(
             has_more,
         },
     ))
+}
+
+// ---------------------------------------------------------------- gambar konten (F1-T93)
+
+fn file_error(e: FileError) -> ContentError {
+    match e {
+        FileError::NotFound => ContentError::NotFound,
+        FileError::TooLarge => ContentError::PayloadTooLarge,
+        FileError::UnsupportedType => ContentError::UnsupportedMediaType,
+        FileError::Validation(v) => ContentError::Validation(v),
+        FileError::StorageUnavailable => ContentError::Unavailable,
+        FileError::Internal(what) => ContentError::Internal(what),
+    }
+}
+
+/// Slot unggah gambar konten (ADR-018: URL bertanda tangan berumur pendek, nama objek UUID; jenis dan
+/// ukuran dari isi diperiksa setelah unggah). Pemilik slot = akun admin pemanggil.
+pub(super) async fn create_image_slot(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    files: &FileStorage,
+    actor: &Principal,
+    content_type: String,
+    size_bytes: u64,
+) -> Result<UploadTicket, ContentError> {
+    platform::create_upload_slot(
+        pool,
+        clock,
+        files,
+        UploadSlotRequest {
+            owner_account_id: actor.account_id(),
+            purpose: UploadPurpose::ContentImage,
+            content_type,
+            size_bytes,
+        },
+    )
+    .await
+    .map_err(file_error)
+}
+
+/// Teks alternatif gambar: wajib saat gambar dipasang (US-1802 AC5, guideline §7), 1-300 karakter.
+fn alt_text(raw: &str) -> Result<String, ContentError> {
+    let a = raw.trim();
+    if a.is_empty() {
+        return Err(ContentError::Validation(vec![FieldError::new(
+            "image_alt_text",
+            "required",
+            "Teks alternatif gambar wajib diisi",
+        )]));
+    }
+    if a.chars().count() > domain::ALT_TEXT_MAX {
+        return Err(ContentError::Validation(vec![FieldError::new(
+            "image_alt_text",
+            "too_long",
+            format!("Maksimal {} karakter", domain::ALT_TEXT_MAX),
+        )]));
+    }
+    Ok(a.to_string())
+}
+
+/// Memasang gambar ke draf: validasi isi berkas di luar transaksi (KEPUTUSAN-125), lalu satu transaksi
+/// yang memakai slot sekali (`stored_file`) dan menautkan gambar beserta teks alternatifnya. Gagal setelah
+/// validasi = berkas hasil kode ulang dibuang.
+pub(super) async fn attach_image(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    files: &FileStorage,
+    actor: &Principal,
+    id: Uuid,
+    upload_slot_id: Uuid,
+    image_alt_text: &str,
+) -> Result<ContentView, ContentError> {
+    let alt = alt_text(image_alt_text)?;
+    // Periksa lebih dulu supaya slot tidak terpakai untuk konten yang tidak ada atau bukan draf.
+    let row = repo::find(pool, id).await?.ok_or(ContentError::NotFound)?;
+    let status = parse(
+        EditorialStatus::parse(&row.editorial_status),
+        "editorial_status",
+    )?;
+    if !domain::can_edit(status) {
+        return Err(ContentError::StatusConflict);
+    }
+    let upload = platform::validate_upload(
+        pool,
+        clock,
+        files,
+        actor.account_id(),
+        upload_slot_id,
+        UploadPurpose::ContentImage,
+    )
+    .await
+    .map_err(file_error)?;
+    let result: Result<Uuid, ContentError> = async {
+        let mut tx = pool.begin().await?;
+        let locked = repo::lock(&mut tx, id)
+            .await?
+            .filter(|r| r.deleted_at.is_none())
+            .ok_or(ContentError::NotFound)?;
+        let status = parse(
+            EditorialStatus::parse(&locked.editorial_status),
+            "editorial_status",
+        )?;
+        if !domain::can_edit(status) {
+            return Err(ContentError::StatusConflict);
+        }
+        let file_id = platform::record_stored_file(&mut tx, &upload, None)
+            .await
+            .map_err(file_error)?;
+        if !repo::set_image(&mut tx, id, actor.account_id(), file_id, &alt).await? {
+            return Err(ContentError::StatusConflict);
+        }
+        tx.commit().await?;
+        Ok(file_id)
+    }
+    .await;
+    match result {
+        Ok(file_id) => {
+            tracing::info!(cms_content_id = %id, stored_file_id = %file_id, "cms_content_image_attached");
+            get(pool, clock, id).await
+        }
+        Err(e) => {
+            if platform::discard_validated(clock, files, upload)
+                .await
+                .is_err()
+            {
+                tracing::error!(cms_content_id = %id, "cms_content_image_discard_failed");
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Gambar untuk endpoint publik: hanya bila dipakai konten yang sedang tayang di situs (ADR-027 butir 5,
+/// SIT-02). Gambar draf, terjadwal, berakhir, terhapus, atau ID tebakan = 404 yang sama.
+pub(super) async fn public_image(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    files: &FileStorage,
+    stored_file_id: Uuid,
+) -> Result<PublicFile, ContentError> {
+    if !repo::image_is_live_on_site(pool, stored_file_id, clock.now()).await? {
+        return Err(ContentError::NotFound);
+    }
+    platform::read_public_content_file(pool, clock, files, stored_file_id)
+        .await
+        .map_err(file_error)?
+        .ok_or(ContentError::NotFound)
 }
 
 #[cfg(test)]

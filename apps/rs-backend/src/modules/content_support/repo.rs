@@ -411,3 +411,46 @@ pub(super) async fn live_site_items(
     .fetch_all(pool)
     .await
 }
+
+// ---------------------------------------------------------------- gambar konten (F1-T93)
+
+/// Memasang gambar dan teks alternatif ke draf aktif.
+pub(super) async fn set_image(
+    conn: &mut PgConnection,
+    id: Uuid,
+    actor: Uuid,
+    image_file_id: Uuid,
+    image_alt_text: &str,
+) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query!(
+        "UPDATE app.cms_content SET image_file_id = $3, image_alt_text = $4, updated_at = now(), \
+                updated_by = $2 \
+         WHERE id = $1 AND deleted_at IS NULL AND editorial_status = 'draft'",
+        id,
+        actor,
+        image_file_id,
+        image_alt_text,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(r.rows_affected() == 1)
+}
+
+/// Apakah berkas dipakai konten yang sedang tayang di situs (syarat tayang sama dengan jalur publik).
+pub(super) async fn image_is_live_on_site(
+    pool: &PgPool,
+    image_file_id: Uuid,
+    now: OffsetDateTime,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS (
+             SELECT 1 FROM app.cms_content
+              WHERE image_file_id = $1 AND channel IN ('site', 'app_and_site')
+                AND editorial_status = 'scheduled' AND deleted_at IS NULL AND publish_start_at <= $2
+                AND (publish_end_at IS NULL OR publish_end_at > $2)) AS "live!""#,
+        image_file_id,
+        now,
+    )
+    .fetch_one(pool)
+    .await
+}

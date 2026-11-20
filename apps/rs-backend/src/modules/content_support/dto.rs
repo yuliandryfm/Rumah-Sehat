@@ -6,6 +6,7 @@ use super::domain::{
 };
 use super::markdown::PUBLIC_IMAGE_PATH;
 use super::service::{ContentView, PublicContent};
+use crate::modules::platform::api::{UploadInstruction, UploadTicket};
 use crate::openapi::MetaSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -318,6 +319,107 @@ pub(super) struct PublicContentListEnvelope {
     response_description: String,
     data: Vec<PublicContentDto>,
     meta: MetaSchema,
+    #[schema(nullable = false)]
+    correlation_id: Option<String>,
+}
+
+// ---------------------------------------------------------------- gambar konten (F1-T93)
+
+/// Permintaan slot unggah gambar konten.
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ImageSlotRequest {
+    /// Jenis yang dinyatakan: `image/jpeg` atau `image/png` (isi tetap diperiksa setelah unggah).
+    #[schema(example = "image/png")]
+    pub(super) content_type: String,
+    /// Ukuran berkas (byte), maksimal 5 MiB (NFR-SEC-08).
+    #[schema(example = 204800, minimum = 1, maximum = 5242880)]
+    pub(super) size_bytes: u64,
+}
+
+/// Memasang gambar yang sudah diunggah ke draf.
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct AttachImageRequest {
+    /// ID slot dari `upload-slots`.
+    #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
+    pub(super) upload_slot_id: String,
+    /// Teks alternatif gambar (wajib, 1-300 karakter; US-1802 AC5).
+    #[schema(
+        example = "Dokter memeriksa pasien di klinik (ilustrasi)",
+        max_length = 300
+    )]
+    pub(super) image_alt_text: String,
+}
+
+/// Pasangan nama-nilai (field formulir POST atau header PUT).
+#[derive(Debug, Serialize, ToSchema)]
+pub(super) struct NameValueDto {
+    pub(super) name: String,
+    pub(super) value: String,
+}
+
+/// Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).
+#[derive(Debug, Clone, Copy, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum UploadMethodDto {
+    /// `multipart/form-data` POST ke `url` dengan semua `fields`, berkas sebagai field `file` terakhir.
+    Post,
+    /// `PUT` ke `url` dengan `headers` persis.
+    Put,
+}
+
+/// Slot unggah yang diterbitkan.
+#[derive(Debug, Serialize, ToSchema)]
+pub(super) struct UploadSlotDto {
+    #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
+    pub(super) upload_slot_id: String,
+    #[schema(format = DateTime)]
+    pub(super) expires_at: String,
+    pub(super) method: UploadMethodDto,
+    pub(super) url: String,
+    /// Field formulir (POST); kosong untuk PUT.
+    pub(super) fields: Vec<NameValueDto>,
+    /// Header wajib (PUT); kosong untuk POST.
+    pub(super) headers: Vec<NameValueDto>,
+}
+
+fn pairs(v: Vec<(String, String)>) -> Vec<NameValueDto> {
+    v.into_iter()
+        .map(|(name, value)| NameValueDto { name, value })
+        .collect()
+}
+
+impl UploadSlotDto {
+    pub(super) fn from_ticket(t: UploadTicket) -> Result<Self, time::error::Format> {
+        let (method, url, fields, headers) = match t.instruction {
+            UploadInstruction::Post { url, fields } => {
+                (UploadMethodDto::Post, url, pairs(fields), Vec::new())
+            }
+            UploadInstruction::Put { url, headers } => {
+                (UploadMethodDto::Put, url, Vec::new(), pairs(headers))
+            }
+        };
+        Ok(Self {
+            upload_slot_id: t.upload_slot_id.hyphenated().to_string(),
+            expires_at: ts(t.expires_at)?,
+            method,
+            url,
+            fields,
+            headers,
+        })
+    }
+}
+
+/// Bentuk dokumentasi respons slot unggah.
+#[derive(ToSchema)]
+#[allow(dead_code)] // hanya untuk pembangkitan skema
+pub(super) struct UploadSlotEnvelope {
+    #[schema(example = "2010000")]
+    response_code: String,
+    #[schema(example = "Berhasil dibuat")]
+    response_description: String,
+    data: UploadSlotDto,
     #[schema(nullable = false)]
     correlation_id: Option<String>,
 }

@@ -4,9 +4,10 @@
 
 use super::domain::{DisplayStatus, SitePage};
 use super::dto::{
-    ContentDto, ContentEnvelope, ContentListEnvelope, ContentRequest, DeleteRequest, DeletedDto,
-    DeletedEnvelope, ListParams, PublicContentDto, PublicContentEnvelope,
-    PublicContentListEnvelope, PublicListParams, ScheduleRequest,
+    AttachImageRequest, ContentDto, ContentEnvelope, ContentListEnvelope, ContentRequest,
+    DeleteRequest, DeletedDto, DeletedEnvelope, ImageSlotRequest, ListParams, PublicContentDto,
+    PublicContentEnvelope, PublicContentListEnvelope, PublicListParams, ScheduleRequest,
+    UploadSlotDto, UploadSlotEnvelope,
 };
 use super::error::ContentError;
 use super::policy;
@@ -20,7 +21,9 @@ use authz::{PolicyRouter, Principal};
 use axum::Extension;
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{Json, Path, Query, State};
-use axum::http::header::{CACHE_CONTROL, USER_AGENT};
+use axum::http::header::{
+    CACHE_CONTROL, CONTENT_SECURITY_POLICY, CONTENT_TYPE, USER_AGENT, X_CONTENT_TYPE_OPTIONS,
+};
 use axum::http::{HeaderMap, HeaderValue};
 use axum::response::{IntoResponse, Response};
 use envelope::{FieldError, Success};
@@ -38,6 +41,8 @@ pub(super) fn router() -> PolicyRouter<AppState> {
         .routes(policy::manage_content(), routes!(archive))
         .routes(policy::manage_content(), routes!(delete))
         .routes(policy::manage_content(), routes!(restore))
+        .routes(policy::manage_content(), routes!(image_upload_slot))
+        .routes(policy::manage_content(), routes!(attach_image))
 }
 
 fn fail(state: &AppState, cid: CorrelationId, e: ContentError) -> Response {
@@ -470,6 +475,7 @@ pub(super) fn public_router() -> PolicyRouter<AppState> {
         .routes(policy::public_content(), routes!(public_page))
         .routes(policy::public_content(), routes!(public_items))
         .routes(policy::public_content(), routes!(public_item))
+        .routes(policy::public_content(), routes!(public_image))
 }
 
 fn no_store(r: Response) -> Response {
@@ -632,4 +638,168 @@ async fn public_item(
         Err(e) => Err(e),
     };
     public_respond(&state, cid, r)
+}
+
+// ---------------------------------------------------------------- gambar konten (F1-T93)
+
+/// Slot unggah gambar konten: URL bertanda tangan berumur pendek ke object storage (ADR-018). Berkas baru
+/// dapat dipakai setelah dipasang ke draf (validasi isi JPG/PNG, ukuran, metadata dibuang).
+#[utoipa::path(
+    post,
+    path = "/backoffice/v1/content-images/upload-slots",
+    tag = "cms",
+    operation_id = "cms_content_image_upload_slot",
+    security(("bearer" = [])),
+    request_body(content = ImageSlotRequest, content_type = "application/json"),
+    responses(
+        (status = 201, description = "Slot unggah diterbitkan.", body = UploadSlotEnvelope, content_type = "application/json"),
+        (status = 400, description = "Badan permintaan tidak dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 401, description = "Belum login, token tidak sah, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 403, description = "Akun tanpa sub-peran Konten.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 413, description = "Ukuran melebihi 5 MiB.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 415, description = "Jenis bukan image/jpeg atau image/png, atau badan bukan JSON.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "Isian tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn image_upload_slot(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    principal: Principal,
+    body: Result<Json<ImageSlotRequest>, JsonRejection>,
+) -> Response {
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => return fail(&state, cid, body_error(&e)),
+    };
+    let r = service::create_image_slot(
+        state.pool(),
+        state.clock(),
+        state.files(),
+        &principal,
+        req.content_type,
+        req.size_bytes,
+    )
+    .await
+    .and_then(|t| {
+        UploadSlotDto::from_ticket(t).map_err(|_| ContentError::Internal("timestamp_format"))
+    });
+    match r {
+        Ok(d) => ApiSuccess(Success::created(d).with_correlation_id(cid)).into_response(),
+        Err(e) => fail(&state, cid, e),
+    }
+}
+
+/// Memasang gambar yang sudah diunggah ke draf, dengan teks alternatif wajib (US-1802 AC5).
+#[utoipa::path(
+    put,
+    path = "/backoffice/v1/contents/{content_id}/image",
+    tag = "cms",
+    operation_id = "cms_content_image_attach",
+    security(("bearer" = [])),
+    params(("content_id" = String, Path, description = "ID konten (UUID)")),
+    request_body(content = AttachImageRequest, content_type = "application/json"),
+    responses(
+        (status = 200, description = "Gambar dipasang.", body = ContentEnvelope, content_type = "application/json"),
+        (status = 400, description = "Badan permintaan tidak dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 401, description = "Belum login, token tidak sah, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 403, description = "Akun tanpa sub-peran Konten.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 404, description = "Konten atau slot tidak ada, kedaluwarsa, atau milik akun lain.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "Konten bukan draf.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 413, description = "Berkas melebihi 5 MiB.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 415, description = "Isi berkas bukan JPG/PNG yang sah, atau badan bukan JSON.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "Teks alternatif kosong atau berkas belum diunggah.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn attach_image(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    principal: Principal,
+    Path(raw): Path<String>,
+    body: Result<Json<AttachImageRequest>, JsonRejection>,
+) -> Response {
+    let id = match content_id(&raw) {
+        Ok(id) => id,
+        Err(e) => return fail(&state, cid, e),
+    };
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => return fail(&state, cid, body_error(&e)),
+    };
+    let slot = match Uuid::parse_str(&req.upload_slot_id) {
+        Ok(s) => s,
+        Err(_) => return fail(&state, cid, ContentError::NotFound),
+    };
+    let r = service::attach_image(
+        state.pool(),
+        state.clock(),
+        state.files(),
+        &principal,
+        id,
+        slot,
+        &req.image_alt_text,
+    )
+    .await;
+    respond(&state, cid, r, false)
+}
+
+/// Gambar konten yang sedang tayang di situs, disajikan backend dari object storage privat (bukan bucket
+/// publik, ADR-027 butir 5), dengan batas laju. Selain itu 404 (tidak membedakan draf dan ID tebakan).
+#[utoipa::path(
+    get,
+    path = "/v1/public/content/images/{image_id}",
+    tag = "public-content",
+    operation_id = "public_content_image",
+    params(("image_id" = String, Path, description = "ID gambar (UUID) dari `image.url` konten tayang")),
+    responses(
+        (status = 200, description = "Isi gambar (JPG/PNG hasil kode ulang tanpa metadata).", content(("image/png"), ("image/jpeg"))),
+        (status = 404, description = "Tidak ada atau tidak dipakai konten yang sedang tayang.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "Batas laju terlampaui.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat tak terduga.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Object storage tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn public_image(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    addr: ClientAddr,
+    Path(raw): Path<String>,
+) -> Response {
+    let limited = match state.public_image_limit().check(addr.0) {
+        Verdict::Allowed => None,
+        Verdict::Limited { first } => {
+            if first {
+                security::rate_limited(None, "/v1/public/content/images/{image_id}");
+            }
+            Some(ContentError::RateLimited)
+        }
+    };
+    if let Some(e) = limited {
+        return no_store(fail(&state, cid, e));
+    }
+    let r = match content_id(&raw) {
+        Ok(id) => service::public_image(state.pool(), state.clock(), state.files(), id).await,
+        Err(e) => Err(e),
+    };
+    match r {
+        Ok(file) => {
+            let mut resp = (
+                [
+                    (CONTENT_TYPE, HeaderValue::from_static(file.mime_type)),
+                    (CACHE_CONTROL, HeaderValue::from_static("no-store")),
+                    (X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")),
+                    (
+                        CONTENT_SECURITY_POLICY,
+                        HeaderValue::from_static("default-src 'none'; sandbox"),
+                    ),
+                ],
+                file.bytes,
+            )
+                .into_response();
+            *resp.status_mut() = axum::http::StatusCode::OK;
+            resp
+        }
+        Err(e) => no_store(fail(&state, cid, e)),
+    }
 }
