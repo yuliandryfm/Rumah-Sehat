@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.job (id, job_type, payload, run_at, status, attempt_count, max_attempts) VALUES ($1, $2, '{\"email\": \"budi@example.com\"}'::jsonb, $3, 'queued', 0, 5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7fee0a330a33ba89930f80e5db75199d9954f0134c7ce6c255a2d522d66c263d"
+}
