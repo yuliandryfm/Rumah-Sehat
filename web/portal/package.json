@@ -1,0 +1,7 @@
+{
+  "name": "@rs/portal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kerangka workspace portal rekanan Ruang Sehat (ADR-027). Aplikasi Next.js penuh dibuat di task fitur."
+}

@@ -1,0 +1,381 @@
+/*
+ * Gaya komponen dasar Fase 1 (docs/06-design-guideline.md §4, §5, §7). Hanya memakai token dari
+ * tokens.css. State hover dan fokus dapat dipaksa di galeri lewat atribut `data-state="hover|fokus"`
+ * supaya tampilannya terlihat tanpa interaksi; perilaku aslinya memakai :hover dan :focus-visible.
+ * Pasangan warna teks/latar semuanya tercakup K1–K13 dan N1–N4 (scripts/kontras.mjs).
+ */
+
+.rs-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Tombol ---------- */
+.rs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: var(--control-height);
+  min-width: 40px;
+  padding: var(--s2) var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-family: var(--f-sans);
+  font-size: var(--t-label-size);
+  line-height: var(--t-label-line);
+  font-weight: var(--t-label-weight);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.rs-btn--primary {
+  background: var(--c-primary);
+  color: var(--c-on-primary); /* K5 */
+}
+.rs-btn--primary:hover,
+.rs-btn--primary[data-state="hover"] {
+  background: var(--c-primary-strong); /* K7 */
+}
+
+.rs-btn--secondary {
+  background: var(--c-bg-surface);
+  border-color: var(--c-primary-strong);
+  color: var(--c-primary-strong); /* K6 */
+}
+.rs-btn--secondary:hover,
+.rs-btn--secondary[data-state="hover"] {
+  background: var(--c-mint); /* K6 di atas mint */
+}
+
+.rs-btn--text {
+  background: transparent;
+  color: var(--c-primary-strong); /* K6 */
+}
+.rs-btn--text:hover,
+.rs-btn--text[data-state="hover"] {
+  background: var(--c-mint);
+}
+
+.rs-btn--destructive {
+  background: var(--c-danger);
+  color: var(--c-on-primary); /* K9 */
+}
+/* Hover destruktif tidak ditetapkan guideline; dibalik menjadi latar danger-bg + teks danger (K8). */
+.rs-btn--destructive:hover,
+.rs-btn--destructive[data-state="hover"] {
+  background: var(--c-danger-bg);
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.rs-btn:focus-visible,
+.rs-btn[data-state="fokus"] {
+  outline: none;
+  box-shadow: var(--focus-ring); /* N3 */
+}
+
+/* Nonaktif: hanya untuk aksi yang memang tidak tersedia; dikecualikan dari SC 1.4.3 dan 1.4.11 */
+.rs-btn:disabled {
+  background: var(--c-bg-neutral);
+  border-color: transparent;
+  color: var(--c-border-control);
+  cursor: not-allowed;
+}
+
+/* Memuat: terkunci lewat aria-disabled; tampilan mengikuti varian, kursor menunggu */
+.rs-btn[data-loading="true"] {
+  cursor: progress;
+}
+
+.rs-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: var(--r-full);
+  animation: rs-putar 0.8s linear infinite;
+}
+@keyframes rs-putar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-spinner {
+    animation: none;
+  }
+}
+
+/* ---------- Isian teks ---------- */
+.rs-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-family: var(--f-sans);
+}
+.rs-field__label {
+  font-size: var(--t-label-size);
+  line-height: var(--t-label-line);
+  font-weight: var(--t-label-weight);
+  color: var(--c-text-primary); /* K1 */
+}
+.rs-field__input {
+  min-height: var(--control-height);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--c-border-control); /* N1 */
+  border-radius: var(--r-md);
+  background: var(--c-bg-surface);
+  color: var(--c-text-primary);
+  font-family: inherit;
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+}
+.rs-field__input::placeholder {
+  color: var(--c-text-secondary); /* K2 */
+}
+.rs-field__input:hover,
+.rs-field__input[data-state="hover"] {
+  border-color: var(--c-text-primary);
+}
+.rs-field__input:focus-visible,
+.rs-field__input[data-state="fokus"] {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.rs-field__input:disabled {
+  background: var(--c-bg-neutral);
+  color: var(--c-border-control);
+  cursor: not-allowed;
+}
+.rs-field__input[aria-invalid="true"] {
+  border: 2px solid var(--c-danger);
+  padding: calc(var(--s2) - 1px) calc(var(--s3) - 1px);
+}
+.rs-field__hint {
+  margin: 0;
+  font-size: var(--t-body-sm-size);
+  line-height: var(--t-body-sm-line);
+  color: var(--c-text-secondary); /* K2 */
+}
+.rs-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s1);
+  margin: 0;
+  font-size: var(--t-body-sm-size);
+  line-height: var(--t-body-sm-line);
+  color: var(--c-danger); /* K8 */
+}
+.rs-field__error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: var(--c-danger);
+  color: var(--c-on-primary); /* K9 */
+  font-size: var(--t-caption-size);
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* ---------- Checkbox ---------- */
+.rs-check {
+  font-family: var(--f-sans);
+}
+.rs-check__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--s12); /* area sentuh 48 */
+  cursor: pointer;
+}
+.rs-check__input {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: var(--s6);
+  height: var(--s6);
+  margin: 0;
+  border: 2px solid var(--c-primary); /* N2 */
+  border-radius: var(--r-sm);
+  background: var(--c-bg-surface);
+  cursor: pointer;
+}
+.rs-check__input:hover,
+.rs-check__input[data-state="hover"] {
+  background: var(--c-mint);
+}
+.rs-check__input:checked {
+  background: var(--c-primary-strong);
+  border-color: var(--c-primary-strong);
+}
+.rs-check__input:checked::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 11px;
+  border: solid var(--c-on-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.rs-check__input:focus-visible,
+.rs-check__input[data-state="fokus"] {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.rs-check__input:disabled {
+  border-color: var(--c-border-control);
+  background: var(--c-bg-neutral);
+  cursor: not-allowed;
+}
+.rs-check__input:disabled + .rs-check__label {
+  color: var(--c-text-secondary);
+}
+.rs-check__input[aria-invalid="true"] {
+  border-color: var(--c-danger);
+}
+.rs-check__label {
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+  color: var(--c-text-primary); /* K1 */
+}
+
+/* ---------- Badge ---------- */
+.rs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  font-family: var(--f-sans);
+  font-size: var(--t-body-sm-size);
+  line-height: var(--t-body-sm-line);
+  font-weight: var(--t-label-weight);
+}
+.rs-badge--info {
+  background: var(--c-mint);
+  color: var(--c-primary-strong); /* K6 */
+}
+.rs-badge--success {
+  background: var(--c-mint);
+  color: var(--c-success); /* K10 */
+}
+.rs-badge--warning {
+  background: var(--c-warning-bg);
+  color: var(--c-warning); /* K11 */
+}
+.rs-badge--danger {
+  background: var(--c-danger-bg);
+  color: var(--c-danger); /* K8 */
+}
+.rs-badge--neutral {
+  background: var(--c-bg-neutral);
+  color: var(--c-text-secondary); /* K2 */
+}
+
+/* ---------- Peringatan ---------- */
+.rs-alert {
+  display: flex;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-left: 4px solid;
+  border-radius: var(--r-lg);
+  color: var(--c-text-primary); /* K12 */
+  font-family: var(--f-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+}
+.rs-alert--info {
+  background: var(--c-mint);
+  border-left-color: var(--c-primary-strong);
+}
+.rs-alert--success {
+  background: var(--c-mint);
+  border-left-color: var(--c-success);
+}
+.rs-alert--warning {
+  background: var(--c-warning-bg);
+  border-left-color: var(--c-warning);
+}
+.rs-alert--danger {
+  background: var(--c-danger-bg);
+  border-left-color: var(--c-danger);
+}
+.rs-alert__icon {
+  flex: none;
+  font-weight: 700;
+}
+.rs-alert--info .rs-alert__icon {
+  color: var(--c-primary-strong);
+}
+.rs-alert--success .rs-alert__icon {
+  color: var(--c-success);
+}
+.rs-alert--warning .rs-alert__icon {
+  color: var(--c-warning);
+}
+.rs-alert--danger .rs-alert__icon {
+  color: var(--c-danger);
+}
+.rs-alert__title {
+  margin: 0;
+  font-weight: 700;
+}
+.rs-alert__text {
+  margin-top: var(--s1);
+}
+
+/* ---------- Kartu ---------- */
+.rs-card {
+  display: block;
+  padding: var(--s4);
+  border-radius: var(--r-xl);
+  background: var(--c-bg-surface);
+  box-shadow: var(--e1);
+  color: var(--c-text-primary);
+  font-family: var(--f-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+  text-decoration: none;
+}
+.rs-card--mint {
+  background: var(--c-mint);
+}
+.rs-card--pressable:hover,
+.rs-card--pressable[data-state="hover"] {
+  background: var(--c-bg-neutral);
+}
+.rs-card--pressable:focus-visible,
+.rs-card--pressable[data-state="fokus"] {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- Kerangka ---------- */
+.rs-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.rs-skeleton__bar {
+  display: block;
+  height: var(--s4);
+  border-radius: var(--r-md);
+  background: var(--c-bg-neutral); /* tanpa animasi berkedip */
+}
+.rs-skeleton__bar:last-child {
+  width: 60%;
+}

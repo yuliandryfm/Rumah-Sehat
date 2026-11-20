@@ -354,13 +354,30 @@ k="$(verify_di "$r" "$KERJA/alat-versi.log" "PATH=$KERJA/shim:$PATH")"
 merah "alat-versi-lain" "$k" "$KERJA/alat-versi.log" "gitleaks"
 nilai "alat-versi-lain-pesan" 1 "$k" "$KERJA/alat-versi.log" "gitleaks aktif '8.0.0', dibutuhkan"
 
-# --- Artefak komponen ada tetapi langkahnya belum diterapkan (web, F1-T39) ---
+# --- Web (F1-T39): workspace tidak lengkap, atau package.json tidak sinkron dengan lockfile ---
 r="$(fixture_baru artefak)"
+rm -rf "$r/web"
 mkdir -p "$r/web"
 printf '{"name": "fixture"}\n' >"$r/web/package.json"
-commit_semua "$r" "fixture: web/package.json tanpa langkah web"
+commit_semua "$r" "fixture: web/package.json tanpa pnpm-workspace.yaml"
 k="$(verify_di "$r" "$KERJA/artefak.log")"
-merah "artefak-tanpa-langkah" "$k" "$KERJA/artefak.log" "web"
+merah "web-tanpa-workspace" "$k" "$KERJA/artefak.log" "web"
+nilai "web-tanpa-workspace-pesan" 1 "$k" "$KERJA/artefak.log" "harus ada bersamaan"
+
+r="$(fixture_baru web-lock-basi)"
+sed 's/"vitest": "5.1.1"/"vitest": "5.1.0"/' "$r/web/package.json" >"$r/web/package.json.baru"
+mv "$r/web/package.json.baru" "$r/web/package.json"
+commit_semua "$r" "fixture: package.json web tidak sinkron dengan pnpm-lock.yaml"
+k="$(verify_di "$r" "$KERJA/web-lock-basi.log")"
+merah "web-lockfile-tidak-sinkron" "$k" "$KERJA/web-lock-basi.log" "web-install"
+
+# Token warna di bawah syarat kontras (F1-T40): skrip kontras harus MERAH.
+r="$(fixture_baru web-kontras)"
+sed 's/--c-text-secondary: #5c6b6f;/--c-text-secondary: #aaaaaa;/' "$r/web/packages/ui/src/tokens.css" >"$r/web/packages/ui/src/tokens.css.baru"
+mv "$r/web/packages/ui/src/tokens.css.baru" "$r/web/packages/ui/src/tokens.css"
+commit_semua "$r" "fixture: text.secondary di bawah kontras"
+k="$(verify_di "$r" "$KERJA/web-kontras.log")"
+merah "web-kontras-di-bawah-syarat" "$k" "$KERJA/web-kontras.log" "web-kontras"
 
 # --- Berkas migrasi baru tanpa penjaga (langkah migrasi-db, F1-T15) ---
 r="$(fixture_baru migrasi)"

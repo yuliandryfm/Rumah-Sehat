@@ -1,0 +1,7 @@
+{
+  "name": "@rs/backoffice",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kerangka workspace backoffice Ruang Sehat (ADR-027). Aplikasi Next.js penuh dibuat di task fitur."
+}

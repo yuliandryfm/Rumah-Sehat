@@ -437,7 +437,100 @@ else
 fi
 
 # --- Langkah 5: Web (§6 butir 5) ---
-belum "web" "F1-T39" "web/package.json" "web/pnpm-workspace.yaml" "web/*/package.json" "web/packages/*/package.json"
+# F1-T39: workspace pnpm di web/ (Node 26, pnpm 12.21.0, TypeScript ketat, ESLint, Vitest). Versi dipin di
+# web/package.json dan docs/sources.md (SRC-500 s.d. SRC-509). Begitu web/ ada, semua langkah wajib lulus.
+web_alat_siap() { # node mayor 26 dan pnpm persis sama dengan packageManager di web/package.json
+  local pm_diminta pm_aktif node_aktif
+  if ! command -v node >/dev/null 2>&1 || ! command -v pnpm >/dev/null 2>&1; then
+    echo "node dan pnpm harus ada di PATH (docs/05-stack.md §1.2)" >&2
+    return 1
+  fi
+  node_aktif="$(node --version | sed -n '1p')"
+  case "$node_aktif" in
+    v26.*) ;;
+    *)
+      echo "node aktif $node_aktif, dibutuhkan 26.x (docs/05-stack.md §1.2)" >&2
+      return 1
+      ;;
+  esac
+  pm_diminta="$(sed -n 's/^[[:space:]]*"packageManager"[[:space:]]*:[[:space:]]*"pnpm@\([^"]*\)".*/\1/p' web/package.json | sed -n '1p')"
+  pm_aktif="$(cd web && pnpm --version | sed -n '1p')"
+  if [ -z "$pm_diminta" ] || [ "$pm_aktif" != "$pm_diminta" ]; then
+    echo "pnpm aktif '${pm_aktif}', web/package.json meminta '${pm_diminta}'" >&2
+    return 1
+  fi
+  echo "node $node_aktif, pnpm $pm_aktif"
+}
+
+web_dependensi_segar() { # hijau palsu karena node_modules basi (pola npm ci di tahap-08-development.md)
+  # pnpm menulis salinan lockfile ke node_modules/.pnpm/lock.yaml dalam format berbeda dari pnpm-lock.yaml
+  # (tanpa dokumen lingkungan di awal), jadi bukan perbandingan byte. Penjaganya: `pnpm install
+  # --frozen-lockfile` dijalankan setiap kali (langkah web-install; gagal bila package.json dan lockfile
+  # tidak sinkron dan memasang ulang node_modules yang tidak sesuai lockfile), ditambah pemeriksaan di bawah
+  # bahwa keadaan pemasangan ada dan setiap workspace yang berdependensi tercatat di salinan lockfile terpasang.
+  if [ ! -f web/pnpm-lock.yaml ]; then
+    echo "web/pnpm-lock.yaml tidak ada (lockfile wajib di-commit)" >&2
+    return 1
+  fi
+  if ! git ls-files --error-unmatch web/pnpm-lock.yaml >/dev/null 2>&1; then
+    # Sebelum commit pertama lockfile boleh baru di-stage atau belum dilacak; hook commit memverifikasi index.
+    if [ -z "$(git ls-files --others --exclude-standard web/pnpm-lock.yaml)" ]; then
+      echo "web/pnpm-lock.yaml tidak dilacak git" >&2
+      return 1
+    fi
+  fi
+  if [ ! -f web/node_modules/.pnpm/lock.yaml ] || [ ! -f web/node_modules/.modules.yaml ]; then
+    echo "web/node_modules belum terpasang dari lockfile (keadaan pemasangan pnpm tidak ada)" >&2
+    return 1
+  fi
+  # Setiap workspace yang dideklarasikan harus muncul sebagai importer di salinan lockfile terpasang.
+  local dir
+  for dir in . backoffice portal rme situs korporat packages/*; do
+    [ -f "web/$dir/package.json" ] || continue
+    # pnpm hanya mencatat importer yang punya dependensi.
+    grep -qE '"(dependencies|devDependencies)"[[:space:]]*:' "web/$dir/package.json" || continue
+    if ! grep -qE "^  $(printf '%s' "$dir" | sed 's/[.\/]/\\&/g'):\$" web/node_modules/.pnpm/lock.yaml; then
+      echo "web/$dir tidak terdaftar sebagai importer di web/node_modules/.pnpm/lock.yaml (node_modules basi)" >&2
+      return 1
+    fi
+  done
+  echo "web/node_modules terpasang dari lockfile; semua workspace terdaftar"
+}
+
+di_web() { # di_web <perintah...>: jalankan di web/ tanpa variabel GIT_* warisan hook
+  (cd web && tanpa_env_git "$@")
+}
+
+web_build() { # build setiap paket/aplikasi web yang punya skrip build
+  di_web pnpm run build
+}
+
+if [ -f web/package.json ] && [ -f web/pnpm-workspace.yaml ]; then
+  jalankan "web-alat" web_alat_siap
+  jalankan "web-install" di_web pnpm install --frozen-lockfile
+  jalankan "web-dependensi-segar" web_dependensi_segar
+  jalankan "web-typecheck" di_web pnpm run typecheck
+  jalankan "web-lint" di_web pnpm run lint
+  jalankan "web-test" di_web pnpm run test
+  jalankan "web-api-client-sinkron" di_web pnpm run generate:check
+  # F1-T40: skrip kontras token tanpa dependensi (K1–K13, N1–N4; design guideline §7.4), lalu build
+  # setiap paket/aplikasi yang punya skrip build (saat ini galeri state web/packages/ui; aplikasi Next.js
+  # menambah `next build` pada task fiturnya). Hilangnya semua skrip build GAGAL, bukan dilewati.
+  if [ -f web/packages/ui/scripts/kontras.mjs ]; then
+    jalankan "web-kontras" di_web pnpm run kontras
+  else
+    gagal "web-kontras" "web/packages/ui/scripts/kontras.mjs (F1-T40) tidak ada"
+  fi
+  if grep -l '"build"[[:space:]]*:' web/*/package.json web/packages/*/package.json >/dev/null 2>&1; then
+    jalankan "web-build" web_build
+  else
+    gagal "web-build" "tidak ada paket web dengan skrip build (web/packages/ui, F1-T40)"
+  fi
+elif [ -e web/package.json ] || [ -e web/pnpm-workspace.yaml ]; then
+  gagal "web" "web/package.json dan web/pnpm-workspace.yaml harus ada bersamaan"
+else
+  gagal "web" "workspace web/ (F1-T39) tidak ada"
+fi
 
 # --- Langkah 6: Mobile (§6 butir 6) ---
 belum "mobile" "F1-T44" "mobile/pubspec.yaml" "mobile/apps/*/pubspec.yaml" "mobile/packages/*/pubspec.yaml"

@@ -1,0 +1,7 @@
+{
+  "name": "@rs/rme",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kerangka workspace web RME minimalis (ADR-027). Aplikasi Next.js penuh dibuat di task fitur."
+}

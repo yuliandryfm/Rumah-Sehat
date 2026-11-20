@@ -1,0 +1,9 @@
+# Workspace web Ruang Sehat (docs/05-stack.md §1.2, coding-standards §1.5).
+# Aplikasi: backoffice, portal, rme, situs, korporat (ADR-027). Paket bersama: packages/*.
+packages:
+  - backoffice
+  - portal
+  - rme
+  - situs
+  - korporat
+  - packages/*
