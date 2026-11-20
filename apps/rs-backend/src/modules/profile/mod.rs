@@ -5,5 +5,8 @@
 //! profil dibuat task masing-masing (F1-T56 dan seterusnya).
 
 pub mod api;
+// Aturan verifikasi identitas F1-T59; dipakai service pengajuan identitas F1-T60.
+#[allow(dead_code)]
+mod domain;
 mod error;
 mod repo;

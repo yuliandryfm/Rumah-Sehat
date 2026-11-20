@@ -20,6 +20,8 @@ audit-store = { path = "../../crates/audit-store" }
 platform-jobs = { path = "../../crates/platform-jobs" }
 authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
+# Jalur tulis status ADR-008 (F1-T59, reference implementation US-106/US-201).
+status-flow = { path = "../../crates/status-flow" }
 axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
