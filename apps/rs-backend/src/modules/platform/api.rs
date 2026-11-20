@@ -1,7 +1,8 @@
 //! Antarmuka publik modul `platform` untuk modul lain:
 //! - pemeriksaan kesiapan yang dapat didaftarkan (F1-T11);
 //! - berkas unggahan (F1-T29, ADR-018): slot unggah dengan URL bertanda tangan, validasi isi pasca-unggah,
-//!   dan pencatatan `stored_file` di transaksi milik pemanggil.
+//!   dan pencatatan `stored_file` di transaksi milik pemanggil;
+//! - URL unduh berumur pendek setelah otorisasi dan E-05 (F1-T30, ADR-018 butir 3): [`issue_download_url`].
 //!
 //! Alur berkas (tiga langkah ADR-018 konsekuensi): (1) [`create_upload_slot`] → klien mengunggah langsung ke
 //! object storage dengan [`UploadInstruction`]; (2) [`validate_upload`] di luar transaksi database
@@ -21,6 +22,8 @@
 //! [`discard_validated`].
 
 use super::service;
+use audit::{AuditContext, Subject};
+use authz::{AdminSubRole, Principal};
 use foundation::{Clock, Uuid};
 use object_storage::{
     AddressingStyle, Deployment, ObjectStorageConfig, ObjectStore, valid_bucket_name,
@@ -437,6 +440,81 @@ pub async fn discard_validated(
     upload: ValidatedUpload,
 ) -> Result<(), FileError> {
     service::discard_validated(clock, storage, upload).await
+}
+
+/// Umur URL unduh (ADR-018 butir 3: "nilai awal 5 menit").
+pub const DOWNLOAD_URL_TTL: Duration = Duration::from_secs(300);
+
+/// Dasar akses berkas yang sudah diputuskan pemanggil (ADR-012 butir 1, 4; KU-03).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileAccess {
+    /// Pemilik berkas (subjek data) membuka berkasnya sendiri: hanya `stored_file.owner_account_id` yang
+    /// sama dengan pemanggil yang lolos. Tanpa E-05 (E-05 hanya untuk pihak selain subjek data, PRD §7.1).
+    Owner,
+    /// Admin Ruang Sehat dengan salah satu sub-peran `roles` (misalnya Verifikator membuka foto KTP,
+    /// US-201) yang relasinya ke berkas sudah diperiksa modul pemanggil. E-05 dicatat dan di-commit
+    /// sebelum URL diterbitkan; `subject` = subjek data berkas (PRD §7.2).
+    Staff {
+        /// Sub-peran yang diizinkan (minimal satu harus dipegang).
+        roles: &'static [AdminSubRole],
+        /// Subjek data berkas.
+        subject: Subject,
+    },
+}
+
+/// Permintaan URL unduh.
+#[derive(Debug, Clone, Copy)]
+pub struct DownloadRequest<'a> {
+    /// ID `stored_file`.
+    pub stored_file_id: Uuid,
+    /// Tujuan berkas yang diharapkan endpoint (berkas kategori/bucket lain → 404).
+    pub purpose: UploadPurpose,
+    /// Pola rute untuk security log (misalnya `/backoffice/v1/identity-verifications/{id}/ktp-photo`).
+    pub route: &'a str,
+    /// Dasar akses.
+    pub access: FileAccess,
+}
+
+/// URL unduh berumur pendek. URL adalah rahasia: tidak pernah dicatat atau disimpan (ADR-018 butir 3).
+#[derive(Clone, PartialEq, Eq)]
+pub struct DownloadTicket {
+    /// URL GET bertanda tangan dengan `Content-Disposition: attachment` dan `Cache-Control: private,
+    /// no-store`.
+    pub url: String,
+    /// Instan kedaluwarsa URL.
+    pub expires_at: OffsetDateTime,
+    /// Tipe isi tervalidasi.
+    pub mime_type: String,
+    /// Ukuran berkas (byte).
+    pub size_bytes: i32,
+}
+
+impl fmt::Debug for DownloadTicket {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DownloadTicket")
+            .field("url", &"[REDACTED]")
+            .field("expires_at", &self.expires_at)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Menerbitkan URL unduh berumur pendek untuk satu `stored_file` (F1-T30, ADR-018 butir 3):
+/// 1. berkas dicari (tanpa yang terhapus/dimusnahkan, ADR-003); tidak ada, kategori lain, atau tidak boleh
+///    diakses menurut [`FileAccess`] → [`FileError::NotFound`] yang sama (KU-03, ADR-012 butir 4) lewat
+///    `authz::visible_object` (security log `access_denied`); percobaan atas berkas yang ada juga dicatat
+///    E-05 hasil gagal di transaksi tersendiri (KU-03, coding-standards §4.4 butir 3);
+/// 2. akses [`FileAccess::Staff`]: E-05 ditulis dan di-commit lewat `audit::in_audited_tx` sebelum URL
+///    dibuat; gagal mencatat → akses ditolak (500) tanpa URL (coding-standards §4.4 butir 2);
+/// 3. URL GET bertanda tangan [`DOWNLOAD_URL_TTL`] dengan header respons lampiran.
+pub async fn issue_download_url(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    principal: &Principal,
+    audit: &AuditContext,
+    request: DownloadRequest<'_>,
+) -> Result<DownloadTicket, FileError> {
+    service::issue_download_url(pool, clock, storage, principal, audit, request).await
 }
 
 /// Hasil satu putaran [`purge_expired_upload_slots`].

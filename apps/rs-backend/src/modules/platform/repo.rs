@@ -248,6 +248,31 @@ pub(super) async fn live_files_page(
     .await
 }
 
+/// Berkas yang dapat diunduh (belum dihapus lunak dan belum dimusnahkan, ADR-003, ADR-018 butir 5).
+pub(super) struct FileForDownload {
+    pub(super) id: Uuid,
+    pub(super) bucket: String,
+    pub(super) object_key: String,
+    pub(super) category: String,
+    pub(super) owner_account_id: Option<Uuid>,
+    pub(super) mime_type: String,
+    pub(super) size_bytes: i32,
+}
+
+pub(super) async fn find_file_for_download(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<FileForDownload>, sqlx::Error> {
+    sqlx::query_as!(
+        FileForDownload,
+        "SELECT id, bucket, object_key, category, owner_account_id, mime_type, size_bytes \
+         FROM app.stored_file WHERE id = $1 AND deleted_at IS NULL AND purged_at IS NULL",
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// Baris `stored_file` baru (lolos validasi).
 pub(super) struct NewStoredFile<'a> {
     pub(super) id: Uuid,

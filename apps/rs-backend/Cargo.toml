@@ -37,6 +37,9 @@ time = { version = "=0.3.55", default-features = false, features = ["std"] }
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
 
 [dev-dependencies]
+# F1-T30: kunci realm uji dan token bertanda tangan untuk test unduh lewat PolicyRouter (fitur testing hanya
+# di dev-dependencies, tidak ikut biner produksi; pola sama dengan crate authz).
+authn = { path = "../../crates/authn", features = ["testing"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 

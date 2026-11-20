@@ -2,7 +2,8 @@
 //!
 //! - [`Presigner`]: URL unggah bertanda tangan SigV4, urutan preferensi KEPUTUSAN-234: presigned POST
 //!   dengan policy (`content-length-range`, `Content-Type`, `key`), lalu presigned PUT dengan
-//!   `Content-Type`/`Content-Length` bertanda tangan. Murni, tanpa I/O.
+//!   `Content-Type`/`Content-Length` bertanda tangan; dan URL unduh presigned GET dengan header respons
+//!   bertanda tangan (F1-T30). Murni, tanpa I/O.
 //! - [`ObjectStore`]: operasi server (HEAD, GET terbatas, PUT, daftar dan hapus semua versi) dengan tanda
 //!   tangan header SigV4 lewat hyper HTTP/1.
 //! - Endpoint, region, dan gaya pengalamatan dari [`ObjectStorageConfig`]; `http://` ditolak di luar
@@ -29,4 +30,6 @@ pub use config::{
     valid_object_key,
 };
 pub use error::ObjectStorageError;
-pub use presign::{MAX_PRESIGN_SECONDS, PresignedPost, PresignedPut, Presigner};
+pub use presign::{
+    MAX_PRESIGN_SECONDS, PresignedGet, PresignedPost, PresignedPut, Presigner, ResponseHeaders,
+};
