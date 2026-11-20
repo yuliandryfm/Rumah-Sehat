@@ -38,7 +38,7 @@ export default defineConfig({
         test: {
           name: "ui",
           environment: "jsdom",
-          include: ["packages/ui/src/**/*.test.{ts,tsx}"],
+          include: ["packages/ui/src/**/*.test.{ts,tsx}", "packages/bff-auth/src/client/**/*.test.tsx"],
         },
       },
     ],

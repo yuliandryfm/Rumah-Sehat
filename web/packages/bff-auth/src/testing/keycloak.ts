@@ -154,20 +154,24 @@ export class TestUser {
     readonly password: string,
   ) {}
 
-  /** Kode TOTP (HMAC-SHA1, 6 digit, 30 detik) dari slot yang belum dipakai (kode tidak dapat dipakai ulang). */
+  /**
+   * Kode TOTP (HMAC-SHA1, 6 digit, 30 detik) dari slot yang belum dipakai (kode tidak dapat dipakai ulang).
+   * Hanya slot sekarang dan berikutnya: kode dikirim ±1,2 detik kemudian (jeda Quick Login Check), sehingga
+   * slot sebelumnya dapat sudah di luar jendela look-ahead 1 saat diterima Keycloak.
+   */
   async otp(): Promise<string> {
     if (this.otpKey === null) {
       throw new Error("TOTP belum didaftarkan");
     }
     for (;;) {
       const now = Math.floor(Date.now() / 1000 / 30);
-      for (const off of [0, 1, -1]) {
+      for (const off of [0, 1]) {
         if (!this.#usedSlots.has(now + off)) {
           this.#usedSlots.add(now + off);
           return totp(this.otpKey, now + off);
         }
       }
-      await new Promise((r) => setTimeout(r, 31_000));
+      await new Promise((r) => setTimeout(r, (now + 1) * 30_000 - Date.now() + 500));
     }
   }
 }

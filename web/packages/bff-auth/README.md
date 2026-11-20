@@ -16,6 +16,35 @@ Hanya untuk kode server. Komponen klien tidak boleh mengimpor paket ini.
 | `src/oidc.ts` | Authorization Code + PKCE S256 klien rahasia (openid-client 6.9.0) `[SRC-592]`; logout Keycloak dari server `[SRC-593]` |
 | `src/core.ts` | Perakitan: konfigurasi → rahasia → Valkey → JWE → sesi → OIDC |
 
+## Isi (F1-T42)
+
+| Berkas | Isi |
+| --- | --- |
+| `src/http.ts` | Envelope ADR-023 + kode registry (`4030101` baru di `docs/05-response-codes.md` §6), header `no-store`, ID korelasi, cookie `__Host-` `[SRC-408]` `[SRC-597]`, pengaman `return_to` |
+| `src/csrf.ts` | Token synchronizer per sesi lewat header `X-CSRF-Token` (formulir keluar: field `csrf_token`), perbandingan waktu-konstan, ditambah pemeriksaan `Sec-Fetch-Site`/`Origin` `[SRC-595]` (KEPUTUSAN-269) |
+| `src/refresh.ts` | Penyegaran token akses di server, satu penyegar per sesi (kunci Valkey) |
+| `src/routes.ts` | Route Handler: `GET /auth/login`, `GET /auth/callback`, `POST /auth/logout`, `GET /auth/session` (status, tidak dihitung aktivitas), `POST /auth/session/extend` ("Tetap masuk"), dan `/bff/<path>` (proxy ke API Rust dengan Bearer di server) `[SRC-596]` |
+| `src/client/` | `@rs/bff-auth/client`: `SessionTimeoutWarning` (dialog 2 menit sebelum batas tidak aktif 30 menit dengan "Tetap masuk", peringatan batas mutlak 12 jam tanpa perpanjangan; KEPUTUSAN-170, wireframe C01) dan `@rs/bff-auth/session-dialog.css` |
+
+### Memasang di aplikasi Next.js (dikerjakan di task kerangka aplikasi, misalnya F1-T43)
+
+```ts
+// web/backoffice/lib/server/bff.ts (kode server saja)
+import { createBffCore, createBffRoutes, loadBffConfig, type BffCore } from "@rs/bff-auth";
+let core: Promise<BffCore> | null = null;
+// Dibuat saat permintaan pertama, bukan saat modul dimuat (next build mengimpor modul rute tanpa env).
+const getCore = () => (core ??= createBffCore(loadBffConfig(process.env)).catch((e: unknown) => { core = null; throw e; }));
+export const routes = createBffRoutes(getCore, { allowedApiPrefixes: ["v1/admin/"] });
+
+// web/backoffice/app/bff/[...path]/route.ts
+export const { GET, POST, PUT, PATCH, DELETE } = routes.proxy;
+// app/auth/login/route.ts → routes.login; app/auth/callback/route.ts → routes.callback;
+// app/auth/logout/route.ts → routes.logout; app/auth/session/route.ts → routes.session;
+// app/auth/session/extend/route.ts → routes.extend
+```
+
+Komponen klien memanggil `/bff/...` dengan header `X-CSRF-Token` (nilai dari `GET /auth/session`). Polling otomatis ke `/bff/` dihitung sebagai aktivitas dan akan menahan sesi tetap hidup; pakai `/auth/session` untuk pemeriksaan status.
+
 ## Rahasia di OpenBao KV v2
 
 Path: `<BFF_OPENBAO_KV_MOUNT>/data/<BFF_OPENBAO_KV_PATH>`, misalnya `secret/data/rs/bff/backoffice`. Identitas proses BFF hanya punya `read` pada path itu (KEPUTUSAN-79).
@@ -51,3 +80,6 @@ docker compose -f infra/local/compose.yaml exec -e BAO_TOKEN="$BAO_DEV_ROOT_TOKE
 - TLS ke OpenBao belum diterapkan (sama dengan crate `crypto`): hanya `http://<ip-loopback>` yang diterima.
 - Jalur logout Keycloak dari server berstatus "legacy" di kode Keycloak `[SRC-593]`; dipantau saat upgrade Keycloak.
 - Rahasia dibaca sekali saat start; pemuatan ulang saat rotasi tanpa restart `[TIDAK DIKETAHUI]` (belum dirancang).
+- Cookie `Secure` dari `http://127.0.0.1` saat pengembangan lokal: MDN hanya menyebut pengecualian untuk "localhost" `[SRC-597]`; perilaku browser untuk alamat IP loopback `[TIDAK DIKETAHUI]`, dibuktikan di e2e Playwright aplikasi.
+- Klien Keycloak belum punya back-channel logout URL, sehingga sesi yang diakhiri di Keycloak terdeteksi BFF saat penyegaran token berikutnya (paling lama masa token akses 5 menit, atau segera saat "Tetap masuk"), bukan seketika; API Rust tetap menolak lewat daftar sesi dicabut (ADR-011 butir 8).
+- Next.js belum dipasang di `web/backoffice`; berkas `route.ts` dan `next build` ditambahkan di task kerangka aplikasi.

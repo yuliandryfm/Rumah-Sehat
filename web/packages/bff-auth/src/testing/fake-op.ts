@@ -40,6 +40,7 @@ export class FakeOp {
   /** Bila diisi, token endpoint membalas galat ini untuk grant refresh. */
   failRefreshWith: { status: number; error: string } | null = null;
   #server: Server | null = null;
+  #port = 0;
   #codes = new Map<string, PendingCode>();
   #refresh = new Map<string, { sub: string; sid: string }>();
   #key: CryptoKey | null = null;
@@ -59,9 +60,14 @@ export class FakeOp {
         res.end();
       });
     });
-    await new Promise<void>((resolve) => this.#server?.listen(0, "127.0.0.1", resolve));
-    const port = (this.#server.address() as AddressInfo).port;
-    this.issuer = `http://127.0.0.1:${String(port)}/realms/uji`;
+    await new Promise<void>((resolve) => this.#server?.listen(this.#port, "127.0.0.1", resolve));
+    this.#port = (this.#server.address() as AddressInfo).port;
+    this.issuer = `http://127.0.0.1:${String(this.#port)}/realms/uji`;
+  }
+
+  /** Menyalakan ulang di port yang sama setelah `stop()` (meniru Keycloak padam sementara). */
+  async restart(): Promise<void> {
+    await this.start();
   }
 
   async stop(): Promise<void> {

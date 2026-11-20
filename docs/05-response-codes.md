@@ -236,10 +236,16 @@ Isi respons sama untuk data yang tidak ada dan data yang tidak boleh diakses (AD
 
 ## 6. Kode spesifik modul
 
-Belum ada. Diisi per story di Tahap 8 mengikuti §5.
+Diisi per story di Tahap 8 mengikuti §5.
 
 Format tabel per modul:
 
 | `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
 | --- | --- | --- | --- | --- | --- |
 | — | — | — | — | — | — |
+
+### Modul `01` Identitas dan akses
+
+| `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
+| --- | --- | --- | --- | --- | --- |
+| `4030101` | 403 | Permintaan tidak dapat diverifikasi | BFF web (server Next.js) menolak permintaan ke Route Handler `bff/`, "Tetap masuk", atau keluar: token CSRF tidak ada atau tidak cocok dengan sesi, atau header `Origin`/`Sec-Fetch-Site` bukan asal aplikasi (ADR-011 butir 7, threat model WEB-04). Dipancarkan BFF, bukan API Rust | EN-11 (F1-T42) | Aktif |
