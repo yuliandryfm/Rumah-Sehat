@@ -1,0 +1,10 @@
+{
+  "name": "@rs/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Token desain dan komponen UI web Ruang Sehat (docs/06-design-guideline.md).",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

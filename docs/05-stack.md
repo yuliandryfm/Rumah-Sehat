@@ -68,7 +68,7 @@ Tiga aplikasi web memakai Next.js, dengan server Next.js berperan sebagai BFF `[
 | Pengambilan data | TanStack Query (`@tanstack/react-query`) | 5.108.0 | MIT | Cache dan sinkronisasi data di klien | `[SRC-130]` |
 | Test e2e | Playwright (`@playwright/test`) | 1.65.1 | Apache-2.0 | Alur utama web | `[SRC-133]` |
 | Pustaka komponen UI, design token | Ditetapkan Tahap 6 | — | — | — | `[KEPUTUSAN-75]` |
-| ESLint dan test unit web | `[TIDAK DIKETAHUI]` | — | — | Diverifikasi saat ditambahkan di Tahap 8 | `[KEPUTUSAN-75]` |
+| ESLint dan test unit web | ESLint 10.15.0 + typescript-eslint 8.73.0 (`strictTypeChecked`); Vitest 5.1.1 + jsdom 31.0.1 + Testing Library (react 16.3.3, dom 10.4.2); Vite 8.3.8 | sesuai kolom Pilihan | MIT | Dipilih di F1-T39 lewat registry npm. TypeScript 7.0.2 tidak punya API kompilator JS (`ts.factory` tidak ada), jadi typescript-eslint dan openapi-typescript memakai `typescript` 6.0.3, dan `tsc` kompilasi tipe memakai 7.0.2 (alias `typescript-7`) | `[SRC-500]` `[SRC-501]` `[SRC-502]` `[SRC-503]` `[SRC-504]` `[SRC-505]` `[SRC-506]` `[SRC-507]` `[KEPUTUSAN-75]` |
 
 **Pengerasan Next.js** `[KEPUTUSAN-75]`. Halaman advisory resmi mencatat dua advisory Critical (RCE di Image Optimization API dengan SVG, 14 Okt 2026; RCE di `next/og` ImageResponse, 22 Sep 2026) dan tujuh advisory Moderate pada 3 Nov 2026 `[SRC-246]`. Karena itu:
 - Image optimization dimatikan global dengan `images: { unoptimized: true }` `[SRC-159]`.

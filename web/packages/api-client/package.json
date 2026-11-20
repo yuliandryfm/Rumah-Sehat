@@ -1,0 +1,20 @@
+{
+  "name": "@rs/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Klien API bertipe, dihasilkan dari openapi/*.json (openapi-typescript) dan dipanggil lewat openapi-fetch.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs write",
+    "generate:check": "node scripts/generate.mjs check"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}

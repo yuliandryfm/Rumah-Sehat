@@ -1,0 +1,35 @@
+{
+  "name": "ruang-sehat-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=26.13.1 <27"
+  },
+  "scripts": {
+    "typecheck": "node node_modules/typescript-7/bin/tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "build": "pnpm -r --if-present run build",
+    "kontras": "node packages/ui/scripts/kontras.mjs",
+    "generate": "pnpm --filter @rs/api-client run generate",
+    "generate:check": "pnpm --filter @rs/api-client run generate:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "eslint": "10.15.0",
+    "jsdom": "31.0.1",
+    "typescript": "6.0.3",
+    "typescript-7": "npm:typescript@7.0.2",
+    "typescript-eslint": "8.73.0",
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
+  }
+}

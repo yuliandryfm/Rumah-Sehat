@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "backoffice/src",
+    "portal/src",
+    "rme/src",
+    "situs/src",
+    "korporat/src",
+    "packages/*/src",
+    "packages/ui/gallery",
+    "vitest.config.ts"
+  ]
+}
