@@ -335,7 +335,7 @@ mod tests {
     fn ordinary_names_are_not_forbidden() {
         for name in [
             "status",
-            "markup_percent_bp",
+            "margin_percent_bp",
             "price_idr",
             "display_order",
             "is_active",
