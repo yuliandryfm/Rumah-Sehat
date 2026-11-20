@@ -62,7 +62,7 @@ Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di 
 Berlaku setelah repositori kode dibuat di Tahap 8 Fase 1 (rancangan: `docs/05-stack.md` §6, KEPUTUSAN-82). Sampai saat itu belum ada kode yang bisa dijalankan.
 
 - Verifikasi penuh (wajib sebelum commit dan sebelum menyatakan selesai): `bash scripts/verify.sh`
-- Backend Rust: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo sqlx prepare --check --workspace`
+- Backend Rust: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `bash scripts/db-ephemeral.sh cargo test --workspace --locked` (butuh Docker; DB efemeral, `SQLX_OFFLINE=true`), `cargo sqlx prepare --check --workspace` (sqlx-cli 0.9.1 di `~/.local/share/ruang-sehat/sqlx-cli-0.9.1`)
 - Migrasi (per database, SQL murni lewat sqlx-cli): `sqlx migrate run --source db/migrations/<app|audit|rme>`; migrasi production hanya lewat skrip deploy dengan kredensial dinamis OpenBao, tidak dari laptop
 - Web (workspace di `web/`): `pnpm install --frozen-lockfile`, `pnpm typecheck` (tsc 7 lewat alias `typescript-7`), `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm kontras`
 - Mobile: repositori terpisah (CR-019), tidak dijalankan di repo ini
