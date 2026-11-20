@@ -89,7 +89,7 @@ Berhenti segera, tulis laporan, dan tunggu user, kalau:
 - Langkah berikutnya **tidak bisa dibatalkan** (deploy, migrasi di production, menghapus data).
 - `fact-checker` tetap TIDAK LULUS setelah 2 putaran perbaikan.
 - Masalah yang sama gagal diperbaiki 3 kali.
-- **Batas sesi tercapai**: 20 task development, atau 6 tahap perencanaan, dalam satu pemanggilan `/runbook auto`. Batas ini menjaga pemakaian kuota tetap terkendali. User melanjutkan dengan `/runbook auto` lagi.
+- **Batas sesi tercapai**: 45 task development atau fase yang sedang berjalan selesai (mana yang lebih dulu), atau 6 tahap perencanaan, dalam satu pemanggilan `/runbook auto`. Batas ini menjaga pemakaian kuota tetap terkendali. User melanjutkan dengan `/runbook auto` lagi. (Diubah dari 20 task atas arahan user 2026-11-20, Telegram: "berhenti per 45 task atau fasenya sudah selesai".)
 
 ## Laporan checkpoint
 
