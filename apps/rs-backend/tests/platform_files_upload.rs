@@ -12,16 +12,18 @@
 mod files;
 
 use files::{
-    METADATA_MARKER, SeaweedFs, app_pool, contains, jpeg, jpeg_with_exif, new_account, now, png,
-    png_chunk_types, png_with_metadata, slot_exists, slot_object_key, stored_file, upload,
+    METADATA_MARKER, SeaweedFs, app_pool, contains, expire_slot_past_grace, jpeg, jpeg_with_exif,
+    new_account, now, png, png_chunk_types, png_with_metadata, slot_consumed, slot_exists,
+    slot_object_key, stored_file, upload,
 };
 use foundation::{Clock, FixedClock, SystemClock, Uuid, new_id};
 use image::{GenericImageView, ImageFormat};
 use object_storage::GetOutcome;
 use rs_backend::modules::platform::api::{
     ContainerType, FileContainer, FileError, FileStorage, LogicalBucket, MAX_PHOTO_BYTES,
-    UploadMethod, UploadPurpose, UploadSlotRequest, create_upload_slot, discard_validated,
-    record_stored_file, validate_upload,
+    UPLOAD_SLOT_TOMBSTONE_GRACE, UploadMethod, UploadPurpose, UploadSlotRequest,
+    create_upload_slot, discard_validated, purge_expired_upload_slots, record_stored_file,
+    validate_upload,
 };
 use sqlx::PgPool;
 use std::time::Duration;
@@ -110,6 +112,9 @@ async fn jpeg_via_presigned_post_is_reencoded_without_exif_and_recorded_once() {
     .unwrap();
     assert_eq!(validated.mime_type(), "image/jpeg");
     assert_ne!(validated.object_key(), original_key);
+    // Prefiks TD-17: unggahan mentah di incoming/, hasil kode ulang di files/.
+    assert!(original_key.starts_with("incoming/"));
+    assert!(validated.object_key().starts_with("files/"));
 
     // Berkas asli beserta semua versinya hilang; hasil kode ulang tanpa EXIF dan penanda, orientasi diterapkan.
     assert_eq!(versions(&storage, &original_key).await, 0);
@@ -133,7 +138,7 @@ async fn jpeg_via_presigned_post_is_reencoded_without_exif_and_recorded_once() {
         container_id: new_id(),
     };
     let mut tx = pool.begin().await.unwrap();
-    let file_id = record_stored_file(&mut tx, &validated, Some(container))
+    let file_id = record_stored_file(&mut tx, &SystemClock, &validated, Some(container))
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -149,12 +154,13 @@ async fn jpeg_via_presigned_post_is_reencoded_without_exif_and_recorded_once() {
     assert_eq!(row.size_bytes, validated.size_bytes());
     assert_eq!(row.sha256, validated.sha256().to_vec());
     assert!(row.deleted_at.is_none());
-    assert!(!slot_exists(&pool, slot_id).await);
+    // TD-17: slot tetap ada sebagai tombstone sampai expires_at + jeda.
+    assert!(slot_consumed(&pool, slot_id).await);
 
     // Slot sekali pakai: pencatatan dan validasi ulang ditolak.
     let mut tx = pool.begin().await.unwrap();
     assert!(matches!(
-        record_stored_file(&mut tx, &validated, None).await,
+        record_stored_file(&mut tx, &SystemClock, &validated, None).await,
         Err(FileError::NotFound)
     ));
     drop(tx);
@@ -218,9 +224,12 @@ async fn png_via_presigned_put_loses_text_and_exif_chunks() {
 
     // Transaksi pemanggil batal: berkas tervalidasi dibuang, slot tetap ada (rollback).
     let mut tx = pool.begin().await.unwrap();
-    record_stored_file(&mut tx, &validated, None).await.unwrap();
+    record_stored_file(&mut tx, &SystemClock, &validated, None)
+        .await
+        .unwrap();
     tx.rollback().await.unwrap();
     assert!(slot_exists(&pool, slot_id).await);
+    assert!(!slot_consumed(&pool, slot_id).await);
     let key = validated.object_key().to_string();
     discard_validated(&SystemClock, &storage, validated)
         .await
@@ -293,7 +302,10 @@ async fn fake_types_are_rejected_and_purged() {
             matches!(r, Err(FileError::UnsupportedType)),
             "{name}: {r:?}"
         );
-        assert!(!slot_exists(&pool, slot_id).await, "{name}: slot dihapus");
+        assert!(
+            slot_consumed(&pool, slot_id).await,
+            "{name}: slot menjadi tombstone"
+        );
         assert_eq!(versions(&storage, &key).await, 0, "{name}: berkas dihapus");
     }
 }
@@ -351,7 +363,7 @@ async fn size_limit_is_inclusive_and_enforced_at_slot_storage_and_validation() {
     // Tepat batas: diterima.
     let (slot_id, _) =
         slot_with_upload(&pool, &storage, owner, "image/jpeg", &jpeg_of_size(max)).await;
-    validate_upload(
+    let accepted = validate_upload(
         &pool,
         &SystemClock,
         &storage,
@@ -361,6 +373,9 @@ async fn size_limit_is_inclusive_and_enforced_at_slot_storage_and_validation() {
     )
     .await
     .unwrap();
+    discard_validated(&SystemClock, &storage, accepted)
+        .await
+        .unwrap();
 
     // Satu byte lebih: ditolak saat meminta slot (ukuran yang dinyatakan).
     assert!(matches!(
@@ -407,11 +422,12 @@ async fn size_limit_is_inclusive_and_enforced_at_slot_storage_and_validation() {
         .await,
         Err(FileError::TooLarge)
     ));
-    assert!(!slot_exists(&pool, ticket.upload_slot_id).await);
+    assert!(slot_consumed(&pool, ticket.upload_slot_id).await);
     assert_eq!(versions(&storage, &key).await, 0);
 }
 
-// trace: ADR-018 butir 2 (berkas tidak pernah dikonfirmasi dihapus), coding-standards §7.3 (slot kedaluwarsa)
+// trace: ADR-018 butir 2 (berkas tidak pernah dikonfirmasi dihapus), coding-standards §7.3 (slot
+// kedaluwarsa), TD-17 (dibersihkan job pembersih setelah expires_at + jeda, bukan di jalur permintaan)
 #[tokio::test(flavor = "multi_thread")]
 async fn expired_slot_is_not_found_and_cleaned_up() {
     let pool = app_pool().await;
@@ -447,6 +463,20 @@ async fn expired_slot_is_not_found_and_cleaned_up() {
         .await,
         Err(FileError::NotFound)
     ));
+    // Belum lewat jeda: pembersih tidak menyentuh slot ini.
+    purge_expired_upload_slots(&pool, &clock, &storage, 1000)
+        .await
+        .unwrap();
+    assert!(slot_exists(&pool, ticket.upload_slot_id).await);
+    assert_eq!(versions(&storage, &key).await, 1);
+    // Lewat expires_at + jeda: objek mentah dan slot dihapus. `expires_at` dimundurkan (bukan jam yang
+    // dimajukan): penyedia menolak tanda tangan yang waktunya terpaut jauh (diamati 403, SRC-562).
+    assert!(UPLOAD_SLOT_TOMBSTONE_GRACE < Duration::from_secs(16 * 60));
+    expire_slot_past_grace(&pool, ticket.upload_slot_id).await;
+    let report = purge_expired_upload_slots(&pool, &SystemClock, &storage, 1000)
+        .await
+        .unwrap();
+    assert_eq!(report.failed, 0, "{report:?}");
     assert!(!slot_exists(&pool, ticket.upload_slot_id).await);
     assert_eq!(versions(&storage, &key).await, 0);
 
@@ -513,7 +543,9 @@ async fn slot_of_another_account_is_not_found_and_left_intact() {
     .await
     .unwrap();
     let mut tx = pool.begin().await.unwrap();
-    record_stored_file(&mut tx, &validated, None).await.unwrap();
+    record_stored_file(&mut tx, &SystemClock, &validated, None)
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
 }
 

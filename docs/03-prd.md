@@ -1,7 +1,7 @@
 # PRD (Product Requirements Document): Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: **1.3** (CR-021, 2026-11-19): situs web company profile dan layanan korporat; EP-18 dan EP-19 baru (US-1801, US-1802, US-1901–US-1917), AB-80–AB-87, PB-23–PB-25, E-18, UP-79–UP-87, perubahan §1.1, §1.2, §2.1, §2.2, §3.1, AB-13, AB-17, AB-20, NFR-SEC-02/04/06/08, NFR-PERF-04, NFR-COMP-03, §8.1, §12.3, §12.6; keputusan user `[USER] C21-P0–P4` (`docs/cr/CR-021-wawancara.md`), BRD v1.4. Rincian di §14. Versi **1.2 final** (Checkpoint 2, 2026-11-18): revisi CR-013 (pajak) disetujui `[USER] C2-B15`; klarifikasi AC Fase 1 diterapkan; MFA wajib untuk pasien (CR-018) `[USER] C2-Q9`; ubah password saat login (CR-017) `[USER] C2-B14`; story baru US-110 "Perangkat dan sesi aktif" `[USER] C2-Q10`. Rincian per bagian ada di §14 Riwayat versi. Versi 1.2 draf (Tahap 7, 2026-11-18): revisi CR-013, pajak dihitung dari harga rekanan + markup dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4. Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
+Versi: **1.3** (CR-021, 2026-11-19): situs web company profile dan layanan korporat; EP-18 dan EP-19 baru (US-1801, US-1802, US-1901–US-1917), AB-80–AB-87, PB-23–PB-25, E-18, UP-79–UP-87, perubahan §1.1, §1.2, §2.1, §2.2, §3.1, AB-13, AB-17, AB-20, NFR-SEC-02/04/06/08, NFR-PERF-04, NFR-COMP-03, §8.1, §12.3, §12.6; keputusan user `[USER] C21-P0–P4` (`docs/cr/CR-021-wawancara.md`), BRD v1.4. Rincian di §14. Versi **1.2 final** (Checkpoint 2, 2026-11-18): revisi CR-013 (pajak) disetujui `[USER] C2-B15`; klarifikasi AC Fase 1 diterapkan; MFA wajib untuk pasien (CR-018) `[USER] C2-Q9`; ubah password saat login (CR-017) `[USER] C2-B14`; story baru US-110 "Perangkat dan sesi aktif" `[USER] C2-Q10`. Rincian per bagian ada di §14 Riwayat versi. Versi 1.2 draf (Tahap 7, 2026-11-18): revisi CR-013, pajak dihitung dari harga rekanan + margin dan ditambahkan ke total, arah rumus disetujui user `[USER] T5-Q11, T5-Q11a`. Bagian yang berubah ditandai "CR-013": AB-10a, AB-11, AB-13, AB-17, AB-21, AB-27, §3.5 definisi, PB-21, US-801 AC1, US-804 AC2, US-811 AC1, US-812 AC4, §12.4. Versi 1.1 (revisi CR-007: login Google/Apple, push, dan WhatsApp dihapus; disetujui user 2026-11-18 `[USER] T4-Q2`; revisi CR-008: verifikasi keaslian resep oleh apotek, disetujui user 2026-11-18 `[USER] T4-Q5`; revisi CR-009: kunci aplikasi tenaga kesehatan, `[USER] T4-Q6`; revisi CR-010: penjelasan AB-36, `[USER] T4-G3`; disetujui di gate Tahap 4, 2026-11-18 `[USER] T4-G5`). Versi 1.0 disetujui di gate Tahap 3, 2026-11-17 `[USER] T3-Gate` (catatan gate di `docs/03-catatan-prd.md`)
 Penyusun: Claude (persona Product Manager + Tech Lead). Review acceptance criteria oleh subagent `qa-engineer`, review kepatuhan CR-006 oleh `compliance-reviewer`, dan pemeriksaan fakta oleh `fact-checker`
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: BRD v1.3 `[DOK: 02-brd.md]` (v1.2 disetujui bersama PRD v1.0 di gate Tahap 3; v1.3 revisi CR-007).
@@ -178,23 +178,23 @@ Konsultasi online dokter dan psikolog dipertahankan paling akhir `[USER] T3-Q2`.
 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
-| AB-10 | Harga layanan yang dibayar pasien = harga rekanan + markup Ruang Sehat. Markup berbentuk persen atau nominal, diatur per rekanan oleh admin Ruang Sehat | BR-042 |
-| AB-10a | **CR-013.** Pajak dihitung dari (harga rekanan + markup) setelah markup diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga. Tarif pajak adalah parameter berlaku-mulai yang diatur Keuangan (PB-21). Jenis pajak, tarif, cara pembulatan, dasar hitung per unit atau per pesanan, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan perilaku saat tarif belum diatur `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-042 `[USER] T5-Q11, T5-Q11a` (arah rumus dan baris terpisah); `[DOK: backlog.md CR-013]` (tarif berlaku-mulai diatur Keuangan) |
-| AB-11 | Untuk produk, total = jumlah harga produk (harga rekanan + markup, per unit dikali jumlah) + pajak (AB-10a, CR-013) + ongkos kirim | BR-034, BR-042 `[USER] T5-Q11a` (CR-013) |
-| AB-11a | Markup dihitung per unit layanan atau produk atas harga rekanan per unit. Markup persen dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Markup nominal berlaku per unit. Markup tidak dikenakan pada ongkos kirim dan biaya transaksi | `[UP-51]` |
+| AB-10 | Harga layanan yang dibayar pasien = harga rekanan + margin Ruang Sehat. Margin berbentuk persen atau nominal, diatur per rekanan oleh admin Ruang Sehat. Margin = persentase dari harga rekanan (bukan dari harga jual); harga ke pasien = harga rekanan × (1 + margin%) [CR-024] | BR-042 |
+| AB-10a | **CR-013.** Pajak dihitung dari (harga rekanan + margin) setelah margin diterapkan, ditambahkan ke total yang dibayar pasien, dan tampil sebagai baris terpisah di rincian harga. Tarif pajak adalah parameter berlaku-mulai yang diatur Keuangan (PB-21). Jenis pajak, tarif, cara pembulatan, dasar hitung per unit atau per pesanan, perlakuan pajak atas ongkos kirim dan biaya transaksi, pihak pemungut/penyetor, dan perilaku saat tarif belum diatur `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-042 `[USER] T5-Q11, T5-Q11a` (arah rumus dan baris terpisah); `[DOK: backlog.md CR-013]` (tarif berlaku-mulai diatur Keuangan) |
+| AB-11 | Untuk produk, total = jumlah harga produk (harga rekanan + margin, per unit dikali jumlah) + pajak (AB-10a, CR-013) + ongkos kirim | BR-034, BR-042 `[USER] T5-Q11a` (CR-013) |
+| AB-11a | Margin dihitung per unit layanan atau produk atas harga rekanan per unit. Margin persen dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Margin nominal berlaku per unit. Margin tidak dikenakan pada ongkos kirim dan biaya transaksi | `[UP-51]` |
 | AB-12 | Untuk metode pembayaran non-QRIS, biaya transaksi ditambahkan ke total dan ditampilkan sebelum pasien membayar. Untuk QRIS, pasien tidak dikenai biaya transaksi, dan MDR dipotong dari bagian rekanan. Pembebanan per metode menunggu L-12 | BR-044 `[SRC-24]` |
-| AB-13 | Pasien melihat harga layanan sebagai **satu angka** (harga rekanan + markup). Pajak (CR-013), ongkos kirim, dan biaya transaksi tampil sebagai baris terpisah. Markup tidak ditampilkan sebagai baris tersendiri. Berlaku juga untuk katalog dan invoice korporat (AB-80), kecuali bila L-21 membuat penagihan korporat memakai dua tagihan (K-02 opsi b): markup lalu tampil terpisah bagi perusahaan sebagai pengecualian korporat | `[UP-07]` (sejalan dengan T2-Q20); baris pajak `[USER] T5-Q11a` (CR-013); keterbukaan rincian harga menunggu L-14; pengecualian korporat `[USER] C21-P4` |
+| AB-13 | Pasien melihat harga layanan sebagai **satu angka** (harga rekanan + margin). Pajak (CR-013), ongkos kirim, dan biaya transaksi tampil sebagai baris terpisah. Margin tidak ditampilkan sebagai baris tersendiri. Berlaku juga untuk katalog dan invoice korporat (AB-80), kecuali bila L-21 membuat penagihan korporat memakai dua tagihan (K-02 opsi b): margin lalu tampil terpisah bagi perusahaan sebagai pengecualian korporat | `[UP-07]` (sejalan dengan T2-Q20); baris pajak `[USER] T5-Q11a` (CR-013); keterbukaan rincian harga menunggu L-14; pengecualian korporat `[USER] C21-P4` |
 | AB-14 | Informasi biaya MCU dan lab menampilkan harga yang sama dengan harga bayar di aplikasi | BR-023 `[USER] T2-Q20` |
 | AB-15 | Sebelum pembayaran dibuat, harga dan ketersediaan (slot atau stok) diperiksa ulang ke sistem rekanan. Kalau berbeda, pasien diberi tahu nilai terbaru dan harus menyetujuinya sebelum membayar | `[UP-25]` |
 | AB-16 | Layar ringkasan pesanan klinik, lab, dan home visit menyatakan bahwa harga hanya mencakup layanan yang tercantum, dan tindakan tambahan diselesaikan serta dibayar di luar aplikasi | BR-024 (L-14) |
-| AB-17 | Harga (harga rekanan atau tarif + markup), tarif dan nominal pajak (CR-013), dan nilai parameter bisnis yang berlaku untuk suatu pesanan dikunci saat pembayaran dibuat di payment gateway. Perubahan sesudahnya tidak memengaruhi pesanan itu, walaupun pembayaran diselesaikan setelah perubahan berlaku. Perubahan markup atau tarif antara ringkasan harga dan pembuatan pembayaran ditangani seperti AB-15. Pesanan korporat tanpa payment gateway mengunci harga saat konfirmasi (AB-81) | ADR-004 `[UP-32]` |
+| AB-17 | Harga (harga rekanan atau tarif + margin), tarif dan nominal pajak (CR-013), dan nilai parameter bisnis yang berlaku untuk suatu pesanan dikunci saat pembayaran dibuat di payment gateway. Perubahan sesudahnya tidak memengaruhi pesanan itu, walaupun pembayaran diselesaikan setelah perubahan berlaku. Perubahan margin atau tarif antara ringkasan harga dan pembuatan pembayaran ditangani seperti AB-15. Pesanan korporat tanpa payment gateway mengunci harga saat konfirmasi (AB-81) | ADR-004 `[UP-32]` |
 
 ### 3.4 Pembayaran dan pembagian dana (T1)
 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
 | AB-20 | Semua layanan yang dipesan di aplikasi dibayar di aplikasi lewat payment gateway berizin Bank Indonesia. Pengecualian: pesanan korporat lewat invoice B2B (AB-82) | BR-040, BR-115, BR-141 |
-| AB-21 | Setiap pembayaran dibagi langsung oleh payment gateway: bagian rekanan ke rekening rekanan, markup ke rekening PT. Arunika. PT. Arunika tidak menampung bagian rekanan. Penerima dan cara penyaluran komponen pajak (CR-013) dalam pembagian dana `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-041 |
+| AB-21 | Setiap pembayaran dibagi langsung oleh payment gateway: bagian rekanan ke rekening rekanan, margin ke rekening PT. Arunika. PT. Arunika tidak menampung bagian rekanan. Penerima dan cara penyaluran komponen pajak (CR-013) dalam pembagian dana `[TIDAK DIKETAHUI]` (sisa PT-28) | BR-041 |
 | AB-22 | Bagian rekanan = harga rekanan, dikurangi MDR bila dibayar dengan QRIS | BR-041, BR-044 |
 | AB-23 | Penerima dana ongkos kirim (outlet atau kurir) dan cara penyalurannya dalam pembagian dana `[TIDAK DIKETAHUI]` (PT-31). Ditetapkan di Tahap 4–5 bersama pemilihan kurir dan payment gateway | BR-034, BR-041 |
 | AB-24 | Cara penagihan biaya rekanan (dipotong dari pembagian dana atau ditagih terpisah) `[TIDAK DIKETAHUI]` (PT-17). Rilis 1 menyediakan pengaturan dan perhitungan tagihannya | BR-043 |
@@ -218,7 +218,7 @@ Aturan pokok BR-045 dirinci dengan jawaban `[USER] T3-Q5, T3-Q6, T3-Q7, T3-Q8`. 
 - **Tenaga kesehatan tidak hadir**:
     - konsultasi: tenaga kesehatan belum bergabung saat batas ketidakhadiran tenaga kesehatan habis `[USER] T3-Q8`;
     - home visit: tenaga kesehatan belum menandai "Tiba" sampai PB-03 habis sejak jadwal mulai, lalu pasien melaporkannya `[UP-13]`.
-- **Harga layanan**: harga rekanan + markup (AB-10, AB-11a).
+- **Harga layanan**: harga rekanan + margin (AB-10, AB-11a).
 - **Seluruh pembayaran**: harga layanan + ongkos kirim (produk) + biaya transaksi (non-QRIS).
 - **Pajak dalam refund (CR-013)**: apakah komponen pajak (AB-10a) ikut dikembalikan pada RF-01 dan termasuk "seluruh pembayaran" pada refund lain, serta perlakuannya di AB-34 `[TIDAK DIKETAHUI]` (sisa PT-28).
 
@@ -255,9 +255,9 @@ Ketentuan tambahan:
 
   | Kelompok | Pasien menerima | Kewajiban rekanan | Kewajiban Ruang Sehat | Sumber |
   | --- | --- | --- | --- | --- |
-  | Pembatalan pasien (RF-01) | Harga layanan | Harga rekanan penuh (MDR QRIS tetap ditanggung rekanan) | Markup | `[USER] T3-Q7` |
-  | Penyebab rekanan (RF-04, RF-05, RF-06, RF-08, RF-10, RF-15, RF-17; RF-18 bila ditetapkan penyebab rekanan) | Seluruh pembayaran | Bagian yang benar-benar diterimanya dari pembayaran itu (AB-22) + semua biaya payment gateway yang tidak kembali. Untuk QRIS hasilnya sama dengan harga rekanan penuh bila MDR tidak dikembalikan penyedia | Markup | `[USER] T3-Q7` |
-  | Penyebab platform (RF-07, RF-12, RF-13, RF-14; RF-18 bila ditetapkan penyebab platform atau PB-20 habis) | Seluruh pembayaran yang di-refund | Bagian yang benar-benar diterimanya dari pembayaran itu (harga rekanan dikurangi MDR bila QRIS) | Markup + semua biaya payment gateway yang tidak kembali | `[USER] T3-Q7` `[UP-34]` |
+  | Pembatalan pasien (RF-01) | Harga layanan | Harga rekanan penuh (MDR QRIS tetap ditanggung rekanan) | Margin | `[USER] T3-Q7` |
+  | Penyebab rekanan (RF-04, RF-05, RF-06, RF-08, RF-10, RF-15, RF-17; RF-18 bila ditetapkan penyebab rekanan) | Seluruh pembayaran | Bagian yang benar-benar diterimanya dari pembayaran itu (AB-22) + semua biaya payment gateway yang tidak kembali. Untuk QRIS hasilnya sama dengan harga rekanan penuh bila MDR tidak dikembalikan penyedia | Margin | `[USER] T3-Q7` |
+  | Penyebab platform (RF-07, RF-12, RF-13, RF-14; RF-18 bila ditetapkan penyebab platform atau PB-20 habis) | Seluruh pembayaran yang di-refund | Bagian yang benar-benar diterimanya dari pembayaran itu (harga rekanan dikurangi MDR bila QRIS) | Margin + semua biaya payment gateway yang tidak kembali | `[USER] T3-Q7` `[UP-34]` |
   | Penyebab kurir (RF-09, RF-16, kerusakan dalam pengiriman) | Seluruh pembayaran | `[TIDAK DIKETAHUI]` (PT-29) | `[TIDAK DIKETAHUI]` (PT-29) | — |
 
   Ongkos kirim dikembalikan oleh penerima dana ongkos kirim (AB-23, PT-31). Nominal kewajiban dihitung dari harga yang dikunci (AB-17).
@@ -373,7 +373,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-08 | Waktu pengingat jadwal | 24 jam dan 1 jam sebelum jadwal | Super Admin | `[UP-05]` |
 | PB-09 | Peringatan sebelum SIP berakhir | 30 hari sebelum tanggal berakhir | Super Admin | `[UP-06]` |
 | PB-10 | Notifikasi antrean | Saat giliran tinggal 3 nomor | Super Admin | `[UP-12]` |
-| PB-11 | Markup per rekanan (persen atau nominal) | `[TIDAK DIKETAHUI]`, ditetapkan CEO sebelum go-live (PT-17) | Keuangan | BR-042, BR-063 |
+| PB-11 | Margin per rekanan (persen atau nominal) | `[TIDAK DIKETAHUI]`, ditetapkan CEO sebelum go-live (PT-17) | Keuangan | BR-042, BR-063 |
 | PB-12 | Biaya rekanan (tidak dipakai, langganan, atau per pendaftaran; besaran) | `[TIDAK DIKETAHUI]`, diputuskan CEO (PT-17) | Keuangan | BR-043, BR-063 |
 | PB-13 | Tarif dan durasi sesi konsultasi per tenaga kesehatan dan per jenis (chat/video) | Diisi klinik | Admin klinik (portal) | BR-018 `[USER] T3-Q4, T3-Q16` |
 | PB-14 | Dokumen izin wajib per jenis tenaga kesehatan | STR dan SIP untuk semua jenis, menunggu L-07 | Super Admin | BR-102 `[UP-19]` |
@@ -383,7 +383,7 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 | PB-18 | Batas status Dikirim tanpa kabar kurir sebelum pasien dapat mengajukan "barang tidak sampai" (RF-16) | 7 hari | Super Admin | `[UP-52]` |
 | PB-19 | Batas refund berstatus Diproses tanpa konfirmasi penyedia sebelum menjadi "Perlu dicek" (AB-35) | 2 x 24 jam | Super Admin | `[UP-55]` |
 | PB-20 | Batas Keuangan menetapkan penyebab RF-18 sebelum berlaku penyebab platform | 3 hari kerja | Super Admin | `[UP-56]` |
-| PB-21 | Tarif pajak atas (harga rekanan + markup), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[DOK: backlog.md CR-013]` |
+| PB-21 | Tarif pajak atas (harga rekanan + margin), berlaku-mulai (CR-013) | `[TIDAK DIKETAHUI]` (sisa PT-28) | Keuangan | `[DOK: backlog.md CR-013]` |
 | PB-22 | Usia minimum pemilik akun pasien (US-105 AC1b) | `[TIDAK DIKETAHUI]`: nilai dari jawaban legal L-08, atau diisi user sebelum go-live. Fase 1 memakai nilai uji | Super Admin | `[USER] C2-B14` (UP-77; T-12) `[SRC-15]` (Pasal 25, data anak) |
 | PB-23 | Batas berkas unggahan peserta: ukuran dan jumlah baris per berkas (CR-021) | `[TIDAK DIKETAHUI]`; nilai teknis awal diusulkan di task K2 | Super Admin | `[UP-82]` |
 | PB-24 | Masa berlaku tautan undangan peserta (CR-021) | `[TIDAK DIKETAHUI]` | Super Admin | `[UP-83]` |
@@ -437,8 +437,8 @@ Parameter diatur di backoffice. Setiap perubahan dicatat di audit trail sebagai 
 
 | ID | Aturan | Sumber |
 | --- | --- | --- |
-| AB-80 | Harga paket korporat yang dibayar perusahaan = harga rekanan + markup Ruang Sehat, dihitung server per satuan dengan pembulatan AB-11a. Pajak mengikuti AB-10a. Harga rekanan masuk lewat integrasi (K-04 opsi a) | BR-138 `[USER] C21-P3-1, C21-P4` |
-| AB-81 | Harga, markup, tarif pajak, dan parameter yang berlaku untuk pesanan korporat dikunci saat HR mengonfirmasi pesanan (saat invoice terbit) | BR-142 `[UP-81]` |
+| AB-80 | Harga paket korporat yang dibayar perusahaan = harga rekanan + margin Ruang Sehat, dihitung server per satuan dengan pembulatan AB-11a. Pajak mengikuti AB-10a. Harga rekanan masuk lewat integrasi (K-04 opsi a) | BR-138 `[USER] C21-P3-1, C21-P4` |
+| AB-81 | Harga, margin, tarif pajak, dan parameter yang berlaku untuk pesanan korporat dikunci saat HR mengonfirmasi pesanan (saat invoice terbit) | BR-142 `[UP-81]` |
 | AB-82 | Pesanan korporat tidak memakai payment gateway. Pelunasan dicatat dari mutasi bank oleh Keuangan, dengan pemisahan tugas UP-84. Arah dana menunggu L-21 (PT-59) | BR-141 `[USER] C21-P1-4, C21-P4` |
 | AB-83 | Layanan korporat hanya dapat dijadwalkan setelah invoice lunas | BR-142 `[USER] C21-P3-3` |
 | AB-84 | HR tidak pernah dapat mengakses hasil lengkap (nilai, PDF, catatan pemeriksa). Ringkasan hanya dapat dibaca HR selama persetujuan peserta untuk pesanan itu aktif | BR-143, BR-144 `[USER] C21-P2-4` |
@@ -758,7 +758,7 @@ Sebagai Verifikator, saya ingin mendaftarkan dan memverifikasi rekanan, agar han
 Rujukan: BR-006, BR-031, AB-60–AB-65 · Audit: E-05, E-10
 
 - AC1. Given data rekanan lengkap (nama, jenis: klinik, lab, toko kecantikan, toko alat kesehatan, atau apotek; klinik dapat sekaligus outlet; alamat dan zona waktu; dokumen izin usaha; rekening penerima; sumber sistem: sistem sendiri atau RME minimalis), When Verifikator menyimpan, Then rekanan berstatus "Menunggu verifikasi".
-- AC2. Given dokumen izin diperiksa dan disetujui, markup sudah diatur (US-809), dan status integrasi "Aktif" (US-1405), When ketiga syarat terpenuhi, Then rekanan tampil untuk pasien `[UP-44]`. Kalau salah satu belum, rekanan tidak tampil.
+- AC2. Given dokumen izin diperiksa dan disetujui, margin sudah diatur (US-809), dan status integrasi "Aktif" (US-1405), When ketiga syarat terpenuhi, Then rekanan tampil untuk pasien `[UP-44]`. Kalau salah satu belum, rekanan tidak tampil.
 - AC3. Given rekanan berjenis toko kecantikan atau toko alat kesehatan, When katalognya memuat produk berkategori obat bebas, Then produk itu tidak ditampilkan (US-702), karena obat bebas hanya dijual apotek dan klinik berizin (BR-031).
 - AC4. Jenis dokumen izin wajib per jenis rekanan `[TIDAK DIKETAHUI]` (L-02, L-03). Daftar dokumen wajib dapat diatur Super Admin `[UP-19]`.
 - AC5. Cara verifikasi rekening dan pendaftaran rekening ke payment gateway mengikuti penyedia terpilih (Tahap 4–5) `[TIDAK DIKETAHUI]`.
@@ -837,7 +837,7 @@ Rujukan: BR-018, BR-064, PB-13 `[USER] T3-Q4, T3-Q16` · Audit: E-14
 - AC2. Given suatu jenis belum diberi tarif, When pasien melihat tenaga kesehatan itu, Then jenis tersebut tidak dapat dipesan.
 - AC3. Given tarif diubah, When pembayaran dibuat setelah perubahan, Then harga baru berlaku. Pesanan yang pembayarannya sudah dibuat sebelum perubahan tidak berubah (AB-17).
 - AC4. Given admin klinik mencoba mengatur tenaga kesehatan klinik lain, When ia mengirim permintaan, Then ditolak (KU-03).
-- AC5. Given pasien melihat harga, When harga tampil, Then nilainya = tarif + markup rekanan itu (AB-10).
+- AC5. Given pasien melihat harga, When harga tampil, Then nilainya = tarif + margin rekanan itu (AB-10).
 
 #### US-302 Jadwal praktik online
 
@@ -1162,7 +1162,7 @@ Rujukan: BR-035 · Audit: tidak ada aksi sensitif
 | US-806 | Refund otomatis | BR-045 | Must |
 | US-807 | Klaim refund | BR-045 | Must |
 | US-808 | Eksekusi dan status refund | BR-045 | Must |
-| US-809 | Pengaturan markup per rekanan | BR-042, BR-063 | Must |
+| US-809 | Pengaturan margin per rekanan | BR-042, BR-063 | Must |
 | US-810 | Pengaturan biaya rekanan | BR-043, BR-063 | Must |
 | US-811 | Laporan transaksi dan rekonsiliasi pembagian dana | BR-046 | Must |
 | US-812 | Pengaturan parameter bisnis | BR-045, BR-063 | Must |
@@ -1173,10 +1173,10 @@ Sebagai pasien, saya ingin melihat rincian harga sebelum membayar, agar tahu per
 Rujukan: BR-042, BR-044, BR-024, AB-10–AB-16 `[UP-07]` `[UP-43]` · Audit: tidak ada aksi sensitif
 
 - AC1. Given pasien di ringkasan pesanan, When ia memilih metode pembayaran, Then tampil harga layanan (satu angka), pajak (AB-10a, CR-013), ongkos kirim (produk), biaya transaksi metode itu (Rp0 untuk QRIS), dan total, semuanya dihitung server. Tarif dan rincian pajak mengikuti sisa PT-28.
-- AC2. Given markup berbentuk persen, When harga dihitung, Then markup dihitung dan dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Given markup nominal, Then markup berlaku per unit (AB-11a) `[UP-43]` `[UP-51]`.
+- AC2. Given margin berbentuk persen, When harga dihitung, Then margin dihitung dan dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), lalu dikalikan jumlah. Given margin nominal, Then margin berlaku per unit (AB-11a) `[UP-43]` `[UP-51]`.
 - AC3. Given pesanan layanan terjadwal, When ringkasan tampil, Then ringkasan aturan pembatalan (PB-01, no-show) tampil. Untuk klinik, lab, dan home visit, pernyataan AB-16 juga tampil.
 - AC4. Given pesanan produk, When ringkasan tampil, Then pernyataan bahwa pesanan tidak dapat dibatalkan setelah dibayar tampil (RF-11).
-- AC5. Given markup atau tarif berubah setelah ringkasan tampil dan sebelum pembayaran dibuat, When pasien menekan bayar, Then total baru tampil dan pasien harus menyetujuinya sebelum pembayaran dibuat (AB-15, AB-17).
+- AC5. Given margin atau tarif berubah setelah ringkasan tampil dan sebelum pembayaran dibuat, When pasien menekan bayar, Then total baru tampil dan pasien harus menyetujuinya sebelum pembayaran dibuat (AB-15, AB-17).
 
 #### US-802 Pembayaran lewat payment gateway
 
@@ -1195,7 +1195,7 @@ Rujukan: BR-040, BR-115, AB-20, AB-25, PB-07, RF-12, RF-13, RF-14 `[UP-34]` `[UP
 Sebagai Ruang Sehat, saya ingin setiap pembayaran dibagi langsung oleh payment gateway dan tercatat, agar bagian rekanan tidak pernah ditampung PT. Arunika.
 Rujukan: BR-041, BR-044, AB-21–AB-23, AB-26 · Audit: E-08
 
-- AC1. Given pembayaran berhasil, When transaksi dicatat, Then tercatat bagian rekanan (AB-22), markup Ruang Sehat, MDR atau biaya transaksi, dan rekening tujuan, sebagai instruksi pembagian ke payment gateway.
+- AC1. Given pembayaran berhasil, When transaksi dicatat, Then tercatat bagian rekanan (AB-22), margin Ruang Sehat, MDR atau biaya transaksi, dan rekening tujuan, sebagai instruksi pembagian ke payment gateway.
 - AC2. Given payment gateway melaporkan hasil pembagian dana, When laporan diterima, Then hasil per pihak tercatat dan dapat dicocokkan (US-811).
 - AC3. Given catatan transaksi sudah dibuat, When ada koreksi, Then catatan asal tidak diubah, dan koreksi dibuat sebagai entri pembalik (AB-26).
 - AC4. Penyaluran dana ongkos kirim `[TIDAK DIKETAHUI]` (AB-23, PT-31).
@@ -1225,7 +1225,7 @@ Rujukan: BR-045, RF-01, RF-04, RF-05, RF-08, RF-09, RF-12, RF-13, RF-15, RF-18, 
 
 - AC1. Given salah satu kejadian RF-01, RF-04, RF-05, RF-08, RF-09, RF-12, RF-13, RF-15, atau RF-18 terjadi, When sistem mencatatnya, Then refund ke pasien dibuat dengan nominal sesuai matriks §3.5 tanpa persetujuan manual, dan pasien diberi tahu. Kewajiban per pihak (AB-34) langsung tercatat, kecuali RF-18 yang berstatus "Menunggu penetapan penyebab" sampai ditetapkan Keuangan atau PB-20 habis.
 - AC2. Given refund untuk satu pesanan sudah dibuat, When kejadian lain atau kejadian yang sama tercatat untuk pesanan itu, Then refund kedua tidak dibuat, kecuali RF-12 (AB-36, KU-05).
-- AC3. Given refund RF-01, When nominal dihitung, Then pasien menerima harga layanan tanpa biaya transaksi non-QRIS, kewajiban rekanan = harga rekanan penuh, dan kewajiban Ruang Sehat = markup. Given refund kelompok penyebab rekanan atau penyebab platform, Then pasien menerima seluruh pembayaran dan kewajiban per pihak mengikuti AB-34.
+- AC3. Given refund RF-01, When nominal dihitung, Then pasien menerima harga layanan tanpa biaya transaksi non-QRIS, kewajiban rekanan = harga rekanan penuh, dan kewajiban Ruang Sehat = margin. Given refund kelompok penyebab rekanan atau penyebab platform, Then pasien menerima seluruh pembayaran dan kewajiban per pihak mengikuti AB-34.
 
 #### US-807 Klaim refund
 
@@ -1250,15 +1250,15 @@ Rujukan: BR-045, AB-30–AB-35, PB-19, ADR-004 `[UP-35]` `[UP-55]` · Audit: E-0
 - AC5. Given kewajiban rekanan sudah dilunasi, When Keuangan menandainya "Selesai" dengan rujukan bukti, Then status kewajiban berubah di kedua laporan dan tercatat (E-08). Penandaan tanpa rujukan bukti ditolak.
 - AC6. Given refund RF-18 berstatus "Menunggu penetapan penyebab", When Keuangan menetapkan penyebab rekanan atau platform dengan rujukan log integrasi dalam PB-20, Then kewajiban per pihak dihitung sesuai AB-34 dan tercatat (E-08). Given PB-20 habis tanpa penetapan, Then berlaku penyebab platform dan Super Admin diberi tahu.
 
-#### US-809 Pengaturan markup per rekanan
+#### US-809 Pengaturan margin per rekanan
 
-Sebagai Keuangan, saya ingin mengatur markup per rekanan, agar harga pasien sesuai keputusan CEO.
+Sebagai Keuangan, saya ingin mengatur margin per rekanan, agar harga pasien sesuai keputusan CEO.
 Rujukan: BR-042, BR-063, PB-11 `[UP-44]` · Audit: E-14
 
 - AC1. Given Keuangan memilih rekanan, When ia mengisi jenis (persen atau nominal), nilai (persen 0–100; nominal Rupiah 0 atau lebih), dan waktu berlaku (segera atau tanggal mendatang), Then pengaturan tersimpan dan riwayat perubahan tetap ada.
-- AC2. Given markup diubah dengan waktu berlaku tertentu, When pembayaran suatu pesanan dibuat sebelum waktu berlaku, Then harga pesanan itu memakai markup lama walaupun pembayarannya diselesaikan sesudahnya (AB-17).
-- AC3. Given rekanan belum punya pengaturan markup, When Verifikator mencoba menampilkannya ke pasien, Then rekanan tidak tampil sampai markup diatur. Nilai 0 diperbolehkan (US-205 AC2).
-- AC4. Given pengguna bukan Keuangan, When ia mencoba mengubah markup, Then ditolak (KU-03).
+- AC2. Given margin diubah dengan waktu berlaku tertentu, When pembayaran suatu pesanan dibuat sebelum waktu berlaku, Then harga pesanan itu memakai margin lama walaupun pembayarannya diselesaikan sesudahnya (AB-17).
+- AC3. Given rekanan belum punya pengaturan margin, When Verifikator mencoba menampilkannya ke pasien, Then rekanan tidak tampil sampai margin diatur. Nilai 0 diperbolehkan (US-205 AC2).
+- AC4. Given pengguna bukan Keuangan, When ia mencoba mengubah margin, Then ditolak (KU-03).
 
 #### US-810 Pengaturan biaya rekanan
 
@@ -1274,7 +1274,7 @@ Rujukan: BR-043, BR-063, PB-12, AB-24 · Audit: E-14
 Sebagai Keuangan, saya ingin melihat laporan transaksi dan mencocokkan pembagian dana, agar selisih segera diketahui.
 Rujukan: BR-046 · Audit: E-12 (export)
 
-- AC1. Given Keuangan memilih periode, rekanan, jenis layanan, dan status, When laporan tampil, Then setiap transaksi memuat total, bagian rekanan, markup, pajak (CR-013), MDR atau biaya transaksi, refund, dan status pembagian dari payment gateway, dalam WIB (AB-42).
+- AC1. Given Keuangan memilih periode, rekanan, jenis layanan, dan status, When laporan tampil, Then setiap transaksi memuat total, bagian rekanan, margin, pajak (CR-013), MDR atau biaya transaksi, refund, dan status pembagian dari payment gateway, dalam WIB (AB-42).
 - AC2. Given rekonsiliasi harian berjalan, When data penyedia dibandingkan dengan catatan Ruang Sehat, Then selisih nominal, pembagian yang tidak terlaporkan, dan pembayaran ganda (RF-12) ditandai untuk ditindaklanjuti.
 - AC3. Given Keuangan mengekspor laporan, When file dibuat, Then file berformat CSV dan event export tercatat.
 
@@ -1425,7 +1425,7 @@ Sebagai admin klinik, lab, atau outlet, saya ingin melihat laporan transaksi dan
 Rujukan: BR-046, BR-064, BR-065, AB-42, AB-65 `[UP-45]` · Audit: E-12 (export)
 
 - AC1. Given admin rekanan memilih periode, jenis layanan, dan status, When laporan tampil, Then setiap transaksi memuat tanggal (zona waktu rekanan), nomor, layanan atau produk, nama penerima layanan, harga rekanan, MDR, bagian rekanan, refund, kewajiban pengembalian (US-808 AC3), dan tagihan biaya rekanan (US-810), beserta rekap harian dan bulanan.
-- AC2. Given laporan tampil, When diperiksa, Then markup Ruang Sehat dan total bayar pasien tidak ditampilkan `[UP-45]`, dan tidak ada data klinis.
+- AC2. Given laporan tampil, When diperiksa, Then margin Ruang Sehat dan total bayar pasien tidak ditampilkan `[UP-45]`, dan tidak ada data klinis.
 - AC3. Given klinik juga outlet (AB-65), When admin membuka laporan, Then transaksi layanan klinik dan penjualan produk dapat dilihat terpisah atau gabungan.
 - AC4. Given admin mengekspor laporan, When file dibuat, Then file CSV hanya berisi data rekanannya dan event export tercatat.
 
@@ -1818,7 +1818,7 @@ Rujukan: BR-131, BR-061, US-1101, ADR-027 butir 5 · Audit: E-16 (hapus dan puli
 - AC3. Given promo di situs, When tampil, Then hanya berupa informasi dan tidak mengubah harga di aplikasi maupun katalog korporat (US-1101 AC4).
 - AC4. (negatif) Given akun admin tanpa sub-peran Konten, When mencoba membuat, mengubah, atau menayangkan konten situs, Then ditolak (403) dan percobaan tercatat.
 - AC5. Given konten memuat gambar tanpa teks alternatif, When admin menayangkannya, Then penayangan ditolak dengan pesan per field (KU-01).
-- AC6. (negatif, XSS) Given isi konten memuat HTML mentah (misalnya `<script>`, `<iframe>`, atribut `on*`), tautan berskema selain `https`, `mailto`, atau relatif, atau gambar dari sumber selain endpoint gambar publik backend, When admin menyimpan, Then backend menolak atau menetralkan bagian itu, sehingga tidak ada markup aktif yang tersimpan sebagai konten siap tayang `[KEPUTUSAN-264]`.
+- AC6. (negatif, XSS) Given isi konten memuat HTML mentah (misalnya `<script>`, `<iframe>`, atribut `on*`), tautan berskema selain `https`, `mailto`, atau relatif, atau gambar dari sumber selain endpoint gambar publik backend, When admin menyimpan, Then backend menolak atau menetralkan bagian itu, sehingga tidak ada margin aktif yang tersimpan sebagai konten siap tayang `[KEPUTUSAN-264]`.
 - AC7. Given konten tersimpan, When dirender di situs dan di pratinjau backoffice, Then keduanya memakai aturan render aman yang sama, dan test payload XSS gagal dieksekusi di keduanya.
 - AC8. Given admin membuka pratinjau, When pratinjau tampil, Then isinya dirender di iframe `sandbox` tanpa `allow-same-origin`, sehingga skrip di pratinjau tidak dapat memakai sesi backoffice.
 - AC9. Given halaman `web/situs` atau backoffice dimuat, When header respons diperiksa, Then Content Security Policy melarang skrip inline dan sumber pihak ketiga; situs tidak memuat skrip, font, atau sematan pihak ketiga.
@@ -1902,7 +1902,7 @@ Sebagai HR perusahaan aktif, saya ingin melihat paket vaksinasi, MCU, dan lab ma
 Rujukan: BR-133, BR-137, BR-138, AB-80 · Audit: tidak ada aksi sensitif
 
 - AC1. Given perusahaan Aktif, When HR membuka katalog, Then paket tampil per jenis dan rekanan pelaksana, dengan isi paket, lokasi yang tersedia, dan harga sebagai satu angka (AB-13). Satuan harga dan jumlah peserta minimum `[TIDAK DIKETAHUI]` (PT-62).
-- AC2. Given harga rekanan dan aturan markup berlaku, When harga tampil, Then dihitung server sesuai AB-80, dan markup tidak tampil sebagai baris tersendiri (kecuali pengecualian AB-13 bila L-21 memilih dua tagihan).
+- AC2. Given harga rekanan dan aturan margin berlaku, When harga tampil, Then dihitung server sesuai AB-80, dan margin tidak tampil sebagai baris tersendiri (kecuali pengecualian AB-13 bila L-21 memilih dua tagihan).
 - AC3. Given paket dihapus rekanan atau rekanan nonaktif, When katalog dibuka, Then paket tidak tampil (KU-04); data yang tidak dapat dikonfirmasi mengikuti KU-08.
 - AC4. (negatif) Given perusahaan Menunggu verifikasi, Ditolak, atau Nonaktif, When HR memanggil endpoint katalog, Then ditolak.
 - AC5. Given rekanan mengirim paket dan harga lewat Partner Integration API, When diterima, Then katalog diperbarui; harga tidak dapat diisi lewat portal rekanan (K-04 opsi a `[USER] C21-P4`).
@@ -1913,7 +1913,7 @@ Sebagai HR, saya ingin memesan paket dengan lokasi dan jumlah peserta, agar laya
 Rujukan: BR-135, BR-137, BR-142, AB-81 · Audit: E-09
 
 - AC1. Given HR memilih paket, lokasi (on-site dengan alamat kantor, atau di rekanan), dan jumlah peserta, When membuka ringkasan, Then rincian tampil: harga per satuan, jumlah, pajak sebagai baris terpisah (AB-10a), dan total.
-- AC2. Given HR mengonfirmasi, When disimpan, Then harga, markup, dan tarif pajak dikunci (AB-81), pesanan berstatus "Menunggu pembayaran", dan invoice terbit (US-1909). Status pesanan: Menunggu pembayaran, Lunas–menunggu jadwal, Terjadwal, Selesai, Dibatalkan `[UP-80]`; transisi lengkap setelah PT-63.
+- AC2. Given HR mengonfirmasi, When disimpan, Then harga, margin, dan tarif pajak dikunci (AB-81), pesanan berstatus "Menunggu pembayaran", dan invoice terbit (US-1909). Status pesanan: Menunggu pembayaran, Lunas–menunggu jadwal, Terjadwal, Selesai, Dibatalkan `[UP-80]`; transisi lengkap setelah PT-63.
 - AC3. (negatif) Given konfirmasi terkirim dua kali, When diterima server, Then hanya satu pesanan dan satu invoice dibuat (KU-05).
 - AC4. (negatif) Given harga atau ketersediaan berubah antara ringkasan dan konfirmasi, When HR mengonfirmasi, Then nilai terbaru ditampilkan dan harus disetujui ulang (pola AB-15).
 - AC5. Given alamat on-site di luar area layanan rekanan, When dipilih, Then perilakunya `[TIDAK DIKETAHUI]` (PT-74).
@@ -2185,7 +2185,7 @@ Dasar: BR-080, BR-081, BR-107, ADR-005. Fitur halaman Audit Log ada di EP-15.
 | E-11 | Perubahan hak akses atau peran | | BR-080 butir 8 |
 | E-12 | Ekspor atau unduh data | Export laporan dan audit log, unduh salinan data pribadi, unduh resep dan hasil lab | BR-080 butir 9 |
 | E-13 | Persetujuan diberikan atau ditarik; permintaan hak subjek data diajukan dan ditanggapi | | BR-080 butir 10, BR-103 |
-| E-14 | Perubahan pengaturan yang memengaruhi uang atau aturan: markup, biaya rekanan, tarif dan durasi konsultasi, jadwal, parameter bisnis | | BR-080 (catatan), BR-063 |
+| E-14 | Perubahan pengaturan yang memengaruhi uang atau aturan: margin, biaya rekanan, tarif dan durasi konsultasi, jadwal, parameter bisnis | | BR-080 (catatan), BR-063 |
 | E-15 | Penambahan, perubahan, dan penghapusan anggota keluarga beserta pernyataan persetujuannya | | BR-104 |
 | E-16 | Soft delete dan pemulihan data master; penghapusan dan anonimisasi atas permintaan atau retensi | | ADR-003, BR-112 |
 | E-17 | Pengiriman data pribadi ke pihak luar: sistem rekanan, SATUSEHAT, payment gateway (jenis data dan tujuan, tanpa isi) | | BR-107 |
@@ -2265,11 +2265,11 @@ Daftar entitas bisnis dan relasinya, tanpa detail teknis. Klasifikasi master/tra
 | Kunjungan home visit dan penugasan | | Transaksi | BR-022 |
 | Hasil lab (berversi) | | Transaksi | BR-025 |
 | Pembayaran | | Transaksi | BR-040 |
-| Pembagian dana | Bagian rekanan, markup, biaya | Transaksi | BR-041, BR-044 |
+| Pembagian dana | Bagian rekanan, margin, biaya | Transaksi | BR-041, BR-044 |
 | Refund dan entri pembalik | | Transaksi | BR-045 |
 | Klaim | | Transaksi | BR-045 |
 | Kewajiban pengembalian rekanan | | Transaksi | BR-045 |
-| Pengaturan markup dan biaya rekanan (berlaku mulai) | | Master | BR-042, BR-043 |
+| Pengaturan margin dan biaya rekanan (berlaku mulai) | | Master | BR-042, BR-043 |
 | Tagihan biaya rekanan | | Transaksi | BR-043 |
 | Parameter bisnis | | Master | §3.7 |
 | Notifikasi | | Log | BR-050 |
@@ -2382,7 +2382,7 @@ Usulan ini mengisi detail produk yang belum diputuskan user. **Seluruhnya disetu
 | UP-04 | PB-07 batas pembayaran: nilai awal 30 menit, dibatasi kemampuan payment gateway | Slot dan stok tidak tertahan terlalu lama |
 | UP-05 | PB-08 pengingat 24 jam dan 1 jam sebelum jadwal | Mengurangi no-show |
 | UP-06 | PB-09 peringatan SIP 30 hari sebelum berakhir | Waktu cukup untuk memperpanjang SIP |
-| UP-07 | Harga layanan tampil sebagai satu angka; markup tidak ditampilkan terpisah | Sejalan dengan T2-Q20; keterbukaan menunggu L-14 |
+| UP-07 | Harga layanan tampil sebagai satu angka; margin tidak ditampilkan terpisah | Sejalan dengan T2-Q20; keterbukaan menunggu L-14 |
 | UP-08 | Pesanan produk tidak dapat dibatalkan pasien setelah dibayar | BR-045 tidak memberi refund, sehingga pembatalan tidak berguna dan membingungkan |
 | UP-09 | Satu checkout produk hanya untuk satu outlet | Pembagian dana dan pengiriman per outlet |
 | UP-10 | Status dan tabel transisi layanan, pesanan, refund, klaim, dan verifikasi (§3.2, §3.6); transisi yang tersimpan lebih dulu berlaku; satu pesanan satu refund kecuali RF-12 (AB-36) | Dasar acceptance criteria, penolakan status dari rekanan, dan audit perubahan status |
@@ -2407,7 +2407,7 @@ Usulan ini mengisi detail produk yang belum diputuskan user. **Seluruhnya disetu
 | UP-29 | Aturan sesi konsultasi: durasi kelipatan 5 menit (10–120); "bergabung" = membuka ruang sesi, dicatat server; batas ketidakhadiran = PB-02/PB-03 atau akhir durasi bila lebih dulu; Selesai hanya bila kedua pihak pernah bergabung; chat baca-saja setelah durasi habis; tidak ada perpanjangan; video dapat disambung ulang; bila keduanya tidak hadir berlaku "tenaga kesehatan tidak hadir" | Perilaku sesi yang dapat diuji |
 | UP-30 | Alur tiket keluhan, penerusan ke rekanan (rekanan hanya melihat di portal; tanggapannya dicatat Layanan Pelanggan), dibuka kembali bila pasien membalas dalam 7 hari | Rincian BR-062 dan menu keluhan portal; disesuaikan dengan G3 |
 | UP-31 | Profil rekanan di portal hanya dilihat; perubahan diminta lewat Layanan Pelanggan dan dimasukkan admin Ruang Sehat; perubahan rekening wajib disetujui Verifikator | Portal hanya laporan (T3-Q14, G3); mencegah pengalihan dana |
-| UP-32 | Harga, markup, dan parameter dikunci saat pembayaran dibuat | Kepastian bagi pasien dan rekanan |
+| UP-32 | Harga, margin, dan parameter dikunci saat pembayaran dibuat | Kepastian bagi pasien dan rekanan |
 | UP-33 | RME minimalis tidak diberi nomor di urutan pengurangan scope; fiturnya ikut dilepas bersama layanan yang memakainya | Disampaikan setelah T3-Q2 |
 | UP-34 | Pembayaran ganda (RF-12) dan pembayaran yang berhasil setelah kedaluwarsa bila slot/stok sudah tidak ada (RF-13) di-refund penuh otomatis sebagai penyebab platform: rekanan mengembalikan bagian yang benar-benar diterimanya dari pembayaran itu, Ruang Sehat menanggung semua biaya payment gateway yang tidak kembali (AB-34) | Kesalahan platform, sesuai prinsip penyebab menanggung (T3-Q7); rekanan tidak memberi layanan tambahan atas pembayaran itu |
 | UP-35 | Refund gagal masuk antrean Keuangan; kewajiban pengembalian rekanan dicatat berstatus Terbuka dan tampil di laporan sampai Keuangan menandainya Selesai dengan rujukan bukti | Dana pasien tidak tertahan diam-diam; dasar rekonsiliasi PT-27 |
@@ -2418,15 +2418,15 @@ Usulan ini mengisi detail produk yang belum diputuskan user. **Seluruhnya disetu
 | UP-40 | NIK pemilik akun tidak boleh dipakai sebagai pemilik akun di akun lain; NIK anggota keluarga boleh di lebih dari satu akun | Mencegah akun ganda; anak dapat didaftarkan kedua orang tua |
 | UP-41 | Pasien dengan pesanan terbayar yang belum selesai tidak dapat dinonaktifkan admin | Menghindari kasus uang yang tidak diatur |
 | UP-42 | Resep bernomor unik, tidak dapat diubah, dikoreksi dengan membatalkan dan menerbitkan ulang | Jejak resep utuh |
-| UP-43 | Hasil markup persen dibulatkan ke Rupiah penuh terdekat (setengah ke atas) | Rupiah tanpa desimal |
-| UP-44 | Rekanan tidak tampil ke pasien sebelum markup diatur (nilai 0 boleh) | Harga selalu lengkap sebelum dijual |
-| UP-45 | Laporan portal rekanan tidak menampilkan markup Ruang Sehat dan total bayar pasien | Rekanan menerima harga rekanan; informasi markup milik Ruang Sehat |
+| UP-43 | Hasil margin persen dibulatkan ke Rupiah penuh terdekat (setengah ke atas) | Rupiah tanpa desimal |
+| UP-44 | Rekanan tidak tampil ke pasien sebelum margin diatur (nilai 0 boleh) | Harga selalu lengkap sebelum dijual |
+| UP-45 | Laporan portal rekanan tidak menampilkan margin Ruang Sehat dan total bayar pasien | Rekanan menerima harga rekanan; informasi margin milik Ruang Sehat |
 | UP-46 | Sinkronisasi data rekanan paling lambat 15 menit; peringatan bila integrasi gagal 30 menit | Data cukup mutakhir; harga tetap dijaga AB-15 |
 | UP-47 | Hak subjek data: target internal 3 x 24 jam untuk semua jenis permintaan; tanda mendesak 12 jam sebelum batas; tautan salinan data berlaku 7 hari; menarik persetujuan membatalkan pesanan aktif dengan aturan pembatalan pasien | Batas UU PDP untuk sebagian jenis `[SRC-15]`; perlakuan seragam |
 | UP-48 | Target performa web dan ketersediaan juga berlaku untuk backoffice dan RME minimalis; tampilan backoffice memakai WIB (AB-42) | T3-Q10/Q12/Q13 menyebut laporan Ruang Sehat, layanan inti, dan portal |
 | UP-49 | Perjanjian penggunaan RME minimalis dan pemrosesan data dengan setiap fasyankes wajib tercatat sebelum fasyankes aktif (US-1301 AC1) | Review kepatuhan C3-N02: Pasal 18 ayat (2) huruf a (perjanjian antar-pengendali) atau Pasal 51 ayat (1) dan (5) (pemrosesan berdasarkan perintah pengendali; persetujuan tertulis untuk prosesor lain) `[SRC-15]`; isi perjanjian menunggu L-05/L-15 |
 | UP-50 | Fasyankes yang berhenti memakai RME minimalis dapat mengekspor rekam medisnya sebelum akses ditutup (US-1301 AC4) | Review kepatuhan C3-N02: rekam medis milik fasyankes tidak tertahan di sistem PT. Arunika |
-| UP-51 | Markup dihitung per unit atas harga rekanan per unit; markup persen dibulatkan per unit lalu dikalikan jumlah; markup nominal berlaku per unit; markup tidak dikenakan pada ongkos kirim dan biaya transaksi (AB-11a) | Review QA QA-B03: tanpa basis yang jelas, dua perhitungan memberi total berbeda |
+| UP-51 | Margin dihitung per unit atas harga rekanan per unit; margin persen dibulatkan per unit lalu dikalikan jumlah; margin nominal berlaku per unit; margin tidak dikenakan pada ongkos kirim dan biaya transaksi (AB-11a) | Review QA QA-B03: tanpa basis yang jelas, dua perhitungan memberi total berbeda |
 | UP-52 | Kejadian uang tambahan: RF-14 nominal notifikasi tidak sama (Keuangan memeriksa dan membuat refund seluruh nominal dalam PB-16 = 1 hari kerja; bila lewat, refund otomatis); RF-15 outlet tidak menyerahkan barang ke kurir dalam PB-17 = 2 x 24 jam (refund otomatis); RF-16 barang tidak sampai (klaim tanpa wajib foto setelah PB-18 = 7 hari tanpa kabar kurir, atau kurir menyatakan terkirim tetapi tidak diterima) | Review QA QA-B05: kejadian ini tidak punya hasil di matriks |
 | UP-53 | PB-15 batas pengajuan klaim layanan terjadwal (RF-06, RF-07, RF-17): 2 x 24 jam setelah jadwal berakhir; keberatan "pasien tidak hadir" home visit menjadi RF-17 dan bila disetujui diperlakukan seperti RF-06 | Review QA QA-B07; disamakan dengan PB-04 |
 | UP-54 | Efek menarik persetujuan utama, pembatasan, dan keberatan yang disetujui: akun hanya dapat melihat riwayat, mengajukan hak subjek data, dan memberi persetujuan kembali; pemesanan baru ditolak; data tidak dikirim ke pihak luar kecuali untuk menuntaskan pesanan produk yang sudah dibayar dan kewajiban simpan; butir tambahan hanya menghentikan tujuan butir itu | Review QA QA-B17, QA-B18: "pemrosesan dihentikan" harus teramati |
@@ -2494,7 +2494,7 @@ Pemilik dan tenggat adalah usulan penyusun yang dimintakan persetujuan di gate.
 
 ### 12.4 Ketergantungan lain
 
-PT-05 (kemampuan sistem rekanan), PT-17 (markup dan biaya rekanan), dan PT-24 (retensi; memblokir US-1605 dan US-1606) tetap terbuka sesuai BRD §10. PT-28 (pajak) terjawab sebagian lewat CR-013 (arah rumus, AB-10a); sisanya tetap terbuka dan menjadi gerbang sebelum perhitungan pajak di EP-08 (`docs/07-phase-plan.md` §9 G-10). PT-22 terjawab di Tahap 4: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia `[USER] T4-Q1`, dengan akibat CR-007 `[USER] T4-Q2`.
+PT-05 (kemampuan sistem rekanan), PT-17 (margin dan biaya rekanan), dan PT-24 (retensi; memblokir US-1605 dan US-1606) tetap terbuka sesuai BRD §10. PT-28 (pajak) terjawab sebagian lewat CR-013 (arah rumus, AB-10a); sisanya tetap terbuka dan menjadi gerbang sebelum perhitungan pajak di EP-08 (`docs/07-phase-plan.md` §9 G-10). PT-22 terjawab di Tahap 4: semua penyedia pihak ketiga memproses dan menyimpan data di Indonesia `[USER] T4-Q1`, dengan akibat CR-007 `[USER] T4-Q2`.
 
 ### 12.5 Pertanyaan terbuka dari Checkpoint 2 yang menyentuh PRD
 
@@ -2514,7 +2514,7 @@ Rincian dan opsi di `docs/cr/CR-021-analisis.md` §13.1.
 | PT-59 | Arah dana invoice B2B (K-02; menunggu L-21) | US-1909, US-1910 | User + CEO + legal | Sebelum penagihan (Fase 3) |
 | PT-60 | **Terjawab:** peserta memakai aplikasi pasien `[USER] C21-P4` (K-01 opsi a) | — | — | Selesai |
 | PT-61 | **Terjawab:** harga paket lewat integrasi `[USER] C21-P4` (K-04 opsi a) | — | — | Selesai |
-| PT-62 | Besaran markup korporat, satuan harga, peserta minimum | US-1905, US-1906 | CEO | Sebelum Fase 3 |
+| PT-62 | Besaran margin korporat, satuan harga, peserta minimum | US-1905, US-1906 | CEO | Sebelum Fase 3 |
 | PT-63 | Penetapan jadwal, jenis hari jatuh tempo, syarat per perusahaan, lewat jatuh tempo, bayar sebagian/lebih, perubahan jumlah peserta, pembatalan dan refund, penolakan rekanan, perusahaan dinonaktifkan, waktu kirim undangan, layanan tambahan karena hasil | US-1906–US-1911, US-1916, US-1917 | User | Sebelum Fase 3 |
 | PT-64 | Pencatat dan definisi kehadiran | US-1912, US-1915 | User | Sebelum Fase 3 |
 | PT-65 | Isi, cakupan, dan penetap ringkasan; konfirmasi tafsiran BR-144 | US-1913, US-1914 | User + konsultan medis | Sebelum Fase 3 |
@@ -2547,4 +2547,5 @@ Pemetaan lengkap BR → story ada di `docs/traceability.md`. Setiap story di PRD
 | **1.2 final** | 2026-11-18 | **Checkpoint 2.** (1) Teks CR-013 disetujui. (2) Klarifikasi AC Fase 1 diterapkan: KU-02 (T-20), KU-10 (UP-73, T-09), US-101 AC1a–AC1c, AC2, AC2b, AC3 (T-01–T-04), US-103 AC1a, AC2, AC3, AC4a–AC4e, AC5 (T-05, T-06, T-08, T-09), US-104 AC3 (T-11), US-105 AC1a, AC1b, AC4a–AC4e (T-12, T-13), US-106 AC1–AC5 (T-07, T-14–T-16), US-201 AC3 daftar alasan, AC3a, AC7 (T-17, T-18), US-208 AC4–AC8 (T-19), US-1501 AC3 (T-21), US-1504 AC3 (T-22), NFR-SEC-03 (T-02), NFR-SEC-08 (T-07), AB-05a (UP-74), PB-22 (UP-77). Batas NIK berlapis 3/24 jam per akun, 3/24 jam per NIK lintas akun, 10/24 jam per IP, peringatan > 20/jam global (US-106 AC4). (3) CR-018 MFA wajib pasien: NFR-SEC-02, US-101 AC5, US-103 AC1, AC1b, AC4e, AC7, AC8, US-207 AC5. (4) CR-017 ubah password saat login: US-103 AC6. (5) Story baru US-110 "Perangkat dan sesi aktif" (Fase 2) dan NFR-SEC-11 sesi paralel tidak dibatasi. (6) §2.2 Won't: email pemberitahuan penguncian, faktor kedua selain TOTP/kode pemulihan, CR-011 dan CR-015 ke rilis berikutnya, layar pengelolaan data rujukan. (7) §7.1 contoh E-03 dan E-04, §7.3 kode pemulihan. (8) §12.5 pertanyaan terbuka | `[USER] C2-Q9, C2-Q10, C2-Q11`, `[USER] C2-B4, C2-B5, C2-B6, C2-B7, C2-B14, C2-B15` (`docs/checkpoint-2.md`); `docs/07-klarifikasi-ac-fase-1.md` v0.2; KEPUTUSAN-187–205 |
 | 1.3 | 2026-11-19 | **CR-021.** (1) EP-18 Situs web (US-1801, US-1802) dan EP-19 Layanan korporat (US-1901–US-1917) dengan AC termasuk negatif isolasi antar-perusahaan, akses HR tanpa persetujuan, kanal turunan, unggahan rusak/ganda, transfer ganda. (2) §3.12 AB-80–AB-87; PB-23–PB-25; E-18; UP-79–UP-87 disetujui. (3) §1.1 komponen situs dan member area; §1.2 peran HR, peserta, Verifikator untuk perusahaan; §2.1 S-20, S-21; §2.2 Won't (vaksinasi korporat vs CR-015, web peserta, agregat, harga lewat portal). (4) §3.1 matriks CR-021 (keikutsertaan dan kehadiran perlu konfirmasi legal, diperlakukan sensitif); AB-13 pengecualian korporat bila dua tagihan; AB-17, AB-20 catatan. (5) NFR-PERF-04, NFR-SEC-02, NFR-SEC-04, NFR-SEC-06, NFR-SEC-08, NFR-COMP-03. (6) US-1101 juga kanal situs dan dibangun di Fase 1. (7) §8.1 entitas, §12.3 L-16–L-21, §12.6 PT-59–PT-79 | `[USER] C21-P0–P4` (`docs/cr/CR-021-wawancara.md`); `docs/cr/CR-021-analisis.md` v0.3; ADR-027, ADR-028 (Diterima), ADR-029 (Diusulkan); review `docs/review/CR-021-security.md`, `docs/review/CR-021-kepatuhan.md`; fact-check `docs/fact-check/CR-021.md` |
 | 1.2 final (koreksi orkestrator) | 2026-11-18 | US-201 AC8 baru: Verifikator tidak dapat memutuskan pengajuan identitas akunnya sendiri (klarifikasi T-19 butir d, usulan default UP-76, PT-56). US-207 AC5: pemula reset MFA pasien hanya Layanan Pelanggan (review keamanan B-01) | `[USER]` checkpoint-2 butir 7 (delegasi); `docs/review/checkpoint-2-security.md` |
+| 1.4 | 2026-11-20 | CR-024: istilah "markup" diganti "margin" di seluruh PRD (AB-10, AB-11, AB-13, AB-17, AB-80, PB-11, US-809, dan lainnya); definisi ditambahkan di AB-10. Hanya istilah, rumus tetap | `[USER]` Telegram (CR-024) |
 | 1.3 (koreksi) | 2026-11-20 | US-103 AC3: hitungan gagal kembali nol setelah login berhasil atau 12 jam tanpa kegagalan (perilaku Keycloak), bukan saat masa kunci berakhir | `[USER]` Telegram "K"; review keamanan F1-T31 |

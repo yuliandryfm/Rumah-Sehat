@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Backoffice 1/4 Masuk - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Backoffice &middot; 1/4 Masuk dengan MFA</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="02-antrean.html">Berikutnya</a></span></div>
+<main class="web no-side">
+  <div class="web-top"><span class="logo">Ruang Sehat &middot; Backoffice</span></div>
+  <div class="web-main"><form class="login-box" action="02-antrean.html">
+    <h1 class="t-title">Masuk Backoffice</h1>
+    <div class="field"><label for="e">Email</label><input id="e" class="input" type="email" value="verifikator@example.test" autocomplete="username"></div>
+    <div class="field"><label for="p">Password</label><input id="p" class="input" type="password" value="contohpassword" autocomplete="current-password"></div>
+    <div class="field"><label for="o">Kode dari aplikasi authenticator (6 digit)</label><input id="o" class="input otp" inputmode="numeric" maxlength="6" value="123456" autocomplete="one-time-code"></div>
+    <button class="btn btn-primary btn-block" type="submit">Masuk</button>
+    <p class="t-cap">Sesi berakhir setelah 30 menit tidak aktif, dengan peringatan 2 menit sebelumnya.</p>
+  </form></div>
+</main></body></html>

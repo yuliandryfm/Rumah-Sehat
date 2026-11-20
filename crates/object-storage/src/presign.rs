@@ -6,6 +6,10 @@
 //!   mengirim ukuran dan tipe persis seperti yang diminta (ditegakkan penyedia; dibuktikan pada emulator di
 //!   spike F1-T03 §3). Jalur alternatif KEPUTUSAN-234.
 //!
+//! - Presigned GET (unduh, F1-T30, ADR-018 butir 3): hanya `host` yang ditandatangani; header respons
+//!   (`Content-Type` tervalidasi, `Content-Disposition: attachment`, `Cache-Control`) ditimpa lewat parameter
+//!   `response-*` yang ikut ditandatangani [SRC-563]; vektor uji dari botocore [SRC-564].
+//!
 //! Pembatasan URL hanya lapis pertama; validasi pasca-unggah tetap wajib (KEPUTUSAN-234).
 
 use crate::config::{
@@ -66,6 +70,40 @@ impl fmt::Debug for PresignedPost {
             .field("expires_at", &self.expires_at)
             .finish()
     }
+}
+
+/// Header respons yang ditimpa lewat URL unduh bertanda tangan (`response-*` GetObject) [SRC-563].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResponseHeaders<'a> {
+    /// `response-content-type`: tipe isi tervalidasi (bukan tipe yang tersimpan di penyedia).
+    pub content_type: &'a str,
+    /// `response-content-disposition`, misalnya `attachment; filename="<id>.jpg"` (ADR-018 butir 3).
+    pub content_disposition: &'a str,
+    /// `response-cache-control`, misalnya `private, no-store`.
+    pub cache_control: &'a str,
+}
+
+/// URL unduh bertanda tangan (GET presigned).
+#[derive(Clone, PartialEq, Eq)]
+pub struct PresignedGet {
+    /// URL bertanda tangan (rahasia berumur pendek; jangan dicatat di log).
+    pub url: String,
+    /// Instan kedaluwarsa URL.
+    pub expires_at: OffsetDateTime,
+}
+
+impl fmt::Debug for PresignedGet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PresignedGet")
+            .field("url", &"[REDACTED]")
+            .field("expires_at", &self.expires_at)
+            .finish()
+    }
+}
+
+/// Nilai header bebas yang aman ditandatangani: ASCII tampak + spasi, 1–200 karakter.
+fn valid_header_value(v: &str) -> bool {
+    (1..=200).contains(&v.len()) && v.bytes().all(|b| (0x20..=0x7E).contains(&b))
 }
 
 /// Penanda tangan SigV4 untuk satu endpoint dan kredensial. Murni (tanpa I/O), sehingga juga dapat dipakai
@@ -329,6 +367,61 @@ impl Presigner {
                 ("policy".to_string(), policy_b64),
                 ("x-amz-signature".to_string(), signature),
             ],
+            expires_at,
+        })
+    }
+
+    /// Presigned GET untuk unduhan (ADR-018 butir 3): hanya header `host` yang ditandatangani; header
+    /// respons ditimpa lewat parameter `response-*` yang ikut ditandatangani, sehingga tidak dapat
+    /// diubah pemegang URL [SRC-563].
+    pub fn presign_get(
+        &self,
+        bucket: &str,
+        key: &str,
+        response: &ResponseHeaders<'_>,
+        now: OffsetDateTime,
+        expires_in: Duration,
+    ) -> Result<PresignedGet, ObjectStorageError> {
+        if !valid_content_type(response.content_type) {
+            return Err(ObjectStorageError::InvalidInput("content_type"));
+        }
+        if !valid_header_value(response.content_disposition) {
+            return Err(ObjectStorageError::InvalidInput("content_disposition"));
+        }
+        if !valid_header_value(response.cache_control) {
+            return Err(ObjectStorageError::InvalidInput("cache_control"));
+        }
+        let expires_at = expiry(now, expires_in)?;
+        let target = self.target(bucket, Some(key))?;
+        let t = AmzTime::new(now);
+        let credential = self.credential(&t);
+        let expires = expires_in.as_secs().to_string();
+        let params = [
+            ("X-Amz-Algorithm", ALGORITHM),
+            ("X-Amz-Credential", credential.as_str()),
+            ("X-Amz-Date", t.datetime.as_str()),
+            ("X-Amz-Expires", expires.as_str()),
+            ("X-Amz-SignedHeaders", "host"),
+            ("response-cache-control", response.cache_control),
+            ("response-content-disposition", response.content_disposition),
+            ("response-content-type", response.content_type),
+        ];
+        let query = canonical_query(&params);
+        let (request, _) = canonical_request(
+            "GET",
+            &target.canonical_uri,
+            &query,
+            &[("host", target.host.as_str())],
+            UNSIGNED_PAYLOAD,
+        );
+        let sts = string_to_sign(
+            &t.datetime,
+            &credential_scope(&t.date, &self.region),
+            &request,
+        );
+        let signature = self.signing_key(&t)?.sign_hex(&sts);
+        Ok(PresignedGet {
+            url: format!("{}?{query}&X-Amz-Signature={signature}", target.url),
             expires_at,
         })
     }
@@ -619,5 +712,116 @@ mod tests {
             Presigner::new(&cfg("http://127.0.0.1:1", AddressingStyle::Path, SK)).unwrap()
         );
         assert!(!dbg.contains(SK) && !dbg.contains(AK));
+    }
+
+    // trace: F1-T30 (URL unduh: header respons lampiran ikut ditandatangani), vektor botocore [SRC-564]
+    #[test]
+    fn presigned_get_with_response_overrides_matches_botocore() {
+        let headers = ResponseHeaders {
+            content_type: "image/jpeg",
+            content_disposition: "attachment; filename=\"0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b.jpg\"",
+            cache_control: "private, no-store",
+        };
+        let key = format!("files/{KEY}");
+        for (endpoint, region, addressing, sig, base) in [
+            (
+                "http://127.0.0.1:18333",
+                "us-east-1",
+                AddressingStyle::Path,
+                "87c36989d8aa3120c15e26f7f6566ae0cd2df776e32b56b29d5ef17dabe2b23b",
+                "http://127.0.0.1:18333/rs-identity-document/files/0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b?",
+            ),
+            (
+                "https://nos.jkt-1.neo.id",
+                "id-jkt-1",
+                AddressingStyle::VirtualHost,
+                "3c88e92f5925f71a7a3378d6718bee3af7e9d25d11c9f2c83cc62a286faca716",
+                "https://rs-identity-document.nos.jkt-1.neo.id/files/0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b?",
+            ),
+        ] {
+            let p = presigner(endpoint, region, addressing);
+            let get = p
+                .presign_get(
+                    "rs-identity-document",
+                    &key,
+                    &headers,
+                    at(),
+                    Duration::from_secs(300),
+                )
+                .unwrap();
+            assert!(get.url.starts_with(base), "{}", get.url);
+            assert!(
+                get.url.ends_with(&format!("&X-Amz-Signature={sig}")),
+                "{}",
+                get.url
+            );
+            for part in [
+                "response-cache-control=private%2C%20no-store",
+                "response-content-disposition=attachment%3B%20filename%3D%220193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b.jpg%22",
+                "response-content-type=image%2Fjpeg",
+                "X-Amz-Expires=300",
+                "X-Amz-SignedHeaders=host",
+            ] {
+                assert!(get.url.contains(part), "{part} tidak ada di {}", get.url);
+            }
+            assert_eq!(
+                get.expires_at,
+                time::macros::datetime!(2026-11-20 03:09:05 UTC)
+            );
+            assert!(!format!("{get:?}").contains(sig));
+        }
+    }
+
+    #[test]
+    fn presigned_get_rejects_unsafe_response_headers() {
+        let p = presigner("http://127.0.0.1:18333", "us-east-1", AddressingStyle::Path);
+        let ok = ResponseHeaders {
+            content_type: "image/png",
+            content_disposition: "attachment",
+            cache_control: "no-store",
+        };
+        let ttl = Duration::from_secs(300);
+        assert!(p.presign_get("rs-x", KEY, &ok, at(), ttl).is_ok());
+        let long = "a".repeat(201);
+        for (bad, field) in [
+            (
+                ResponseHeaders {
+                    content_type: "text/html\r\nx: y",
+                    ..ok
+                },
+                "content_type",
+            ),
+            (
+                ResponseHeaders {
+                    content_disposition: "attachment\r\nSet-Cookie: x=y",
+                    ..ok
+                },
+                "content_disposition",
+            ),
+            (
+                ResponseHeaders {
+                    content_disposition: "",
+                    ..ok
+                },
+                "content_disposition",
+            ),
+            (
+                ResponseHeaders {
+                    cache_control: long.as_str(),
+                    ..ok
+                },
+                "cache_control",
+            ),
+        ] {
+            assert_eq!(
+                p.presign_get("rs-x", KEY, &bad, at(), ttl).err(),
+                Some(ObjectStorageError::InvalidInput(field))
+            );
+        }
+        assert!(
+            p.presign_get("rs-x", KEY, &ok, at(), Duration::ZERO)
+                .is_err()
+        );
+        assert!(p.presign_get("rs-x", "../k", &ok, at(), ttl).is_err());
     }
 }

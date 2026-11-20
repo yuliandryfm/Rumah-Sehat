@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pasien 17/19 Chat - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Aplikasi Pasien &middot; 17/19 Sesi chat</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="16-ruang-tunggu.html">Sebelumnya</a><a href="18-video.html">Berikutnya</a></span></div>
+<main class="stage"><div class="phone">
+<div class="sb"><span>10.04</span><span></span></div>
+<div class="appbar"><div class="avatar" style="width:36px;height:36px;margin-left:8px">dr.</div><h2>dr. Contoh A <span class="badge success" style="vertical-align:middle">Sesi berjalan</span></h2><a class="icon-btn" href="18-video.html" aria-label="Beralih ke video">&#127909;</a></div>
+<div class="phone-body" style="background:var(--neutral)" aria-live="polite">
+  <p class="t-cap" style="text-align:center">Sisa waktu sesi 24:10 (contoh)</p>
+  <div class="bubble in">Selamat pagi, saya dr. Contoh A. Apa yang bisa saya bantu?<small>10.00</small></div>
+  <div class="bubble out">Pagi, dok. Saya sakit kepala sejak dua hari (teks contoh).<small>10.01 &middot; Terkirim</small></div>
+  <div class="bubble in">Baik. Apakah disertai demam atau mual?<small>10.02</small></div>
+  <div class="bubble out">Tidak ada demam, sedikit mual (teks contoh).<small>10.03 &middot; Terkirim</small></div>
+  <div class="bubble in">Terima kasih. Saya siapkan catatan dan resep setelah sesi.<small>10.04</small></div>
+</div>
+<form class="phone-foot" style="flex-direction:row;align-items:center" action="19-catatan-resep.html">
+  <button class="icon-btn" type="button" aria-label="Kirim foto">&#128247;</button>
+  <label for="ps" class="sr" style="position:absolute;left:-999px">Tulis pesan</label>
+  <input id="ps" class="input" placeholder="Tulis pesan">
+  <button class="btn btn-primary" type="button">Kirim</button>
+</form>
+<div class="phone-foot" style="border-top:0;padding-top:0"><a class="btn btn-secondary btn-block btn-sm" href="19-catatan-resep.html">Simulasi: sesi selesai</a></div>
+</div></main></body></html>

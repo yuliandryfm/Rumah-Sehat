@@ -37,7 +37,7 @@ IMPORTANT: tidak ada kode merah yang boleh di-commit, di branch mana pun. Git ho
 Ditetapkan di Tahap 4 (`[KEPUTUSAN-37]`, `docs/04-arsitektur.md`). Perubahan di modul ini wajib review penuh (code-reviewer, ditambah security dan/atau DBA sesuai bidangnya) dan test termasuk skenario negatif (`aturan-kerja.md` §1):
 - Autentikasi, sesi, dan MFA, termasuk konfigurasi realm Keycloak dan validasi token di backend (ADR-011)
 - Otorisasi dan isolasi data, termasuk RLS dan role database RME minimalis (ADR-012)
-- Harga dan markup, pembayaran, jurnal, refund, klaim, dan kewajiban rekanan (ADR-015)
+- Harga dan margin, pembayaran, jurnal, refund, klaim, dan kewajiban rekanan (ADR-015)
 - Pustaka audit, relay, dan database audit (ADR-009)
 - Enkripsi, kunci data, pekerja privasi, retensi, dan anonimisasi (ADR-013)
 - Persetujuan dan hak subjek data (EP-16)
