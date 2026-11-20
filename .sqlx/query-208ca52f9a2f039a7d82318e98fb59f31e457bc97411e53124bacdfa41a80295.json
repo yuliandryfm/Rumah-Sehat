@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at, full_name) VALUES ($1, 'rs_admin', 'admin', $2, $3, 'active', now(), 'Admin Sintetis')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "208ca52f9a2f039a7d82318e98fb59f31e457bc97411e53124bacdfa41a80295"
+}

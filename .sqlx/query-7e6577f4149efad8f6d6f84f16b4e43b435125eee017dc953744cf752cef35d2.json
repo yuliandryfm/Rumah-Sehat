@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, container_type, container_id, wrapped_dek, kek_ref, shredded_at FROM app.data_key WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "container_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "container_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "container_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "container_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "wrapped_dek",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "wrapped_dek"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "kek_ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "kek_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "shredded_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "shredded_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7e6577f4149efad8f6d6f84f16b4e43b435125eee017dc953744cf752cef35d2"
+}

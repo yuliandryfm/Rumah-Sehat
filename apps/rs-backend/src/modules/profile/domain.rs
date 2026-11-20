@@ -15,6 +15,23 @@
 //! - US-201 AC3/AC3a: alasan penolakan dari daftar tertutup, keterangan wajib untuk `other`, ≤ 500 karakter.
 
 use status_flow::TransitionRules;
+use std::time::Duration;
+
+/// Jendela penghitung penolakan NIK (US-106 AC4: "per 24 jam"). Diterapkan sebagai jendela tetap sejak
+/// penolakan pertama (usulan teknis F1-T60).
+pub(super) const NIK_REJECTION_WINDOW: Duration = Duration::from_secs(24 * 3600);
+/// Lama penahanan setelah ambang per akun atau per NIK tercapai (US-106 AC4: "ditahan 24 jam").
+pub(super) const NIK_HOLD: Duration = Duration::from_secs(24 * 3600);
+/// Per akun: 3 penolakan per 24 jam, lalu pengajuan NIK akun itu ditahan (US-106 AC4).
+pub(super) const ACCOUNT_REJECTIONS_BEFORE_HOLD: i64 = 3;
+/// Per NIK lintas akun: 3 penolakan NIK yang sama dari akun mana pun per 24 jam (US-106 AC4).
+pub(super) const NIK_REJECTIONS_BEFORE_HOLD: i64 = 3;
+/// Per alamat IP: 10 penolakan per 24 jam (US-106 AC4).
+pub(super) const IP_REJECTIONS_LIMIT: i64 = 10;
+/// Seluruh sistem: lebih dari 20 penolakan per jam memicu peringatan di security log (US-106 AC4).
+pub(super) const GLOBAL_REJECTION_ALERT_PER_HOUR: i64 = 20;
+/// Umur penghitung global per jam (satu jam berjalan + jeda).
+pub(super) const GLOBAL_COUNTER_TTL: Duration = Duration::from_secs(2 * 3600);
 
 /// Status permintaan verifikasi (`identity_verification_request_status_event.to_status`,
 /// `identity_verification_request_state.status`; CHECK di migrasi F1-T18).

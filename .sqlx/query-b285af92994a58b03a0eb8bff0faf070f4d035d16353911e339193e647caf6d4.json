@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id AS \"request_id?\", r.trigger_type AS \"trigger_type?\", s.status AS \"status?\",\n                  e.reason_code AS \"reason_code?\", r.created_at AS \"submitted_at?\",\n                  cr.nik_last4 AS \"nik_last4?\"\n           FROM app.care_recipient cr\n           LEFT JOIN app.identity_verification_request r ON r.id = cr.latest_verification_request_id\n           LEFT JOIN app.identity_verification_request_state s ON s.identity_verification_request_id = r.id\n           LEFT JOIN app.identity_verification_request_status_event e\n                  ON e.identity_verification_request_id = r.id AND e.version = s.version\n           WHERE cr.id = $1 AND cr.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request_id?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "trigger_type?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "trigger_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_state",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reason_code?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_status_event",
+            "name": "reason_code"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "submitted_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "nik_last4?",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "nik_last4"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "b285af92994a58b03a0eb8bff0faf070f4d035d16353911e339193e647caf6d4"
+}

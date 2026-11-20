@@ -312,6 +312,19 @@ pub fn status_projection_mismatch(entity: &'static str, entity_id: Uuid) {
     warn!(target: SECURITY_TARGET, event_type = "status_projection_mismatch", entity = entity, entity_id = %entity_id.hyphenated(), "security_event");
 }
 
+/// Pengajuan nomor identitas ditahan karena ambang penolakan tercapai (US-106 AC4: "setiap penahanan
+/// tercatat sebagai kejadian keamanan"; F1-T60). `scope` dari daftar tertutup: `account`,
+/// `identity_number`, `ip`. Nomor identitas dan alamat IP tidak dicatat.
+pub fn identity_submission_held(account_id: Option<Uuid>, scope: &'static str) {
+    warn!(target: SECURITY_TARGET, event_type = "identity_submission_held", account_id = %opt(account_id), scope = scope, "security_event");
+}
+
+/// Penolakan pengajuan nomor identitas di seluruh sistem melewati ambang per jam (US-106 AC4: lebih dari 20
+/// per jam memicu peringatan; F1-T60). Dipancarkan sekali per jam saat ambang terlewati.
+pub fn identity_rejection_surge(rejections_this_hour: u64) {
+    warn!(target: SECURITY_TARGET, event_type = "identity_rejection_surge", rejections_this_hour = rejections_this_hour, "security_event");
+}
+
 /// Hak akses seseorang berubah.
 pub fn access_rights_changed(actor_id: Uuid, subject_id: Uuid) {
     warn!(target: SECURITY_TARGET, event_type = "access_rights_changed", actor_id = %actor_id.hyphenated(), subject_id = %subject_id.hyphenated(), "security_event");

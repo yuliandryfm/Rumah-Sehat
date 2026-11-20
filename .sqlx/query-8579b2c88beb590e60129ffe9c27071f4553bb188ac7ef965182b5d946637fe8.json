@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT nik_enc, nik_bidx, nik_bidx_key_version, nik_last4, data_key_id FROM app.identity_document WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nik_enc",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "nik_bidx",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_bidx"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "nik_bidx_key_version",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_bidx_key_version"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nik_last4",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_last4"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "data_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "data_key_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8579b2c88beb590e60129ffe9c27071f4553bb188ac7ef965182b5d946637fe8"
+}
