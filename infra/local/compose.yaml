@@ -90,11 +90,14 @@ services:
     ports:
       - "127.0.0.1:${VALKEY_RME_PORT:-16380}:6379"
 
-  # Keycloak mode dev (start-dev). Realm sebagai kode: F1-T31 (keycloak-config-cli).
+  # Keycloak mode dev (start-dev). Konfigurasi server (parameter Argon2) dari infra/keycloak/keycloak.conf;
+  # realm sebagai kode (F1-T31) diterapkan layanan `keycloak-config` di bawah.
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
     restart: unless-stopped
     command: ["start-dev"]
+    volumes:
+      - ../keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
     depends_on:
       postgres-app:
         condition: service_healthy
@@ -120,6 +123,43 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
+
+  # Realm `pasien` dan `admin` sebagai kode (F1-T31, KEPUTUSAN-85): keycloak-config-cli 6.5.1, build untuk
+  # klien Keycloak 26.5.5 (tag terbaru rilis 6.5.1; Keycloak server 26.8.2 tidak tercantum resmi, kecocokan
+  # dibuktikan scripts/keycloak-check.sh). Bukan layanan tetap (profil `alat`); jalankan:
+  #   docker compose -f infra/local/compose.yaml --profile alat run --rm keycloak-config
+  # Berbagi namespace jaringan dengan `keycloak`, sehingga memakai http://127.0.0.1:8080 tanpa port baru.
+  # Nilai $(env:...) di berkas realm (SMTP relay ADR-026, redirect URI, secret klien BFF) diisi dari
+  # variabel RS_KC_* di infra/local/.env; staging/production dari OpenBao lewat skrip deploy.
+  keycloak-config:
+    image: adorsys/keycloak-config-cli:6.5.1-26.5.5@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274
+    profiles: ["alat"]
+    network_mode: "service:keycloak"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://127.0.0.1:8080
+      KEYCLOAK_USER: ${KEYCLOAK_ADMIN_USER:?isi di infra/local/.env}
+      KEYCLOAK_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?isi di infra/local/.env}
+      KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+      KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
+      IMPORT_FILES_LOCATIONS: /config/*.json
+      IMPORT_VARSUBSTITUTION_ENABLED: "true"
+      # Selalu impor ulang walau berkas tidak berubah. Impor hanya menimpa atribut yang ADA di JSON;
+      # klien/IdP tambahan buatan manual TIDAK terhapus. Drift seperti itu dideteksi (GAGAL) oleh
+      # scripts/keycloak-check.sh.
+      IMPORT_CACHE_ENABLED: "false"
+      RS_KC_SMTP_HOST: ${RS_KC_SMTP_HOST:?isi di infra/local/.env}
+      RS_KC_SMTP_PORT: ${RS_KC_SMTP_PORT:?isi di infra/local/.env}
+      RS_KC_SMTP_FROM: ${RS_KC_SMTP_FROM:?isi di infra/local/.env}
+      RS_KC_PASIEN_MOBILE_REDIRECT_URI: ${RS_KC_PASIEN_MOBILE_REDIRECT_URI:?isi di infra/local/.env}
+      RS_KC_BACKOFFICE_BFF_REDIRECT_URI: ${RS_KC_BACKOFFICE_BFF_REDIRECT_URI:?isi di infra/local/.env}
+      RS_KC_BACKOFFICE_BFF_SECRET: ${RS_KC_BACKOFFICE_BFF_SECRET:?isi di infra/local/.env}
+      RS_KC_PORTAL_BFF_REDIRECT_URI: ${RS_KC_PORTAL_BFF_REDIRECT_URI:?isi di infra/local/.env}
+      RS_KC_PORTAL_BFF_SECRET: ${RS_KC_PORTAL_BFF_SECRET:?isi di infra/local/.env}
+    volumes:
+      - ../keycloak/realms:/config:ro
 
   # OpenBao mode dev: in-memory, otomatis unseal, token root dari env. HANYA lokal.
   openbao:

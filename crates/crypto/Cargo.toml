@@ -30,6 +30,11 @@ serde_json = { version = "=1.0.154", default-features = false, features = ["std"
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time"] }
 
+# Fitur `test-keys` (F1-T32): kunci RSA uji untuk test validasi token crate lain; hanya dipasang lewat
+# [dev-dependencies]. Menyalakan fitur `ring-io` aws-lc-rs (komponen n/e kunci publik; menarik `untrusted`).
+[features]
+test-keys = ["aws-lc-rs/ring-io"]
+
 [dev-dependencies]
 time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time", "process"] }

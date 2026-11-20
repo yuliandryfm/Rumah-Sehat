@@ -1,0 +1,524 @@
+{
+  "realm": "pasien",
+  "enabled": true,
+  "displayName": "Ruang Sehat",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "editUsernameAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "verifyEmail": true,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxTemporaryLockouts": 0,
+  "bruteForceStrategy": "LINEAR",
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+  "passwordPolicy": "length(8) and maxLength(128) and notEmail(undefined) and hashAlgorithm(argon2)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyCodeReusable": false,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 7776000,
+  "actionTokenGeneratedByUserLifespan": 3600,
+  "eventsEnabled": true,
+  "eventsExpiration": 604800,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "smtpServer": {
+    "host": "$(env:RS_KC_SMTP_HOST)",
+    "port": "$(env:RS_KC_SMTP_PORT)",
+    "from": "$(env:RS_KC_SMTP_FROM)",
+    "fromDisplayName": "Ruang Sehat",
+    "starttls": "true",
+    "ssl": "false",
+    "auth": "false"
+  },
+  "messageBundles": {
+    "en": {
+      "invalidUserMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
+      "accountDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
+      "accountTemporarilyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
+      "accountPermanentlyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
+      "invalidEmailMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan."
+    }
+  },
+  "attributes": {
+    "userProfileEnabled": "true"
+  },
+  "userProfile": {
+    "attributes": [
+      {
+        "name": "username",
+        "displayName": "${username}",
+        "validations": {
+          "length": {
+            "min": 3,
+            "max": 255
+          },
+          "username-prohibited-characters": {},
+          "up-username-not-idn-homograph": {}
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin"
+          ]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "email",
+        "displayName": "${email}",
+        "validations": {
+          "email": {},
+          "length": {
+            "max": 255
+          }
+        },
+        "required": {
+          "roles": [
+            "user"
+          ]
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin"
+          ]
+        },
+        "multivalued": false
+      }
+    ],
+    "groups": [
+      {
+        "name": "user-metadata",
+        "displayHeader": "User metadata",
+        "displayDescription": "Attributes, which refer to user metadata"
+      }
+    ]
+  },
+  "browserFlow": "rs-browser-mfa",
+  "resetCredentialsFlow": "rs-reset-credentials-mfa",
+  "directGrantFlow": "rs-direct-grant-mfa",
+  "authenticatorConfig": [
+    {
+      "alias": "rs-browser-otp-default-condition",
+      "config": {
+        "flow_to_check": "rs-browser-2fa",
+        "check_result": "not-executed"
+      }
+    },
+    {
+      "alias": "rs-reset-otp-default-condition",
+      "config": {
+        "flow_to_check": "rs-reset-2fa",
+        "check_result": "not-executed"
+      }
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "rs-browser-mfa",
+      "description": "Login browser: password lalu OTP atau kode pemulihan wajib; tanpa faktor kedua terdaftar, pendaftaran TOTP dipaksa (ADR-011 butir 5)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "rs-browser-forms",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-browser-forms",
+      "description": "Password lalu faktor kedua",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "rs-browser-2fa",
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "rs-browser-otp-default",
+          "requirement": "CONDITIONAL",
+          "priority": 30,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-browser-2fa",
+      "description": "OTP atau kode pemulihan bila salah satunya terdaftar",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-recovery-authn-code-form",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-browser-otp-default",
+      "description": "Tanpa faktor kedua terdaftar: OTP wajib sehingga Configure OTP dipaksa",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-sub-flow-executed",
+          "authenticatorConfig": "rs-browser-otp-default-condition",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-reset-credentials-mfa",
+      "description": "Atur ulang password: tautan email, lalu OTP atau kode pemulihan sebelum password baru (US-103 AC4e, KEPUTUSAN-199)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "reset-credentials-choose-user",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "reset-credential-email",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "rs-reset-2fa",
+          "requirement": "CONDITIONAL",
+          "priority": 30,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "rs-reset-otp-default",
+          "requirement": "CONDITIONAL",
+          "priority": 40,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "reset-password",
+          "requirement": "REQUIRED",
+          "priority": 50,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-reset-2fa",
+      "description": "OTP atau kode pemulihan bila salah satunya terdaftar",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-recovery-authn-code-form",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-reset-otp-default",
+      "description": "Tanpa faktor kedua terdaftar: OTP wajib sehingga Configure OTP dipaksa",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-sub-flow-executed",
+          "authenticatorConfig": "rs-reset-otp-default-condition",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "rs-direct-grant-mfa",
+      "description": "Cadangan bila grant password aktif tanpa sengaja: OTP selalu wajib, tanpa pendaftaran",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-otp",
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 5,
+      "config": {}
+    },
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {
+        "add-recovery-codes": "true"
+      }
+    },
+    {
+      "alias": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "name": "Recovery Authentication Codes",
+      "providerId": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_EMAIL",
+      "name": "Update Email",
+      "providerId": "UPDATE_EMAIL",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 60,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 70,
+      "config": {}
+    },
+    {
+      "alias": "TERMS_AND_CONDITIONS",
+      "name": "Terms and Conditions",
+      "providerId": "TERMS_AND_CONDITIONS",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 80,
+      "config": {}
+    },
+    {
+      "alias": "delete_account",
+      "name": "Delete Account",
+      "providerId": "delete_account",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-pasien",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization"
+          ],
+          "client": {
+            "account": [
+              "view-profile"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "rs-pasien-mobile",
+      "name": "Aplikasi pasien (mobile)",
+      "description": "Klien publik aplikasi Flutter pasien: Authorization Code + PKCE S256 lewat browser sistem (ADR-011 butir 7, RFC 8252)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "consentRequired": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "$(env:RS_KC_PASIEN_MOBILE_REDIRECT_URI)"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "acr",
+        "email",
+        "roles",
+        "profile",
+        "web-origins"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "admin-cli",
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "account-console",
+      "enabled": false
+    }
+  ]
+}

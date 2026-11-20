@@ -7,9 +7,11 @@
 
 use axum::http::{HeaderValue, StatusCode, header::CONTENT_TYPE};
 use axum::response::{IntoResponse, Response};
+use envelope::CommonError;
 use envelope::{ApiError, CONTENT_TYPE_JSON, CONTENT_TYPE_PROBLEM, Success};
 use foundation::CorrelationId;
 use serde::Serialize;
+use std::sync::Arc;
 
 fn json_response<B: Serialize>(
     status: StatusCode,
@@ -64,5 +66,26 @@ impl<E: ApiError> IntoResponse for ApiFailure<E> {
             .error
             .to_error_body(self.correlation_id, &self.type_base);
         json_response(body.http_status(), CONTENT_TYPE_PROBLEM, &body)
+    }
+}
+
+/// Pembentuk respons galat envelope untuk middleware autentikasi dan otorisasi (`authn`, `authz`).
+#[derive(Debug, Clone)]
+pub struct EnvelopeRenderer {
+    type_base: Arc<str>,
+}
+
+impl EnvelopeRenderer {
+    /// `type_base` adalah awalan URI jenis masalah dari konfigurasi.
+    pub fn new(type_base: &str) -> Self {
+        Self {
+            type_base: Arc::from(type_base),
+        }
+    }
+}
+
+impl authn::ErrorRenderer for EnvelopeRenderer {
+    fn render(&self, error: CommonError, correlation_id: CorrelationId) -> Response {
+        ApiFailure::new(error, correlation_id, &self.type_base).into_response()
     }
 }
