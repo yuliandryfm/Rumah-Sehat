@@ -621,7 +621,7 @@ Mengikuti `[KEPUTUSAN-88]`, ADR-013 butir 8, ADR-021 butir 4:
 
 | Jenis | Cakupan | Alat | Sumber |
 | --- | --- | --- | --- |
-| Unit | Domain murni: transisi status, perhitungan harga dan markup, masking audit, format ciphertext, validasi | `cargo test` | `[KEPUTUSAN-74]` |
+| Unit | Domain murni: transisi status, perhitungan harga dan margin, masking audit, format ciphertext, validasi | `cargo test` | `[KEPUTUSAN-74]` |
 | Integrasi | Service + repository di PostgreSQL 18, Valkey, dan Keycloak sungguhan, dengan migrasi dan **role aplikasi** (bukan pemilik skema) sehingga hak tabel ikut teruji | testcontainers 0.28.0 | `[SRC-181]` `[KEPUTUSAN-74]` |
 | Kontrak | OpenAPI hasil generate identik dengan `openapi/`; Schemathesis terhadap backend efemeral; `response_code` terdaftar dan konsisten | utoipa, Schemathesis 4.33.4 | `[SRC-168]` `[SRC-148]` `[KEPUTUSAN-82]` |
 | Arsitektur | Batas modul (tabel per modul), pola logging terlarang, larangan `unwrap`, pemakai langsung aws-lc-rs, pemanggilan jam sistem | skrip di `scripts/verify.sh` | `[KEPUTUSAN-82]` |

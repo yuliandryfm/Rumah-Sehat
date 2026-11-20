@@ -2,11 +2,12 @@
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
+Revisi 2026-11-20 (CR-024): istilah "markup" diganti "margin" (hanya istilah, keputusan tidak berubah). **Definisi: margin = persentase dari harga rekanan (bukan dari harga jual); harga ke pasien = harga rekanan × (1 + margin%) [CR-024].**
 
 ## Konteks
 
-- Semua layanan dibayar di aplikasi lewat payment gateway berizin BI (AB-20). Pembayaran dibagi langsung oleh payment gateway: bagian rekanan ke rekening rekanan, dan markup ke rekening PT. Arunika (AB-21, AB-22) `[DOK: 03-prd.md]` §3.4.
-- Harga, markup, dan parameter dikunci saat pembayaran dibuat (AB-17). Markup dihitung per unit dengan pembulatan ke Rupiah penuh (AB-11a). Rupiah tanpa desimal (NFR-LOC-02) `[DOK: 03-prd.md]`.
+- Semua layanan dibayar di aplikasi lewat payment gateway berizin BI (AB-20). Pembayaran dibagi langsung oleh payment gateway: bagian rekanan ke rekening rekanan, dan margin ke rekening PT. Arunika (AB-21, AB-22) `[DOK: 03-prd.md]` §3.4.
+- Harga, margin, dan parameter dikunci saat pembayaran dibuat (AB-17). Margin dihitung per unit dengan pembulatan ke Rupiah penuh (AB-11a). Rupiah tanpa desimal (NFR-LOC-02) `[DOK: 03-prd.md]`.
 - Matriks refund RF-01–RF-18 dan rumus kewajiban AB-34; refund dicatat sebagai entri pembalik (AB-31). Satu pesanan paling banyak satu refund kecuali RF-12 (AB-36). Status refund mencakup Diproses, Berhasil, Gagal, dan Perlu dicek (AB-32, AB-35) `[DOK: 03-prd.md]` §3.5, §3.6.
 - Notifikasi payment gateway diverifikasi keasliannya (NFR-INT-04). Notifikasi berulang hanya mengonfirmasi pesanan sekali (US-802 AC2). Rekonsiliasi berjalan harian (US-811 AC2) `[DOK: 03-prd.md]`.
 - Payment gateway belum dipilih. Metode bayar, kemampuan refund ke metode asal, pengembalian MDR, mekanisme penarikan dana rekanan (PT-27), dan penyaluran ongkos kirim (PT-31) `[TIDAK DIKETAHUI]` sampai penyedia dipilih di Tahap 5 dan L-04 dijawab `[DOK: 03-prd.md]` `[DOK: 02-brd.md]`.
@@ -16,10 +17,10 @@ Tanggal: 2026-11-18
 
 1. **Uang disimpan sebagai bilangan bulat Rupiah** (`bigint`, kolom berakhiran `_idr`). Tidak ada tipe pecahan untuk nominal. Semua perhitungan harga dilakukan di server `[KEPUTUSAN-31]`.
 2. **Adaptor payment gateway.** Modul pembayaran berbicara ke penyedia lewat satu antarmuka: buat pembayaran (nominal, instruksi pembagian, kedaluwarsa PB-07, metode), batalkan instruksi, refund, tanya status, verifikasi notifikasi, dan ambil laporan pembagian atau penyelesaian. Implementasi konkret dibuat setelah penyedia dipilih di Tahap 5. Syarat pemilihan: berizin BI (BR-115), mendukung pembagian dana langsung ke rekening rekanan (AB-21), mendukung refund, dan memproses data di Indonesia `[KEPUTUSAN-31]`.
-3. **Harga terkunci** saat pembayaran dibuat, sebagai baris transaksi immutable per pesanan: harga rekanan per unit, aturan markup yang berlaku (jenis, nilai, ID versi pengaturan), markup per unit, jumlah, ongkos kirim, biaya transaksi metode terpilih, dan total. Snapshot parameter bisnis yang memengaruhi pesanan (misalnya PB-01) juga disimpan. Aturan pembatalan dan refund selalu membaca snapshot ini (AB-17, US-812 AC2) `[KEPUTUSAN-31]`.
+3. **Harga terkunci** saat pembayaran dibuat, sebagai baris transaksi immutable per pesanan: harga rekanan per unit, aturan margin yang berlaku (jenis, nilai, ID versi pengaturan), margin per unit, jumlah, ongkos kirim, biaya transaksi metode terpilih, dan total. Snapshot parameter bisnis yang memengaruhi pesanan (misalnya PB-01) juga disimpan. Aturan pembatalan dan refund selalu membaca snapshot ini (AB-17, US-812 AC2) `[KEPUTUSAN-31]`.
 4. **Jurnal berpasangan (double-entry)** sebagai catatan keuangan immutable `[KEPUTUSAN-31]`:
    - Setiap kejadian uang (pembayaran diterima, pembagian dilaporkan, refund dibuat, refund berhasil, kewajiban rekanan dicatat atau dilunasi, entri pembalik) membuat satu jurnal dengan baris debit dan kredit yang jumlahnya seimbang. Keseimbangan diperiksa di aplikasi dan dengan constraint database.
-   - Akun jurnal mencakup antara lain dana pasien, bagian rekanan per rekanan, pendapatan markup, biaya payment gateway, kewajiban pengembalian rekanan, dan kewajiban platform.
+   - Akun jurnal mencakup antara lain dana pasien, bagian rekanan per rekanan, pendapatan margin, biaya payment gateway, kewajiban pengembalian rekanan, dan kewajiban platform.
    - Koreksi selalu berupa jurnal pembalik yang merujuk jurnal asal (ADR-004, AB-26, AB-31). Laporan keuangan dan laporan rekanan (US-811, US-1201) dibaca dari jurnal.
 5. **Notifikasi payment gateway** `[KEPUTUSAN-31]`:
    - Endpoint notifikasi memverifikasi keaslian sesuai mekanisme penyedia (NFR-INT-04).

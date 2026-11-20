@@ -212,7 +212,7 @@ erDiagram
     uuid practice_schedule_id FK
     uuid booked_order_id FK, UK
   }
-  markup_rule {
+  margin_rule {
     uuid id PK "M berlaku-mulai"
     uuid partner_id FK
     timestamptz effective_from
@@ -262,7 +262,7 @@ erDiagram
   health_worker ||--o{ practice_schedule_exception : "pengecualian"
   health_worker ||--o{ consultation_slot : "membuka"
   practice_schedule |o--o{ consultation_slot : "membentuk"
-  partner ||--o{ markup_rule : "markup"
+  partner ||--o{ margin_rule : "margin"
   partner ||--o{ partner_fee_rule : "biaya rekanan"
 ```
 
@@ -371,7 +371,7 @@ erDiagram
   order_price_lock {
     uuid id PK "T"
     uuid patient_order_id FK
-    uuid markup_rule_id FK
+    uuid margin_rule_id FK
     uuid payment_method_fee_id FK
     uuid consultation_rate_id FK
     bigint total_idr
@@ -381,7 +381,7 @@ erDiagram
     uuid order_price_lock_id FK
     uuid product_id FK "UK bersama order_price_lock_id"
     int quantity "satu-satunya sumber jumlah barang"
-    bigint unit_markup_idr
+    bigint unit_margin_idr
   }
   product {
     uuid id PK "M"
@@ -1400,7 +1400,7 @@ Perubahan putaran perbaikan 1: `product_order_item` dihapus (S04); `order_status
 | 26 | partner_bank_account | Rekanan | M | Ya | — | Ya | Ya |
 | 27 | partner_bank_account_decision | Rekanan | T | — | — | — | — |
 | 28 | document_requirement | Rekanan | M | — | — | — | — |
-| 29 | markup_rule | Pengaturan | M | — | — | — | — |
+| 29 | margin_rule | Pengaturan | M | — | — | — | — |
 | 30 | partner_fee_rule | Pengaturan | M | — | — | — | — |
 | 31 | business_parameter | Pengaturan | M | — | — | — | — |
 | 32 | payment_method_fee | Pengaturan | M | — | — | — | — |
