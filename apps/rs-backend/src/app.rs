@@ -8,6 +8,7 @@ use crate::modules::identity;
 use crate::modules::identity::api::CorporateHrAccounts;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
+use crate::modules::privacy;
 use crate::modules::profile;
 use crate::modules::profile::api::IdentityServices;
 use crate::openapi::{BackofficeApiDoc, CorporateApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
@@ -44,6 +45,8 @@ pub struct AppServices {
     pub public_image_limit: Arc<RateLimiter>,
     /// Kelola anggota HR perusahaan (modul identity, F1-T107).
     pub corporate_hr: Arc<CorporateHrAccounts>,
+    /// Batas laju endpoint teks persetujuan tanpa login (F1-T49), terpisah dari konten situs.
+    pub consent_text_limit: Arc<RateLimiter>,
 }
 
 /// Keadaan bersama handler. Murah di-clone.
@@ -103,6 +106,10 @@ impl AppState {
     pub(crate) fn corporate_hr(&self) -> &CorporateHrAccounts {
         &self.services.corporate_hr
     }
+
+    pub(crate) fn consent_text_limit(&self) -> &RateLimiter {
+        &self.services.consent_text_limit
+    }
 }
 
 /// Router endpoint operasional beserta spesifikasinya (`openapi/ops.json`); setiap rute berkebijakan.
@@ -120,7 +127,9 @@ pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
 
 /// Router API aplikasi pasien (`openapi/pasien.json`, awalan `/patient/v1`, KEPUTUSAN-120, realm `pasien`).
 pub(crate) fn patient_router() -> PolicyRouter<AppState> {
-    PolicyRouter::with_openapi(PatientApiDoc::openapi()).merge(profile::patient_router())
+    PolicyRouter::with_openapi(PatientApiDoc::openapi())
+        .merge(profile::patient_router())
+        .merge(privacy::patient_router())
 }
 
 /// Router API publik tanpa login (`openapi/public.json`, awalan `/v1/public/content`, ADR-027 butir 2 dan 5,
@@ -252,13 +261,24 @@ mod tests {
 
     // trace: ADR-012 butir 1, KEPUTUSAN-120 (endpoint pasien hanya untuk akun pasien, awalan /patient/v1)
     #[test]
-    fn every_patient_route_requires_patient_account_only() {
+    fn every_patient_route_has_patient_policy_or_public_consent_text() {
         let router = patient_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 10); // 4 identitas (US-106) + 6 profil dan alamat (US-105)
-        for ((_method, path), policy) in entries {
+        // 4 identitas (US-106) + 6 profil dan alamat (US-105) + 1 teks persetujuan tanpa login (US-104)
+        assert_eq!(entries.len(), 11);
+        for ((method, path), policy) in entries {
             assert!(path.starts_with("/patient/v1/"), "{path}");
-            assert_eq!(policy, &Policy::patient(), "{path}");
+            if path == "/patient/v1/consent-texts/current" {
+                // trace: US-104 AC1 (teks persetujuan terbuka untuk layar pendaftaran)
+                assert_eq!(method, "GET", "{path}");
+                assert_eq!(
+                    policy,
+                    &Policy::Public(PublicReason::PublicContent),
+                    "{path}"
+                );
+            } else {
+                assert_eq!(policy, &Policy::patient(), "{path}");
+            }
         }
     }
 

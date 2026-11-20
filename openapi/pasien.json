@@ -621,6 +621,57 @@
         ]
       }
     },
+    "/patient/v1/consent-texts/current": {
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "summary": "Teks persetujuan pemrosesan data yang berlaku untuk layar pendaftaran (US-104 AC1, AC3): tujuh bagian\nPasal 21 ayat (1) UU PDP, kontak, dan butir persetujuan. Tanpa login, dengan batas laju.",
+        "operationId": "consent_text_current",
+        "responses": {
+          "200": {
+            "description": "Versi teks yang berlaku.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentTextEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Belum ada versi teks yang berlaku atau layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/patient/v1/ktp-photos/upload-slots": {
       "post": {
         "tags": [
@@ -1105,6 +1156,165 @@
         },
         "additionalProperties": false
       },
+      "ConsentContactDto": {
+        "type": "object",
+        "description": "Kontak Ruang Sehat.",
+        "required": [
+          "title",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "example": "Kontak Ruang Sehat"
+          }
+        }
+      },
+      "ConsentItemDto": {
+        "type": "object",
+        "description": "Butir persetujuan: satu kotak centang yang tidak tercentang otomatis.",
+        "required": [
+          "consent_item_id",
+          "item_code",
+          "label",
+          "is_primary",
+          "is_required",
+          "sort_order"
+        ],
+        "properties": {
+          "consent_item_id": {
+            "type": "string",
+            "example": "01a2008d-7400-7000-8000-000000000a4a"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "description": "Butir utama (penarikannya membuat akun \"Persetujuan ditarik\", US-1601 AC2)."
+          },
+          "is_required": {
+            "type": "boolean",
+            "description": "Wajib dipilih untuk mendaftar (US-101 AC4)."
+          },
+          "item_code": {
+            "type": "string",
+            "example": "data_processing"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ConsentSectionDto": {
+        "type": "object",
+        "description": "Satu bagian teks persetujuan.",
+        "required": [
+          "code",
+          "title",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Isi bagian, teks biasa (bukan HTML)."
+          },
+          "code": {
+            "type": "string",
+            "description": "Kode tetap bagian Pasal 21 ayat (1) UU PDP: `legal_basis` (a), `purpose` (b), `data_types` (c),\n`document_retention` (d), `collected_information` (e), `processing_period` (f), `subject_rights` (g).",
+            "example": "purpose"
+          },
+          "title": {
+            "type": "string",
+            "example": "(b) Tujuan pemrosesan"
+          }
+        }
+      },
+      "ConsentTextDto": {
+        "type": "object",
+        "description": "Versi teks persetujuan pemrosesan data yang berlaku (US-104 AC1).",
+        "required": [
+          "consent_text_version_id",
+          "consent_type",
+          "version_label",
+          "effective_from",
+          "sections",
+          "contact",
+          "items"
+        ],
+        "properties": {
+          "consent_text_version_id": {
+            "type": "string",
+            "example": "01a2008d-7400-7000-8000-000000000a49"
+          },
+          "consent_type": {
+            "type": "string",
+            "example": "patient_data_processing"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ConsentContactDto"
+          },
+          "draft_notice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Penanda teks draf yang belum final (`null` untuk teks final yang disetujui legal dan Petugas PDP)."
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T00:00:01Z"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentItemDto"
+            },
+            "description": "Butir persetujuan, urut tampilan."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentSectionDto"
+            },
+            "description": "Tujuh bagian, urut (a)–(g)."
+          },
+          "version_label": {
+            "type": "string",
+            "example": "0.1-draf"
+          }
+        }
+      },
+      "ConsentTextEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons teks persetujuan (ADR-023 butir 1); isi sebenarnya `envelope::Success`.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConsentTextDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
       "ErrorEnvelope": {
         "type": "object",
         "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
@@ -1583,6 +1793,10 @@
     {
       "name": "profile",
       "description": "Profil data diri dan alamat (US-105)"
+    },
+    {
+      "name": "consent",
+      "description": "Teks persetujuan pemrosesan data tanpa login (US-104)"
     }
   ]
 }

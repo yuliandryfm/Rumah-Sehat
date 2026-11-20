@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.consent_item (id, consent_text_version_id, item_code, label, is_primary, is_required, sort_order) VALUES ($1, $2, 'tambahan', 'x', false, false, 2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d84d15e70fa3eca3764b9d7a8f25710dc245089e41381a9ad03c1ff72c5437f3"
+}

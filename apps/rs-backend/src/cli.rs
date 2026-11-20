@@ -14,6 +14,7 @@ use crate::modules::identity::api::{
     AccountDirectory, CorporateHrAccounts, ProvisionerNotConfigured,
 };
 use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
+use crate::modules::privacy::api::ConsentTextReadiness;
 use crate::modules::profile::api::IdentityServices;
 use crate::rate_limit::RateLimiter;
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
@@ -584,8 +585,15 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         Arc::clone(&directory),
         Arc::new(ProvisionerNotConfigured),
     ));
-    let readiness: Vec<Arc<dyn ReadinessCheck>> =
+    let mut readiness: Vec<Arc<dyn ReadinessCheck>> =
         vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
+    // KEPUTUSAN-289: production tidak siap selama teks persetujuan yang berlaku masih draf.
+    if config.files.object_storage.deployment == object_storage::Deployment::Production {
+        readiness.push(Arc::new(ConsentTextReadiness::new(
+            pool.clone(),
+            Arc::clone(&clock),
+        )));
+    }
     let state = AppState::new(
         &config.problem_type_base,
         readiness,
@@ -597,6 +605,7 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             public_content_limit: Arc::new(RateLimiter::new(config.public_rate)),
             public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
             corporate_hr,
+            consent_text_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
     );
     let router = build_router(state, auth, directory.clone(), directory, denials).map_err(|e| {

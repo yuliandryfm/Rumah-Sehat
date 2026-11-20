@@ -344,8 +344,12 @@ ROLLBACK;
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM app.consent_record) OR EXISTS (SELECT 1 FROM app.consent_item)
-     OR EXISTS (SELECT 1 FROM app.consent_text_version) OR EXISTS (SELECT 1 FROM app.patient)
+  -- Seed versi draf migrasi 20261126200000 (F1-T49, KEPUTUSAN-289) adalah data rujukan, bukan data uji.
+  IF EXISTS (SELECT 1 FROM app.consent_record)
+     OR EXISTS (SELECT 1 FROM app.consent_item WHERE id <> '01a2008d-7400-7000-8000-000000000a4a')
+     OR EXISTS (SELECT 1 FROM app.consent_text_version WHERE id <> '01a2008d-7400-7000-8000-000000000a49')
+     OR (SELECT count(*) FROM app.consent_text_version) <> 1 OR (SELECT count(*) FROM app.consent_item) <> 1
+     OR EXISTS (SELECT 1 FROM app.patient)
      OR EXISTS (SELECT 1 FROM app.care_recipient) OR EXISTS (SELECT 1 FROM app.account)
      OR to_regclass('app.retention_policy') IS NOT NULL THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a3: data atau fixture uji tersisa';

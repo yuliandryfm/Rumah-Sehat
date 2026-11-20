@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.consent_text_version (id, consent_type, version_label, content, effective_from) VALUES ($1, 'patient_data_processing', $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a8b3d8ea562955e59c131e899b7bdf9dd6ad0af81c4595e521fbb108bb693bf8"
+}

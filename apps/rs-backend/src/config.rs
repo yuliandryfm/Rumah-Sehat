@@ -42,7 +42,8 @@ pub struct ApiConfig {
     pub files: FileStorageConfig,
     /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
     /// (bawaan 300) dan `PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE` (bawaan 3000). Angka bawaan adalah usulan
-    /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten dan gambar.
+    /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten, gambar, dan teks
+    /// persetujuan pendaftaran (F1-T49).
     pub public_rate: RateBudget,
 }
 

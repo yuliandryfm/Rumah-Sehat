@@ -121,7 +121,8 @@ pub struct BackofficeApiDoc;
     ),
     tags(
         (name = "identity", description = "NIK dan foto KTP (US-106)"),
-        (name = "profile", description = "Profil data diri dan alamat (US-105)")
+        (name = "profile", description = "Profil data diri dan alamat (US-105)"),
+        (name = "consent", description = "Teks persetujuan pemrosesan data tanpa login (US-104)")
     ),
     modifiers(&BearerAuth)
 )]
