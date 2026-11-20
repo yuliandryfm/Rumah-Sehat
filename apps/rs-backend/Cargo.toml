@@ -16,15 +16,24 @@ observability = { path = "../../crates/observability" }
 authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
 axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
 serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# Modul platform berkas (F1-T29, ADR-018): object storage, metadata berkas di DB aplikasi, validasi isi foto.
+object-storage = { path = "../../crates/object-storage" }
+crypto = { path = "../../crates/crypto" }
+# sqlx 0.9.1 [SRC-165][SRC-510]: fitur sama dengan crate audit/platform-jobs (tanpa TLS di pustaka).
+sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+# image 0.25.10 [SRC-554]: hanya dekoder/enkoder JPEG (zune-jpeg) dan PNG (png); fitur bawaan (rayon, format
+# lain) dimatikan untuk memperkecil permukaan serang dekoder.
+image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
 
 [dev-dependencies]
-tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).

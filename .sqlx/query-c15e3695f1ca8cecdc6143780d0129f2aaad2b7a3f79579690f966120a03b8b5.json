@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES ($1, 'patient', 'pasien', $2, $3, 'active', now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c15e3695f1ca8cecdc6143780d0129f2aaad2b7a3f79579690f966120a03b8b5"
+}
