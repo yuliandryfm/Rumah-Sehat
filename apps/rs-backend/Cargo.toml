@@ -22,7 +22,8 @@ authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
 # Jalur tulis status ADR-008 (F1-T59, reference implementation US-106/US-201).
 status-flow = { path = "../../crates/status-flow" }
-axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }
+# F1-T92: fitur `query` (ekstraktor Query; menarik serde_urlencoded 0.7.1 [SRC-601]).
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json", "query"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
@@ -37,10 +38,15 @@ email-relay = { path = "../../crates/email-relay" }
 ses = { path = "../../crates/ses" }
 # sqlx 0.9.1 [SRC-165][SRC-510]: fitur sama dengan crate audit/platform-jobs (tanpa TLS di pustaka).
 sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
-time = { version = "=0.3.55", default-features = false, features = ["std"] }
+# F1-T92: `formatting`/`parsing` untuk waktu ISO 8601/RFC 3339 dengan offset di API CMS (ADR-017 butir 1);
+# fitur crate yang sama, tanpa crate baru [SRC-177].
+time = { version = "=0.3.55", default-features = false, features = ["std", "formatting", "parsing"] }
 # image 0.25.10 [SRC-554]: hanya dekoder/enkoder JPEG (zune-jpeg) dan PNG (png); fitur bawaan (rayon, format
 # lain) dimatikan untuk memperkecil permukaan serang dekoder.
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
+# pulldown-cmark 0.13.6 [SRC-600]: pengurai CommonMark untuk validasi render aman isi CMS saat simpan (F1-T111,
+# M-40). Fitur bawaan (`html` renderer, `getopts` CLI) dimatikan: backend hanya mengurai, tidak merender.
+pulldown-cmark = { version = "=0.13.6", default-features = false }
 # Modul identity (F1-T33): cache status akun dan pencabutan sesi di Valkey (crate valkey, satu-satunya
 # pemakai crate redis).
 valkey = { path = "../../crates/valkey" }

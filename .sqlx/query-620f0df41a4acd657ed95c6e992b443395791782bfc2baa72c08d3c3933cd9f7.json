@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.cms_content (id, created_by, updated_by, content_type, title, body, category, image_alt_text, link_target_type, link_target_ref, editorial_status, channel, site_page) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "620f0df41a4acd657ed95c6e992b443395791782bfc2baa72c08d3c3933cd9f7"
+}

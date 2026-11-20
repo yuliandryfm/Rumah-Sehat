@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n             SELECT 1 FROM app.cms_content\n              WHERE image_file_id = $1 AND channel IN ('site', 'app_and_site')\n                AND editorial_status = 'scheduled' AND deleted_at IS NULL AND publish_start_at <= $2\n                AND (publish_end_at IS NULL OR publish_end_at > $2)) AS \"live!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "live!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fe9b5db3ca464764661949bd6faa84d8d3a3e8db1cda32a5b6d72d6d1e056748"
+}

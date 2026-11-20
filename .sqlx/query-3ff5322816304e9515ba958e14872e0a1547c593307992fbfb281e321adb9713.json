@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, publish_start_at, publish_end_at FROM app.cms_content WHERE site_page = $1 AND content_type = 'info_page' AND editorial_status = 'scheduled' AND deleted_at IS NULL AND id <> $2 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "publish_start_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "publish_start_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "publish_end_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cms_content",
+            "name": "publish_end_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "3ff5322816304e9515ba958e14872e0a1547c593307992fbfb281e321adb9713"
+}

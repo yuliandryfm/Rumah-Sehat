@@ -287,4 +287,24 @@ impl EnforcedRouter<()> {
             .with_graceful_shutdown(shutdown)
             .await
     }
+
+    /// Seperti [`EnforcedRouter::serve`], dengan `ConnectInfo<SocketAddr>` (alamat peer TCP) di extensions
+    /// permintaan (`Router::into_make_service_with_connect_info` axum 0.8.9), supaya middleware aplikasi
+    /// dapat memasang [`crate::ClientIp`] (F1-T92: sumber audit dan batas laju per sumber).
+    pub async fn serve_with_peer_addr<F>(
+        self,
+        listener: TcpListener,
+        shutdown: F,
+    ) -> std::io::Result<()>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        axum::serve(
+            listener,
+            self.inner
+                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .with_graceful_shutdown(shutdown)
+        .await
+    }
 }

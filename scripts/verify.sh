@@ -180,8 +180,31 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
   trap schemathesis_bersih EXIT
   trap 'schemathesis_bersih; exit 130' INT
   trap 'schemathesis_bersih; exit 143' TERM
-  # Data sintetis: backend belum memakai database; tidak ada data pribadi (ADR-019).
-  HTTP_BIND=127.0.0.1:0 LOG_LEVEL=info "$bin" api >"$ST_TMP/backend.log" 2>&1 &
+  # Sejak F1-T92 proses api memakai database aplikasi: PostgreSQL sekali pakai dari scripts/db-ephemeral.sh
+  # (login rs_api, hak runtime sungguhan, skema migrasi terbaru). Validasi token realm admin menunjuk JWKS di
+  # alamat loopback yang tidak melayani, sehingga tidak ada token sah dan endpoint terautentikasi selalu
+  # dijawab 401; object storage lokal dikonfigurasi tetapi tidak dijangkau. Data sintetis, tanpa data pribadi
+  # (ADR-019); rahasia object storage acak sekali pakai. Sejak F1-T94 anggaran batas laju endpoint publik
+  # dinaikkan untuk backend efemeral ini saja, supaya ribuan kasus Schemathesis menjangkau handler publik
+  # (respons 429 tetap terdokumentasi dan diuji test integrasi); pemeriksaan Schemathesis tidak berubah.
+  if [ -z "${RS_TEST_DB_APP_URL:-}" ]; then
+    echo "RS_TEST_DB_APP_URL tidak ada: schemathesis_run wajib dijalankan lewat scripts/db-ephemeral.sh" >&2
+    schemathesis_bersih
+    trap - EXIT INT TERM
+    return 1
+  fi
+  # API_VALKEY_URL menunjuk loopback yang tidak melayani: resolver akun memakai cadangan PostgreSQL (RT-18).
+  API_DATABASE_URL="$RS_TEST_DB_APP_URL" \
+    API_VALKEY_URL="redis://127.0.0.1:9" API_VALKEY_OP_TIMEOUT_MS=50 \
+    AUTH_ADMIN_ISSUER="https://auth.ruang-sehat.invalid/realms/admin" \
+    AUTH_ADMIN_JWKS_URL="http://127.0.0.1:9/realms/admin/protocol/openid-connect/certs" \
+    AUTH_ADMIN_AUDIENCE="rs-backoffice-api" \
+    DEPLOY_ENV=local OBJECT_STORAGE_ENDPOINT="http://127.0.0.1:9" OBJECT_STORAGE_REGION=us-east-1 \
+    OBJECT_STORAGE_ADDRESSING=path OBJECT_STORAGE_ACCESS_KEY_ID=schemathesis-sintetis \
+    OBJECT_STORAGE_SECRET_ACCESS_KEY="st-$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')" \
+    OBJECT_STORAGE_BUCKET_PREFIX=rs-st- \
+    PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE=1000000 PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE=1000000 \
+    HTTP_BIND=127.0.0.1:0 LOG_LEVEL=info "$bin" api >"$ST_TMP/backend.log" 2>&1 &
   ST_PID=$!
   bind=""
   i=0
@@ -221,6 +244,14 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
   schemathesis_bersih
   trap - EXIT INT TERM
   return "$status"
+}
+
+schemathesis_dengan_db() { # F1-T92: schemathesis_run di dalam PostgreSQL sekali pakai (scripts/db-ephemeral.sh)
+  # Fungsi dan variabel yang dipakai schemathesis_run diekspor ke shell anak yang dijalankan db-ephemeral;
+  # kontainer database selalu dihapus db-ephemeral (trap), backend efemeral oleh schemathesis_bersih.
+  export -f schemathesis_run schemathesis_bersih tanpa_env_git
+  export ROOT SCHEMATHESIS_IMAGE ST_PID ST_TMP
+  tanpa_env_git bash scripts/db-ephemeral.sh bash -c schemathesis_run
 }
 
 pakai_sqlx() { # benar bila workspace sudah memakai sqlx
@@ -447,7 +478,7 @@ else
 fi
 belum "asyncapi-sinkron" "task AsyncAPI belum ditetapkan" "openapi/asyncapi/*.yaml" "openapi/asyncapi/*.yml" "openapi/asyncapi/*.json"
 if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
-  jalankan "schemathesis" schemathesis_run
+  jalankan "schemathesis" schemathesis_dengan_db
 else
   gagal "schemathesis" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
 fi
