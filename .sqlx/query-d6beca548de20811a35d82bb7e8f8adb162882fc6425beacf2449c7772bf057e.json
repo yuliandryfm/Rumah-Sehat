@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.id, a.status,\n                  COALESCE(array_agg(r.sub_role ORDER BY r.sub_role)\n                           FILTER (WHERE r.id IS NOT NULL), '{}') AS \"sub_roles!\"\n           FROM app.account a\n           LEFT JOIN app.rs_admin_role r ON r.account_id = a.id AND r.deleted_at IS NULL\n           WHERE a.account_type = 'rs_admin' AND a.deleted_at IS NULL\n           GROUP BY a.id, a.status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sub_roles!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "d6beca548de20811a35d82bb7e8f8adb162882fc6425beacf2449c7772bf057e"
+}

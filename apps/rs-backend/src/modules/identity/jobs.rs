@@ -36,12 +36,13 @@
 //! Keterlambatan: bila putaran terakhir yang berhasil untuk suatu realm lebih tua dari ambang (bawaan 5
 //! menit, ADR-011 butir 10), security log `idp_event_pull_delayed` paling sering sekali per menit.
 
+use super::admin_service::{self, ActivationError};
 use super::domain::{IdpRealm, InvalidEvent, KcEvent, Mapped, RawEvent};
 use super::keycloak::{KeycloakClient, KeycloakError};
 use super::repo::{self, AccountRef};
 use audit::{
-    Actor, AuditContext, AuditErrorKind, AuditEvent, AuditedTxError, Code, ObjectPolicy, ObjectRef,
-    Outcome, Source,
+    Actor, AuditContext, AuditErrorKind, AuditEvent, AuditedTxError, Code, EventCode, ObjectPolicy,
+    ObjectRef, Outcome, Source,
 };
 use foundation::{Clock, CorrelationId, FixedClock, Sensitive};
 use observability::security::{self, IdpEventPullFailure};
@@ -415,7 +416,33 @@ async fn record(
             };
             let event =
                 build_event(&ev, mapped, account.as_ref(), correlation).map_err(TxWork::Audit)?;
-            Ok((account.map(|a| a.id), vec![event]))
+            let mut events = vec![event];
+            // F1-T65 (US-208 AC1/AC4): login pertama yang berhasil di realm `admin` (password + TOTP wajib,
+            // undangan aktivasi sudah dijalankan) mengaktifkan akun admin yang menunggu aktivasi, dengan E-10
+            // di transaksi yang sama.
+            if let Some(a) = account
+                .as_ref()
+                .filter(|a| a.account_type == "rs_admin" && realm == IdpRealm::Admin)
+                && mapped.code == EventCode::E01
+                && mapped.failure.is_none()
+            {
+                let roles = a
+                    .roles
+                    .iter()
+                    .map(|r| Code::new(r).map_err(|e| TxWork::Audit(e.kind())))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let ctx = AuditContext::new(correlation, event_source(&ev));
+                match admin_service::activate_on_first_login(conn, a.id, roles, &ctx, ev.time).await
+                {
+                    Ok(Some(e)) => events.push(e),
+                    Ok(None) => {}
+                    Err(ActivationError::Db(e)) => return Err(TxWork::Db(e)),
+                    Err(ActivationError::Audit) => {
+                        return Err(TxWork::Audit(AuditErrorKind::InvalidCode));
+                    }
+                }
+            }
+            Ok((account.map(|a| a.id), events))
         })
     })
     .await;
@@ -438,6 +465,15 @@ async fn record(
     }
 }
 
+/// Sumber event: komponen dari `clientId` dan alamat IP menurut Keycloak.
+fn event_source(ev: &KcEvent) -> Source {
+    let source = Source::component(ev.component);
+    match ev.ip {
+        Some(ip) => source.ip(ip),
+        None => source,
+    }
+}
+
 /// Menyusun event audit dari event Keycloak yang sudah dipetakan.
 fn build_event(
     ev: &KcEvent,
@@ -446,11 +482,7 @@ fn build_event(
     correlation: CorrelationId,
 ) -> Result<AuditEvent, AuditErrorKind> {
     let code = |s: &str| Code::new(s).map_err(|e| e.kind());
-    let mut source = Source::component(ev.component);
-    if let Some(ip) = ev.ip {
-        source = source.ip(ip);
-    }
-    let ctx = AuditContext::new(correlation, source);
+    let ctx = AuditContext::new(correlation, event_source(ev));
     let (actor, object) = match account {
         Some(a) => {
             let roles = a

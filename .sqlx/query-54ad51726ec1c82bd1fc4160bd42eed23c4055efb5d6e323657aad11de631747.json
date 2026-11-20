@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.rs_admin_role SET deleted_at = $4, deleted_by = $3, delete_reason = $5, updated_at = $4, updated_by = $3 WHERE account_id = $1 AND sub_role = $2 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54ad51726ec1c82bd1fc4160bd42eed23c4055efb5d6e323657aad11de631747"
+}

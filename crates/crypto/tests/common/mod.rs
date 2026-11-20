@@ -103,6 +103,58 @@ impl OpenBao {
             .env("BAO_TOKEN", &self.token))
     }
 
+    /// Menjalankan CLI `bao` dengan token lain (misalnya token login operator, F1-T65).
+    pub fn bao_as(&self, token: &str, args: &[&str]) -> Output {
+        run(Command::new("docker")
+            .args([
+                "exec",
+                "-e",
+                "BAO_ADDR=http://127.0.0.1:8200",
+                "-e",
+                "BAO_TOKEN",
+                &self.id,
+                "bao",
+            ])
+            .args(args)
+            .env("BAO_TOKEN", token))
+    }
+
+    /// Menjalankan CLI `bao` dengan token root dan masukan stdin (misalnya `policy write <nama> -`).
+    pub fn bao_stdin(&self, args: &[&str], input: &str) {
+        use std::io::Write;
+        use std::process::Stdio;
+        let mut child = Command::new("docker")
+            .args([
+                "exec",
+                "-i",
+                "-e",
+                "BAO_ADDR=http://127.0.0.1:8200",
+                "-e",
+                "BAO_TOKEN",
+                &self.id,
+                "bao",
+            ])
+            .args(args)
+            .env("BAO_TOKEN", &self.token)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("docker exec");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert!(
+            out.status.success(),
+            "bao {args:?} gagal: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
     /// Seperti [`Self::bao`] tetapi wajib berhasil.
     pub fn bao_ok(&self, args: &[&str]) {
         let out = self.bao(args);

@@ -1084,3 +1084,84 @@ async fn invalid_event_stops_the_realm_without_skipping_it() {
     assert!(!sec.text().contains("bukan-alamat-ip"));
     l.release().await.unwrap();
 }
+
+/// F1-T65 (US-208 AC1/AC4): login pertama yang berhasil di realm `admin` mengaktifkan akun admin yang menunggu
+/// aktivasi, dengan E-10 `admin_account_activated` di transaksi yang sama dengan E-01. Login gagal, login
+/// kedua, dan akun admin nonaktif tidak berubah.
+#[tokio::test]
+async fn first_admin_login_activates_pending_admin_account() {
+    let _serial = SERIAL.lock().await;
+    let e = env().await;
+    let pending_kc = new_id().hyphenated().to_string();
+    let inactive_kc = new_id().hyphenated().to_string();
+    let pending = insert_account(&e.app, "rs_admin", "admin", &pending_kc, ADMIN_EMAIL).await;
+    let inactive = insert_account(&e.app, "rs_admin", "admin", &inactive_kc, ADMIN_EMAIL).await;
+    for (id, st) in [(pending, "pending_activation"), (inactive, "inactive")] {
+        sqlx::query!("UPDATE app.account SET status = $2 WHERE id = $1", id, st)
+            .execute(&e.app)
+            .await
+            .unwrap();
+    }
+    sqlx::query!(
+        "INSERT INTO app.rs_admin_role (id, account_id, sub_role) VALUES ($1, $2, 'super_admin')",
+        new_id(),
+        pending
+    )
+    .execute(&e.app)
+    .await
+    .unwrap();
+    let t0 = ms(NOW) - 60_000;
+    let pk = Some(pending_kc.as_str());
+    let admin_login = |t: i64, user: Option<&str>, err: Option<&str>| {
+        let kind = if err.is_some() {
+            "LOGIN_ERROR"
+        } else {
+            "LOGIN"
+        };
+        let mut ev = kc_event(t, kind, user, err, login_details(ADMIN_EMAIL));
+        ev["clientId"] = json!("rs-backoffice-bff");
+        ev
+    };
+    push(
+        &e.kc,
+        "admin",
+        admin_login(t0, pk, Some("invalid_user_credentials")),
+    );
+    push(
+        &e.kc,
+        "admin",
+        admin_login(t0 + 1, Some(inactive_kc.as_str()), None),
+    );
+    push(&e.kc, "admin", admin_login(t0 + 2, pk, None));
+    push(&e.kc, "admin", admin_login(t0 + 3, pk, None));
+
+    let mut l = lock().await;
+    let clock = FixedClock::new(NOW);
+    let mut puller = Puller::new(
+        options(&[IdpRealm::Admin], 100),
+        client(e.addr, SECRET_PASIEN),
+        clock.now(),
+    );
+    puller.round(&mut l, &e.app, &clock).await.unwrap();
+    l.release().await.unwrap();
+
+    for (id, want) in [(pending, "active"), (inactive, "inactive")] {
+        let st = sqlx::query_scalar!("SELECT status FROM app.account WHERE id = $1", id)
+            .fetch_one(&e.app)
+            .await
+            .unwrap();
+        assert_eq!(st, want);
+    }
+    let rows = outbox(&e.relay).await;
+    let activated = by_action(&rows, "admin_account_activated");
+    assert_eq!(activated.len(), 1, "hanya login pertama yang berhasil");
+    let a = activated[0];
+    assert_eq!(a["event_code"], "e_10");
+    assert_eq!(a["object_id"], pending.to_string());
+    assert_eq!(a["actor_account_id"], pending.to_string());
+    assert_eq!(a["before_values"]["status"], "pending_activation");
+    assert_eq!(a["after_values"]["status"], "active");
+    assert_eq!(a["source_ip"], "203.0.113.7");
+    assert_eq!(by_action(&rows, "login").len(), 3);
+    assert!(!serde_json::to_string(&rows).unwrap().contains(ADMIN_EMAIL));
+}

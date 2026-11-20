@@ -43,6 +43,8 @@ pub enum Component {
     PrivacyWorker,
     /// `email-relay` (relay SMTP ke SES per host, ADR-026; F1-T36).
     EmailRelay,
+    /// `bootstrap-super-admin` (perintah satu kali jalur administrasi, US-208 AC4; F1-T65).
+    AdminBootstrap,
     /// `rme-backend api`.
     RmeApi,
     /// `rme-backend worker`.
@@ -66,6 +68,7 @@ impl Component {
             Self::AuditVerify => "audit-verify",
             Self::PrivacyWorker => "privacy-worker",
             Self::EmailRelay => "email-relay",
+            Self::AdminBootstrap => "admin-bootstrap",
             Self::RmeApi => "rme-api",
             Self::RmeWorker => "rme-worker",
             Self::RmeAuditRelay => "rme-audit-relay",

@@ -4,6 +4,8 @@
 //! `audit-verify` (F1-T25, crate `audit-store`), dan `email-relay` (F1-T36, ADR-026: crate `email-relay` +
 //! adaptor `ses`).
 //!
+//! F1-T65: `bootstrap-super-admin` ([`admin_bootstrap`], US-208 AC4).
+//!
 //! Lapisan: [`cli`] (pemilihan subcommand dan siklus hidup proses), [`config`] (konfigurasi bertipe),
 //! [`access_audit`] (event E-05 hasil gagal untuk penolakan akses ke data sensitif, F1-T38),
 //! [`app`] (perakitan router, middleware, fallback), [`http_support`] (adaptor envelope ADR-023 ke
@@ -11,6 +13,7 @@
 //! [`rate_limit`] (batas laju endpoint publik, F1-T94).
 
 pub mod access_audit;
+pub mod admin_bootstrap;
 pub mod app;
 pub mod cli;
 pub mod config;

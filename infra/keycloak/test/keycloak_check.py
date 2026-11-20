@@ -8,6 +8,8 @@ Dua kelompok pemeriksaan:
 - perilaku lewat OIDC/halaman login: MFA wajib, kode pemulihan wajib, penguncian 5 gagal, pesan seragam,
   pendaftaran mati, PKCE wajib, rotasi token penyegar, Argon2, kebijakan password, atur ulang password
   tidak melewati OTP (US-103 AC4e), grant password ditolak.
+- klien layanan pengelola pengguna admin `rs-backend-admin-manager` (F1-T65): hak minimum manage-users,
+  siklus buat → undangan sekali pakai 24 jam → aktivasi (TOTP + password) → nonaktifkan → hapus;
 - klien layanan pengambil event `rs-backend-event-reader` (F1-T34): hanya client credentials,
   `realm-management/view-events`, cakupan `kc-admin-api`; bentuk event LOGIN_ERROR yang dipetakan backend.
 
@@ -26,6 +28,7 @@ KC_CHECK_SES_CONFIG_SET. Nilai rahasia tidak pernah dicetak.
 
 import difflib
 import email
+import html
 import json
 import os
 import re
@@ -1216,6 +1219,156 @@ def cek_pembaca_event(realm):
             f"[{realm}] type event tak dikenal dijawab 500 (daftar type backend wajib persis nama EventType)")
 
 
+PENGELOLA = "rs-backend-admin-manager"
+
+
+def cek_pengelola_admin(realm):
+    """F1-T65 (US-208 AC1, AC4; ADR-011): klien layanan pengelola pengguna admin berhak minimum, dan siklus yang
+    dipakai backend (apps/rs-backend modul identity, keycloak.rs) berjalan di Keycloak sungguhan: buat pengguna
+    tanpa kredensial (201 + Location), undangan execute-actions-email lifespan 86400 berisi tautan token aksi,
+    aktivasi lewat tautan (verifikasi email, TOTP, password), tautan yang sudah dipakai ditolak, login wajib OTP,
+    nonaktifkan + akhiri sesi, hapus."""
+    print(f"== [{realm}] klien pengelola pengguna admin rs-backend (F1-T65)")
+    klien = {c["clientId"]: c for c in ADMIN.get(f"{realm}/clients")}
+    c = klien.get(PENGELOLA)
+    if realm != "admin":
+        periksa(c is None, f"[{realm}] klien {PENGELOLA} hanya ada di realm admin")
+        return
+    if not periksa(c is not None, f"[{realm}] klien {PENGELOLA} ada"):
+        return
+    periksa(c.get("publicClient") is False and c.get("serviceAccountsEnabled") is True
+            and c.get("standardFlowEnabled") is False and c.get("implicitFlowEnabled") is False
+            and c.get("directAccessGrantsEnabled") is False and c.get("fullScopeAllowed") is False
+            and not c.get("redirectUris"),
+            f"[{realm}] {PENGELOLA}: rahasia, hanya client credentials, tanpa redirect, fullScopeAllowed mati")
+    cakupan = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/default-client-scopes"))
+    # `service_account` ditambahkan Keycloak otomatis untuk klien service account (klaim client_id, tanpa data pribadi).
+    periksa(set(cakupan) - {"service_account"} == {"kc-admin-api"},
+            f"[{realm}] {PENGELOLA}: hanya cakupan kc-admin-api (+ service_account bawaan)", str(cakupan))
+    rahasia = os.environ.get("RS_KC_ADMIN_MANAGER_SECRET")
+    s = ADMIN.get(f"{realm}/clients/{c['id']}/client-secret")
+    periksa(rahasia and s.get("value") == rahasia, f"[{realm}] {PENGELOLA}: secret berasal dari variabel lingkungan saat penerapan")
+    rm = ADMIN.get(f"{realm}/clients?clientId=realm-management")
+    sa = ADMIN.get(f"{realm}/clients/{c['id']}/service-account-user")
+    efektif = sorted(x["name"] for x in ADMIN.get(f"{realm}/users/{sa['id']}/role-mappings/clients/{rm[0]['id']}/composite"))
+    # manage-users di Keycloak 26.8.2 tidak komposit; query-* boleh muncul bila Keycloak menambahkannya.
+    periksa(efektif == ["manage-users"], f"[{realm}] service account hanya realm-management/manage-users", str(efektif))
+    realm_roles = sorted(x["name"] for x in ADMIN.get(f"{realm}/users/{sa['id']}/role-mappings/realm"))
+    peta = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/scope-mappings/clients/{rm[0]['id']}"))
+    periksa(peta == ["manage-users"], f"[{realm}] cakupan peran token klien hanya manage-users", str(peta))
+
+    r = k.request("POST", f"{BASE}/realms/{realm}/protocol/openid-connect/token",
+                  form={"grant_type": "client_credentials", "client_id": PENGELOLA, "client_secret": rahasia or ""})
+    if not periksa(r.status == 200, f"[{realm}] token client credentials pengelola terbit", f"HTTP {r.status}"):
+        return
+    h = {"Authorization": "Bearer " + r.json()["access_token"]}
+
+    def panggil(metode, path, body=None):
+        return k.request(metode, f"{BASE}/admin/realms/{path}", headers=h, data=body)
+
+    asli = smtp_ke_penangkap(realm)
+    uid = None
+    try:
+        surel = f"t65-{secrets.token_hex(4)}@uji.invalid"
+        r = panggil("POST", f"{realm}/users", {"username": surel, "email": surel, "enabled": True, "emailVerified": False})
+        lokasi = r.location or ""
+        periksa(r.status == 201 and "/users/" in lokasi, f"[{realm}] pengelola membuat pengguna admin (201 + Location)", f"HTTP {r.status}")
+        if r.status != 201:
+            return
+        uid = lokasi.rsplit("/", 1)[1]
+        USER_UJI.append((realm, uid))
+        r = panggil("POST", f"{realm}/users", {"username": surel, "email": surel, "enabled": True})
+        periksa(r.status == 409, f"[{realm}] email yang sama ditolak 409 (dipetakan backend ke already_registered)", f"HTTP {r.status}")
+        creds = ADMIN.get(f"{realm}/users/{uid}/credentials")
+        periksa(creds == [], f"[{realm}] pengguna baru tanpa kredensial (tidak dapat masuk sebelum aktivasi)", str(creds))
+
+        # Hak minimum: tidak dapat membaca klien, memetakan peran realm-management, impersonasi, atau realm lain.
+        manage_realm = [x for x in ADMIN.get(f"{realm}/clients/{rm[0]['id']}/roles") if x["name"] == "manage-realm"]
+        hasil = {
+            "baca-klien": panggil("GET", f"{realm}/clients").status,
+            "peta-manage-realm": panggil("POST", f"{realm}/users/{uid}/role-mappings/clients/{rm[0]['id']}", manage_realm).status,
+            "peta-manage-users-ke-diri": panggil("POST", f"{realm}/users/{sa['id']}/role-mappings/clients/{rm[0]['id']}",
+                                                 [x for x in ADMIN.get(f"{realm}/clients/{rm[0]['id']}/roles") if x["name"] == "manage-clients"]).status,
+            "impersonasi": panggil("POST", f"{realm}/users/{uid}/impersonation").status,
+            "realm-pasien": panggil("GET", "pasien/users").status,
+            "baca-event": panggil("GET", f"{realm}/events").status,
+        }
+        periksa(all(v == 403 for v in hasil.values()),
+                f"[{realm}] pengelola tidak dapat membaca klien, memetakan peran admin Keycloak, impersonasi, membaca event, atau realm lain",
+                str(hasil))
+        periksa(realm_roles == ["default-roles-admin"] or realm_roles == [],
+                f"[{realm}] service account tanpa peran realm tambahan", str(realm_roles))
+
+        sebelum = daftar_email()
+        r = panggil("PUT", f"{realm}/users/{uid}/execute-actions-email?lifespan=86400",
+                    ["VERIFY_EMAIL", "UPDATE_PASSWORD", "CONFIGURE_TOTP"])
+        periksa(r.status == 204, f"[{realm}] undangan execute-actions-email lifespan 86400 diterima (204)", f"HTTP {r.status}")
+        nama, raw = baca_email(sebelum)
+        link = tautan_atur_ulang(raw) if raw else None
+        periksa(link is not None, f"[{realm}] email undangan terkirim dan memuat tautan token aksi")
+        if raw:
+            teks = raw.replace("=\n", "")
+            periksa("1 day" in teks or "1440" in teks or "24 jam" in teks or "1 hari" in teks or "24" in teks,
+                    f"[{realm}] email undangan menyebut masa berlaku 24 jam")
+        if not link:
+            return
+        user = UserUji.__new__(UserUji)
+        user.realm, user.email, user.otp_key, user.recovery, user._dipakai = realm, surel, None, [], set()
+        user.password = "Aktivasi-" + secrets.token_urlsafe(12)
+        b = k.Browser(BASE)
+        r = ikuti(b, b.open(link))
+        for _ in range(8):
+            p = k.Page(r.body)
+            tautan = [hh for _, hh in p.links if "action-token" in (hh or "")]
+            if p.form("kc-totp-settings-form"):
+                r = daftar_mfa(b, r, user)
+            elif p.form("kc-recovery-codes-settings-form"):
+                r = simpan_kode_pemulihan(b, r, user)
+            elif p.form("kc-passwd-update-form"):
+                f = p.form("kc-passwd-update-form")
+                time.sleep(JEDA)
+                r = ikuti(b, b.open(f["action"], dict(f["inputs"], **{"password-new": user.password, "password-confirm": user.password})))
+            elif tautan:
+                r = ikuti(b, b.open(html.unescape(tautan[0])))
+            else:
+                break
+        info = ADMIN.get(f"{realm}/users/{uid}")
+        jenis = sorted(x["type"] for x in ADMIN.get(f"{realm}/users/{uid}/credentials"))
+        periksa(info.get("emailVerified") is True and "otp" in jenis and "password" in jenis and not info.get("requiredActions"),
+                f"[{realm}] aktivasi lewat tautan: email terverifikasi, password dan TOTP terdaftar, tanpa required action tersisa",
+                f"{jenis} {info.get('requiredActions')} emailVerified={info.get('emailVerified')}")
+        r = ikuti(k.Browser(BASE), k.Browser(BASE).open(link))
+        p = k.Page(r.body)
+        periksa(p.form("kc-passwd-update-form") is None and p.form("kc-totp-settings-form") is None
+                and not [hh for _, hh in p.links if "action-token" in (hh or "")],
+                f"[{realm}] tautan undangan yang sudah dipakai ditolak (sekali pakai)")
+        if "otp" in jenis:
+            b3, verifier, r3 = mulai(realm)
+            r3 = kirim_password(b3, r3, surel, user.password)
+            periksa(k.Page(r3.body).form("kc-otp-login-form") is not None and kode_dari(r3, realm) is None,
+                    f"[{realm}] admin yang baru aktif wajib OTP saat masuk")
+            r3 = kirim_otp(b3, r3, user.otp())
+            periksa(kode_dari(r3, realm) is not None, f"[{realm}] admin yang baru aktif dapat masuk dengan password + OTP")
+
+        r = panggil("PUT", f"{realm}/users/{uid}", {"enabled": False})
+        periksa(r.status == 204 and ADMIN.get(f"{realm}/users/{uid}").get("enabled") is False,
+                f"[{realm}] pengelola menonaktifkan pengguna (204)", f"HTTP {r.status}")
+        r = panggil("POST", f"{realm}/users/{uid}/logout")
+        periksa(r.status == 204 and ADMIN.get(f"{realm}/users/{uid}/sessions") == [],
+                f"[{realm}] pengelola mengakhiri semua sesi pengguna (204)", f"HTTP {r.status}")
+        if "otp" in jenis:
+            b4, _, r4 = mulai(realm)
+            r4 = kirim_password(b4, r4, surel, user.password)
+            periksa(kode_dari(r4, realm) is None and k.Page(r4.body).form("kc-otp-login-form") is None,
+                    f"[{realm}] pengguna nonaktif tidak dapat masuk")
+        r = panggil("DELETE", f"{realm}/users/{uid}")
+        periksa(r.status == 204, f"[{realm}] pengelola menghapus pengguna (kompensasi, 204)", f"HTTP {r.status}")
+        r = panggil("DELETE", f"{realm}/users/{uid}")
+        periksa(r.status == 404, f"[{realm}] hapus ulang dijawab 404 (backend menganggap sukses)", f"HTTP {r.status}")
+    finally:
+        pulihkan_smtp(realm, asli)
+
+
 def cek_pasca_kunci():
     """US-103 AC3 (revisi, KEPUTUSAN-285): perilaku penguncian Keycloak 26.8.2 SETELAH masa kunci berakhir
     (SRC-525). Hitungan gagal hanya kembali nol setelah login berhasil atau Failure Reset Time 12 jam, sehingga
@@ -1289,6 +1442,7 @@ def main():
             jalankan(f"[{realm}] konfigurasi", cek_konfigurasi, realm)
             jalankan(f"[{realm}] drift", cek_drift, realm)
             jalankan(f"[{realm}] pembaca event", cek_pembaca_event, realm)
+            jalankan(f"[{realm}] pengelola pengguna admin", cek_pengelola_admin, realm)
             print(f"== [{realm}] pendaftaran, PKCE")
             jalankan(f"[{realm}] pendaftaran mati", cek_pendaftaran_mati, realm)
             jalankan(f"[{realm}] PKCE wajib", cek_pkce_wajib, realm)

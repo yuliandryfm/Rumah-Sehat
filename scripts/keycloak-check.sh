@@ -107,7 +107,7 @@ baca_env() { # baca_env <NAMA> [bawaan]
 
 VAR_REALM="RS_KC_SMTP_HOST RS_KC_SMTP_PORT RS_KC_SMTP_FROM RS_KC_PASIEN_MOBILE_REDIRECT_URI \
 RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET \
-RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET"
+RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET RS_KC_ADMIN_MANAGER_SECRET"
 
 acak() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
 
@@ -157,7 +157,10 @@ else
   # Klien layanan pengambil event rs-backend worker (F1-T34), satu rahasia per realm.
   RS_KC_EVENT_READER_PASIEN_SECRET="$(acak)"
   RS_KC_EVENT_READER_ADMIN_SECRET="$(acak)"
+  # Klien layanan pengelola pengguna admin (F1-T65, US-208).
+  RS_KC_ADMIN_MANAGER_SECRET="$(acak)"
   export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET
+  export RS_KC_ADMIN_MANAGER_SECRET
   for alat in cargo openssl; do
     if ! command -v "$alat" >/dev/null 2>&1; then
       echo "$alat tidak ditemukan di PATH (mode ephemeral: relay email F1-T36)" >&2

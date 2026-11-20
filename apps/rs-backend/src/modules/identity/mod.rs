@@ -8,8 +8,15 @@
 //!   `authz::SessionGuard`, dengan cache Valkey dan cadangan PostgreSQL (ADR-011 butir 8, KU-10,
 //!   US-103 AC5, RT-18).
 //!
+//! - F1-T65: akun dan sub-peran admin Ruang Sehat (US-208): aturan murni `admin_domain`, query
+//!   `admin_repo`, use case `admin_service` (bootstrap Super Admin pertama dengan persetujuan orang kedua,
+//!   buat akun + undangan, ubah sub-peran, nonaktifkan), dan aktivasi pertama di pengambil event.
+//!
 //! Endpoint HTTP modul ini (registrasi, keluar, kelola akun) menyusul di task masing-masing.
 
+mod admin_domain;
+mod admin_repo;
+mod admin_service;
 pub mod api;
 mod cache;
 mod domain;
