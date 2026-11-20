@@ -25,6 +25,10 @@ tables = [
 [modules.privacy]
 tables = ["consent_text_version", "consent_item", "consent_record"]
 
+# A15.4 konten CMS (F1-T91): modul "Konten dan layanan pelanggan" (docs/04-arsitektur.md §3; kode modul 11).
+[modules.content_support]
+tables = ["cms_content"]
+
 # reason_code (A6.7): data rujukan lintas modul tanpa pemetaan eksplisit di docs/04-arsitektur.md §3;
 # dimiliki platform (F1-T18), modul lain membacanya lewat api platform.
 [modules.platform]
