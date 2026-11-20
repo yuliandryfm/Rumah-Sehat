@@ -1,7 +1,7 @@
 # Phase Plan: Ruang Sehat
 
-Tanggal: 2026-11-19
-Versi: 0.3 (CR-021 skenario S3 `[USER] C21-P4`; riwayat di §14). Versi 0.2: tindak lanjut Checkpoint 2
+Tanggal: 2026-11-20
+Versi: 0.4 (kerja 7 hari per minggu dan CR-022 `[USER]` 2026-11-19, progres Fase 1 per 2026-11-20; riwayat di §14). Versi 0.3: CR-021 skenario S3 `[USER] C21-P4`. Versi 0.2: tindak lanjut Checkpoint 2
 Penyusun: Claude (persona Project Manager, dengan tinjauan Tech Lead atas urutan dan dependensi task), Mode Otomatis
 Pemilik dan pemutus: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: Business Case v1.0 `[DOK: 01-business-case.md]`, BRD v1.3 `[DOK: 02-brd.md]`, PRD v1.1 (+ revisi CR-013 di v1.2 draf; revisi AC Checkpoint 2 dikerjakan paralel) `[DOK: 03-prd.md]`, arsitektur v1.0 dan ADR-006–ADR-025 (ADR-011 direvisi untuk CR-018, dikerjakan paralel) `[DOK: 04-arsitektur.md]`, stack v1.0 `[DOK: 05-stack.md]`, coding standards `[DOK: coding-standards.md]`, design guideline v0.1 `[DOK: 06-design-guideline.md]`, backlog `[DOK: backlog.md]`, risk register `[DOK: 04-risk-register.md]`, klarifikasi AC Fase 1 v0.2 `[DOK: 07-klarifikasi-ac-fase-1.md]`, jawaban Checkpoint 2 `[DOK: checkpoint-2.md]`
@@ -18,19 +18,25 @@ Tingkat ketelitian: T2 Standar. Urutan, dependensi, dan definisi task modul krit
 - Pemesanan, peserta, dan invoice korporat (K2, ±195) serta ringkasan, hasil, dan penerusan ke rekanan (K3, ±36) masuk Fase 3.
 - Kebutuhan baru (§6.7): Fase 1 sisa ±19,8 jam-task per hari kerja (backend/web ±17,4), Fase 2 ±45,3, Fase 3 Opsi B ±64,9. Effort Opsi B naik dari ±1.791 ke ±2.131 jam-task. Keputusan kompensasi di gerbang re-plan 2026-12-11 (PT-69).
 
+**Status v0.4 (kerja 7 hari per minggu, CR-022, progres per 2026-11-20).** Rincian hitungan di §6.8. Angka "hari kerja" dan "jam-task per hari kerja" di bagian lain yang berlabel v0.2 atau v0.3 adalah angka historis lima hari kerja dan digantikan §6.8 bila bertentangan.
+- **Kerja 7 hari per minggu** `[USER]` 2026-11-19 ("tidak ada hari libur. jalan terus"; akhir pekan dijawab **Y**; `docs/fase-1-catatan.md` "Arahan user"). Libur nasional, cuti bersama, dan akhir pekan menjadi hari kerja. Ini **mengubah C2-Q7**. Pembagi kebutuhan kini **hari kalender**: Fase 1 19 (sisa dari 2026-11-20: 22), Fase 2 26, Fase 3 19, Februari 12.
+- **CR-022** `[USER]` 2026-11-19 (`docs/backlog.md` CR-022): urutan Fase 1 = task baseline yang tetap di Fase 1 dulu, lalu F1-T81–F1-T111 (CR-021); go-live **boleh mundur** bila tidak muat (risiko diterima user); gerbang 2026-12-11 menetapkan **tanggal go-live baru** dari kecepatan terukur dan keputusan tambahan tenaga (PT-53), **bukan** memilih opsi pemotongan scope. Cakupan rilis tidak diperluas: baseline Opsi B + CR-021; CR-011 dan CR-015 tetap rilis berikutnya (tafsiran tercatat di `docs/backlog.md` CR-022, lihat kontradiksi di §6.8.6).
+- **Progres Fase 1 per 2026-11-20:** 73 dari 361 jam-task (20,2%), 22 dari 104 task selesai atau ter-merge; sisa 288 jam-task (§6.8.3).
+- **Kebutuhan baru (Opsi B + CR-021):** Fase 1 sisa ±13,1 jam-task per hari kalender (backend/web ±11,4; mobile ±1,7), Fase 2 ±27,9, Fase 3 ±51,2, Februari ±6,0. Effort total tidak berubah (±2.131). Kenaikan kapasitas riil bergantung pada jam kerja per minggu `[TIDAK DIKETAHUI]` (§6.8.2).
+
 ---
 
 ## 1. Ringkasan
 
 - **Kalender disetujui** `[USER] C2-Q5`: fase pengembangan (Tahap 8) dalam jendela 2026-11-23 sampai 2027-01-29, lalu QA/SIT, audit keamanan, UAT, persiapan rilis, dan deploy sampai go-live 1 Maret 2027 `[UP-65]`:
-  - **Fase 1** (2026-11-23 – 2026-12-11, 15 hari kerja): fondasi (repo, `scripts/verify.sh`, CI, skema inti, autentikasi + RBAC, Audit Trail Foundation, enkripsi, berkas, BFF, kerangka mobile), reference implementation, dan MVP tertipis "pasien terverifikasi" (daftar, persetujuan, **MFA TOTP wajib**, masuk, profil, unggah KTP, diverifikasi Verifikator di backoffice). Ditambah MFA wajib pasien (CR-018) dan ubah password saat login (CR-017) `[USER] C2-Q9, C2-B14`.
-  - **Fase 2** (2026-12-14 – 2027-01-08, **16 hari kerja** setelah libur nasional dan cuti bersama dikurangi): konsultasi online dokter dan psikolog end-to-end, termasuk pembayaran, refund otomatis, notifikasi, aplikasi tenaga kesehatan, staging, observability, dan **US-110 "Perangkat dan sesi aktif"** di semua aplikasi `[USER] C2-Q10`.
-  - **Fase 3** (2027-01-11 – 2027-01-29, 15 hari kerja): Partner Integration API, RME minimalis, pendaftaran klinik/lab, informasi biaya, hasil lab, klaim, rekonsiliasi, portal rekanan, CMS dan keluhan, halaman audit log, hak subjek data, KPI, dan anggota keluarga (US-108, US-109, dipindah dari Fase 4 di Opsi B).
+  - **Fase 1** (2026-11-23 – 2026-12-11, 15 hari kerja; v0.4: 19 hari kalender; Fase 1 sebenarnya mulai 2026-11-18): fondasi (repo, `scripts/verify.sh`, CI, skema inti, autentikasi + RBAC, Audit Trail Foundation, enkripsi, berkas, BFF, kerangka mobile), reference implementation, dan MVP tertipis "pasien terverifikasi" (daftar, persetujuan, **MFA TOTP wajib**, masuk, profil, unggah KTP, diverifikasi Verifikator di backoffice). Ditambah MFA wajib pasien (CR-018) dan ubah password saat login (CR-017) `[USER] C2-Q9, C2-B14`.
+  - **Fase 2** (2026-12-14 – 2027-01-08, v0.2: 16 hari kerja setelah libur dikurangi; **v0.4: 26 hari kalender**): konsultasi online dokter dan psikolog end-to-end, termasuk pembayaran, refund otomatis, notifikasi, aplikasi tenaga kesehatan, staging, observability, dan **US-110 "Perangkat dan sesi aktif"** di semua aplikasi `[USER] C2-Q10`.
+  - **Fase 3** (2027-01-11 – 2027-01-29, 15 hari kerja; v0.4: 19 hari kalender): Partner Integration API, RME minimalis, pendaftaran klinik/lab, informasi biaya, hasil lab, klaim, rekonsiliasi, portal rekanan, CMS dan keluhan, halaman audit log, hak subjek data, KPI, dan anggota keluarga (US-108, US-109, dipindah dari Fase 4 di Opsi B).
   - **Fase 4 tidak dikerjakan di baseline Opsi B** `[USER] C2-Q1`. Isinya (antrean real-time, pembelian produk, home visit) hanya dikerjakan bila gerbang re-plan 2026-12-11 memilih Opsi A `[UP-66]`.
-- **Tim libur pada libur nasional dan cuti bersama** `[USER] C2-Q7`. Tanggal dari SKB tiga menteri 2026 `[SRC-280]` dan 2027 `[SRC-282]` `[SRC-283]`. Yang jatuh di hari kerja jendela pengembangan: 24–25 Desember 2026, 1 dan 5 Januari 2027 (Fase 2), dan 5 Februari 2027 (jendela Februari) (§6.2a).
+- **(v0.2, diganti v0.4) Tim libur pada libur nasional dan cuti bersama** `[USER] C2-Q7`. **Sejak v0.4 tim bekerja 7 hari per minggu, termasuk libur nasional dan cuti bersama** `[USER]` 2026-11-19; tanggal SKB `[SRC-280]` `[SRC-282]` `[SRC-283]` hanya dicatat sebagai informasi (24–25 Desember 2026, 1 dan 5 Januari 2027, 5 Februari 2027; §6.2a).
 - **Effort total estimasi Opsi A ±1.967 jam-task (±643 task)**, ditambah ±42 jam-task yang masih terblokir PT-24. **Baseline Opsi B ±1.791 jam-task** (§6) `[KEPUTUSAN-178]` `[KEPUTUSAN-216]`.
 - **Fase 1: 80 task, 277 jam-task** (naik dari 71 task, 245 jam-task karena F1-T72–F1-T80). Jalur kritis tetap **65 jam-task** (§7.4).
-- **Kebutuhan kecepatan naik** (§6.2, §6.5): ±18,5 jam-task per hari kerja (Fase 1), **±43,0 (Fase 2**, sebelumnya 31,1: libur mengurangi 4 hari kerja dan isi bertambah), lalu ±50,3 di Fase 3 untuk Opsi B (±62,0 untuk Opsi A).
+- **Kebutuhan kecepatan (v0.2, lima hari kerja; diganti §6.8 di v0.4)**: ±18,5 jam-task per hari kerja (Fase 1), ±43,0 (Fase 2), ±50,3 di Fase 3 untuk Opsi B (±62,0 untuk Opsi A).
 - **Kesimpulan kelayakan tidak berubah**: belum dapat dinyatakan layak, dan indikasinya kuat tidak layak untuk Opsi A. Kapasitas yang tercatat sekarang: mobile developer penuh waktu ±40 jam/minggu yang mengerjakan seluruh layar mobile `[USER] C2-Q3`, sesi Claude ≥ 6 jam per hari kerja yang dijalankan PM `[USER] C2-Q4`, dan developer backend/web tambahan mulai awal Januari 2027 (Opsi E) `[USER] C2-Q2, C2-Q8`. Jumlah orang dan biaya Opsi E `[TIDAK DIKETAHUI]` (PT-53). Throughput dalam jam-task tetap `[TIDAK DIKETAHUI]` dan diukur di Fase 1, terpisah untuk jalur mobile dan jalur backend/web (§6.5) `[KEPUTUSAN-221]`.
 - **CR-011** (onboarding mandiri dan langganan RME) dan **CR-015** (vaksinasi/infus) **diputuskan ke rilis berikutnya** `[USER] C2-B5, C2-B6` (§11).
 - **CR-021 (v0.3)**: situs web company profile dan layanan korporat, skenario S3 `[USER] C21-P4`. Fase 1 menjadi 104 task dan 361 jam-task (80 − 7 + 31 task; 277 − 25 + 109 jam-task). Rincian di §6.7, §7.3, §8.1, §8.2, §9.
@@ -42,9 +48,9 @@ Tingkat ketelitian: T2 Standar. Urutan, dependensi, dan definisi task modul krit
 
 | Butir | Isi | Sumber |
 | --- | --- | --- |
-| Go-live | 1 Maret 2027, toleransi waktu 0 hari | `[DOK: 01-business-case.md]` §6.2, §7.1 |
-| Bila syarat go-live belum terpenuhi | Tanggal tetap, scope dikurangi; syarat izin dan kepatuhan, audit keamanan, dan UAT tidak bisa dikurangi | `[DOK: 00-project-brief.md]` P8.3 |
-| Urutan pengurangan scope | (1) antrean real-time; (2) obat bebas, lalu seluruh produk; (3) home visit; (4) konsultasi fisioterapis dan tenaga medis; (5) pendaftaran lab, informasi biaya MCU/lab, hasil lab; (6) pendaftaran klinik. Konsultasi dokter dan psikolog dipertahankan paling akhir. Fitur RME minimalis ikut layanan pemakainya | `[DOK: 03-prd.md]` §2.3 (`[USER] T3-Q2`, UP-33) |
+| Go-live | Target semula 1 Maret 2027 (toleransi waktu 0 hari). **v0.4: toleransi waktu 0 diubah CR-022; go-live boleh mundur**, tanggal baru ditetapkan di gerbang 2026-12-11 (§6.8.5) | `[DOK: 01-business-case.md]` §6.2, §7.1; `[USER]` CR-022 (`docs/backlog.md`) |
+| Bila syarat go-live belum terpenuhi | (v0.2) Tanggal tetap, scope dikurangi. **v0.4: scope penuh (Opsi B + CR-021) diutamakan, tanggal mundur**; syarat izin dan kepatuhan, audit keamanan, dan UAT tetap tidak bisa dikurangi | `[DOK: 00-project-brief.md]` P8.3 (diubah CR-022); `[USER]` CR-022 |
+| Urutan pengurangan scope (**tidak dipakai sebagai alat penjadwalan sejak CR-022**; dicatat sebagai riwayat) | (1) antrean real-time; (2) obat bebas, lalu seluruh produk; (3) home visit; (4) konsultasi fisioterapis dan tenaga medis; (5) pendaftaran lab, informasi biaya MCU/lab, hasil lab; (6) pendaftaran klinik. Konsultasi dokter dan psikolog dipertahankan paling akhir. Fitur RME minimalis ikut layanan pemakainya | `[DOK: 03-prd.md]` §2.3 (`[USER] T3-Q2`, UP-33) |
 | Kelayakan scope | Dinilai di Tahap 7 dengan estimasi effort (G4) | `[DOK: 03-prd.md]` §9 (`[USER] T3-Gate`) |
 | Tim | Project manager (user), Claude lewat runbook, 1 mobile developer; ditambah developer backend/web mulai awal Januari 2027 (Opsi E) | `[DOK: 00-project-brief.md]` P7.3; `[USER] C2-Q2, C2-Q8` |
 | Status developer | Penuh waktu sampai go-live; setelah go-live PT-35 | `[USER] T5-Q7` |
@@ -52,7 +58,7 @@ Tingkat ketelitian: T2 Standar. Urutan, dependensi, dan definisi task modul krit
 | Mobile developer | Penuh waktu ±40 jam/minggu; mengerjakan seluruh layar mobile | `[USER] C2-Q3` |
 | Sesi Claude | ≥ 6 jam per hari kerja, dijalankan PM; throughput tetap diukur di Fase 1 | `[USER] C2-Q4` |
 | Developer backend/web tambahan | Mulai awal Januari 2027 (membantu mulai Fase 3). Jumlah orang, biaya terhadap toleransi +20%, dan tanggal mulai pasti `[TIDAK DIKETAHUI]` | `[USER] C2-Q2, C2-Q8`; PT-53 |
-| Hari libur | Tim libur pada libur nasional dan cuti bersama; tanggal dari SKB tiga menteri 2026 dan 2027 | `[USER] C2-Q7`; `[SRC-280]` `[SRC-282]` `[SRC-283]` |
+| Hari kerja | (v0.2) Tim libur pada libur nasional dan cuti bersama. **v0.4: 7 hari per minggu, libur nasional, cuti bersama, dan akhir pekan menjadi hari kerja** (mengubah C2-Q7). Jam kerja per hari dan per minggu `[TIDAK DIKETAHUI]` | `[USER]` 2026-11-19 (`docs/fase-1-catatan.md`); `[USER] C2-Q7` (digantikan); `[SRC-280]` `[SRC-282]` `[SRC-283]` (tanggal, informasi) |
 | Opsi scope | Opsi B sebagai baseline; final di gerbang re-plan 2026-12-11 | `[USER] C2-Q1` |
 | Lingkungan | Staging Biznet Gio mulai Desember 2026; uji beban Januari 2027 (satu bulan); production mulai 1 Februari 2027 | `[DOK: 05-stack.md]` §2.9, §11.2 |
 | Siklus per fase | Setiap fase ditutup dengan functional test QA, consistency review, dan laporan fase | `[DOK: .claude/skills/runbook/references/tahap-08-development.md]` |
@@ -67,7 +73,8 @@ Tingkat ketelitian: T2 Standar. Urutan, dependensi, dan definisi task modul krit
 2. **MVP Fase 1 adalah slice "pasien terverifikasi"**, bukan konsultasi berbayar. Alasannya teknis: slice ini menembus semua lapis (aplikasi pasien → API → database → audit → backoffice) dan semua fondasi T1 (autentikasi dua realm, otorisasi, audit, enkripsi NIK, berkas identitas) tanpa bergantung pada penyedia yang konfirmasinya belum ada (DOKU PT-36, Lalamove PT-37, Biznet Gio PT-39) `[KEPUTUSAN-180]`.
 3. **Urutan layanan mengikuti kebalikan urutan pengurangan scope.** Konsultasi dokter dan psikolog (dipertahankan paling akhir `[USER] T3-Q2`) dibangun pertama setelah fondasi; antrean, produk, dan home visit (dilepas pertama) dibangun terakhir. Bila kapasitas kurang, pengurangan scope berarti melepas fase terakhir, bukan memotong fitur yang sudah setengah jadi `[UP-66]`.
 4. **Skema dan autentikasi sebelum fitur; pustaka T1 dibuat sekali** di Fase 1 dan dipakai ulang (RT-10 mitigasi 3) `[DOK: 04-risk-register.md]`.
-5. **Gerbang re-plan di akhir Fase 1**: kecepatan terukur (task selesai per hari kerja, dengan `scripts/verify.sh` hijau dan review lolos) dibandingkan dengan kebutuhan per opsi (§6.5), lalu user memilih opsi scope `[UP-66]` (disetujui `[USER] C2-Q6`). Ini juga menjawab RT-24 (kecepatan Rust diukur di reference implementation) `[DOK: 04-risk-register.md]`.
+5. **Gerbang re-plan di akhir Fase 1**: kecepatan terukur (task selesai per hari kalender, dengan `scripts/verify.sh` hijau dan review lolos) dibandingkan dengan kebutuhan Fase 2–3 (§6.5), lalu `[UP-66]` (disetujui `[USER] C2-Q6`) memilih opsi scope. **v0.4 (CR-022):** gerbang tidak lagi memilih opsi pemotongan scope; gerbang **menetapkan tanggal go-live baru** dari kecepatan terukur dan keputusan tambahan tenaga (PT-53) (§6.8.5) `[USER]` CR-022. Ini juga menjawab RT-24 (kecepatan Rust diukur di reference implementation) `[DOK: 04-risk-register.md]`.
+6a. **Urutan Fase 1 (v0.4, CR-022)**: task baseline yang tetap di Fase 1 dikerjakan lebih dulu, lalu F1-T81–F1-T111 (CR-021), dan F1-T71 (penutupan, bergantung pada F1-T110) paling akhir (§7.3a) `[USER]` CR-022.
 6. **Story boleh selesai bertahap per acceptance criteria** bila satu AC bergantung pada story di fase berikutnya. AC yang ditunda ditulis eksplisit di backlog dan diverifikasi di fase tujuan `[KEPUTUSAN-179]`.
 7. **Dependensi eksternal menjadi gerbang bertanggal** (§9). Task yang bergantung pada gerbang yang belum terbuka tidak dimulai; urutan task lain di fase yang sama disusun ulang.
 
@@ -75,14 +82,14 @@ Tingkat ketelitian: T2 Standar. Urutan, dependensi, dan definisi task modul krit
 
 ## 4. Fase dan deliverable
 
-Tanggal fase disetujui `[USER] C2-Q5` `[UP-65]`. Hari kerja sudah dikurangi libur nasional dan cuti bersama (§6.2a).
+Tanggal fase disetujui `[USER] C2-Q5` `[UP-65]`. Sejak v0.4 hitungan memakai hari kalender karena tim bekerja 7 hari per minggu (§6.2a, §6.8). Tanggal fase tidak diubah v0.4; tanggal akhir Fase 2–3 dan go-live dapat bergeser lewat gerbang 2026-12-11 (CR-022). Akhir pekan di antara fase (2026-12-12/13, 2027-01-09/10) tidak dialokasikan ke fase mana pun dan menjadi penyangga.
 
 | Fase | Tanggal | Isi utama | Deliverable (bukti di akhir fase) | Gerbang masuk |
 | --- | --- | --- | --- | --- |
-| 1. Fondasi + MVP "pasien terverifikasi" | 2026-11-23 – 2026-12-11 (15 hari kerja; tanpa libur) | EN-01–EN-14, UI-01–UI-03; US-101, US-103, US-104 (kecuali AC4), US-105, US-106, US-201 (kecuali notifikasi di AC2), US-208, US-1501, US-1504; CR-018 MFA wajib pasien (termasuk daftar ulang TOTP realm `pasien` dan `admin`); CR-017 ubah password saat login (realm `pasien` dan `admin`). **v0.3 (CR-021):** EP-18 (US-1801, US-1802, US-1101 dipindah dari Fase 3), US-1901–US-1904, US-1916 bagian K1, F1-T81–F1-T111; F1-T57, F1-T67, F1-T75–F1-T79 pindah ke Fase 2 (US-103 AC6–AC7, US-105 AC4, layar US-208 menyusul) | `scripts/verify.sh` dan CI hijau; stack lokal; skema DB aplikasi dan audit dengan test hak role; realm `pasien` dan `admin`, keduanya dengan MFA TOTP wajib dan kode pemulihan; RBAC default deny; audit outbox → relay → rantai hash → verifikasi; reference implementation tercatat di `CLAUDE.md`; v0.3: situs tampil dari CMS, perusahaan daftar → Verifikator menyetujui → HR masuk dengan TOTP → undang HR kedua, isolasi dua perusahaan teruji (F1-T110); demo end-to-end: pasien daftar → konfigurasi TOTP → masuk dengan OTP → unggah KTP → Verifikator menyetujui → status Disetujui, rantai audit terverifikasi; laporan kecepatan per jalur dan cakupan baseline; `docs/fase-1-laporan.md` | Checkpoint 2 disetujui; persetujuan user atas `scripts/verify.sh` (F1-T05) |
-| Gerbang re-plan | 2026-12-11 | Kecepatan terukur dibandingkan kebutuhan per opsi (§6.5) | Keputusan user: opsi scope final (baseline B) dan rincian Opsi E (PT-53) | Fase 1 lulus gate fase |
-| 2. Konsultasi online + pembayaran | 2026-12-14 – 2027-01-08 (**16 hari kerja**: 20 dikurangi 24 dan 25 Desember 2026, 1 dan 5 Januari 2027) | EN-15–EN-20, EN-24, UI-04; US-107, US-202–US-207, US-301–US-311, US-801–US-806, US-808, US-809, US-812, US-1001–US-1003, US-1406 (pembayaran, video, email), US-104 AC4, US-201 AC2 (notifikasi); **US-110** perangkat dan sesi aktif; reset MFA pasien oleh Layanan Pelanggan (US-207 AC5, CR-018); CR-017 dan daftar ulang TOTP realm `nakes`; notifikasi pemberian sub-peran sensitif (UP-76). **v0.3 (CR-021):** F1-T57, F1-T67, F1-T75–F1-T79 dari Fase 1 (CR-017 dan daftar ulang TOTP realm `pasien`/`admin`, ubah email, layar kelola admin); reset MFA HR oleh Verifikator (US-1904 AC7–AC9, K1-F2) | Pasien memesan dan membayar sesi (sandbox DOKU), chat dan video, catatan, resep + halaman verifikasi publik, riwayat; refund otomatis dan eksekusinya; aplikasi tenaga kesehatan dengan MFA dan kunci 15 menit; onboarding tenaga kesehatan dan klinik; markup dan parameter; notifikasi email dan di dalam aplikasi; layar perangkat dan sesi aktif di aplikasi pasien, aplikasi tenaga kesehatan, backoffice, dan portal; staging dengan deploy otomatis; observability; perubahan data dictionary pajak (CR-013) | Gerbang re-plan; PT-39 (staging); PT-47; PT-36 sebelum task pembayaran (target 2026-12-21); sisa PT-28 sebelum perhitungan pajak |
-| 3. Integrasi rekanan, RME, klinik/lab, kepatuhan | 2027-01-11 – 2027-01-29 (15 hari kerja; tanpa libur) | EN-21–EN-23, EN-25, UI-05; US-401–US-404, US-406, US-601, US-602, US-807, US-810, US-811, US-901, US-902, US-1101–US-1104, US-1201–US-1203, US-1301–US-1304, US-1306, US-1307, US-1309, US-1310, US-1401–US-1405, US-1502, US-1503, US-1601–US-1606, US-1701; US-108, US-109 (Opsi B); CR-017, daftar ulang TOTP, dan US-110 untuk realm `rme` (web RME). **v0.3 (CR-021):** US-1101 keluar (pindah ke Fase 1); K2 US-1905–US-1913 + jurnal korporat + email korporat; K3 US-1914, US-1915, US-1917 | Partner Integration API v1 + sandbox; v0.3: pesanan korporat → invoice → mutasi bank dan alokasi → lunas → jadwal → penerusan ke rekanan → hasil ke peserta; RME minimalis lulus skenario kontrak yang sama; pendaftaran klinik/lab dibayar di aplikasi dan check-in lewat sistem rekanan/RME; hasil lab; pengiriman SATUSEHAT (sandbox, bila PT-32 tersedia); klaim dan rekonsiliasi; portal rekanan; CMS dan keluhan; halaman audit log dan ekspor; hak subjek data; dasbor KPI; anggota keluarga; uji beban NFR-CAP-04 | PT-05 (rekanan dan kemampuan sistemnya); PT-32 untuk uji US-1309; PT-24 untuk US-1605/US-1606; v0.3: G-25 (PT-59, PT-62–PT-66, L-21) dan G-26 (L-17–L-19, DPIA) untuk K2/K3 |
+| 1. Fondasi + MVP "pasien terverifikasi" | 2026-11-23 – 2026-12-11 (v0.4: 19 hari kalender; mulai nyata 2026-11-18; v0.3: 15 hari kerja) | EN-01–EN-14, UI-01–UI-03; US-101, US-103, US-104 (kecuali AC4), US-105, US-106, US-201 (kecuali notifikasi di AC2), US-208, US-1501, US-1504; CR-018 MFA wajib pasien (termasuk daftar ulang TOTP realm `pasien` dan `admin`); CR-017 ubah password saat login (realm `pasien` dan `admin`). **v0.3 (CR-021):** EP-18 (US-1801, US-1802, US-1101 dipindah dari Fase 3), US-1901–US-1904, US-1916 bagian K1, F1-T81–F1-T111; F1-T57, F1-T67, F1-T75–F1-T79 pindah ke Fase 2 (US-103 AC6–AC7, US-105 AC4, layar US-208 menyusul) | `scripts/verify.sh` dan CI hijau; stack lokal; skema DB aplikasi dan audit dengan test hak role; realm `pasien` dan `admin`, keduanya dengan MFA TOTP wajib dan kode pemulihan; RBAC default deny; audit outbox → relay → rantai hash → verifikasi; reference implementation tercatat di `CLAUDE.md`; v0.3: situs tampil dari CMS, perusahaan daftar → Verifikator menyetujui → HR masuk dengan TOTP → undang HR kedua, isolasi dua perusahaan teruji (F1-T110); demo end-to-end: pasien daftar → konfigurasi TOTP → masuk dengan OTP → unggah KTP → Verifikator menyetujui → status Disetujui, rantai audit terverifikasi; laporan kecepatan per jalur dan cakupan baseline; `docs/fase-1-laporan.md` | Checkpoint 2 disetujui; persetujuan user atas `scripts/verify.sh` (F1-T05) |
+| Gerbang re-plan | 2026-12-11 | Kecepatan terukur dibandingkan kebutuhan Fase 2–3 (§6.5, §6.8) | **v0.4 (CR-022):** keputusan user: **tanggal go-live baru** dan rincian tambahan tenaga (PT-53); scope tetap baseline Opsi B + CR-021 (v0.3: memilih opsi scope final) | Fase 1 selesai atau data yang ada pada 2026-12-11 |
+| 2. Konsultasi online + pembayaran | 2026-12-14 – 2027-01-08 (v0.4: **26 hari kalender**; v0.3: 16 hari kerja = 20 dikurangi 24 dan 25 Desember 2026, 1 dan 5 Januari 2027) | EN-15–EN-20, EN-24, UI-04; US-107, US-202–US-207, US-301–US-311, US-801–US-806, US-808, US-809, US-812, US-1001–US-1003, US-1406 (pembayaran, video, email), US-104 AC4, US-201 AC2 (notifikasi); **US-110** perangkat dan sesi aktif; reset MFA pasien oleh Layanan Pelanggan (US-207 AC5, CR-018); CR-017 dan daftar ulang TOTP realm `nakes`; notifikasi pemberian sub-peran sensitif (UP-76). **v0.3 (CR-021):** F1-T57, F1-T67, F1-T75–F1-T79 dari Fase 1 (CR-017 dan daftar ulang TOTP realm `pasien`/`admin`, ubah email, layar kelola admin); reset MFA HR oleh Verifikator (US-1904 AC7–AC9, K1-F2) | Pasien memesan dan membayar sesi (sandbox DOKU), chat dan video, catatan, resep + halaman verifikasi publik, riwayat; refund otomatis dan eksekusinya; aplikasi tenaga kesehatan dengan MFA dan kunci 15 menit; onboarding tenaga kesehatan dan klinik; markup dan parameter; notifikasi email dan di dalam aplikasi; layar perangkat dan sesi aktif di aplikasi pasien, aplikasi tenaga kesehatan, backoffice, dan portal; staging dengan deploy otomatis; observability; perubahan data dictionary pajak (CR-013) | Gerbang re-plan; PT-39 (staging); PT-47; PT-36 sebelum task pembayaran (target 2026-12-21); sisa PT-28 sebelum perhitungan pajak |
+| 3. Integrasi rekanan, RME, klinik/lab, kepatuhan | 2027-01-11 – 2027-01-29 (v0.4: 19 hari kalender; v0.3: 15 hari kerja) | EN-21–EN-23, EN-25, UI-05; US-401–US-404, US-406, US-601, US-602, US-807, US-810, US-811, US-901, US-902, US-1101–US-1104, US-1201–US-1203, US-1301–US-1304, US-1306, US-1307, US-1309, US-1310, US-1401–US-1405, US-1502, US-1503, US-1601–US-1606, US-1701; US-108, US-109 (Opsi B); CR-017, daftar ulang TOTP, dan US-110 untuk realm `rme` (web RME). **v0.3 (CR-021):** US-1101 keluar (pindah ke Fase 1); K2 US-1905–US-1913 + jurnal korporat + email korporat; K3 US-1914, US-1915, US-1917 | Partner Integration API v1 + sandbox; v0.3: pesanan korporat → invoice → mutasi bank dan alokasi → lunas → jadwal → penerusan ke rekanan → hasil ke peserta; RME minimalis lulus skenario kontrak yang sama; pendaftaran klinik/lab dibayar di aplikasi dan check-in lewat sistem rekanan/RME; hasil lab; pengiriman SATUSEHAT (sandbox, bila PT-32 tersedia); klaim dan rekonsiliasi; portal rekanan; CMS dan keluhan; halaman audit log dan ekspor; hak subjek data; dasbor KPI; anggota keluarga; uji beban NFR-CAP-04 | PT-05 (rekanan dan kemampuan sistemnya); PT-32 untuk uji US-1309; PT-24 untuk US-1605/US-1606; v0.3: G-25 (PT-59, PT-62–PT-66, L-21) dan G-26 (L-17–L-19, DPIA) untuk K2/K3 |
 | 4. Layanan yang dilepas pertama | **Tidak dikerjakan di baseline Opsi B** `[USER] C2-Q1`. Bila gerbang re-plan memilih A: 2027-01-18 – 2027-01-29 (10 hari kerja), paralel dengan Fase 3 | US-405, US-1305, US-501–US-504, US-1308, US-701–US-706, US-1406 (kurir); US-108 dan US-109 hanya bila Opsi A (di Opsi B sudah di Fase 3) | Antrean real-time; home visit (penugasan dari sistem klinik/RME); pembelian produk dengan kurir Lalamove, pelacakan, klaim barang | Gerbang re-plan memilih Opsi A; PT-29, PT-30, PT-33, PT-37 terjawab |
 | Pembekuan fitur | 2027-01-29 | Tidak ada fitur baru setelah tanggal ini; hanya perbaikan bug | — | — |
 
@@ -92,23 +99,23 @@ Story Should (US-108, US-109, US-405, US-602, US-1305) tidak ada di Fase 1. Pene
 
 ## 5. Kalender sampai go-live (disetujui `[USER] C2-Q5`)
 
-| Jendela | Tanggal | Hari kerja tim (setelah libur, §6.2a) | Isi | Butir `[TIDAK DIKETAHUI]` | Sumber |
+| Jendela | Tanggal | Hari kalender kerja tim (v0.4, 7 hari per minggu; v0.2 dalam kurung) | Isi | Butir `[TIDAK DIKETAHUI]` | Sumber |
 | --- | --- | --- | --- | --- | --- |
 | Checkpoint 2 | sebelum 2026-11-23 | — | Persetujuan design guideline, phase plan, dan opsi | — | `[UP-65]` |
-| Tahap 8 Fase 1–3 (Fase 4 hanya bila Opsi A) | 2026-11-23 – 2027-01-29 | 46 (15 + 16 + 15) | §4 | Throughput tim per jalur (PT-48 sisa); Opsi E (PT-53) | `[UP-65]` |
+| Tahap 8 Fase 1–3 (Fase 4 hanya bila Opsi A) | 2026-11-23 – 2027-01-29 | 64 (19 + 26 + 19; v0.2: 46 = 15 + 16 + 15) | §4 | Throughput tim per jalur (PT-48 sisa); Opsi E (PT-53) | `[UP-65]` |
 | Staging | mulai Fase 2 (Desember 2026) | — | Deploy otomatis dari `main` hijau | Konfirmasi Biznet Gio (PT-39) | `[DOK: 05-stack.md]` §2.9 |
 | Uji beban NFR-CAP-04 | Januari 2027 | — | Staging dinaikkan ke ukuran production | Kapasitas host video untuk 100 sesi | `[DOK: 05-stack.md]` §2.9, §9 |
-| Tahap 9 QA + SIT | 2027-02-01 – 2027-02-05 | **4** (5 Februari cuti bersama Imlek) | SIT dengan rekanan pertama | Kesiapan rekanan (PT-05) | `[UP-65]` `[SRC-282]` |
-| Tahap 10 audit keamanan | 2027-02-01 – 2027-02-12 | **9** | Audit eksternal (syarat go-live 6) | Auditor, ketersediaan, lama audit, dan apakah auditor juga libur 5 Februari (PT-49) | `[UP-65]` `[DOK: 01-business-case.md]` §4.2 |
-| Production disiapkan | mulai 2027-02-01 | 9 di jendela 2027-02-01 – 02-12 | Host, OpenBao (unseal PT-38), replikasi, backup, uji pemulihan NFR-DR-03, bootstrap Super Admin (PT-52), deploy pertama lewat bastion (EN-26, EN-27) | Pemegang share unseal dan orang kedua (PT-38); Super Admin pertama dan penyetujunya (PT-52) | `[DOK: 05-stack.md]` §2.9 |
+| Tahap 9 QA + SIT | 2027-02-01 – 2027-02-05 | 5 (v0.2: 4) | SIT dengan rekanan pertama | Kesiapan rekanan (PT-05) | `[UP-65]` `[SRC-282]` |
+| Tahap 10 audit keamanan | 2027-02-01 – 2027-02-12 | 12 (v0.2: 9) | Audit eksternal (syarat go-live 6) | Auditor, ketersediaan, lama audit, dan apakah auditor juga libur 5 Februari (PT-49) | `[UP-65]` `[DOK: 01-business-case.md]` §4.2 |
+| Production disiapkan | mulai 2027-02-01 | 12 di jendela 2027-02-01 – 02-12 (v0.2: 9) | Host, OpenBao (unseal PT-38), replikasi, backup, uji pemulihan NFR-DR-03, bootstrap Super Admin (PT-52), deploy pertama lewat bastion (EN-26, EN-27) | Pemegang share unseal dan orang kedua (PT-38); Super Admin pertama dan penyetujunya (PT-52) | `[DOK: 05-stack.md]` §2.9 |
 | Tahap 11 UAT | 2027-02-08 – 2027-02-12 | 5 | Sign-off CEO, CTO, konsultan medis | Ketersediaan peserta (PT-50) | `[UP-65]` `[DOK: 01-business-case.md]` §4.2 |
-| Tahap 12 pre-deploy | 2027-02-08 – 2027-02-19 | 10 | Pengajuan ke Play Store dan App Store paling lambat 2027-02-12 | Lama review toko dan status akun developer (R-08, PT-51) | `[UP-65]` |
+| Tahap 12 pre-deploy | 2027-02-08 – 2027-02-19 | 12 (v0.2: 10) | Pengajuan ke Play Store dan App Store paling lambat 2027-02-12 | Lama review toko dan status akun developer (R-08, PT-51) | `[UP-65]` |
 | Tahap 13 deploy | 2027-02-22 – 2027-02-26 | 5 | Deploy production final, smoke test | — | `[UP-65]` |
 | Go-live | 2027-03-01 | — | — | — | `[DOK: 01-business-case.md]` |
 
-Lama setiap jendela setelah pembekuan fitur adalah usulan penyusun yang disetujui `[USER] C2-Q5`. Bila auditor atau toko aplikasi butuh waktu lebih lama, satu-satunya ruang adalah memajukan pembekuan fitur (artinya mengurangi scope), karena tanggal go-live tetap `[DOK: 00-project-brief.md]` P8.3.
+Lama setiap jendela setelah pembekuan fitur adalah usulan penyusun yang disetujui `[USER] C2-Q5`. **v0.4 (CR-022):** bila auditor atau toko aplikasi butuh waktu lebih lama, atau pengembangan tidak selesai pada 2027-01-29, go-live boleh mundur (`[USER]` CR-022); mengurangi scope bukan lagi alat yang dipakai (v0.2 memakai P8.3). Syarat izin dan kepatuhan, audit keamanan, dan UAT tetap tidak bisa dikurangi. Apakah jendela pasca-pembekuan dapat dipadatkan `[TIDAK DIKETAHUI]`.
 
-**Libur setelah go-live (untuk Tahap 14 hypercare).** Senin 8 Maret sampai Senin 15 Maret 2027 berisi libur nasional (Nyepi 8 Maret, Idulfitri 10–11 Maret) dan cuti bersama (9, 12, dan 15 Maret) `[SRC-282]` `[SRC-283]`, sehingga enam hari kerja di minggu kedua dan awal minggu ketiga hypercare adalah hari libur tim. Pengaturan siaga di hari libur `[TIDAK DIKETAHUI]`, diputuskan di Tahap 12 bersama PT-35.
+**Libur setelah go-live (untuk Tahap 14 hypercare).** Senin 8 Maret sampai Senin 15 Maret 2027 berisi libur nasional (Nyepi 8 Maret, Idulfitri 10–11 Maret) dan cuti bersama (9, 12, dan 15 Maret) `[SRC-282]` `[SRC-283]`. **v0.4:** tim bekerja 7 hari per minggu, sehingga hari itu bukan hari libur tim. Apakah penyedia luar (auditor, rekanan, DOKU, Biznet Gio, toko aplikasi) bekerja di hari itu `[TIDAK DIKETAHUI]`; pengaturan siaga diputuskan di Tahap 12 bersama PT-35. Bila go-live mundur (CR-022), jendela libur ini ikut ditinjau di gerbang 2026-12-11.
 
 ---
 
@@ -119,12 +126,12 @@ Lama setiap jendela setelah pembekuan fitur adalah usulan penyusun yang disetuju
 - **Fase 1 dihitung dari bawah**: 80 task dengan ukuran 2, 3, atau 4 jam-task (§7.3), total 277 jam-task (v0.1: 71 task, 245 jam-task; tambahan F1-T72–F1-T80 untuk CR-017 dan CR-018) `[KEPUTUSAN-216]`.
 - **Fase 2–4 dihitung dari atas** per story dengan kelas ukuran yang dikalibrasi dari pecahan Fase 1, setelah fondasi tersedia: S = 2 task (6 jam-task), M = 4 task (12), L = 7 task (21), XL = 12 task (36). Satu task rata-rata 3 jam-task. Kelas per story ada di §8.
 - **Jam-task** adalah ukuran usaha untuk satu task 2–4 jam termasuk `scripts/verify.sh` dan satu putaran perbaikan review `[ASUMSI-01]`, bukan jam kalender dan bukan jam kerja orang tertentu.
-- **Hari kerja** dihitung Senin–Jumat, dikurangi libur nasional dan cuti bersama yang jatuh di hari Senin–Jumat, karena tim libur pada hari itu `[USER] C2-Q7`. Tanggalnya dari SKB tiga menteri 2026 `[SRC-280]` dan 2027 `[SRC-282]` `[SRC-283]`; libur yang jatuh di akhir pekan tidak mengubah hitungan. Bila pemerintah mengubah SKB atau menetapkan libur tambahan, hitungan ditinjau di laporan fase `[KEPUTUSAN-215]`. Cuti pribadi anggota tim tidak dihitung `[TIDAK DIKETAHUI]`.
+- **Hari kerja (v0.4: hari kalender)**. Sejak v0.4 tim bekerja 7 hari per minggu, sehingga pembagi kebutuhan adalah **hari kalender** dalam jendela fase (akhir pekan dan libur ikut dihitung) `[USER]` 2026-11-19 `[KEPUTUSAN-281]`. Dasar v0.2 (dipertahankan sebagai riwayat): dihitung Senin–Jumat, dikurangi libur nasional dan cuti bersama yang jatuh di hari Senin–Jumat, karena tim libur pada hari itu `[USER] C2-Q7` (digantikan). Tanggalnya dari SKB tiga menteri 2026 `[SRC-280]` dan 2027 `[SRC-282]` `[SRC-283]`; libur yang jatuh di akhir pekan tidak mengubah hitungan. Bila pemerintah mengubah SKB atau menetapkan libur tambahan, hitungan ditinjau di laporan fase `[KEPUTUSAN-215]`. Cuti pribadi anggota tim tidak dihitung `[TIDAK DIKETAHUI]`.
 - **Ketidakpastian**: kecepatan pengembangan Rust belum diukur (RT-24) `[DOK: 04-risk-register.md]`, dan kemampuan sistem rekanan belum diketahui (PT-05). Angka di bawah dipakai untuk membandingkan opsi, bukan sebagai janji.
 
 ### 6.2 Effort per fase
 
-Angka di tabel ini untuk Opsi A (semua fase). Opsi B, yang menjadi baseline, di §6.5 dan §6.6.
+**Tabel v0.2 (riwayat, Opsi A, lima hari kerja; kolom per hari kerja digantikan oleh tabel v0.4 di bawahnya).** Opsi B, yang menjadi baseline, di §6.5 dan §6.6.
 
 | Fase | Story | Enabler, UI, penutupan fase | Total jam-task | Task | Hari kerja (v0.1 → v0.2) | Jam-task per hari kerja (v0.1 → v0.2) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -136,6 +143,18 @@ Angka di tabel ini untuk Opsi A (semua fase). Opsi B, yang menjadi baseline, di 
 | Production dan uji pemulihan (Februari) | — | 72 | 72 | 24 (jam ÷ 3) | 10 → **9** | 7,2 → **8,0** |
 | **Total Opsi A** | | | **1.967 (+42)** | **±643 (+14)** | | |
 
+**Tabel v0.4 (baseline Opsi B + CR-021, 7 hari per minggu; jam-task dari §6.7)** `[KEPUTUSAN-281]`. Per minggu = per hari × 7.
+
+| Fase | Jam-task | Hari kalender (v0.3: hari kerja) | Jam-task per hari kalender (v0.3) | Per minggu |
+| --- | --- | --- | --- | --- |
+| 1, seluruhnya (2026-11-23 – 12-11) | 361 | 19 (15) | **19,0** (24,1) | 133,0 |
+| 1, sisa dari 2026-11-20 sampai 12-11 (basis di §6.8.1) | 288 | 22 (16) | **13,1** (19,8; sisa 316) | 91,6 |
+| 2 (2026-12-14 – 2027-01-08) | 725 | 26 (16) | **27,9** (45,3) | 195,2 |
+| 3 (2027-01-11 – 01-29) | 973 | 19 (15) | **51,2** (64,9) | 358,5 |
+| Februari (2027-02-01 – 02-12) | 72 | 12 (9) | **6,0** (8,0) | 42,0 |
+| **Total Opsi B + CR-021** | **±2.131** | | | |
+| Pembanding Opsi A, Fase 3 + Fase 4 | 1.149 | 19 (15) | 60,5 (76,6) | 423,3 |
+
 Perubahan v0.2 terhadap v0.1:
 - **Fase 1** +32 jam-task: F1-T72–F1-T80 (§7.3) `[KEPUTUSAN-216]`.
 - **Fase 2** +66 jam-task: US-110 kelas XL (36) `[KEPUTUSAN-218]`; reset MFA pasien oleh Layanan Pelanggan, US-207 AC5 (M, 12) `[KEPUTUSAN-217]`; CR-017 dan daftar ulang TOTP di aplikasi tenaga kesehatan (M, 12) `[KEPUTUSAN-219]`; notifikasi pemberian sub-peran sensitif UP-76 (S, 6) `[KEPUTUSAN-220]`. Hari kerja turun dari 20 ke 16 karena libur (§6.2a).
@@ -144,7 +163,23 @@ Perubahan v0.2 terhadap v0.1:
 
 **Satuan perbandingan.** Kolom "Task" mencampur dua satuan: Fase 1 berisi 80 task nyata (rata-rata ±3,46 jam-task per task), sedangkan Fase 2–4 dan Februari adalah jam-task ÷ 3. Karena itu kebutuhan antarfase dibandingkan dalam **jam-task per hari kerja**, bukan task per hari kerja.
 
-### 6.2a Hari libur di jendela pengembangan `[KEPUTUSAN-215]`
+### 6.2a Hari libur dan hari kalender di jendela pengembangan `[KEPUTUSAN-215]` (diperbarui v0.4 `[KEPUTUSAN-281]`)
+
+**v0.4: libur tidak mengurangi hari kerja.** Tim bekerja 7 hari per minggu, termasuk libur nasional, cuti bersama, dan akhir pekan `[USER]` 2026-11-19 (mengubah C2-Q7). Tabel libur di bawah dipertahankan hanya sebagai informasi (tanggal SKB) dan karena penyedia luar mungkin libur (`[TIDAK DIKETAHUI]`). Hari per jendela:
+
+| Jendela | Tanggal | Hari kalender (v0.4) | Hari kerja v0.2 | Selisih: libur nasional/cuti bersama | Selisih: akhir pekan |
+| --- | --- | --- | --- | --- | --- |
+| Fase 1 | 2026-11-23 – 12-11 | 19 | 15 | 0 | 4 (28–29 Nov, 5–6 Des) |
+| Fase 1, sisa dari hari ini | 2026-11-20 – 12-11 | 22 | 16 | 0 | 6 (21–22, 28–29 Nov, 5–6 Des) |
+| Fase 2 | 2026-12-14 – 2027-01-08 | 26 | 16 | 4 (24, 25 Des, 1, 5 Jan) | 6 (19–20, 26–27 Des, 2–3 Jan) |
+| Fase 3 | 2027-01-11 – 01-29 | 19 | 15 | 0 | 4 (16–17, 23–24 Jan) |
+| Februari | 2027-02-01 – 02-12 | 12 | 9 | 1 (5 Feb; 6 Feb Sabtu sudah akhir pekan) | 2 (6–7 Feb) |
+| Penyangga antar-fase, tidak dialokasikan | 12–13 Des, 9–10 Jan | 4 | 0 | 0 | 4 |
+| Mobile developer | 2026-11-23 – 2027-02-05 | 75 | 50 | 5 | 20 |
+
+Hitungan: tanggal dan hari dalam seminggu dari kalender (perhitungan tanggal); jumlah selisih = hari kalender − hari kerja v0.2, ditelusuri per tanggal di tabel libur. Jam kerja per hari dan per minggu tidak diketahui (`[TIDAK DIKETAHUI]`), sehingga kenaikan jumlah hari belum berarti kenaikan kapasitas sebesar itu (§6.8.2).
+
+Riwayat v0.2: tabel libur di bawah.
 
 | Tanggal | Hari | Jenis | Keterangan | Jendela terdampak | Sumber |
 | --- | --- | --- | --- | --- | --- |
@@ -157,7 +192,7 @@ Perubahan v0.2 terhadap v0.1:
 
 - Jendela Fase 1 (2026-11-23 – 12-11) dan Fase 3 (2027-01-11 – 01-29) tidak memuat libur nasional atau cuti bersama `[SRC-280]` `[SRC-282]`.
 - Untuk instansi swasta, pelaksanaan cuti bersama diatur pimpinan masing-masing `[SRC-283]`; untuk tim proyek ini, pimpinan memutuskan libur `[USER] C2-Q7`. Apakah penyedia luar (auditor, rekanan, DOKU, Biznet Gio, peninjau toko aplikasi) bekerja di hari itu `[TIDAK DIKETAHUI]`.
-- Mobile developer: 50 hari kerja di 2026-11-23 – 2027-02-05 (55 dikurangi 24 dan 25 Desember, 1 dan 5 Januari, 5 Februari).
+- Mobile developer (v0.2): 50 hari kerja di 2026-11-23 – 2027-02-05 (55 dikurangi 24 dan 25 Desember, 1 dan 5 Januari, 5 Februari). **v0.4: 75 hari kalender** (tabel di atas); jam kerja ±40 per minggu `[USER] C2-Q3` tidak diubah oleh jawaban 7 hari per minggu kecuali user menyatakan lain `[TIDAK DIKETAHUI]`.
 
 Rincian enabler Fase 2–4: EN-15 staging dan CD 24, EN-16 observability 20, EN-17 realm nakes dan kunci aplikasi 16, EN-18 LiveKit 8, EN-19 realtime 12, EN-20 kerangka portal 10, EN-24 pajak CR-013 8, UI-04 template email 6, EN-21 gateway integrasi 30, EN-22 fondasi RME 55, EN-23 pekerja privasi 15, EN-25 uji beban 16, UI-05 uji aksesibilitas manual 6, EN-26 production 60, EN-27 uji pemulihan 12, penutupan fase 8 per fase (estimasi penyusun per enabler) `[KEPUTUSAN-178]`.
 
@@ -177,11 +212,11 @@ Rincian enabler Fase 2–4: EN-15 staging dan CD 24, EN-16 observability 20, EN-
 
 ### 6.4 Kebutuhan dibandingkan kapasitas
 
-- **Seluruh tim (Opsi B baseline)**: kebutuhan naik dari ±18,5 jam-task per hari kerja (Fase 1) ke ±43,0 (Fase 2) dan ±50,3 (Fase 3, 754 jam-task dalam 15 hari kerja). Opsi A: ±62,0 bila Fase 3 dan Fase 4 berjalan paralel (930 jam-task dalam 15 hari kerja). Throughput tim `[TIDAK DIKETAHUI]`.
+- **(Angka v0.2, lima hari kerja; angka v0.4 di §6.8.2)** **Seluruh tim (Opsi B baseline)**: kebutuhan naik dari ±18,5 jam-task per hari kerja (Fase 1) ke ±43,0 (Fase 2) dan ±50,3 (Fase 3, 754 jam-task dalam 15 hari kerja). Opsi A: ±62,0 bila Fase 3 dan Fase 4 berjalan paralel (930 jam-task dalam 15 hari kerja). Throughput tim `[TIDAK DIKETAHUI]`.
 - **Fase 2 menjadi titik terberat tim lama.** Kebutuhannya naik ±38% dari v0.1 (31,1 → 43,0): hari kerja turun 20 → 16 karena libur, dan isi bertambah 66 jam-task (US-110, reset MFA pasien US-207 AC5, CR-017 dan daftar ulang TOTP realm `nakes`, notifikasi sub-peran). Opsi E baru membantu mulai Fase 3 `[USER] C2-Q8`, sehingga Fase 2 ditanggung PM + Claude dan mobile developer saja.
 - **Durasi minimum Fase 1**: jalur kritis 65 jam-task berurutan (§7.4) dari 277 jam-task. Sisa 212 jam-task hanya muat di 15 hari kerja bila dikerjakan paralel di jalur backend, web, dan mobile; jalur kritis sendiri memuat 15 jam-task mobile (F1-T58, F1-T63) dan pola reference implementation (F1-T66) sebelum profil.
 
-Kebutuhan per jalur (Opsi B; jam-task per hari kerja; jalur mobile = mobile developer, jalur backend/web = Claude yang dijalankan PM, ditambah Opsi E mulai Fase 3) `[KEPUTUSAN-221]`:
+Kebutuhan per jalur, **angka v0.2 (lima hari kerja, tanpa CR-021; v0.4 di §6.8.2)** (Opsi B; jam-task per hari kerja; jalur mobile = mobile developer, jalur backend/web = Claude yang dijalankan PM, ditambah Opsi E mulai Fase 3) `[KEPUTUSAN-221]`:
 
 | Fase | Hari kerja | Mobile (jam-task) | Mobile per hari kerja | Backend, web, infrastruktur (jam-task) | Backend/web per hari kerja |
 | --- | --- | --- | --- | --- | --- |
@@ -190,22 +225,26 @@ Kebutuhan per jalur (Opsi B; jam-task per hari kerja; jalur mobile = mobile deve
 | 3 (Opsi B) | 15 | ±120 + porsi US-108/US-109 | ≥ ±8,0 | ≤ ±634 | ≤ ±42,3 |
 | Februari | 9 | perbaikan bug QA/SIT/audit/UAT (belum diestimasi) | — | 72 | 8,0 |
 
-- **Mobile developer**: porsi Opsi B (±359 jam-task ditambah porsi US-108/US-109) berarti rata-rata ≥ ±7,2 jam-task per hari kerja selama 50 hari kerja (2026-11-23 – 2027-02-05), dengan puncak ±12,2 di Fase 2 (195 ÷ 16). Opsi A: ±449 jam-task, rata-rata ±9,0. Kapasitas yang tercatat ±40 jam kerja per minggu `[USER] C2-Q3` beda satuan dengan jam-task dan tidak dikonversi (§6.3). Perhitungan ini belum memasukkan perbaikan bug dari QA, SIT, audit, dan UAT. Fase 1 relatif ringan untuk jalur mobile (2,9 per hari kerja), tetapi dua task mobile ada di jalur kritis (F1-T58, F1-T63).
+- **Mobile developer (v0.2; v0.4: porsi Opsi B + CR-021 ≥ 383 jam-task, 37 + 202 + ≥144, selama 75 hari kalender = rata-rata ≥ ±5,1 per hari kalender, puncak ±7,8 di Fase 2 = 202 ÷ 26; §6.8.2)**: porsi Opsi B (±359 jam-task ditambah porsi US-108/US-109) berarti rata-rata ≥ ±7,2 jam-task per hari kerja selama 50 hari kerja (2026-11-23 – 2027-02-05), dengan puncak ±12,2 di Fase 2 (195 ÷ 16). Opsi A: ±449 jam-task, rata-rata ±9,0. Kapasitas yang tercatat ±40 jam kerja per minggu `[USER] C2-Q3` beda satuan dengan jam-task dan tidak dikonversi (§6.3). Perhitungan ini belum memasukkan perbaikan bug dari QA, SIT, audit, dan UAT. Fase 1 relatif ringan untuk jalur mobile (2,9 per hari kerja), tetapi dua task mobile ada di jalur kritis (F1-T58, F1-T63).
 - **Backend, web, infrastruktur** bergantung pada throughput Claude dalam sesi ≥ 6 jam per hari kerja `[USER] C2-Q4`, ditambah review subagent per task, dan mulai Fase 3 pada developer tambahan (PT-53). Angka throughput `[TIDAK DIKETAHUI]`.
 - **Risiko yang menaikkan kebutuhan**: RT-24 (Rust lebih lambat), RT-01 (rekanan tidak mampu mengikuti kontrak), RT-05 (registrasi SATUSEHAT), RT-27 (penyedia diganti), dan putaran review T1 (maksimal 2 putaran per `aturan-kerja.md` §1) `[DOK: 04-risk-register.md]`.
 
 ### 6.5 Kesimpulan kelayakan dan kriteria gerbang re-plan
 
-**Kesimpulan:** jadwal 1 Maret 2027 untuk scope penuh (Opsi A) **tidak dapat dinyatakan layak**. Indikasinya kuat tidak layak: kebutuhan kecepatan Fase 3 + Fase 4 (±62,0 jam-task per hari kerja) lebih dari tiga kali kebutuhan Fase 1 (±18,5), dan Fase 2 sendiri (±43,0) sudah lebih dari dua kali Fase 1, dalam tim tanpa peran QA atau DevOps, dengan toleransi waktu 0. Baseline Opsi B `[USER] C2-Q1` dan tambahan developer backend/web mulai Januari `[USER] C2-Q2, C2-Q8` menurunkan beban Fase 3, tetapi kelayakannya juga baru dapat dinilai setelah kecepatan terukur.
+**Pembaruan v0.4 (CR-022 dan 7 hari per minggu).** Fungsi gerbang berubah: gerbang 2026-12-11 menetapkan **tanggal go-live baru**, bukan memilih opsi pemotongan scope (§6.8.5). Definisi kecepatan terukur `v` memakai **hari kalender**: rata-rata 10 hari kalender terakhir Fase 1, yaitu 2026-12-02 – 12-11 (v0.2: 10 hari kerja 2026-11-30 – 12-11). Tabel opsi di bawah dihitung ulang dengan hari kalender dan jam-task v0.3 (§6.7); Opsi C dan D hanya pembanding angka, tidak dipakai sebagai pemotongan (CR-022). Teks kesimpulan dan kriteria v0.2 di bawah tabel dipertahankan sebagai riwayat; bila bertentangan, §6.8 berlaku.
+
+**Kesimpulan (v0.2):** jadwal 1 Maret 2027 untuk scope penuh (Opsi A) **tidak dapat dinyatakan layak**. Indikasinya kuat tidak layak: kebutuhan kecepatan Fase 3 + Fase 4 (±62,0 jam-task per hari kerja) lebih dari tiga kali kebutuhan Fase 1 (±18,5), dan Fase 2 sendiri (±43,0) sudah lebih dari dua kali Fase 1, dalam tim tanpa peran QA atau DevOps, dengan toleransi waktu 0. Baseline Opsi B `[USER] C2-Q1` dan tambahan developer backend/web mulai Januari `[USER] C2-Q2, C2-Q8` menurunkan beban Fase 3, tetapi kelayakannya juga baru dapat dinilai setelah kecepatan terukur.
 
 **Kriteria gerbang re-plan 2026-12-11** `[UP-66]`, disetujui `[USER] C2-Q6`. Kecepatan terukur `v` = jumlah ukuran (kolom "Jam" §7.3) task yang selesai per hari kerja, dirata-rata selama 10 hari kerja terakhir Fase 1 (selesai = commit hijau + `code-reviewer` lolos, anti-halu §5). Satuan ini sama dengan estimasi Fase 2–4. Fase 1 tidak memuat hari libur, sehingga 10 hari kerja terakhirnya adalah 2026-11-30 – 2026-12-11. `v` dicatat juga per jalur: `v_mobile` (task mobile developer) dan `v_bw` (task backend, web, infrastruktur) `[KEPUTUSAN-221]`.
 
-| Opsi | Jam-task per hari kerja yang dibutuhkan di Fase 2 (16 hari kerja) | Di Fase 3 (+ Fase 4 bila ada; 15 hari kerja) |
+| Opsi (v0.4, dengan CR-021) | Jam-task per hari kalender yang dibutuhkan di Fase 2 (26 hari kalender) | Di Fase 3 (+ Fase 4 bila ada; 19 hari kalender) |
 | --- | --- | --- |
-| A | 43,0 (688 ÷ 16) | 62,0 (930 ÷ 15) |
-| B (baseline) | 43,0 | 50,3 (754 ÷ 15) |
-| C | 43,0 | 45,4 (681 ÷ 15) |
-| D | 43,0 | 20,0 (300 ÷ 15) |
+| A (pembanding) | 27,9 (725 ÷ 26) | 60,5 (1.149 ÷ 19) |
+| B (baseline, CR-022) | 27,9 | 51,2 (973 ÷ 19) |
+| C (pembanding, tidak dipakai) | 27,9 | 47,4 (900 ÷ 19) |
+| D (pembanding, tidak dipakai) | 27,9 | 27,3 (519 ÷ 19) |
+
+Angka v0.2 (lima hari kerja, tanpa CR-021): A 43,0 dan 62,0; B 43,0 dan 50,3; C 43,0 dan 45,4; D 43,0 dan 20,0. Peringatan dependensi Opsi C dan D atas K2/K3 (§6.7) tetap berlaku bila salah satunya pernah dipertimbangkan.
 
 Kebutuhan per jalur untuk Opsi B ada di tabel §6.4: Fase 2 mobile ±12,2 dan backend/web ±30,8; Fase 3 mobile ≥ ±8,0 dan backend/web ≤ ±42,3.
 
@@ -223,7 +262,7 @@ Kebutuhan per jalur untuk Opsi B ada di tabel §6.4: Fase 2 mobile ±12,2 dan ba
 | C. Lepas nomor 1–5 | B + konsultasi fisioterapis/tenaga medis (dinonaktifkan per jenis, effort kecil) + pendaftaran lab, info biaya, hasil lab (EP-06, EP-09, US-1307, bagian lab EP-04) | ±1.718 | Syarat go-live 3 tidak terpenuhi (diizinkan P8.3), dan syarat go-live 1 bagian lab dan outlet juga tidak; tersisa konsultasi dokter dan psikolog serta pendaftaran klinik; RME minimalis tetap dibangun untuk klinik | `[DOK: 03-prd.md]` §2.3 |
 | D. Lepas nomor 1–6 | Hanya konsultasi dokter dan psikolog, pembayaran, dan fitur kepatuhan; tanpa Partner Integration API, RME minimalis, klinik/lab | ±1.337 | Syarat go-live 1 (rekanan terintegrasi) dan 3 (tujuh layanan) tidak terpenuhi, yang diizinkan P8.3. **Perlu jawaban PT-47**: klinik penaung tenaga kesehatan tanpa integrasi tidak memenuhi syarat tampil US-205 AC2. CR-006 (RME minimalis) tidak berjalan di rilis 1 | `[DOK: 00-project-brief.md]` P8.3; `[DOK: 03-prd.md]` US-205 AC2, UP-33 |
 | E. Tambah kapasitas (**dijalankan bersama B**, `[USER] C2-Q2`) | Developer backend/web tambahan mulai awal Januari 2027 `[USER] C2-Q8` | Effort sama; kebutuhan per orang turun mulai Fase 3 | Biaya di luar baseline (toleransi +20% `[USER] T1-Q8`); jumlah orang, biaya, tanggal mulai pasti, dan waktu onboarding `[TIDAK DIKETAHUI]` (PT-53); keputusan CEO | `[DOK: 01-business-case.md]` §6.1, §7.1 |
-| — Tanggal mundur | Tidak tersedia | — | Toleransi waktu 0 | `[DOK: 01-business-case.md]` §7.1 |
+| — Tanggal mundur | **v0.4: tersedia** (v0.2: tidak tersedia). Go-live boleh mundur bila scope penuh tidak muat; tanggal ditetapkan di gerbang 2026-12-11 (§6.8.5) | — | Toleransi waktu 0 diubah CR-022. Dampak biaya (toleransi +20%, `[USER] T1-Q8`), jendela audit dan toko aplikasi (RT-34), dan komitmen pemasaran (R-07) perlu ditinjau di gerbang | `[USER]` CR-022 (`docs/backlog.md`); `[DOK: 01-business-case.md]` §7.1 (diubah) |
 
 Effort B, C, D dihitung dari tabel §6.2 dikurangi story yang dilepas: B = A − 176 (Fase 4 tanpa US-108/US-109); C = B − 73 (EP-06 18, EP-09 24, US-1307 12, bagian lab EP-04 ±19); D = B − 454 (EP-04 63, EP-06 18, EP-09 24, EP-13 tanpa US-1305/US-1308 156, EP-14 96, EN-21 30, EN-22 55, dan bagian realm `rme` dari CR-017, daftar ulang TOTP, dan US-110 sebesar 12) `[KEPUTUSAN-178]`. Tambahan v0.2 lainnya (F1-T72–F1-T80, US-110, US-207 AC5, CR-017 dan daftar ulang TOTP realm `nakes`, notifikasi sub-peran) berlaku di semua opsi.
 
@@ -262,6 +301,85 @@ Catatan:
 **Kriteria gerbang re-plan 2026-12-11 (pembaruan v0.3).** Kebutuhan Opsi B kini 45,3 di Fase 2 dan 64,9 di Fase 3. Kekurangan Fase 3 jalur backend/web yang harus disumbang Opsi E = 55,3 − `v_bw` (§6.5). Aturan §6.5 lainnya tetap berlaku.
 
 **Dampak ke jalur kritis Fase 1.** Longest path tetap 65 jam-task. Rantai CR-021 terpanjang (F1-T01 → … → T17 → F1-T98 → F1-T99 → F1-T100 → F1-T104 → F1-T105 → F1-T106 → F1-T110) selesai paling awal di jam-task ke-51, dengan slack ±11 terhadap F1-T70. Pembatas nyata adalah kapasitas jalur backend/web.
+
+*Tabel §6.7 di atas adalah angka v0.3 (lima hari kerja); versi hari kalender ada di tabel v0.4 di §6.2 dan di §6.8.*
+
+### 6.8 Perubahan v0.4: 7 hari per minggu, CR-022, progres Fase 1 per 2026-11-20
+
+Sumber arahan: `[USER]` 2026-11-19 ("tidak ada hari libur. jalan terus"; akhir pekan **Y**) di `docs/fase-1-catatan.md`; `[USER]` CR-022 di `docs/backlog.md`. Semua angka di bawah adalah **perhitungan penyusun** dari jam-task §7.3 dan §6.7 (estimasi, bukan fakta) `[KEPUTUSAN-281]`–`[KEPUTUSAN-284]`.
+
+#### 6.8.1 Basis hitung
+
+- Fase 1 **mulai nyata 2026-11-18** `[DOK: STATUS.md]`. Jendela rencana tetap 2026-11-23 – 12-11 (19 hari kalender). Dari mulai nyata sampai 12-11: 24 hari kalender (361 ÷ 24 = 15,0 jam-task per hari).
+- **Sisa** dihitung dari **hari ini, 2026-11-20, inklusif** sampai 2026-12-11: 22 hari kalender (11 hari di November + 11 di Desember). Alasannya: sisa pekerjaan dibagi sisa waktu yang masih bisa dipakai. Bila hari ini tidak dihitung (mulai 11-21): 21 hari, 288 ÷ 21 = 13,7.
+- Fase 2–3 dan Februari memakai hari kalender di jendela yang disetujui `[USER] C2-Q5` (§6.2a). Akhir pekan antar-fase (12–13 Des, 9–10 Jan) tidak dialokasikan; bila dipakai, jendela Fase 2 + Fase 3 menjadi 49 hari (2026-12-12 – 2027-01-29).
+
+#### 6.8.2 Kebutuhan per hari kalender
+
+Jam-task Opsi B + CR-021 dari §6.7; per minggu = per hari × 7.
+
+| Fase | Hari kalender | Jam-task (total / backend-web / mobile) | Per hari kalender (total / backend-web / mobile) | Per minggu (total) |
+| --- | --- | --- | --- | --- |
+| 1, seluruhnya | 19 | 361 / 324 / 37 | 19,0 / 17,1 / 1,9 | 133,0 |
+| 1, sisa dari 2026-11-20 | 22 | 288 / 251 / 37 | **13,1 / 11,4 / 1,7** | 91,6 |
+| 2 | 26 | 725 / 523 / 202 | **27,9 / 20,1 / 7,8** | 195,2 |
+| 3 | 19 | 973 / ≤ 829 / ≥ 144 | **51,2 / ≤ 43,6 / ≥ 7,6** | 358,5 |
+| Februari | 12 | 72 / 72 / — | **6,0** / 6,0 / — | 42,0 |
+
+- Sisa Fase 1 per jalur: backend/web 324 − 73 selesai = 251; mobile 37 (tidak ada task mobile tercatat selesai; Flutter dikerjakan terpisah di laptop `[USER]` 2026-11-19, `docs/fase-1-catatan.md`).
+- **Peringatan penafsiran.** Kebutuhan per hari turun terutama karena pembagi hari bertambah (Fase 1 15 → 19, Fase 2 16 → 26, Fase 3 15 → 19, Februari 9 → 12). Kapasitas riil naik sebesar itu hanya bila jam kerja per hari tetap sama di akhir pekan dan libur. Jam kerja per hari dan per minggu (sesi Claude ≥ 6 jam per hari kerja `[USER] C2-Q4`; mobile developer ±40 jam per minggu `[USER] C2-Q3`) apakah berubah `[TIDAK DIKETAHUI]`; penyusun tidak mengonversinya ke jam-task (§6.3). Karena itu kolom per minggu ditampilkan sebagai pembanding yang tidak bergantung pada jumlah hari kerja.
+- Mobile developer: ≥ 383 jam-task (37 + 202 + ≥ 144) dalam 75 hari kalender (2026-11-23 – 2027-02-05) = rata-rata ≥ 5,1 per hari kalender.
+
+#### 6.8.3 Progres Fase 1 per 2026-11-20 (jam-task dari kolom "Jam" §7.3)
+
+| Kelompok | Task selesai atau ter-merge | Jam-task selesai | Dari total | Persen jam-task |
+| --- | --- | --- | --- | --- |
+| Baseline Fase 1 (73 task, 252 jam-task) | F1-T01–F1-T18 (18 task; termasuk spike F1-T02, F1-T03) | 59 (2+3+3+3+3+3+3+3+3+4+4+3+3+4+4+3+4+4) | 252 | 23,4% |
+| CR-021 Fase 1 (31 task, 109 jam-task) | F1-T81, F1-T82 (dokumen gate, diterapkan 2026-11-19 `[DOK: backlog.md]` CR-021), F1-T83, F1-T84 (desain) | 14 (4+4+3+3) | 109 | 12,8% |
+| **Fase 1 seluruhnya (104 task, 361 jam-task)** | **22 task (21,2%)** | **73** | **361** | **20,2%** |
+
+- Sisa: **82 task, 288 jam-task**: baseline 55 task, 193 jam-task (F1-T19–F1-T80 tanpa tujuh task yang pindah ke Fase 2); CR-021 27 task, 95 jam-task (F1-T85–F1-T111).
+- TD-01 (pemeriksa teks migrasi `EXECUTE`, `[DOK: backlog.md]` Tech Debt) selesai tetapi tidak punya ukuran jam-task, sehingga tidak dihitung `[KEPUTUSAN-284]`. TD-07–TD-10 (review F1-T18) belum dikerjakan dan tidak ada di total.
+- Bila F1-T81 dan F1-T82 tidak dihitung (daftar status resmi di `docs/STATUS.md` hanya menyebut F1-T83/F1-T84 untuk CR-021): 65 jam-task selesai (18,0%), sisa 296 `[KEPUTUSAN-284]`.
+- Jalur kritis 65 jam-task (§7.4): 26 jam-task di belakang (F1-T01, T04, T05, T07, T13, T14, T15, T17), sisa 39 (F1-T27, T29, T60, T61, T62, T66, T56, T58, T63, T70, T71). F1-T19 belum dikerjakan.
+- **Kecepatan indikatif** (bukan `v` gerbang): 73 jam-task dalam 3 hari kalender (2026-11-18 – 11-20) = ±24,3 per hari; kebutuhan sisa 13,1 per hari (backend/web 11,4). Angka ini dipengaruhi isi yang ringan (spike, dokumen, desain), tidak memuat task mobile, dan sampel tiga hari. Bila bertahan, sisa 288 selesai dalam ±12 hari (±2026-12-01 – 12-02); penyusun tidak memakainya sebagai komitmen. `v` yang sah diukur 2026-12-02 – 12-11 (§6.5).
+
+#### 6.8.4 Urutan Fase 1 menurut CR-022
+
+1. **Baseline lebih dulu**: F1-T19–F1-T80 yang tetap di Fase 1, kecuali F1-T71 (54 task, 190 jam-task).
+2. **Lalu CR-021**: F1-T85–F1-T111 (27 task, 95 jam-task), mengikuti dependensi §7.3.
+3. **F1-T71 (penutupan Fase 1) paling akhir** (3 jam-task) karena bergantung pada F1-T110.
+- Waktu bila kecepatan backend/web tepat sebesar kebutuhan rata-rata (11,4 per hari): baseline backend/web 156 jam-task (193 − 37 mobile) selesai ±hari ke-14 (≈ 2026-12-03); CR-021 95 jam-task butuh ±8,3 hari lagi, selesai tepat 2026-12-11. Jalur mobile (37 jam-task, kebutuhan 1,7 per hari) berjalan paralel di laptop. Jadi 2026-12-11 tercapai **hanya** bila kecepatan backend/web ≥ 11,4 jam-task per hari kalender sejak hari ini; tidak ada slack di luar kecepatan itu.
+- Tidak ada task baseline yang bergantung pada task CR-021 selain F1-T71; urutan ini tidak melanggar dependensi §7.3. Koreksi dependensi: **F1-T19 bergantung pada F1-T16 dan F1-T18** (tabel `consent_record` memakai FK ke `patient`/`care_recipient`) `[DOK: fase-1-catatan.md]` "Posisi saat sesi berhenti"; baris F1-T19 di §7.3 diperbarui.
+- Bila Fase 1 belum selesai pada 2026-12-11, gerbang tetap berjalan pada tanggal itu dengan data yang ada; sisa Fase 1 yang belum selesai menjadi tambahan beban Fase 2 dan masuk perhitungan tanggal go-live (§6.8.5). Risiko mundur diterima user `[USER]` CR-022.
+
+#### 6.8.5 Gerbang 2026-12-11: tanggal go-live baru `[KEPUTUSAN-283]`
+
+Yang diputuskan user di gerbang: (1) tanggal go-live baru, dan (2) tambahan tenaga (PT-53: jumlah orang, biaya terhadap toleransi +20% `[USER] T1-Q8`, tanggal mulai). Pilihan opsi pemotongan scope (C, D, atau mengurangi Fase 2–3) **tidak** diajukan di gerbang; scope tetap Opsi B + CR-021 `[USER]` CR-022. Keputusan atas Opsi A (Fase 4) tetap di gerbang (lihat §6.8.6).
+
+Cara menetapkan tanggal:
+- `S` = sisa jam-task Fase 1 yang belum selesai pada 2026-12-11 + 725 (Fase 2) + 973 (Fase 3) = 1.698 bila Fase 1 selesai penuh. `v` = kecepatan tim terukur (§6.5), hari kalender.
+- Tanggal pembekuan fitur baru = 2026-12-11 + ⌈S ÷ v⌉ hari kalender. Go-live baru = pembekuan + **31 hari kalender**, yaitu panjang jendela 2027-01-29 → 2027-03-01 di rencana yang disetujui (QA/SIT, audit, UAT, pre-deploy, deploy; §5). Apakah jendela ini dapat dipadatkan `[TIDAK DIKETAHUI]`. Pekerjaan Februari (72 jam-task) berjalan paralel di jendela itu.
+- Asumsi ilustrasi: Fase 1 selesai penuh pada 12-11, `v` konstan, tanpa tambahan tenaga, ukuran task tidak berubah (penilaian ulang ukuran, KEPUTUSAN-223, belum dilakukan sehingga cenderung terlalu rendah), akhir pekan antar-fase ikut dipakai (kontinu dari 12-12), dan tidak ada pemisahan jalur mobile.
+
+| `v` (jam-task per hari kalender, seluruh tim) | Hari yang dibutuhkan (1.698 ÷ v) | Pembekuan fitur | Go-live | Selisih dari 2027-03-01 |
+| --- | --- | --- | --- | --- |
+| 25 | 68 | 2027-02-17 | 2027-03-20 | +19 hari |
+| 30 | 57 | 2027-02-06 | 2027-03-09 | +8 hari |
+| ≥ 34,7 (1.698 ÷ 49) | ≤ 49 | ≤ 2027-01-29 | ≤ 2027-03-01 | 0 |
+
+Tabel ini sensitivitas aritmetika, bukan prakiraan; kebutuhan agar 2027-03-01 tetap tercapai: ±34,7 per hari kalender bila 12-12 – 01-29 dipakai seluruhnya (49 hari), atau ±37,7 bila hanya 45 hari yang dialokasikan (1.698 ÷ 45). `v` terukur 2026-12-02 – 12-11 dibandingkan dengan angka ini. Tambahan tenaga (Opsi E, PT-53) menaikkan `v` mulai Fase 3; kontribusinya dihitung di gerbang sesuai §6.5 (kekurangan Fase 3 backend/web = 43,6 − `v_bw` per hari kalender). Dampak biaya, jendela audit dan toko aplikasi (RT-34), serta komitmen pemasaran (R-07) bila go-live mundur ditinjau di gerbang; go-live di sekitar Idulfitri (10–11 Maret 2027 `[SRC-282]`) berisiko pada ketersediaan penyedia luar `[TIDAK DIKETAHUI]`.
+
+#### 6.8.6 Kontradiksi dan butir yang dilaporkan, tidak diselesaikan sendiri
+
+| # | Temuan | Perlakuan |
+| --- | --- | --- |
+| P-1 | CR-022 "Dampak" di `docs/backlog.md` menulis baseline scope "menjadi Opsi A (Fase 4 dikerjakan) ditambah CR-021", sedangkan tafsiran orkestrator di entri yang sama dan instruksi pembaruan ini menyatakan cakupan tidak diperluas (baseline Opsi B + CR-021) | v0.4 mengikuti Opsi B + CR-021; Opsi A hanya pembanding (§6.2 tabel v0.4, §6.5). Perlu konfirmasi user; bila Opsi A dimaksud, Fase 3 menjadi 1.149 jam-task (60,5 per hari kalender) dan total ±2.307 |
+| P-2 | `docs/01-business-case.md` §7.1 dan brief P8.3 (toleransi waktu 0) bertentangan dengan CR-022 | Business case diberi catatan perubahan; P8.3 di brief tidak diubah di tugas ini |
+| P-3 | C2-Q7 (libur nasional dan cuti bersama = libur tim) bertentangan dengan arahan 7 hari per minggu | Digantikan di v0.4; riwayat v0.2 dipertahankan |
+| P-4 | F1-T19 bergantung pada F1-T16 saja di v0.3, padahal membutuhkan F1-T18 | Diperbaiki di §7.3 |
+| P-5 | `docs/STATUS.md` tidak menyebut F1-T81/F1-T82 selesai, sedangkan `docs/backlog.md` CR-021 menyebut "diterapkan 2026-11-19" | Dihitung selesai; angka tanpa keduanya di §6.8.3 |
+| P-6 | Jam kerja per hari dan per minggu di akhir pekan `[TIDAK DIKETAHUI]` | Kenaikan kapasitas tidak dikonversi (§6.8.2) |
 
 ---
 
@@ -338,7 +456,7 @@ Kolom: **Jam** = ukuran 2/3/4 jam-task. **Kelas** = tingkat ketelitian (`aturan-
 | F1-T16 | Migrasi A1: `account`, `rs_admin_role`, `session_revocation` + hak role | EN-04 | 3 | F1-T15 | T1 | DBA, Sec |
 | F1-T17 | Migrasi A19: `audit_outbox`, `job`, `upload_slot`, `stored_file`, `data_key`, dan `data_key_retention_anchor` (CR-014 bagian DB aplikasi; data dictionary A19 diperbarui di task yang sama) + hak role | EN-04 | 4 | F1-T15 | T1 | DBA, Sec |
 | F1-T18 | Migrasi A2 + A6.7: `patient`, `care_recipient`, `address`, `identity_document`, `identity_verification_request` (+ `_status_event`, `_state`), `account_owner_nik_registry`, `reason_code` + hak role | EN-04 | 4 | F1-T16, F1-T17 | T1 | DBA, Sec |
-| F1-T19 | Migrasi A3: `consent_text_version`, `consent_item`, `consent_record` + hak role | EN-04 | 2 | F1-T16 | T1 | DBA, Sec |
+| F1-T19 | Migrasi A3: `consent_text_version`, `consent_item`, `consent_record` + hak role | EN-04 | 2 | F1-T16, F1-T18 (v0.4: F1-T18 ditambahkan, `consent_record` memakai FK ke `patient`/`care_recipient`) | T1 | DBA, Sec |
 | F1-T20 | Crate `platform-jobs`: tabel job, `FOR UPDATE SKIP LOCKED`, kunci job tunggal `pg_try_advisory_lock`, idempotensi | EN-05 | 4 | F1-T17 | T1 | DBA |
 | F1-T21 | Migrasi DB audit B1–B6 (partisi bulanan, kunci, subjek, jangkar, verifikasi, manifest arsip), role `audit_relay`/`audit_writer`/`audit_verifier`, partisi ke depan | EN-05 | 4 | F1-T15 | T1 | DBA, Sec |
 | F1-T22 | Crate `audit` (1): tipe E-01–E-17, field PRD §7.2, masking §7.3; test field terlarang tidak pernah masuk | EN-05 | 4 | F1-T08 | T1 | Sec |
@@ -433,6 +551,20 @@ Kolom: **Jam** = ukuran 2/3/4 jam-task. **Kelas** = tingkat ketelitian (`aturan-
 | F1-T111 | Render aman konten CMS (M-40): validasi backend saat simpan (HTML mentah ditolak/dinetralkan, daftar izin skema URL, gambar hanya dari endpoint publik), satu aturan render Markdown untuk situs dan pratinjau, CSP backoffice tanpa skrip inline; pustaka dipilih dengan cek registry dan dicatat di `docs/sources.md`; test payload XSS | US-1802, US-1801 | 4 | F1-T92 | T1 | Sec |
 
 Jumlah v0.3 `[USER] C21-P4`: **104 task, 361 jam-task** di Fase 1 = 80 task lama dikurangi 7 yang pindah ke Fase 2 (F1-T57, F1-T67, F1-T75–F1-T79; 25 jam-task), ditambah F1-T81–F1-T111 (31 task, 109 jam-task, 19 berkelas T1, semua jalur backend/web). F1-T71 bergantung juga pada F1-T110. Jumlah v0.2: **80 task, 277 jam-task**; 54 task berkelas T1 (jumlah baris T1 di tabel: 45 di v0.1 ditambah F1-T72–F1-T80). Task mobile developer: F1-T44–F1-T48, F1-T52–F1-T54, F1-T58, F1-T63, F1-T77, F1-T78 (44 jam-task). Reset MFA pasien oleh Layanan Pelanggan (US-207 AC5, `[KEPUTUSAN-204]` butir 2) ada di Fase 2 `[KEPUTUSAN-217]`.
+
+### 7.3a Status dan urutan per 2026-11-20 (v0.4, CR-022)
+
+Sumber status: `docs/fase-1-catatan.md` (posisi akhir pemanggilan `/runbook auto`) dan `docs/STATUS.md`; status task resmi tetap di `docs/backlog.md` dengan bukti commit.
+
+| Kelompok | Task | Jam-task |
+| --- | --- | --- |
+| Selesai atau ter-merge ke `tahap-08-fase-1` | F1-T01–F1-T18 (termasuk spike F1-T02, F1-T03); F1-T81, F1-T82 (dokumen gate CR-021); F1-T83, F1-T84 (desain CR-021) | 73 dari 361 (20,2%); 22 dari 104 task |
+| Selesai, tanpa ukuran | TD-01 | tidak dihitung |
+| Berikutnya (baseline) | F1-T19 (setelah F1-T18), lalu F1-T20 dst. (audit trail, realm dan MFA, RBAC, enkripsi, berkas, BFF, kerangka web), reference implementation, F1-T70 | 193 sisa baseline (55 task) |
+| Sesudah baseline (CR-021) | F1-T85–F1-T111 | 95 (27 task) |
+| Paling akhir | F1-T71 (bergantung pada F1-T110) | termasuk di 193 |
+
+Ukuran, dependensi, dan kelas task tidak berubah di v0.4 selain dependensi F1-T19. Total Fase 1 tetap 104 task, 361 jam-task. Hitungan lengkap di §6.8.3–§6.8.4.
 
 **Penyesuaian definisi dari klarifikasi AC** (disetujui di Checkpoint 2 `[USER] C2-B4, C2-B7, C2-B14, C2-B15`). Task berikut menyesuaikan definisinya dengan klarifikasi yang disetujui, tanpa perubahan ukuran di versi ini: F1-T25, F1-T29–F1-T31, F1-T33, F1-T35, F1-T36, F1-T42, F1-T46, F1-T50, F1-T51, F1-T53–F1-T60, F1-T62, F1-T63, F1-T65, F1-T68, F1-T69 `[DOK: 07-klarifikasi-ac-fase-1.md]` §6. Rincian per task ada di baris "Task." setiap butir T-01–T-22 di dokumen itu. Penyesuaian yang menonjol:
 - F1-T60: batas NIK berlapis (3/24 jam per akun, 3/24 jam per NIK lintas akun, 10/24 jam per IP, peringatan > 20/jam global) `[USER] C2-B4`.
@@ -558,7 +690,7 @@ EN-26 (host production Biznet Gio dan Hostinger, Docker Compose, Caddy, OpenBao 
 | G-02 | Persetujuan `scripts/verify.sh` | F1-T05 | Tidak ada commit kode | User |
 | G-03 | ADR jalur email (dari F1-T02) | F1-T36, US-101, US-103, US-105 AC4, F1-T74, F1-T80 | Story itu digeser ke akhir Fase 1 | User |
 | G-04 | PT-44 pesan akun terkunci | F1-T35, F1-T55 | — | **Selesai**: pesan seragam UP-73 opsi B `[USER] C2-B4` |
-| G-05 | Gerbang re-plan dengan kecepatan terukur | Fase 2 | Fase 2 dimulai dengan baseline Opsi B `[USER] C2-Q1` | User |
+| G-05 | Gerbang re-plan dengan kecepatan terukur (v0.4, CR-022: menetapkan tanggal go-live baru dan tambahan tenaga, bukan memilih opsi pemotongan scope; §6.8.5) | Fase 2 | Fase 2 dimulai dengan baseline Opsi B + CR-021 pada tanggal yang disetujui; tanggal go-live mengikuti kecepatan terukur `[USER]` CR-022 | User |
 | G-06 | PT-39 konfirmasi Biznet Gio | EN-15 (awal Fase 2), rancangan ingress production | Staging tertunda; deploy hanya lokal | User |
 | G-07 | PT-47 status integrasi klinik untuk konsultasi | US-205, US-303 (Fase 2) | Syarat tampil klinik mengikuti US-205 AC2 apa adanya | User/CEO |
 | G-08 | PT-42 draf catatan (UP-72) | US-308 (Fase 2) | — | **Selesai**: UP-72 disetujui `[USER] C2-B15` |
@@ -587,10 +719,10 @@ EN-26 (host production Biznet Gio dan Hostinger, Docker Compose, Caddy, OpenBao 
 ## 10. Jalur kritis proyek
 
 1. Fase 1 fondasi dan reference implementation (jalur kritis 65 jam-task, §7.4).
-2. Gerbang re-plan 2026-12-11 (keputusan opsi final; rincian Opsi E, PT-53).
-3. Fase 2 pembayaran dalam 16 hari kerja, bergantung pada PT-36 (target 2026-12-21) dan EN-24 pajak. Libur 24–25 Desember 2026 dan 1, 5 Januari 2027 jatuh di fase ini (§6.2a).
+2. Gerbang re-plan 2026-12-11 (v0.4: penetapan tanggal go-live baru; rincian Opsi E, PT-53; §6.8.5).
+3. Fase 2 pembayaran dalam 26 hari kalender (v0.2: 16 hari kerja), bergantung pada PT-36 (target 2026-12-21) dan EN-24 pajak. Libur 24–25 Desember 2026 dan 1, 5 Januari 2027 bukan hari libur tim sejak v0.4 (§6.2a); apakah penyedia luar (DOKU) bekerja di hari itu `[TIDAK DIKETAHUI]`.
 4. Fase 3 integrasi, bergantung pada PT-05 (rekanan nyata untuk SIT), untuk RME pada PT-32, dan pada onboarding developer tambahan yang mulai awal Januari 2027 (lama onboarding `[TIDAK DIKETAHUI]`).
-5. Pembekuan fitur 2027-01-29 → SIT → audit keamanan eksternal (PT-49) → UAT (PT-50) → pengajuan toko aplikasi paling lambat 2027-02-12 (PT-51, R-08) → deploy → go-live.
+5. Pembekuan fitur 2027-01-29 (v0.4: dapat bergeser lewat gerbang 2026-12-11) → SIT → audit keamanan eksternal (PT-49) → UAT (PT-50) → pengajuan toko aplikasi paling lambat 2027-02-12 (PT-51, R-08) → deploy → go-live (target semula 2027-03-01; boleh mundur, CR-022).
 
 Butir eksternal di jalur kritis yang lamanya `[TIDAK DIKETAHUI]`: konfirmasi DOKU, kesiapan rekanan, registrasi SATUSEHAT, audit eksternal, review toko aplikasi, dan perizinan (PT-20, PT-25).
 
@@ -704,6 +836,10 @@ Status per v0.2. Status di `docs/decision-log.md` diperbarui pemegang berkas itu
 | Keputusan (v0.2) | KEPUTUSAN-222 | Opsi E di gerbang re-plan dinyatakan sebagai kekurangan kecepatan backend/web Fase 3 | menunggu |
 | Keputusan (v0.2) | KEPUTUSAN-223 | Penilaian ulang ukuran task yang disesuaikan klarifikasi setelah PRD v1.2 final | menunggu |
 | Sumber (v0.2) | SRC-280–SRC-283 | SKB libur nasional dan cuti bersama 2026 (Setneg, Kemenko PMK) dan 2027 (Kemenko PMK, Setneg) | tercatat |
+| Keputusan (v0.4) | KEPUTUSAN-281 | Pembagi kebutuhan = hari kalender (7 hari per minggu); akhir pekan antar-fase tidak dialokasikan; sisa Fase 1 dihitung dari 2026-11-20 inklusif | usulan, menunggu pencatatan di `docs/decision-log.md` |
+| Keputusan (v0.4) | KEPUTUSAN-282 | Urutan Fase 1 CR-022: baseline (kecuali F1-T71), lalu F1-T85–F1-T111, lalu F1-T71; F1-T19 bergantung pula pada F1-T18 | usulan, menunggu pencatatan |
+| Keputusan (v0.4) | KEPUTUSAN-283 | Rumus tanggal go-live baru di gerbang (pembekuan = 2026-12-11 + ⌈S ÷ v⌉; ekor 31 hari) dan kriteria `v` per 10 hari kalender | usulan, menunggu pencatatan |
+| Keputusan (v0.4) | KEPUTUSAN-284 | Jam-task selesai dari kolom "Jam" §7.3; F1-T81/F1-T82 dihitung selesai; TD-01 tanpa ukuran dan tidak dihitung | usulan, menunggu pencatatan |
 | Pertanyaan (Checkpoint 2) | PT-52, PT-53 | Super Admin pertama dan penyetujunya; developer backend/web tambahan | terbuka (§9 G-22, G-23) |
 
 Rincian UP dan PT ada di `docs/07-catatan-phase-plan.md`.
@@ -718,7 +854,7 @@ Rincian UP dan PT ada di `docs/07-catatan-phase-plan.md`.
 | Enabler fondasi ada di Fase 1 | Terpenuhi: skema inti (EN-04), autentikasi + RBAC (EN-06, EN-07), Audit Trail Foundation (EN-05), CI pipeline (EN-02), reference implementation (EN-14) |
 | Test plan tersusun dari PRD | Terpenuhi (`docs/test-plan.md`, 674 test case); test case CR-017, CR-018, dan US-110 diperbarui QA (tindak lanjut Checkpoint 2) |
 | User menyetujui pembagian fase | **Disetujui di Checkpoint 2**: UP-65 `[USER] C2-Q5`, UP-66 `[USER] C2-Q6`, UP-67 `[USER] C2-Q1` (Opsi B baseline, Opsi E `[USER] C2-Q2`) |
-| Gate anti-halu | v0.1: fact-check LULUS (`docs/fact-check/tahap-07.md`). v0.2: menunggu fact-check atas baris yang berubah. v0.3: analisis CR-021 lulus fact-check (`docs/fact-check/CR-021.md`); baris v0.3 menunggu fact-check |
+| Gate anti-halu | v0.1: fact-check LULUS (`docs/fact-check/tahap-07.md`). v0.2: menunggu fact-check atas baris yang berubah. v0.3: analisis CR-021 lulus fact-check (`docs/fact-check/CR-021.md`); baris v0.3 menunggu fact-check. v0.4: baris yang berubah (§6.8) menunggu fact-check (T2) |
 
 ---
 
@@ -729,3 +865,4 @@ Rincian UP dan PT ada di `docs/07-catatan-phase-plan.md`.
 | 0.1 | 2026-11-18 | Draf Tahap 7: empat fase, kalender usulan, estimasi effort, opsi scope, 71 task Fase 1, jalur kritis 65 jam-task, gerbang eksternal |
 | 0.2 | 2026-11-18 | Tindak lanjut Checkpoint 2. (1) Hari kerja dikurangi libur nasional dan cuti bersama SKB 2026/2027 (SRC-280–SRC-283): Fase 2 20 → 16, Februari 10 → 9; §6.2a baru. (2) Kapasitas PT-48 dan Opsi E diisi dari jawaban user; kecepatan diukur per jalur. (3) Fase 1: F1-T72–F1-T80 (CR-018 MFA wajib pasien termasuk daftar ulang TOTP, CR-017 ubah password saat login; diselaraskan dengan revisi PRD US-101 AC5 dan US-103 AC1b, AC6–AC8), F1-T70 bergantung pada F1-T80; 80 task, 277 jam-task; jalur kritis tetap 65. (4) Fase 2: US-110 (XL), reset MFA pasien US-207 AC5 (M), CR-017 + daftar ulang TOTP `nakes` (M), notifikasi sub-peran (S); Fase 3: US-108/US-109 (Opsi B), CR-017 + daftar ulang TOTP + US-110 `rme` (M); Fase 4 tidak dikerjakan di baseline B. (5) Effort A ±1.967, B ±1.791, C ±1.718, D ±1.337; kebutuhan Fase 1 ±18,5, Fase 2 ±43,0, Fase 3 B ±50,3. (6) §1, §9 (G-22 PT-52, G-23 PT-53), §11, §12, §13 diperbarui. KEPUTUSAN-215–223 |
 | 0.3 | 2026-11-19 | CR-021 skenario S3 `[USER] C21-P4`. (1) Fase 1: F1-T81–F1-T111 (31 task, 109 jam-task; situs, CMS US-1101 dari Fase 3, pendaftaran dan verifikasi perusahaan oleh Verifikator, akun HR); F1-T57, F1-T67, F1-T75–F1-T79 pindah ke Fase 2; F1-T80 didefinisikan ulang; F1-T71 bergantung juga pada F1-T110; total 104 task, 361 jam-task; jalur kritis tetap 65. (2) Fase 2: +25 pindahan + reset MFA HR (M 12) = 725 (45,3 per hari kerja). (3) Fase 3: −12 (US-1101) + K2 195 + K3 36 = 973 (64,9). (4) Opsi B ±2.131 (+340), Opsi A ±2.307; peringatan dependensi Opsi C/D atas K2/K3. (5) §6.7 baru; §1, §4, §7.1, §7.3, §7.4, §8.1, §8.2, §9 (G-24–G-27) diperbarui. KEPUTUSAN-260–263 |
+| 0.4 | 2026-11-20 | Kerja 7 hari per minggu `[USER]` 2026-11-19 (mengubah C2-Q7) dan CR-022. (1) Hitungan memakai hari kalender: Fase 1 19 (sisa dari 2026-11-20: 22), Fase 2 26, Fase 3 19, Februari 12, mobile developer 75; §6.2a, §6.2 (tabel v0.4), §5, §4. (2) Kebutuhan baru Opsi B + CR-021: Fase 1 sisa 13,1 (backend/web 11,4; mobile 1,7), Fase 2 27,9, Fase 3 51,2, Februari 6,0 jam-task per hari kalender; effort ±2.131 tidak berubah; per minggu sebagai pembanding. (3) CR-022: urutan Fase 1 baseline dulu lalu F1-T81–F1-T111, F1-T71 terakhir; toleransi waktu 0 diubah (go-live boleh mundur); gerbang 2026-12-11 menetapkan tanggal go-live baru, bukan memilih opsi pemotongan scope; scope tetap Opsi B + CR-021 (§2, §3, §6.5, §6.6, §9 G-05, §10). (4) Progres per 2026-11-20: 73 dari 361 jam-task (20,2%), 22 dari 104 task; sisa 288 (§6.8.3, §7.3a). (5) F1-T19 bergantung pula pada F1-T18. (6) §6.8 baru, kontradiksi P-1–P-6. KEPUTUSAN-281–284 |
