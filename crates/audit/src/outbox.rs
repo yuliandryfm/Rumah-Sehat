@@ -26,7 +26,7 @@
 //! event berhasil-gagal, percobaan ulang oleh pemanggil (F1-T38).
 
 use crate::error::{AuditError, AuditErrorKind};
-use crate::event::{AuditEvent, AuditRecord};
+use crate::event::{AuditEvent, AuditRecord, FailedAccessRecord};
 use foundation::Clock;
 use observability::security::{self, AuditWriteFailure};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
@@ -157,6 +157,43 @@ where
     }
     tx.commit().await.map_err(|e| db_error(&e))?;
     Ok(value)
+}
+
+/// Menulis satu event penolakan akses ke data sensitif ([`FailedAccessRecord`], E-05 hasil gagal) ke
+/// `app.audit_outbox` di transaksi tersendiri, idempoten: event dengan ID yang sama yang sudah ada tidak
+/// ditulis ulang (`ON CONFLICT DO NOTHING`). Target konflik `(id)` tidak ditulis karena PostgreSQL
+/// mensyaratkan hak `SELECT` atas kolom target, sedangkan role aplikasi sengaja hanya punya `INSERT` di
+/// `audit_outbox` (ADR-009 butir 2); satu-satunya constraint unik tabel ini adalah `pk_audit_outbox (id)`,
+/// dijaga test `failed_access_insert_is_idempotent_for_retries`. Untuk percobaan ulang di luar jalur permintaan
+/// (coding-standards §4.4 butir 3, F1-T38): event dan ID-nya dibentuk sekali, sehingga percobaan ulang
+/// setelah commit yang balasannya hilang tidak menggandakan event; bila baris sudah dipindah relay, event
+/// yang ditulis ulang dilewati relay berdasarkan ID event (F1-T24).
+///
+/// Hanya event penolakan akses yang diterima (tipe [`FailedAccessRecord`]); event aksi bisnis tetap wajib
+/// lewat [`in_audited_tx`] supaya atomisitas aksi dan event (KEPUTUSAN-283) tidak dapat dilewati. Test
+/// arsitektur (aturan `audit-failed-access`) membatasi pemanggilnya ke
+/// `apps/rs-backend/src/access_audit.rs`.
+pub async fn insert_failed_access(
+    pool: &PgPool,
+    failed: &FailedAccessRecord,
+) -> Result<(), AuditError> {
+    let record = failed.record();
+    let result = sqlx::query!(
+        "INSERT INTO app.audit_outbox (id, occurred_at, payload) VALUES ($1, $2, $3) \
+         ON CONFLICT DO NOTHING",
+        record.event_id(),
+        record.occurred_at(),
+        record.payload(),
+    )
+    .execute(pool)
+    .await;
+    match result {
+        Ok(_) => Ok(()),
+        Err(_) => {
+            security::audit_write_failed(record.code().as_str(), AuditWriteFailure::StoreError);
+            Err(AuditError::new(AuditErrorKind::Write, "audit_outbox"))
+        }
+    }
 }
 
 /// Rollback eksplisit. Bila rollback sendiri gagal (koneksi putus), koneksi dibuang pool dan server

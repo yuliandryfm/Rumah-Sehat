@@ -380,3 +380,244 @@ fn raw_transaction_control_sql_is_rejected() {
     }
     assert!(rules("crates/audit/tests/x.rs", r#"const S: &str = "COMMIT";"#).is_empty());
 }
+
+#[test]
+fn router_bypass_in_app_sources_is_rejected() {
+    // TD-15 (Medium): rute di luar PolicyRouter atau router yang dilayani tanpa EnforcedRouter tidak
+    // dibungkus middleware penegak.
+    let cases = [
+        ("fn f(r: axum::Router) {}", "router-bypass:axum::Router"),
+        ("use axum::Router;", "router-bypass:Router"),
+        ("use axum::{Json, Router};", "router-bypass:Router"),
+        (
+            "fn f() { let _ = utoipa_axum::router::OpenApiRouter::<()>::new(); }",
+            "router-bypass:OpenApiRouter",
+        ),
+        (
+            "fn f(r: R) { r.route(\"/x\", get(h)); }",
+            "router-bypass:route",
+        ),
+        (
+            "fn f(r: R) { r\n  .nest(\"/x\", o); }",
+            "router-bypass:nest",
+        ),
+        ("fn f(r: R) { r.fallback(h); }", "router-bypass:fallback"),
+        (
+            "fn f(r: R) { r.route_service(\"/x\", s); }",
+            "router-bypass:route_service",
+        ),
+        (
+            "fn f(r: R) { r.nest_service(\"/x\", s); }",
+            "router-bypass:nest_service",
+        ),
+        (
+            "fn f(r: R) { r.fallback_service(s); }",
+            "router-bypass:fallback_service",
+        ),
+        (
+            "fn f(r: R) { r.method_not_allowed_fallback(h); }",
+            "router-bypass:method_not_allowed_fallback",
+        ),
+        (
+            "fn f(r: R) { r.route_layer(l); }",
+            "router-bypass:route_layer",
+        ),
+        (
+            "fn f(a: R, b: R) { let x = a.merge(b); }",
+            "router-bypass:merge",
+        ),
+        (
+            "async fn f(l: L, r: R) { axum::serve(l, r).await; }",
+            "router-bypass:axum::serve",
+        ),
+        ("use axum::{serve, Json};", "router-bypass:serve"),
+        ("use axum::{routing::get};", "router-bypass:routing"),
+        (
+            "fn f() { let _ = axum::routing::get(h); }",
+            "router-bypass:axum::routing",
+        ),
+        (
+            "fn f(m: M) { let _ = m.into_make_service(); }",
+            "router-bypass:into_make_service",
+        ),
+        (
+            "async fn f(a: A, p: P) { a.authenticate_parts(&p).await; }",
+            "router-bypass:authenticate_parts",
+        ),
+        (
+            "async fn f(a: A, h: H) { a.authenticate_headers(h).await; }",
+            "router-bypass:authenticate_headers",
+        ),
+        (
+            "async fn f(a: A, t: &str) { a.verify(t).await; }",
+            "router-bypass:verify",
+        ),
+        (
+            "async fn f(a: A, t: &str) { Authenticator::verify(&a, t).await; }",
+            "router-bypass:Authenticator::verify",
+        ),
+    ];
+    for (src, want) in cases {
+        assert!(has(SRC, src, want), "lolos: {src}: {:?}", rules(SRC, src));
+    }
+}
+
+#[test]
+fn policy_router_usage_and_non_app_files_are_allowed() {
+    let ok = r#"
+use authz::{EnforcedRouter, PolicyRouter};
+pub(crate) fn ops_router() -> PolicyRouter<AppState> {
+    PolicyRouter::with_openapi(OpsApiDoc::openapi()).merge(platform::router())
+}
+fn modules() -> PolicyRouter<AppState> {
+    platform::router().merge(identity::router())
+}
+pub(super) fn router() -> PolicyRouter<AppState> {
+    PolicyRouter::new().routes(policy::health(), routes!(live))
+}
+async fn run(r: EnforcedRouter, l: TcpListener) { r.serve(l, shutdown()).await; }
+// axum::Router dan .route( di komentar diabaikan
+fn s() -> &'static str { "axum::serve .route(" }
+"#;
+    let found: Vec<String> = rules(SRC, ok)
+        .into_iter()
+        .filter(|r| r.starts_with("router-bypass"))
+        .collect();
+    assert!(found.is_empty(), "{found:?}");
+    // Aturan hanya untuk apps/*/src: test aplikasi dan crate pustaka (authz, authn) tidak diperiksa.
+    let raw = "fn f(r: axum::Router) { r.route(\"/x\", get(h)); }";
+    for file in [
+        "apps/rs-backend/tests/common/mod.rs",
+        "crates/authz/src/router.rs",
+        "crates/authn/tests/authn_http.rs",
+    ] {
+        assert!(
+            !rules(file, raw)
+                .iter()
+                .any(|r| r.starts_with("router-bypass")),
+            "{file}"
+        );
+    }
+}
+
+#[test]
+fn axum_aliases_in_app_sources_are_rejected() {
+    // Review F1-T38 butir 2: alias crate menyembunyikan token axum::serve/axum::routing/Router.
+    let cases = [
+        ("use axum as ax;\nfn f() {}", "router-bypass:axum-alias"),
+        ("use axum::{self as ax, Json};", "router-bypass:axum-alias"),
+        ("extern crate axum as ax;", "router-bypass:axum-alias"),
+        (
+            "use axum as ax;\nasync fn f(l: L, r: R) { ax::serve(l, r).await; }",
+            "router-bypass:serve",
+        ),
+        (
+            "use axum as ax;\nfn f() { let _ = ax::routing::get(h); }",
+            "router-bypass:routing",
+        ),
+        (
+            "use axum::{self as ax};\nfn f(r: ax::Router) {}",
+            "router-bypass:Router",
+        ),
+    ];
+    for (src, want) in cases {
+        assert!(has(SRC, src, want), "lolos: {src}: {:?}", rules(SRC, src));
+    }
+    // Impor biasa tanpa alias tidak ditolak.
+    assert!(
+        !rules(
+            SRC,
+            "use axum::extract::Path;\nuse axum::http::StatusCode as Status;"
+        )
+        .iter()
+        .any(|r| r == "router-bypass:axum-alias")
+    );
+}
+
+#[test]
+fn axum_imports_in_any_shape_are_rejected() {
+    // Review keamanan F1-T33 blokir 2: bentuk impor yang lolos pemeriksa sebelumnya.
+    let cases = [
+        ("use ::axum as x;", "router-bypass:axum-alias"),
+        ("use  axum  as  x;", "router-bypass:axum-alias"),
+        ("use axum\n    as x;", "router-bypass:axum-alias"),
+        ("pub use axum as x;", "router-bypass:axum-alias"),
+        ("extern  crate\n axum\n as x;", "router-bypass:axum-alias"),
+        (
+            "use ::axum::{serve, routing::get};\nasync fn f(l: L, r: R) { serve(l, r).await; }",
+            "router-bypass:serve",
+        ),
+        (
+            "use ::axum::{serve, routing::get};",
+            "router-bypass:routing",
+        ),
+        ("use {axum::{serve, routing::get}};", "router-bypass:serve"),
+        (
+            "use {axum::{serve, routing::get}};",
+            "router-bypass:routing",
+        ),
+        ("use axum::{\n    serve,\n};", "router-bypass:serve"),
+        ("use axum :: serve;", "router-bypass:serve"),
+        ("use axum::*;", "router-bypass:axum-glob"),
+        ("use {std::io, axum::*};", "router-bypass:axum-glob"),
+        ("use axum::routing::get as g;", "router-bypass:routing"),
+        (
+            "async fn f(l: L, r: R) { axum :: serve(l, r).await; }",
+            "router-bypass:axum::serve",
+        ),
+        (
+            "async fn f(l: L, r: R) { ::axum::\n serve(l, r).await; }",
+            "router-bypass:axum::serve",
+        ),
+        (
+            "fn f() { let _ = axum\n::routing::get(h); }",
+            "router-bypass:axum::routing",
+        ),
+        (
+            "use ::axum as x;\nfn f() { let _ = x :: routing :: get(h); }",
+            "router-bypass:routing",
+        ),
+    ];
+    for (src, want) in cases {
+        assert!(has(SRC, src, want), "lolos: {src:?}: {:?}", rules(SRC, src));
+    }
+    // Impor axum lain dan alias tipe tetap boleh.
+    let ok = "use axum::extract::{Path, State};\nuse axum::http::StatusCode as Status;\nuse ::axum::response::IntoResponse;\nuse std::io::{self as sio};";
+    let found: Vec<String> = rules(SRC, ok)
+        .into_iter()
+        .filter(|r| r.starts_with("router-bypass"))
+        .collect();
+    assert!(found.is_empty(), "{found:?}");
+}
+
+#[test]
+fn failed_access_audit_path_is_limited_to_access_audit_module() {
+    // Review keamanan F1-T33 blokir 1: penulisan audit di luar in_audited_tx hanya untuk penolakan akses,
+    // dan hanya dari apps/rs-backend/src/access_audit.rs.
+    let src = "async fn f(p: P, r: R) { audit::insert_failed_access(&p, &r).await; }";
+    for file in [
+        "apps/rs-backend/src/modules/orders/service.rs",
+        "apps/rs-backend/src/app.rs",
+        "crates/authz/src/denial.rs",
+    ] {
+        assert!(
+            has(file, src, "audit-failed-access:insert_failed_access"),
+            "{file}: {:?}",
+            rules(file, src)
+        );
+    }
+    let ev = "fn f(e: E, c: C) { let _ = e.finish_failed_access(c); }";
+    assert!(has(SRC, ev, "audit-failed-access:finish_failed_access"));
+    for file in [
+        "apps/rs-backend/src/access_audit.rs",
+        "crates/audit/src/outbox.rs",
+        "crates/audit/tests/outbox_pg.rs",
+    ] {
+        assert!(
+            !rules(file, src)
+                .iter()
+                .any(|r| r.starts_with("audit-failed-access")),
+            "{file}"
+        );
+    }
+}

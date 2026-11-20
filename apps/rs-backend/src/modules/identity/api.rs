@@ -3,6 +3,16 @@
 //! F1-T34: pengambil event Keycloak E-01–E-04 ke `audit_outbox` (ADR-011 butir 10) untuk subcommand
 //! `rs-backend worker`: konfigurasi bertipe [`KeycloakEventConfig`], klien Admin REST [`KeycloakClient`],
 //! satu putaran [`Puller::round`] (dipakai test), dan perulangan proses [`run_puller`].
+//!
+//! F1-T33: resolver akun dan penjaga sesi yang dicabut untuk perakitan aplikasi dan modul lain:
+//! - [`AccountDirectory`]: dipasang ke `authz::Enforcement::new(auth, directory.clone(), directory, denials)`
+//!   sebagai resolver akun dan penjaga sesi yang dicabut.
+//! - Pencabutan sesi: [`AccountDirectory::record_revocation`] di transaksi use case pemanggil (misalnya
+//!   keluar F1-T54, penonaktifan US-207), lalu [`AccountDirectory::publish_revocation`] setelah commit.
+//! - Penulis status akun memanggil [`AccountDirectory::refresh_account`] setelah commit.
+//! - Aksi berisiko memakai [`AccountDirectory::resolve_fresh`] (tanpa cache, M-13).
+//! - Job berkala: [`AccountDirectory::purge_expired_revocations`]; saat start atau setelah isi Valkey
+//!   hilang: [`AccountDirectory::rebuild_revocation_cache`] (juga dipicu otomatis di latar belakang).
 
 use observability::{ConfigError, EnvSource};
 use std::collections::HashMap;
@@ -11,12 +21,16 @@ use std::str::FromStr;
 use std::time::Duration;
 
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
+pub use super::error::IdentityError;
 pub use super::jobs::{
     MAX_PAGES_PER_ROUND, PAGE_SIZE_RANGE, PullError, PullOptions, Puller, PullerSettings,
     RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,
 };
 pub use super::keycloak::{
     InvalidKeycloakAddress, KeycloakAddress, KeycloakClient, KeycloakError, RealmCredential,
+};
+pub use super::service::{
+    AccountDirectory, DEFAULT_ACCOUNT_CACHE_TTL_SECONDS, RecordedRevocation, RevocationReason,
 };
 
 /// `client_id` bawaan klien layanan pembaca event di setiap realm (`infra/keycloak/realms/*.json`).

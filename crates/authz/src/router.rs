@@ -6,25 +6,44 @@
 //! dibutuhkan diterima validator token), lalu memasang middleware penegak sebagai lapisan terakhir
 //! router, sehingga rute tanpa kebijakan juga ditolak saat runtime (default deny, ADR-012 butir 1).
 //!
-//! Router hasil `finish` tidak boleh ditambah rute lagi: rute yang ditambahkan setelah lapisan dipasang
-//! tidak dibungkus middleware (perilaku `Router::layer` axum). Aturan ini ditegakkan review
-//! (coding-standards §10).
+//! Router hasil `finish` adalah [`EnforcedRouter`], newtype tertutup yang hanya menyediakan `layer`,
+//! `with_state`, dan `serve` (TD-15, review F1-T32/T37). Rute yang ditambahkan ke `axum::Router` setelah
+//! lapisan dipasang tidak dibungkus middleware (perilaku `Router::layer` axum); karena `axum::Router` di
+//! dalamnya tidak pernah keluar, penambahan itu menjadi galat compile. Test arsitektur (aturan
+//! `router-bypass`, crate arch-check) menolak pembuatan router axum sendiri di `apps/*/src`.
 
+use crate::denial::DenialSink;
 use crate::enforce::{EnforcerState, deny_fallback, enforce};
 use crate::error::PolicySetupError;
 use crate::policy::Policy;
-use crate::principal::PrincipalResolver;
+use crate::principal::{PrincipalResolver, SessionGuard};
 use crate::registry::{PolicyRegistry, check_coverage, operations};
 use authn::{AuthState, ErrorRenderer};
 use axum::Router;
+use axum::extract::Request;
+use axum::response::IntoResponse;
+use axum::routing::Route;
+use std::convert::Infallible;
+use std::future::Future;
 use std::sync::Arc;
+use tokio::net::TcpListener;
+use tower_layer::Layer;
+use tower_service::Service;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouter};
+
+/// Validator token, resolver akun, penjaga sesi, dan antrean penolakan objek.
+pub(crate) type Authentication = (
+    AuthState,
+    Arc<dyn PrincipalResolver>,
+    Arc<dyn SessionGuard>,
+    DenialSink,
+);
 
 /// Perangkat penegakan yang dipasang [`PolicyRouter::finish`].
 #[derive(Clone)]
 pub struct Enforcement {
-    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+    authentication: Option<Authentication>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
@@ -38,11 +57,18 @@ impl Enforcement {
         }
     }
 
-    /// Validator token (`authn`) dan resolver akun. Pembentuk respons galat diambil dari `auth`.
-    pub fn new(auth: AuthState, resolver: Arc<dyn PrincipalResolver>) -> Self {
+    /// Validator token (`authn`), resolver akun, penjaga sesi yang dicabut (ADR-011 butir 8), dan
+    /// antrean pencatatan penolakan objek ([`DenialSink`], F1-T38). Pembentuk respons galat diambil dari
+    /// `auth`.
+    pub fn new(
+        auth: AuthState,
+        resolver: Arc<dyn PrincipalResolver>,
+        sessions: Arc<dyn SessionGuard>,
+        denials: DenialSink,
+    ) -> Self {
         let renderer = Arc::clone(auth.renderer());
         Self {
-            authentication: Some((auth, resolver)),
+            authentication: Some((auth, resolver, sessions, denials)),
             renderer,
         }
     }
@@ -147,7 +173,7 @@ where
     pub fn finish(
         self,
         enforcement: Enforcement,
-    ) -> Result<(Router<S>, OpenApi), PolicySetupError> {
+    ) -> Result<(EnforcedRouter<S>, OpenApi), PolicySetupError> {
         if let Some(e) = self.errors.into_iter().next() {
             return Err(e);
         }
@@ -164,7 +190,7 @@ where
                     path: path.clone(),
                 });
             }
-            let Some((auth, _)) = &enforcement.authentication else {
+            let Some((auth, _, _, _)) = &enforcement.authentication else {
                 return Err(PolicySetupError::MissingAuthentication);
             };
             let accepted = auth.authenticator().realms();
@@ -184,6 +210,81 @@ where
             .fallback(deny_fallback)
             .method_not_allowed_fallback(deny_fallback)
             .layer(axum::middleware::from_fn_with_state(state, enforce));
-        Ok((router, spec))
+        Ok((EnforcedRouter { inner: router }, spec))
+    }
+}
+
+/// Router yang semua rutenya sudah dibungkus middleware penegak ([`PolicyRouter::finish`]).
+///
+/// Newtype tertutup (TD-15): tidak ada cara menambah rute, fallback, atau router lain, dan
+/// `axum::Router` di dalamnya tidak dapat diambil. Yang tersedia hanya lapisan luar
+/// ([`EnforcedRouter::layer`], misalnya middleware korelasi), pemasangan state, dan
+/// [`EnforcedRouter::serve`].
+///
+/// ```compile_fail
+/// // Penambahan rute setelah `finish` tidak dapat dikompilasi.
+/// fn tambah(r: authz::EnforcedRouter) {
+///     let _ = r.route("/x", axum::routing::get(|| async { "x" }));
+/// }
+/// ```
+///
+/// ```compile_fail
+/// // `axum::Router` di dalamnya tidak dapat diambil.
+/// fn ambil(r: authz::EnforcedRouter) -> axum::Router {
+///     r.inner
+/// }
+/// ```
+///
+/// ```
+/// // Pembanding positif untuk dua contoh di atas: lapisan luar dan state tetap dapat dipasang.
+/// async fn lewat(req: axum::extract::Request, next: axum::middleware::Next) -> axum::response::Response {
+///     next.run(req).await
+/// }
+/// fn rakit(r: authz::EnforcedRouter<u8>) -> authz::EnforcedRouter {
+///     r.with_state(1).layer(axum::middleware::from_fn(lewat))
+/// }
+/// ```
+pub struct EnforcedRouter<S = ()> {
+    inner: Router<S>,
+}
+
+impl<S> EnforcedRouter<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    /// Lapisan luar yang membungkus semua rute dan middleware penegak (batas trait sama dengan
+    /// `axum::Router::layer` axum 0.8.9).
+    #[must_use]
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        Self {
+            inner: self.inner.layer(layer),
+        }
+    }
+
+    /// Memasang state aplikasi.
+    #[must_use]
+    pub fn with_state<S2>(self, state: S) -> EnforcedRouter<S2> {
+        EnforcedRouter {
+            inner: self.inner.with_state(state),
+        }
+    }
+}
+
+impl EnforcedRouter<()> {
+    /// Melayani HTTP di `listener` sampai `shutdown` selesai (`axum::serve` dengan graceful shutdown).
+    pub async fn serve<F>(self, listener: TcpListener, shutdown: F) -> std::io::Result<()>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        axum::serve(listener, self.inner)
+            .with_graceful_shutdown(shutdown)
+            .await
     }
 }

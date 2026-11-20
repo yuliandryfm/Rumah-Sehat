@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.session_revocation (id, account_id, idp_session_id, reason_code, expires_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT ON CONSTRAINT uq_session_revocation_idp_session_id DO UPDATE SET expires_at = GREATEST(app.session_revocation.expires_at, EXCLUDED.expires_at) RETURNING expires_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "session_revocation",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5d752c5c8529ffbcd04e3bc6bc52068cfc7a95dc6ff22b851897c27fc2860a9c"
+}

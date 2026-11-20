@@ -18,12 +18,19 @@ axum = { version = "=0.8.9", default-features = false, features = ["tokio", "htt
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# TD-15: EnforcedRouter::layer memakai batas trait yang sama dengan axum::Router::layer (axum tidak mengekspor
+# ulang Layer/Service); EnforcedRouter::serve memakai tokio::net::TcpListener; antrean penolakan objek
+# (F1-T38) memakai tokio::sync (mpsc, Semaphore), Handle, dan time. Ketiganya sudah ada di
+# Cargo.lock sebagai dependensi axum (tower-layer 0.3.3, tower-service 0.3.3: SRC-570; tokio 1.54.1 [SRC-162]).
+tower-layer = { version = "=0.3.3", default-features = false }
+tower-service = { version = "=0.3.3", default-features = false }
+tokio = { version = "=1.54.1", default-features = false, features = ["net", "rt", "sync", "time"] }
 
 [dev-dependencies]
 authn = { path = "../authn", features = ["testing"] }
 serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
 time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
 [lints]

@@ -3,16 +3,24 @@
 //! - Registri kebijakan per endpoint ([`PolicyRegistry`]); setiap endpoint menyatakan kebijakannya
 //!   ([`Policy`]) dan permintaan tanpa kebijakan ditolak (default deny, ADR-012 butir 1).
 //! - Rute hanya didaftarkan lewat [`PolicyRouter`]; [`PolicyRouter::finish`] memeriksa cakupan saat
-//!   start dan memasang middleware penegak (KEPUTUSAN-127).
+//!   start dan memasang middleware penegak (KEPUTUSAN-127), lalu mengembalikan [`EnforcedRouter`] yang
+//!   tertutup untuk penambahan rute (TD-15).
 //! - Peran: jenis akun dan sub-peran admin Ruang Sehat ([`AdminSubRole`], UP-18) dari database aplikasi
 //!   lewat [`PrincipalResolver`] (ADR-011 butir 6), tanpa sub-peran yang otomatis memegang hak lain.
 //! - Respons: token tidak sah atau realm lain `401`, peran tidak diizinkan `403`, objek terlarang `404`
 //!   yang identik dengan objek tidak ada ([`visible_object`], ADR-012 butir 4, KU-03).
 //!
-//! Belum di sini (task lain): relasi kepemilikan/penugasan/tenant dan E-05 hasil gagal (F1-T38),
-//! status akun dari database dan sesi yang dicabut (F1-T33), cakupan tenant `PartnerScope`
+//! - Status akun dan sesi yang dicabut (F1-T33, ADR-011 butir 8, KU-10): akun nonaktif `401` `4010002`
+//!   (layar "Akun nonaktif"), sesi dicabut `401` `4010001` ([`SessionGuard`]).
+//! - Relasi kepemilikan pasien atas penerima layanan ([`care_recipient_access`], bukti
+//!   [`OwnedCareRecipient`]) dan penolakan objek yang dicatat di latar belakang ([`DenialSink`]:
+//!   security log, dan untuk data sensitif event audit E-05 hasil gagal lewat [`DenialAuditor`]) tanpa
+//!   menambah waktu tanggap jalur `404` (F1-T38, KU-03, TD-15).
+//!
+//! Belum di sini (task lain): relasi penugasan dan tenant, cakupan tenant `PartnerScope`
 //! (KEPUTUSAN-128), kebijakan klien realm `integrasi` (ADR-014), realm `korporat` (F1-T86/F1-T100).
 
+mod denial;
 mod enforce;
 mod error;
 mod object;
@@ -22,10 +30,21 @@ mod registry;
 mod role;
 mod router;
 
+pub use denial::{
+    ClientIp, DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DROP_REPORT_WINDOW,
+    DenialAuditError, DenialAuditFuture, DenialAuditor, DenialSink, DenialSinkError, DeniedAccess,
+    PreparedDenialAudit, SensitiveTarget,
+};
 pub use error::{AuthzError, PolicySetupError};
-pub use object::{deny_action, visible_object};
+pub use object::{
+    CareRecipientOwner, OwnedCareRecipient, Sensitivity, care_recipient_access, deny_action,
+    visible_object, visible_sensitive_object,
+};
 pub use policy::{Policy, PublicReason, Requirement};
-pub use principal::{AccountRecord, Principal, PrincipalResolver, ResolveError, ResolveFuture};
+pub use principal::{
+    AccountRecord, Principal, PrincipalResolver, ResolveError, ResolveFuture, RevocationFuture,
+    SessionGuard,
+};
 pub use registry::{EndpointKey, PolicyRegistry, check_coverage};
 pub use role::{AccountStatus, AccountType, AdminSubRole};
-pub use router::{Enforcement, PolicyRouter};
+pub use router::{EnforcedRouter, Enforcement, PolicyRouter};

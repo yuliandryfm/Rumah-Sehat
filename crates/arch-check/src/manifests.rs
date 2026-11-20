@@ -1,4 +1,11 @@
 //! Pemeriksaan manifes dan konfigurasi clippy: larangan tidak boleh dilemahkan atau ditimpa per crate.
+//!
+//! Aturan `test-feature` (TD-15): fitur pembantu test (`authn/testing`, `crypto/test-keys`) tidak boleh
+//! ikut build produksi. Fitur itu hanya boleh dinyalakan lewat `[dev-dependencies]`; dependensi produksi
+//! (`[dependencies]`, `[build-dependencies]`, `[target.*.…]`, `[workspace.dependencies]`) dan tabel
+//! `[features]` crate mana pun tidak boleh menyalakannya, dan fitur `default` crate pemiliknya tidak boleh
+//! memuatnya. Satu-satunya pengecualian: dependensi opsional `crypto` (fitur `test-keys`) milik crate
+//! `authn`, yang hanya dinyalakan fitur `testing` authn sendiri.
 
 use crate::{Finding, fs};
 use std::path::Path;
@@ -35,6 +42,12 @@ const ALLOW_INVALID_OK: &[&str] = &["time::OffsetDateTime::now_local"];
 const FORBIDDEN_DEPS: &[&str] = &["ring", "aes-gcm", "chrono"];
 /// Crate yang hanya boleh dideklarasikan di `crates/crypto`.
 const CRYPTO_ONLY_DEPS: &[&str] = &["aws-lc-rs", "aws-lc-sys", "aws-lc-fips-sys"];
+/// Crate yang hanya boleh dideklarasikan di `crates/valkey` (F1-T33: batas waktu dan galat tanpa isi
+/// seragam untuk semua akses Valkey).
+const VALKEY_ONLY_DEPS: &[&str] = &["redis"];
+
+/// Fitur pembantu test per paket: (paket, fitur). TD-15.
+pub const TEST_FEATURES: &[(&str, &str)] = &[("authn", "testing"), ("crypto", "test-keys")];
 
 fn finding(file: &str, detail: &str, msg: impl Into<String>) -> Finding {
     Finding::new("manifest", file, 0, detail, msg)
@@ -97,6 +110,7 @@ fn check_root_lints(root: &Path) -> Vec<Finding> {
         }
     }
     out.extend(check_deps(file, "", &table));
+    out.extend(check_test_features(file, "", &table));
     out
 }
 
@@ -160,6 +174,146 @@ fn check_member(root: &Path, rel: &str) -> Vec<Finding> {
     }
     let crate_dir = rel.rsplit('/').next().unwrap_or("");
     out.extend(check_deps(&file, crate_dir, &table));
+    if rel.starts_with("apps/") {
+        out.extend(check_axum_rename(&file, &table));
+    }
+    out.extend(check_test_features(&file, crate_dir, &table));
+    out
+}
+
+/// `router-bypass` (TD-15, review F1-T38): aplikasi tidak boleh mengganti nama dependensi axum
+/// (`x = { package = "axum" }`), karena nama baru menyembunyikan token yang diperiksa aturan sumber.
+fn check_axum_rename(file: &str, table: &Table) -> Vec<Finding> {
+    let mut out = Vec::new();
+    let mut tables: Vec<&Table> = Vec::new();
+    for k in ["dependencies", "dev-dependencies", "build-dependencies"] {
+        if let Some(t) = table.get(k).and_then(Value::as_table) {
+            tables.push(t);
+        }
+    }
+    if let Some(targets) = table.get("target").and_then(Value::as_table) {
+        for cfg in targets.values() {
+            for k in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                if let Some(t) = cfg.get(k).and_then(Value::as_table) {
+                    tables.push(t);
+                }
+            }
+        }
+    }
+    for deps in tables {
+        for (key, spec) in deps {
+            if key != "axum" && spec.get("package").and_then(Value::as_str) == Some("axum") {
+                out.push(Finding::new(
+                    "router-bypass",
+                    file,
+                    0,
+                    "axum-rename",
+                    format!("dependensi axum diganti nama menjadi `{key}` di aplikasi (TD-15)"),
+                ));
+            }
+        }
+    }
+    out
+}
+
+fn test_finding(file: &str, detail: &str, msg: impl Into<String>) -> Finding {
+    Finding::new("test-feature", file, 0, detail, msg)
+}
+
+/// Tabel dependensi yang ikut build produksi (tanpa `[dev-dependencies]`).
+fn production_dep_tables(table: &Table) -> Vec<&Table> {
+    let mut v = Vec::new();
+    for k in ["dependencies", "build-dependencies"] {
+        if let Some(t) = table.get(k).and_then(Value::as_table) {
+            v.push(t);
+        }
+    }
+    if let Some(t) = table
+        .get("workspace")
+        .and_then(|w| w.get("dependencies"))
+        .and_then(Value::as_table)
+    {
+        v.push(t);
+    }
+    if let Some(targets) = table.get("target").and_then(Value::as_table) {
+        for cfg in targets.values() {
+            for k in ["dependencies", "build-dependencies"] {
+                if let Some(t) = cfg.get(k).and_then(Value::as_table) {
+                    v.push(t);
+                }
+            }
+        }
+    }
+    v
+}
+
+fn strings(v: Option<&Value>) -> Vec<&str> {
+    v.and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default()
+}
+
+/// `test-feature` (TD-15): lihat dokumentasi modul.
+fn check_test_features(file: &str, crate_dir: &str, table: &Table) -> Vec<Finding> {
+    let mut out = Vec::new();
+    for deps in production_dep_tables(table) {
+        for (key, spec) in deps {
+            let pkg = spec
+                .get("package")
+                .and_then(Value::as_str)
+                .unwrap_or(key.as_str());
+            let optional = spec.get("optional").and_then(Value::as_bool) == Some(true);
+            for (owner, feature) in TEST_FEATURES {
+                if pkg != *owner || !strings(spec.get("features")).contains(feature) {
+                    continue;
+                }
+                if crate_dir == "authn" && pkg == "crypto" && optional {
+                    continue;
+                }
+                out.push(test_finding(
+                    file,
+                    &format!("{owner}/{feature}"),
+                    format!(
+                        "fitur test `{owner}/{feature}` di dependensi produksi; hanya lewat [dev-dependencies] (TD-15)"
+                    ),
+                ));
+            }
+        }
+    }
+    let Some(features) = table.get("features").and_then(Value::as_table) else {
+        return out;
+    };
+    for (name, enabled) in features {
+        for item in strings(Some(enabled)) {
+            for (owner, feature) in TEST_FEATURES {
+                let direct = item == format!("{owner}/{feature}");
+                let weak = item == format!("{owner}?/{feature}");
+                let own_default = crate_dir == *owner && name == "default" && item == *feature;
+                if direct || weak || own_default {
+                    out.push(test_finding(
+                        file,
+                        &format!("{owner}/{feature}"),
+                        format!(
+                            "fitur `{name}` menyalakan fitur test `{owner}/{feature}`; hanya lewat [dev-dependencies] (TD-15)"
+                        ),
+                    ));
+                }
+            }
+            // Dependensi opsional crypto milik authn hanya boleh dinyalakan fitur `testing`.
+            if crate_dir == "authn"
+                && name != "testing"
+                && (item == "dep:crypto" || item == "crypto" || item.starts_with("crypto/"))
+            {
+                out.push(test_finding(
+                    file,
+                    "authn/testing",
+                    format!(
+                        "fitur `{name}` crate authn menyalakan dependensi crypto berfitur test-keys; hanya fitur `testing` (TD-15)"
+                    ),
+                ));
+            }
+        }
+    }
     out
 }
 
@@ -200,6 +354,13 @@ fn check_deps(file: &str, crate_dir: &str, table: &Table) -> Vec<Finding> {
                     format!(
                         "dependensi `{pkg}` dilarang (docs/05-stack.md, coding-standards §5.7)"
                     ),
+                ));
+            }
+            if VALKEY_ONLY_DEPS.contains(&pkg) && crate_dir != "valkey" {
+                out.push(finding(
+                    file,
+                    pkg,
+                    format!("`{pkg}` hanya boleh dideklarasikan di crates/valkey (F1-T33)"),
                 ));
             }
             if CRYPTO_ONLY_DEPS.contains(&pkg) && crate_dir != "crypto" {
