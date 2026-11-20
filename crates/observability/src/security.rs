@@ -149,6 +149,10 @@ pub enum AuditChainMismatch {
     AnchorBeyondChain,
     /// `audit_event_key` memuat `seq` di atas ujung rantai (event ujung dihapus).
     KeyBeyondChain,
+    /// Baris `audit_event_subject` milik event ini dengan `recorded_at` berbeda (subjek dipindah/disisipkan).
+    SubjectRecordedAt,
+    /// Baris `audit_event_subject` tanpa event (yatim).
+    SubjectOrphan,
 }
 
 impl AuditChainMismatch {
@@ -162,6 +166,8 @@ impl AuditChainMismatch {
             Self::AnchorHash => "anchor_hash",
             Self::AnchorBeyondChain => "anchor_beyond_chain",
             Self::KeyBeyondChain => "key_beyond_chain",
+            Self::SubjectRecordedAt => "subject_recorded_at",
+            Self::SubjectOrphan => "subject_orphan",
         }
     }
 }

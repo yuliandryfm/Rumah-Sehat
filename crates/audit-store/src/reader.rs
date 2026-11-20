@@ -18,6 +18,9 @@ pub struct StoredEvent {
     pub prev_hash: ChainHash,
     /// `event_hash` tersimpan.
     pub event_hash: ChainHash,
+    /// Baris `audit_event_subject` ber-`event_id` sama tetapi `recorded_at` berbeda dari event-nya.
+    /// Relay selalu menulis subjek dengan `recorded_at` event, sehingga nilai > 0 = manipulasi (review B1).
+    pub misplaced_subjects: usize,
 }
 
 impl fmt::Debug for StoredEvent {
@@ -73,24 +76,18 @@ pub async fn read_page(
     if rows.is_empty() {
         return Ok(Vec::new());
     }
-    let multi: Vec<Uuid> = rows
-        .iter()
-        .filter(|r| r.subject_count > 1)
-        .map(|r| r.event_id)
-        .collect();
-    let subject_rows = if multi.is_empty() {
-        Vec::new()
-    } else {
-        sqlx::query!(
-            r#"SELECT event_id, recorded_at, subject_id, subject_kind
-                 FROM audit.audit_event_subject
-                WHERE event_id = ANY($1)"#,
-            &multi,
-        )
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(|e| StoreError::db("read_event_subjects", &e))?
-    };
+    // Subjek dibaca untuk SEMUA event halaman menurut event_id (bukan hanya subject_count > 1), supaya baris
+    // subjek sisipan pada event bersubjek ≤ 1 ikut masuk bentuk kanonis dan menggagalkan hash (review B1).
+    let ids: Vec<Uuid> = rows.iter().map(|r| r.event_id).collect();
+    let subject_rows = sqlx::query!(
+        r#"SELECT event_id, recorded_at, subject_id, subject_kind
+             FROM audit.audit_event_subject
+            WHERE event_id = ANY($1)"#,
+        &ids,
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(|e| StoreError::db("read_event_subjects", &e))?;
     let corrupt = |what| StoreError::new(StoreErrorKind::CorruptRow, what);
     let mut out = Vec::with_capacity(rows.len());
     for r in rows {
@@ -102,12 +99,17 @@ pub async fn read_page(
                 subject_kind: s.subject_kind.clone(),
             })
             .collect();
+        let misplaced_subjects = subject_rows
+            .iter()
+            .filter(|s| s.event_id == r.event_id && s.recorded_at != r.recorded_at)
+            .count();
         let source_ip = r
             .source_ip
             .as_deref()
             .map(|s| s.parse::<IpAddr>().map_err(|_| corrupt("source_ip")))
             .transpose()?;
         out.push(StoredEvent {
+            misplaced_subjects,
             prev_hash: to_hash(&r.prev_hash).ok_or(corrupt("prev_hash"))?,
             event_hash: to_hash(&r.event_hash).ok_or(corrupt("event_hash"))?,
             event: ChainEvent {
@@ -173,6 +175,19 @@ pub async fn find_event(
         .await?
         .into_iter()
         .find(|e| e.event.body.event_id == event_id))
+}
+
+/// Jumlah baris `audit_event_subject` yatim (tanpa `audit_event` ber-`event_id` sama). Relay selalu menulis subjek bersama event-nya, sehingga baris yatim = manipulasi
+/// (review B1).
+pub async fn orphan_subjects(conn: &mut PgConnection) -> Result<i64, StoreError> {
+    sqlx::query_scalar!(
+        r#"SELECT count(*) AS "count!"
+             FROM audit.audit_event_subject s
+            WHERE NOT EXISTS (SELECT 1 FROM audit.audit_event e WHERE e.event_id = s.event_id)"#
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(|e| StoreError::db("orphan_subjects", &e))
 }
 
 /// Ringkasan `audit_event_key`: jumlah baris dan `seq` terbesar.

@@ -167,12 +167,12 @@ Subcommand binary (keputusan orkestrator atas F-P09 dan F-P10): `rs-backend api|
 | `rs-backend api` | `rs_api` (ruang_sehat), `rs_audit_reader_login` (ruang_sehat_audit) | Transit `datakey`/`decrypt` | |
 | `rs-backend realtime` | `rs_realtime` | sesuai kebutuhan baca chat | |
 | `rs-backend worker` | `rs_worker` | Transit `datakey`/`decrypt` | Tidak memegang kredensial audit, privasi, atau rotasi (M-23) |
-| `rs-backend audit-relay` | **hanya** `rs_audit_relay_login` + `rs_audit_writer_login` | — | ADR-009 butir 3 `[DOK: ADR-009]`; satu aktif lewat kunci 7001001 |
+| `rs-backend audit-relay` | **hanya** `rs_audit_relay_login` + `rs_audit_writer_login` (termasuk `INSERT` `audit_chain_anchor`, DD §0.6 B) | Tulis-saja (tanpa hapus/timpa) ke bucket WORM jangkar kepala rantai, kredensial lewat OpenBao `[KEPUTUSAN-286]` | ADR-009 butir 3 dan 5 `[DOK: ADR-009]`; satu aktif lewat kunci 7001001; menulis jangkar kepala rantai (diagram arsitektur §4.3) `[KEPUTUSAN-286]` |
 | `rs-backend audit-verify` | **hanya** `rs_audit_verifier_login` | Baca bucket WORM kepala rantai dan tulis berkas arsip ke bucket WORM; kirim peringatan langsung ke security log | Verifikasi rantai harian dan ekspor arsip (§6.5); satu aktif lewat kunci 7001003 |
 | `rs-backend privacy-worker` | **hanya** `rs_privacy_worker_login` | Hapus objek di object storage (wadah yang dimusnahkan, ADR-018); **tanpa** Transit `decrypt`/`datakey` | Retensi, crypto-shredding, anonimisasi; penjadwalan internal; satu aktif lewat kunci 7001004 |
 | `rme-backend api` | `rme_api`, `rme_api_auth`, `rme_api_operator` (rme), `rme_audit_tenant_reader_login` (rme_audit) | Transit RME | |
 | `rme-backend worker` | `rme_worker_login` | Transit RME; hapus objek `rme_upload_slot` kedaluwarsa (§5.7) | |
-| `rme-backend audit-relay` | **hanya** `rme_audit_relay_login` + `rme_audit_writer_login` | — | Kunci 7002001 |
+| `rme-backend audit-relay` | **hanya** `rme_audit_relay_login` + `rme_audit_writer_login` (termasuk `INSERT` `audit_chain_anchor`, DD §0.6 B) | Seperti `rs-backend audit-relay`: tulis-saja ke bucket WORM jangkar lewat OpenBao `[KEPUTUSAN-286]` | Kunci 7002001 `[KEPUTUSAN-286]` |
 | `rme-backend audit-verify` | **hanya** `rme_audit_verifier_login` | Seperti `rs-backend audit-verify` | Kunci 7002003 |
 | `rme-backend privacy-worker` | **hanya** `rme_privacy_worker_login` | Seperti `rs-backend privacy-worker` | Kunci 7002004 |
 

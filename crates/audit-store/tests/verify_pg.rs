@@ -16,7 +16,8 @@ use audit_store::anchor::{AnchorStore, FileAnchorStore, anchor_head};
 use audit_store::partition::{MIN_FUTURE_PARTITIONS, check_partition_runway};
 use audit_store::verify::{VerifyOutcome, run_verification};
 use audit_store::{
-    AppendReport, ChainHead, EventBody, EventSubject, append_batch, chain_head, truncate_to_micros,
+    AppendReport, ChainHead, EventBody, EventSubject, append_batch, chain_head, find_event,
+    truncate_to_micros,
 };
 use foundation::{FixedClock, Uuid, new_id};
 use observability::EnvSource;
@@ -25,7 +26,7 @@ use observability::log::{Component, JsonLogLayer, LogSink, MemorySink, subscribe
 use observability::security::AuditChainMismatch;
 use serde_json::json;
 use sqlx::{AssertSqlSafe, Connection, PgConnection};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
 use std::sync::Arc;
 use time::macros::datetime;
@@ -424,4 +425,113 @@ async fn partition_runway_metric_reads_catalog_and_alerts_below_six_months() {
         ),
         "{sec:?}"
     );
+}
+
+#[tokio::test]
+async fn forged_subject_rows_are_detected() {
+    // Review B1: baris audit_event_subject palsu (pada event bersubjek <= 1, recorded_at berbeda, atau
+    // yatim) tidak boleh lolos verifikasi.
+    let _s = SERIAL.lock().await;
+    let dir = anchor_dir();
+    let store = FileAnchorStore::new(&dir).unwrap();
+    let mut w = writer().await;
+    let mut v = verifier().await;
+    let head = chain_with_anchor(&mut w, &store).await;
+    let (single, multi) = (head.seq - 1, head.seq); // body(1) tanpa subjek, body(2) dua subjek
+    let mut t = tamper().await;
+
+    // (1) Subjek disisipkan pada event bersubjek <= 1.
+    let row = new_id();
+    exec(&mut t, format!(
+        "INSERT INTO audit.audit_event_subject (id, recorded_at, event_id, subject_id, subject_kind) \
+         SELECT '{row}'::uuid, recorded_at, event_id, '{s}'::uuid, 'care_recipient' \
+           FROM audit.audit_event WHERE seq = {single}",
+        s = new_id()
+    ))
+    .await;
+    assert_eq!(
+        mismatch(verify(&mut v, &store).await.0),
+        (single, AuditChainMismatch::EventHash)
+    );
+    exec(
+        &mut t,
+        format!("DELETE FROM audit.audit_event_subject WHERE id = '{row}'"),
+    )
+    .await;
+    assert_eq!(verify(&mut v, &store).await.0, VerifyOutcome::Match);
+
+    // (2) Subjek milik event bersubjek > 1 dengan recorded_at berbeda (partisi lain / dipindah).
+    let row = new_id();
+    exec(&mut t, format!(
+        "INSERT INTO audit.audit_event_subject (id, recorded_at, event_id, subject_id, subject_kind) \
+         SELECT '{row}'::uuid, recorded_at + interval '1 day', event_id, '{s}'::uuid, 'care_recipient' \
+           FROM audit.audit_event WHERE seq = {multi}",
+        s = new_id()
+    ))
+    .await;
+    assert_eq!(
+        mismatch(verify(&mut v, &store).await.0),
+        (multi, AuditChainMismatch::SubjectRecordedAt)
+    );
+    exec(
+        &mut t,
+        format!("DELETE FROM audit.audit_event_subject WHERE id = '{row}'"),
+    )
+    .await;
+    assert_eq!(verify(&mut v, &store).await.0, VerifyOutcome::Match);
+
+    // (3) Subjek yatim (event_id tanpa event).
+    let row = new_id();
+    exec(&mut t, format!(
+        "INSERT INTO audit.audit_event_subject (id, recorded_at, event_id, subject_id, subject_kind) \
+         VALUES ('{row}'::uuid, now(), '{e}'::uuid, '{s}'::uuid, 'care_recipient')",
+        e = new_id(),
+        s = new_id()
+    ))
+    .await;
+    let (outcome, id, _, _) = verify(&mut v, &store).await;
+    assert_eq!(
+        mismatch(outcome),
+        (multi + 1, AuditChainMismatch::SubjectOrphan)
+    );
+    assert_eq!(outcome_row(&mut v, id.unwrap()).await.0, "mismatch");
+    exec(
+        &mut t,
+        format!("DELETE FROM audit.audit_event_subject WHERE id = '{row}'"),
+    )
+    .await;
+    assert_eq!(verify(&mut v, &store).await.0, VerifyOutcome::Match);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn inet_round_trip_keeps_ipv6_and_ipv4_mapped_addresses() {
+    // Non-blokir review: source_ip ditulis ($n::text)::inet dan dibaca host(source_ip) tanpa berubah,
+    // sehingga hash yang dihitung relay sama dengan hitung ulang verifikator.
+    let _s = SERIAL.lock().await;
+    let mut w = writer().await;
+    let mut v = verifier().await;
+    let addrs = [
+        IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+        IpAddr::V6(Ipv4Addr::new(198, 51, 100, 7).to_ipv6_mapped()),
+        IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)),
+    ];
+    let bodies: Vec<EventBody> = addrs
+        .iter()
+        .map(|ip| EventBody {
+            source_ip: Some(*ip),
+            ..body(1)
+        })
+        .collect();
+    append_batch(&mut w, &bodies).await.unwrap();
+    for b in &bodies {
+        let stored = find_event(&mut v, b.event_id).await.unwrap().unwrap();
+        assert_eq!(stored.event.body.source_ip, b.source_ip);
+        assert_eq!(&stored.event.body, b);
+        assert_eq!(stored.misplaced_subjects, 0);
+    }
+    let dir = anchor_dir();
+    let store = FileAnchorStore::new(&dir).unwrap();
+    assert_eq!(verify(&mut v, &store).await.0, VerifyOutcome::Match);
+    std::fs::remove_dir_all(dir).unwrap();
 }

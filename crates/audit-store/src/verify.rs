@@ -8,7 +8,10 @@
 //! 2. Hitung ulang seluruh rantai daring urut (`seq`, `event_id`): `seq` harus 1, 2, 3, … tanpa celah dan
 //!    tanpa ganda, `prev_hash` = hash event sebelumnya (genesis 32 byte nol), `event_hash` = hasil hitung
 //!    ulang, dan hasil hitung ulang di setiap `seq` yang dijangkarkan = hash jangkar.
-//! 3. Jangkar atau `audit_event_key` dengan `seq` di atas ujung rantai = ujung rantai dipotong.
+//! 3. Jangkar atau `audit_event_key` dengan `seq` di atas ujung rantai = ujung rantai dipotong. Baris
+//!    `audit_event_subject` ikut diperiksa: subjek ber-`event_id` sama dan `recorded_at` sama masuk bentuk
+//!    kanonis (termasuk pada event bersubjek ≤ 1, yang semestinya tanpa baris subjek); `recorded_at`
+//!    berbeda dan baris yatim (tanpa event) = ketidakcocokan.
 //! 4. Hasil (`match`/`mismatch`/`error`, `seq` pertama yang tidak cocok) ditulis ke
 //!    `audit_chain_verification`; ketidakcocokan dan galat dikirim ke security log secara mandiri.
 
@@ -16,7 +19,7 @@ use crate::anchor::{AnchorStore, ChainAnchor};
 use crate::chain::{CANONICAL_VERSION, ChainHash, GENESIS_PREV_HASH, event_hash, to_hash};
 use crate::error::{StoreError, StoreErrorKind};
 use crate::partition::check_partition_runway;
-use crate::reader::{PageCursor, StoredEvent, key_summary, read_page};
+use crate::reader::{PageCursor, StoredEvent, key_summary, orphan_subjects, read_page};
 use foundation::{Clock, Sensitive, Uuid, new_id};
 use observability::security::{self, AuditChainMismatch, AuditVerifyFailure};
 use platform_jobs::{LockAttempt, LockKey, SingletonLock};
@@ -76,6 +79,9 @@ impl ChainChecker {
         if e.event.canonical_version != CANONICAL_VERSION {
             return fail(seq, AuditChainMismatch::CanonicalVersion);
         }
+        if e.misplaced_subjects > 0 {
+            return fail(seq, AuditChainMismatch::SubjectRecordedAt);
+        }
         if e.prev_hash != self.prev {
             return fail(seq, AuditChainMismatch::PrevHash);
         }
@@ -93,8 +99,9 @@ impl ChainChecker {
         Ok(())
     }
 
-    /// Akhir rantai: jangkar atau kunci event di atas ujung rantai berarti ujung dipotong.
-    pub fn finish(&self, key_max_seq: Option<i64>) -> Result<i64, Mismatch> {
+    /// Akhir rantai: jangkar atau kunci event di atas ujung rantai berarti ujung dipotong; baris subjek
+    /// yatim (`orphan_subjects` > 0) tidak terkait `seq` mana pun dan dilaporkan di `seq` sesudah ujung.
+    pub fn finish(&self, key_max_seq: Option<i64>, orphan_subjects: i64) -> Result<i64, Mismatch> {
         let last = self.last_seq();
         if self.anchors.iter().any(|(s, _)| *s > last) {
             return Err(Mismatch {
@@ -106,6 +113,12 @@ impl ChainChecker {
             return Err(Mismatch {
                 seq: last + 1,
                 reason: AuditChainMismatch::KeyBeyondChain,
+            });
+        }
+        if orphan_subjects > 0 {
+            return Err(Mismatch {
+                seq: last + 1,
+                reason: AuditChainMismatch::SubjectOrphan,
             });
         }
         Ok(last)
@@ -227,7 +240,8 @@ async fn check(
             };
         }
     }
-    match checker.finish(key_max) {
+    let orphans = orphan_subjects(conn).await?;
+    match checker.finish(key_max, orphans) {
         Err(m) => Ok((checker.last_seq(), VerifyOutcome::Mismatch(m), None)),
         Ok(last) => {
             let latest = worm.iter().filter(|a| a.seq <= last).max_by_key(|a| a.seq);
@@ -426,6 +440,7 @@ mod tests {
                 };
                 let h = event_hash(&prev, &event).unwrap();
                 let e = StoredEvent {
+                    misplaced_subjects: 0,
                     event,
                     prev_hash: prev,
                     event_hash: h,
@@ -445,7 +460,7 @@ mod tests {
         for e in events {
             c.feed(e)?;
         }
-        c.finish(key_max)
+        c.finish(key_max, 0)
     }
 
     fn mismatch(seq: i64, reason: AuditChainMismatch) -> Result<i64, Mismatch> {
@@ -533,6 +548,35 @@ mod tests {
         assert_eq!(
             run(&c[..4], vec![], Some(5)),
             mismatch(5, AuditChainMismatch::KeyBeyondChain)
+        );
+    }
+
+    #[test]
+    fn misplaced_and_orphan_subject_rows_are_mismatches() {
+        let mut c = chain(3);
+        c[1].misplaced_subjects = 1;
+        assert_eq!(
+            run(&c, vec![], Some(3)),
+            mismatch(2, AuditChainMismatch::SubjectRecordedAt)
+        );
+        let c = chain(3);
+        let mut checker = ChainChecker::new(vec![]);
+        for e in &c {
+            checker.feed(e).unwrap();
+        }
+        assert_eq!(
+            checker.finish(Some(3), 2),
+            mismatch(4, AuditChainMismatch::SubjectOrphan)
+        );
+        // Subjek sisipan pada event bersubjek ≤ 1 mengubah bentuk kanonis -> hash tidak cocok.
+        let mut c = chain(3);
+        c[1].event.body.subjects.push(crate::chain::EventSubject {
+            subject_id: Uuid::from_u128(77),
+            subject_kind: "care_recipient".into(),
+        });
+        assert_eq!(
+            run(&c, vec![], Some(3)),
+            mismatch(2, AuditChainMismatch::EventHash)
         );
     }
 

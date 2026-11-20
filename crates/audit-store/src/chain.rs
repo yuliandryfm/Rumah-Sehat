@@ -7,7 +7,11 @@
 //! Deretan byte tanpa ambiguitas: label domain, lalu setiap kolom DD B1 dalam urutan tetap di bawah, setiap
 //! nilai panjang-variabel diawali panjangnya (u32 big-endian), setiap kolom nullable diawali penanda
 //! (`0x00` = NULL, `0x01` = ada). Kolom yang dicakup: semua kolom `audit_event` kecuali `prev_hash` dan
-//! `event_hash` (prev_hash sudah menjadi awalan hash), ditambah subjek di `audit_event_subject`.
+//! `event_hash` (prev_hash sudah menjadi awalan hash), ditambah pasangan (`subject_id`, `subject_kind`) dari
+//! **semua** baris `audit_event_subject` ber-`event_id` dan `recorded_at` sama dengan event, apa pun
+//! `subject_count`-nya (relay hanya menulis baris subjek bila `subject_count > 1`). Baris subjek yang tidak
+//! tercakup bentuk kanonis (`recorded_at` berbeda, atau yatim tanpa event) diperiksa terpisah oleh
+//! verifikasi (`verify`), bukan oleh hash.
 //!
 //! | Bagian | Pengodean |
 //! | --- | --- |

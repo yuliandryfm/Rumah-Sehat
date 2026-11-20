@@ -51,6 +51,20 @@ impl std::str::FromStr for RelayBatchSize {
     }
 }
 
+/// Penanda lingkungan yang mengizinkan jangkar berkas lokal (`DEPLOY_ENV`). Hanya `local` yang diterima:
+/// `FileAnchorStore` bukan WORM, dan implementasi Object Lock NEO untuk staging/production belum ada, jadi
+/// nilai lain (`staging`, `production`, ...) menggagalkan start (fail-closed, review F1-T24/T25).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalAnchorEnv;
+
+impl std::str::FromStr for LocalAnchorEnv {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "local" { Ok(Self) } else { Err(()) }
+    }
+}
+
 /// Konfigurasi `rs-backend audit-relay` (F1-T24; ADR-009 butir 3, skema fisik §3.3): proses ini hanya
 /// memegang kredensial `rs_audit_relay_login` (database aplikasi) dan `rs_audit_writer_login` (database
 /// audit), tidak memegang kredensial lain (coding-standards §1.4).
@@ -73,6 +87,8 @@ pub struct AuditRelayConfig {
     pub anchor_dir: PathBuf,
     /// `AUDIT_ANCHOR_INTERVAL_SECS`: jeda minimum antar-jangkar (bawaan 3600, ADR-009 butir 5).
     pub anchor_interval_secs: u64,
+    /// `DEPLOY_ENV` wajib `local` selama jangkar memakai berkas lokal.
+    pub anchor_env: LocalAnchorEnv,
 }
 
 impl AuditRelayConfig {
@@ -90,6 +106,7 @@ impl AuditRelayConfig {
             retry_ms: env.optional_or("AUDIT_RELAY_RETRY_MS", 5_000)?,
             anchor_dir: env.required("AUDIT_ANCHOR_DIR")?,
             anchor_interval_secs: env.optional_or("AUDIT_ANCHOR_INTERVAL_SECS", 3_600)?,
+            anchor_env: env.required("DEPLOY_ENV")?,
         })
     }
 }
@@ -104,6 +121,8 @@ pub struct AuditVerifyConfig {
     pub database_url: Sensitive<String>,
     /// `AUDIT_ANCHOR_DIR`: direktori jangkar kepala rantai (berkas lokal).
     pub anchor_dir: PathBuf,
+    /// `DEPLOY_ENV` wajib `local` selama jangkar memakai berkas lokal.
+    pub anchor_env: LocalAnchorEnv,
     /// `AUDIT_VERIFY_INTERVAL_SECS`: jeda antar-verifikasi (bawaan 86400, harian).
     pub interval_secs: u64,
     /// `AUDIT_VERIFY_RETRY_MS`: jeda coba ulang setelah galat / saat siaga (bawaan 60000).
@@ -120,6 +139,7 @@ impl AuditVerifyConfig {
             base: BaseConfig::load(env)?,
             database_url: env.required_secret("AUDIT_VERIFIER_DATABASE_URL")?,
             anchor_dir: env.required("AUDIT_ANCHOR_DIR")?,
+            anchor_env: env.required("DEPLOY_ENV")?,
             interval_secs: env.optional_or("AUDIT_VERIFY_INTERVAL_SECS", 86_400)?,
             retry_ms: env.optional_or("AUDIT_VERIFY_RETRY_MS", 60_000)?,
             once: env.optional_or("AUDIT_VERIFY_ONCE", false)?,
@@ -144,6 +164,7 @@ mod tests {
                 "postgres://writer@localhost/ruang_sehat_audit",
             ),
             ("AUDIT_ANCHOR_DIR", "/var/lib/ruang-sehat/anchor"),
+            ("DEPLOY_ENV", "local"),
         ]);
         let c = AuditRelayConfig::load(&ok).unwrap();
         assert_eq!(c.batch_size.get(), 50);
@@ -165,6 +186,7 @@ mod tests {
                 ("AUDIT_WRITER_DATABASE_URL", "postgres://y"),
                 ("AUDIT_RELAY_BATCH_SIZE", bad),
                 ("AUDIT_ANCHOR_DIR", "/tmp/a"),
+                ("DEPLOY_ENV", "local"),
             ]);
             let e = AuditRelayConfig::load(&env).unwrap_err();
             assert_eq!(e.kind(), ConfigErrorKind::Invalid, "batch {bad}");
@@ -179,6 +201,7 @@ mod tests {
                 "postgres://verifier@localhost/a",
             ),
             ("AUDIT_ANCHOR_DIR", "/var/lib/ruang-sehat/anchor"),
+            ("DEPLOY_ENV", "local"),
         ]);
         let c = AuditVerifyConfig::load(&ok).unwrap();
         assert_eq!(
@@ -195,12 +218,36 @@ mod tests {
         let bad_once = EnvSource::from_pairs([
             ("AUDIT_VERIFIER_DATABASE_URL", "postgres://verifier@x/a"),
             ("AUDIT_ANCHOR_DIR", "/tmp/a"),
+            ("DEPLOY_ENV", "local"),
             ("AUDIT_VERIFY_ONCE", "ya"),
         ]);
         assert_eq!(
             AuditVerifyConfig::load(&bad_once).unwrap_err().kind(),
             ConfigErrorKind::Invalid
         );
+    }
+
+    #[test]
+    fn file_anchor_store_is_rejected_outside_local() {
+        for deploy in [Some("staging"), Some("production"), Some("Local"), None] {
+            let mut relay = vec![
+                ("AUDIT_RELAY_DATABASE_URL", "postgres://x"),
+                ("AUDIT_WRITER_DATABASE_URL", "postgres://y"),
+                ("AUDIT_ANCHOR_DIR", "/tmp/a"),
+            ];
+            let mut verify = vec![
+                ("AUDIT_VERIFIER_DATABASE_URL", "postgres://z"),
+                ("AUDIT_ANCHOR_DIR", "/tmp/a"),
+            ];
+            if let Some(d) = deploy {
+                relay.push(("DEPLOY_ENV", d));
+                verify.push(("DEPLOY_ENV", d));
+            }
+            let e = AuditRelayConfig::load(&EnvSource::from_pairs(relay)).unwrap_err();
+            assert_eq!(e.name(), "DEPLOY_ENV", "{deploy:?}");
+            let e = AuditVerifyConfig::load(&EnvSource::from_pairs(verify)).unwrap_err();
+            assert_eq!(e.name(), "DEPLOY_ENV", "{deploy:?}");
+        }
     }
 
     #[test]

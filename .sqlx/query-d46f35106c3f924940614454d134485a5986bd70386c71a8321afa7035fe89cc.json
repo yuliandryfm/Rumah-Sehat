@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT event_id, recorded_at, subject_id, subject_kind\n                 FROM audit.audit_event_subject\n                WHERE event_id = ANY($1)",
+  "query": "SELECT event_id, recorded_at, subject_id, subject_kind\n             FROM audit.audit_event_subject\n            WHERE event_id = ANY($1)",
   "describe": {
     "columns": [
       {
@@ -60,5 +60,5 @@
       false
     ]
   },
-  "hash": "d48f534dd1d91803687406a608ab0ec61979d8b54411a00c8c8f24d090b87ca3"
+  "hash": "d46f35106c3f924940614454d134485a5986bd70386c71a8321afa7035fe89cc"
 }
