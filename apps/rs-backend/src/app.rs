@@ -5,8 +5,7 @@ use crate::http_support::EnvelopeRenderer;
 use crate::modules::platform;
 use crate::modules::platform::api::ReadinessCheck;
 use crate::openapi::OpsApiDoc;
-use authz::{Enforcement, PolicyRouter, PolicySetupError};
-use axum::Router;
+use authz::{EnforcedRouter, Enforcement, PolicyRouter, PolicySetupError};
 use observability::correlation_middleware;
 use std::sync::Arc;
 use utoipa::OpenApi;
@@ -41,7 +40,7 @@ pub(crate) fn ops_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(OpsApiDoc::openapi()).merge(platform::router())
 }
 
-/// Router lengkap siap `axum::serve`.
+/// Router lengkap siap dilayani ([`EnforcedRouter::serve`]).
 ///
 /// - `PolicyRouter::finish` memeriksa saat start bahwa setiap rute punya kebijakan (galat = start
 ///   gagal) dan memasang middleware penegak: rute tidak dikenal, metode tidak diizinkan, atau rute tanpa
@@ -49,9 +48,9 @@ pub(crate) fn ops_router() -> PolicyRouter<AppState> {
 ///   kode 405, dan 404 tidak membedakan "tidak ada" dari "tidak boleh" (KU-03).
 /// - Pada tahap ini semua endpoint publik (kesehatan), sehingga validator token belum dipasang;
 ///   endpoint terautentikasi pertama wajib memasang `Enforcement::new` (tanpa itu start gagal).
-/// - Middleware korelasi dipasang terakhir dengan `Router::layer`, sehingga membungkus penegak dan
-///   `MatchedPath` tersedia.
-pub fn build_router(state: AppState) -> Result<Router, PolicySetupError> {
+/// - Middleware korelasi dipasang terakhir dengan `EnforcedRouter::layer`, sehingga membungkus penegak
+///   dan `MatchedPath` tersedia. Router hasil `finish` tertutup untuk penambahan rute (TD-15).
+pub fn build_router(state: AppState) -> Result<EnforcedRouter, PolicySetupError> {
     let renderer = Arc::new(EnvelopeRenderer::new(state.problem_type_base()));
     let (router, _spec) = ops_router().finish(Enforcement::public_only(renderer))?;
     Ok(router

@@ -104,6 +104,8 @@ dependencies = [
  "serde_json",
  "time",
  "tokio",
+ "tower-layer",
+ "tower-service",
  "tracing",
  "utoipa",
  "utoipa-axum",

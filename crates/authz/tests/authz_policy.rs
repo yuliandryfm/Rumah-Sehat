@@ -93,6 +93,11 @@ async fn principal_on_public(_p: Principal) -> &'static str {
     "tidak boleh sampai sini"
 }
 
+#[utoipa::path(get, path = "/public/v1/context-only", responses((status = 200)))]
+async fn context_on_public(ctx: AuthContext) -> String {
+    format!("tidak boleh sampai sini:{}", ctx.subject())
+}
+
 // ----- perangkat -----
 
 /// UUID uji berpola heksadesimal campuran (deret angka panjang akan diredaksi logger sebagai
@@ -226,6 +231,10 @@ fn app_router() -> PolicyRouter {
             Policy::Public(PublicReason::PublicContent),
             routes!(principal_on_public),
         )
+        .routes(
+            Policy::Public(PublicReason::PublicContent),
+            routes!(context_on_public),
+        )
 }
 
 fn token(key: &TestRealmKey, realm: &str, sub: &str) -> String {
@@ -253,7 +262,7 @@ async fn spawn(keys: &Keys, resolver: Arc<MemResolver>) -> SocketAddr {
     ));
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move { app.serve(listener, std::future::pending()).await.unwrap() });
     addr
 }
 
@@ -458,6 +467,32 @@ async fn handler_on_public_route_cannot_obtain_principal() {
     assert_eq!(r.status, 500);
     assert_eq!(r.json()["response_code"], "5000001");
     assert!(!r.body.contains("tidak boleh sampai sini"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn auth_context_extractor_on_public_route_is_500_even_with_valid_token() {
+    // TD-15 (Medium): sebelumnya ekstraktor AuthContext memvalidasi token sendiri di endpoint publik,
+    // melewati resolver akun (akun nonaktif atau tidak dikenal tetap lolos). Kini hanya konteks dari
+    // middleware yang diterima; endpoint publik tidak punya konteks → 500 envelope.
+    let keys = keys();
+    let resolver = Arc::new(MemResolver::default());
+    resolver.add(
+        Realm::Pasien,
+        "inactive",
+        record(uuid(1), AccountType::Patient, AccountStatus::Inactive, &[]),
+    );
+    let addr = spawn(&keys, resolver).await;
+    for bearer in [
+        Some(token(&keys.pasien, "pasien", "inactive")),
+        Some(token(&keys.pasien, "pasien", "tidak-dikenal")),
+        None,
+    ] {
+        let r = call(addr, "GET", "/public/v1/context-only", bearer.as_deref()).await;
+        assert_eq!(r.status, 500, "{bearer:?}");
+        assert_eq!(r.json()["response_code"], "5000001");
+        assert_eq!(r.json()["correlation_id"], CID);
+        assert!(!r.body.contains("tidak boleh sampai sini"));
+    }
 }
 
 #[tokio::test(flavor = "current_thread")]

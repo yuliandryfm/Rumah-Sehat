@@ -25,7 +25,7 @@ pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
     let addr = listener.local_addr().unwrap();
     let app = build_router(AppState::new(TYPE_BASE, readiness)).unwrap();
     tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+        app.serve(listener, std::future::pending()).await.unwrap();
     });
     addr
 }

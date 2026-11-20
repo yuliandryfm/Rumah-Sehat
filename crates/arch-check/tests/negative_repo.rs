@@ -391,3 +391,76 @@ fn migration_tables_must_have_an_owner() {
     );
     assert_eq!(tables::created_tables(mig), ["order_head", "rogue"]);
 }
+
+#[test]
+fn test_features_in_production_dependencies_are_rejected() {
+    // TD-15 (Low): fitur pembantu test tidak boleh ikut build produksi.
+    let member =
+        |deps: &str| format!("[package]\nname = \"x\"\n{deps}\n[lints]\nworkspace = true\n");
+    let bad = [
+        "[dependencies]\nauthn = { path = \"../authn\", features = [\"testing\"] }",
+        "[dependencies]\ncrypto = { path = \"../crypto\", features = [\"test-keys\"] }",
+        "[build-dependencies]\nauthn = { path = \"../authn\", features = [\"testing\"] }",
+        "[target.'cfg(unix)'.dependencies]\ncrypto = { path = \"../crypto\", features = [\"test-keys\"] }",
+        "[dependencies]\nauth = { package = \"authn\", path = \"../authn\", features = [\"testing\"] }",
+        // Tabel [features] yang menyalakan fitur test dependensi (dapat aktif lewat crate pemakai).
+        "[features]\ndefault = [\"authn/testing\"]",
+        "[features]\nx = [\"crypto?/test-keys\"]",
+    ];
+    for deps in bad {
+        let r = Repo::new();
+        r.put("apps/x/Cargo.toml", &member(deps));
+        let d = details(&r);
+        assert!(
+            d.iter()
+                .any(|x| x.starts_with("apps/x/Cargo.toml|authn/testing")
+                    || x.starts_with("apps/x/Cargo.toml|crypto/test-keys")),
+            "lolos: {deps}: {d:?}"
+        );
+    }
+    // Di workspace.dependencies root juga ditolak.
+    let r = Repo::new();
+    r.put(
+        "Cargo.toml",
+        &format!(
+            "{GOOD_ROOT}[workspace.dependencies]\nauthn = {{ path = \"crates/authn\", features = [\"testing\"] }}\n"
+        ),
+    );
+    assert!(details(&r).contains(&"Cargo.toml|authn/testing".to_string()));
+    // Fitur default milik crate pemiliknya.
+    let r = Repo::new();
+    r.put(
+        "crates/crypto/Cargo.toml",
+        &member("[features]\ndefault = [\"test-keys\"]\ntest-keys = []"),
+    );
+    assert!(details(&r).contains(&"crates/crypto/Cargo.toml|crypto/test-keys".to_string()));
+    // Crate authn: dependensi crypto berfitur test-keys hanya opsional dan hanya lewat fitur `testing`.
+    let r = Repo::new();
+    r.put(
+        "crates/authn/Cargo.toml",
+        &member("[dependencies]\ncrypto = { path = \"../crypto\", features = [\"test-keys\"] }"),
+    );
+    assert!(details(&r).contains(&"crates/authn/Cargo.toml|crypto/test-keys".to_string()));
+    let r = Repo::new();
+    r.put(
+        "crates/authn/Cargo.toml",
+        &member(
+            "[dependencies]\ncrypto = { path = \"../crypto\", optional = true, features = [\"test-keys\"] }\n[features]\ndefault = [\"dep:crypto\"]\ntesting = [\"dep:crypto\"]",
+        ),
+    );
+    assert!(details(&r).contains(&"crates/authn/Cargo.toml|authn/testing".to_string()));
+}
+
+#[test]
+fn test_features_in_dev_dependencies_and_authn_testing_are_allowed() {
+    let r = Repo::new();
+    r.put(
+        "crates/authn/Cargo.toml",
+        "[package]\nname = \"authn\"\n[dependencies]\ncrypto = { path = \"../crypto\", optional = true, features = [\"test-keys\"] }\n[features]\ntesting = [\"dep:crypto\"]\n[dev-dependencies]\nauthn = { path = \".\", features = [\"testing\"] }\n[lints]\nworkspace = true\n",
+    );
+    r.put(
+        "apps/x/Cargo.toml",
+        "[package]\nname = \"x\"\n[dependencies]\nauthn = { path = \"../../crates/authn\" }\n[dev-dependencies]\nauthn = { path = \"../../crates/authn\", features = [\"testing\"] }\ncrypto = { path = \"../../crates/crypto\", features = [\"test-keys\"] }\n[lints]\nworkspace = true\n",
+    );
+    assert!(details(&r).is_empty(), "{:?}", details(&r));
+}

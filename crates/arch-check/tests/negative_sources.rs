@@ -380,3 +380,122 @@ fn raw_transaction_control_sql_is_rejected() {
     }
     assert!(rules("crates/audit/tests/x.rs", r#"const S: &str = "COMMIT";"#).is_empty());
 }
+
+#[test]
+fn router_bypass_in_app_sources_is_rejected() {
+    // TD-15 (Medium): rute di luar PolicyRouter atau router yang dilayani tanpa EnforcedRouter tidak
+    // dibungkus middleware penegak.
+    let cases = [
+        ("fn f(r: axum::Router) {}", "router-bypass:axum::Router"),
+        ("use axum::Router;", "router-bypass:Router"),
+        ("use axum::{Json, Router};", "router-bypass:Router"),
+        (
+            "fn f() { let _ = utoipa_axum::router::OpenApiRouter::<()>::new(); }",
+            "router-bypass:OpenApiRouter",
+        ),
+        (
+            "fn f(r: R) { r.route(\"/x\", get(h)); }",
+            "router-bypass:route",
+        ),
+        (
+            "fn f(r: R) { r\n  .nest(\"/x\", o); }",
+            "router-bypass:nest",
+        ),
+        ("fn f(r: R) { r.fallback(h); }", "router-bypass:fallback"),
+        (
+            "fn f(r: R) { r.route_service(\"/x\", s); }",
+            "router-bypass:route_service",
+        ),
+        (
+            "fn f(r: R) { r.nest_service(\"/x\", s); }",
+            "router-bypass:nest_service",
+        ),
+        (
+            "fn f(r: R) { r.fallback_service(s); }",
+            "router-bypass:fallback_service",
+        ),
+        (
+            "fn f(r: R) { r.method_not_allowed_fallback(h); }",
+            "router-bypass:method_not_allowed_fallback",
+        ),
+        (
+            "fn f(r: R) { r.route_layer(l); }",
+            "router-bypass:route_layer",
+        ),
+        (
+            "fn f(a: R, b: R) { let x = a.merge(b); }",
+            "router-bypass:merge",
+        ),
+        (
+            "async fn f(l: L, r: R) { axum::serve(l, r).await; }",
+            "router-bypass:axum::serve",
+        ),
+        ("use axum::{serve, Json};", "router-bypass:serve"),
+        ("use axum::{routing::get};", "router-bypass:routing"),
+        (
+            "fn f() { let _ = axum::routing::get(h); }",
+            "router-bypass:axum::routing",
+        ),
+        (
+            "fn f(m: M) { let _ = m.into_make_service(); }",
+            "router-bypass:into_make_service",
+        ),
+        (
+            "async fn f(a: A, p: P) { a.authenticate_parts(&p).await; }",
+            "router-bypass:authenticate_parts",
+        ),
+        (
+            "async fn f(a: A, h: H) { a.authenticate_headers(h).await; }",
+            "router-bypass:authenticate_headers",
+        ),
+        (
+            "async fn f(a: A, t: &str) { a.verify(t).await; }",
+            "router-bypass:verify",
+        ),
+        (
+            "async fn f(a: A, t: &str) { Authenticator::verify(&a, t).await; }",
+            "router-bypass:Authenticator::verify",
+        ),
+    ];
+    for (src, want) in cases {
+        assert!(has(SRC, src, want), "lolos: {src}: {:?}", rules(SRC, src));
+    }
+}
+
+#[test]
+fn policy_router_usage_and_non_app_files_are_allowed() {
+    let ok = r#"
+use authz::{EnforcedRouter, PolicyRouter};
+pub(crate) fn ops_router() -> PolicyRouter<AppState> {
+    PolicyRouter::with_openapi(OpsApiDoc::openapi()).merge(platform::router())
+}
+fn modules() -> PolicyRouter<AppState> {
+    platform::router().merge(identity::router())
+}
+pub(super) fn router() -> PolicyRouter<AppState> {
+    PolicyRouter::new().routes(policy::health(), routes!(live))
+}
+async fn run(r: EnforcedRouter, l: TcpListener) { r.serve(l, shutdown()).await; }
+// axum::Router dan .route( di komentar diabaikan
+fn s() -> &'static str { "axum::serve .route(" }
+"#;
+    let found: Vec<String> = rules(SRC, ok)
+        .into_iter()
+        .filter(|r| r.starts_with("router-bypass"))
+        .collect();
+    assert!(found.is_empty(), "{found:?}");
+    // Aturan hanya untuk apps/*/src: test aplikasi dan crate pustaka (authz, authn) tidak diperiksa.
+    let raw = "fn f(r: axum::Router) { r.route(\"/x\", get(h)); }";
+    for file in [
+        "apps/rs-backend/tests/common/mod.rs",
+        "crates/authz/src/router.rs",
+        "crates/authn/tests/authn_http.rs",
+    ] {
+        assert!(
+            !rules(file, raw)
+                .iter()
+                .any(|r| r.starts_with("router-bypass")),
+            "{file}"
+        );
+    }
+}

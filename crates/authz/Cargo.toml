@@ -18,6 +18,12 @@ axum = { version = "=0.8.9", default-features = false, features = ["tokio", "htt
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# TD-15: EnforcedRouter::layer memakai batas trait yang sama dengan axum::Router::layer (axum tidak mengekspor
+# ulang Layer/Service); EnforcedRouter::serve memakai tokio::net::TcpListener. Ketiganya sudah ada di
+# Cargo.lock sebagai dependensi axum (tower-layer 0.3.3, tower-service 0.3.3: SRC-570; tokio 1.54.1 [SRC-162]).
+tower-layer = { version = "=0.3.3", default-features = false }
+tower-service = { version = "=0.3.3", default-features = false }
+tokio = { version = "=1.54.1", default-features = false, features = ["net"] }
 
 [dev-dependencies]
 authn = { path = "../authn", features = ["testing"] }

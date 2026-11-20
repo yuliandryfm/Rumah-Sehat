@@ -16,12 +16,12 @@ use crate::policy::Policy;
 use crate::principal::{Principal, PrincipalResolver};
 use crate::registry::PolicyRegistry;
 use crate::role::AccountStatus;
-use authn::{AuthError, AuthState, ErrorRenderer};
+use authn::{AuthError, AuthState, ErrorRenderer, RequestRenderer, missing_context_response};
 use axum::extract::{FromRequestParts, MatchedPath, Request, State};
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use envelope::CommonError;
 use foundation::CorrelationId;
 use observability::security::{self, AccessDenial};
@@ -47,10 +47,6 @@ impl EnforcerState {
         }
     }
 }
-
-/// Pembentuk respons galat yang dipasang middleware di extensions untuk ekstraktor.
-#[derive(Clone)]
-struct RendererHandle(Arc<dyn ErrorRenderer>);
 
 fn correlation(parts_ext: &axum::http::Extensions) -> CorrelationId {
     parts_ext
@@ -84,7 +80,7 @@ pub(crate) async fn enforce(
         return state.renderer.render(CommonError::NotFound, cid);
     };
     req.extensions_mut()
-        .insert(RendererHandle(Arc::clone(&state.renderer)));
+        .insert(RequestRenderer::new(Arc::clone(&state.renderer)));
 
     let requirement = match policy {
         Policy::Public(_) => return next.run(req).await,
@@ -155,11 +151,6 @@ where
             return Ok(p.clone());
         }
         tracing::error!("principal_missing");
-        match parts.extensions.get::<RendererHandle>() {
-            Some(h) => Err(h
-                .0
-                .render(CommonError::Internal, correlation(&parts.extensions))),
-            None => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
-        }
+        Err(missing_context_response(parts))
     }
 }

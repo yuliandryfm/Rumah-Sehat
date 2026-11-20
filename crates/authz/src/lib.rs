@@ -3,7 +3,8 @@
 //! - Registri kebijakan per endpoint ([`PolicyRegistry`]); setiap endpoint menyatakan kebijakannya
 //!   ([`Policy`]) dan permintaan tanpa kebijakan ditolak (default deny, ADR-012 butir 1).
 //! - Rute hanya didaftarkan lewat [`PolicyRouter`]; [`PolicyRouter::finish`] memeriksa cakupan saat
-//!   start dan memasang middleware penegak (KEPUTUSAN-127).
+//!   start dan memasang middleware penegak (KEPUTUSAN-127), lalu mengembalikan [`EnforcedRouter`] yang
+//!   tertutup untuk penambahan rute (TD-15).
 //! - Peran: jenis akun dan sub-peran admin Ruang Sehat ([`AdminSubRole`], UP-18) dari database aplikasi
 //!   lewat [`PrincipalResolver`] (ADR-011 butir 6), tanpa sub-peran yang otomatis memegang hak lain.
 //! - Respons: token tidak sah atau realm lain `401`, peran tidak diizinkan `403`, objek terlarang `404`
@@ -28,4 +29,4 @@ pub use policy::{Policy, PublicReason, Requirement};
 pub use principal::{AccountRecord, Principal, PrincipalResolver, ResolveError, ResolveFuture};
 pub use registry::{EndpointKey, PolicyRegistry, check_coverage};
 pub use role::{AccountStatus, AccountType, AdminSubRole};
-pub use router::{Enforcement, PolicyRouter};
+pub use router::{EnforcedRouter, Enforcement, PolicyRouter};

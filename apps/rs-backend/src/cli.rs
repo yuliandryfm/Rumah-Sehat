@@ -261,9 +261,7 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         tracing::error!("policy_setup_failed: {e}");
         std::io::Error::other("policy_setup_failed")
     })?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
+    router.serve(listener, shutdown_signal()).await
 }
 
 /// Selesai pada SIGINT atau SIGTERM (Docker Compose mengirim SIGTERM).
