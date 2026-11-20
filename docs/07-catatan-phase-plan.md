@@ -218,3 +218,24 @@ SKB 2027 sudah terbit (ditandatangani 15 September 2026), sehingga tanggal 2027 
 | C2-F4 | Phase plan v0.1 §2 mencatat mesin pengembangan Darwin 21.6.0, sedangkan sesi revisi ini berjalan di Linux | Baris §2 diperbarui; mesin Tahap 8 tetap diperiksa di F1-T01 |
 | C2-F5 | Backlog dan traceability perlu task F1-T72–F1-T80, US-110 di Fase 2, US-108/US-109 di Fase 3, dan penanda Fase 4 tidak dikerjakan | Dikerjakan pemegang berkas lain |
 | C2-F6 | Ukuran task yang definisinya disesuaikan klarifikasi AC (klarifikasi §6) belum dinilai ulang | KEPUTUSAN-223: dinilai ulang setelah PRD v1.2 final, sebelum task terdampak pertama dimulai |
+
+## Perubahan phase plan v0.4 (2026-11-20): 7 hari per minggu, CR-022, progres Fase 1
+
+Persona Project Manager, T2. Input: `docs/fase-1-catatan.md` ("Arahan user selama Fase 1", "Posisi akhir pemanggilan"), `docs/backlog.md` CR-022 dan Tech Debt, `docs/STATUS.md`. Tidak ada riset eksternal baru; tanggal libur tetap dari SRC-280–SRC-283.
+
+- **Arahan `[USER]` 2026-11-19:** "tidak ada hari libur. jalan terus"; akhir pekan dijawab Y. Mengubah C2-Q7. Hitungan memakai hari kalender: Fase 1 19 (sisa dari 2026-11-20: 22), Fase 2 26, Fase 3 19, Februari 12, mobile developer 75 (dulu 15, 16, 15, 9, 50 hari kerja).
+- **Kebutuhan baru (Opsi B + CR-021, jam-task per hari kalender):** Fase 1 sisa 13,1 (backend/web 11,4; mobile 1,7; sisa 288 jam-task dibagi 22 hari); Fase 2 27,9 (725 ÷ 26); Fase 3 51,2 (973 ÷ 19); Februari 6,0 (72 ÷ 12). Effort total ±2.131 tidak berubah. Per minggu: 91,6, 195,2, 358,5, 42,0.
+- **CR-022 `[USER]`:** urutan Fase 1 baseline (kecuali F1-T71) → F1-T85–F1-T111 → F1-T71; toleransi waktu 0 diubah; gerbang 2026-12-11 menetapkan tanggal go-live baru (rumus dan tabel sensitivitas di phase plan §6.8.5), bukan memilih opsi pemotongan scope; scope Opsi B + CR-021, CR-011 dan CR-015 tetap rilis berikutnya.
+- **Progres per 2026-11-20:** F1-T01–F1-T18 (59 jam-task), F1-T81–F1-T84 (14), total 73 dari 361 (20,2%), 22 dari 104 task; sisa 288 (baseline 193, CR-021 95). TD-01 selesai tanpa ukuran, tidak dihitung.
+- **Koreksi dependensi:** F1-T19 bergantung pula pada F1-T18.
+- Registri: KEPUTUSAN-281–284 diusulkan di phase plan §12, menunggu pencatatan di `docs/decision-log.md` oleh pemegang berkas itu.
+
+### Temuan dan pertentangan v0.4 (tidak diselesaikan sendiri)
+
+| # | Temuan | Perlakuan |
+| --- | --- | --- |
+| V4-1 | Entri CR-022 di `docs/backlog.md` ("Dampak") menyebut baseline scope menjadi Opsi A, sedangkan tafsiran di entri yang sama dan instruksi tugas ini menyebut baseline Opsi B + CR-021 | Plan mengikuti Opsi B + CR-021; Opsi A sebagai pembanding; perlu konfirmasi user |
+| V4-2 | `docs/01-business-case.md` §7.1 dan brief P8.3 (toleransi waktu 0) | Business case diberi catatan CR-022; brief tidak diubah di tugas ini |
+| V4-3 | `docs/STATUS.md` tidak menyebut F1-T81/F1-T82, `docs/backlog.md` CR-021 menyebutnya diterapkan 2026-11-19 | Dihitung selesai; angka alternatif tanpa keduanya: 65 jam-task (18,0%), sisa 296 |
+| V4-4 | Jam kerja per hari dan per minggu pada akhir pekan dan libur `[TIDAK DIKETAHUI]`; penyedia luar mungkin libur | Kenaikan kapasitas tidak dikonversi ke jam-task |
+| V4-5 | `docs/decision-log.md`, `docs/traceability.md`, `docs/STATUS.md`, `docs/backlog.md` belum mencerminkan v0.4 | Di luar berkas tugas ini; dilaporkan ke orkestrator |

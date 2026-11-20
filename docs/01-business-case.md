@@ -162,7 +162,7 @@ Anggaran total `[TIDAK DIKETAHUI]` `[DOK] P7.1` (PT-11). Periode pembangunan sam
 
 | Aspek | Toleransi | Sumber |
 | --- | --- | --- |
-| Waktu | 0 hari. Go-live tetap 1 Maret 2027 | `[DOK] P7.2, P8.3` |
+| Waktu | 0 hari. Go-live tetap 1 Maret 2027 **(diubah CR-022, 2026-11-19: go-live boleh mundur bila scope penuh tidak muat; tanggal baru ditetapkan di gerbang 2026-12-11; lihat `docs/backlog.md` CR-022 dan `docs/07-phase-plan.md` v0.4 §6.8. Teks analisis di dokumen ini tidak ditulis ulang)** | `[DOK] P7.2, P8.3`; `[USER]` CR-022 |
 | Scope | Boleh dikurangi (layanan yang belum siap menyusul), kecuali syarat izin, audit keamanan, dan sign-off UAT | `[DOK] P8.3` |
 | Biaya | +20% dari perkiraan terakhir yang disetujui | `[USER] T1-Q8` |
 | Kualitas | Lulus audit keamanan dan sign-off UAT CEO, CTO, konsultan medis | `[DOK] P8.2` |
