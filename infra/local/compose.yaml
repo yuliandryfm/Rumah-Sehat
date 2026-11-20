@@ -98,6 +98,7 @@ services:
     command: ["start-dev"]
     volumes:
       - ../keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
+      - ../keycloak/themes/ruang-sehat:/opt/keycloak/themes/ruang-sehat:ro
     depends_on:
       postgres-app:
         condition: service_healthy

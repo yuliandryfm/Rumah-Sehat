@@ -14,6 +14,7 @@ KC_CHECK_SINK_CONTAINER, KC_CHECK_SINK_PORT, dan nilai RS_KC_* yang sama dengan 
 konfigurasi diterapkan. Nilai rahasia tidak pernah dicetak.
 """
 
+import difflib
 import email
 import json
 import os
@@ -483,18 +484,21 @@ def cek_penguncian_dan_pesan(realm):
     korban = UserUji(realm, "kunci")
     pesan = {}
     status = {}
+    halaman = {}
     for i in range(5):
         b, _, r = mulai(realm)
         r = kirim_password(b, r, korban.email, "Salah-" + secrets.token_hex(6))
         if i == 0:
             pesan["password salah"] = pesan_galat(r)
             status["password salah"] = r.status
+            halaman["password salah"] = r
     bf = ADMIN.get(f"{realm}/attack-detection/brute-force/users/{korban.id}")
     periksa(bf.get("disabled") is True and bf.get("numFailures") == 5, f"[{realm}] setelah 5 gagal akun terkunci sementara (attack detection)", str(bf))
     b, _, r = mulai(realm)
     r = kirim_password(b, r, korban.email, korban.password)
     pesan["terkunci, password benar"] = pesan_galat(r)
     status["terkunci, password benar"] = r.status
+    halaman["terkunci, password benar"] = r
     periksa(kode_dari(r, realm) is None and k.Page(r.body).form("kc-otp-login-form") is None and k.Page(r.body).form("kc-totp-settings-form") is None,
             f"[{realm}] akun terkunci: password benar tidak melanjutkan login")
     bf2 = ADMIN.get(f"{realm}/attack-detection/brute-force/users/{korban.id}")
@@ -504,6 +508,7 @@ def cek_penguncian_dan_pesan(realm):
     r = kirim_password(b, r, f"t31-tidak-ada-{secrets.token_hex(4)}@uji.invalid", "Apa-saja-12345")
     pesan["akun tidak ada"] = pesan_galat(r)
     status["akun tidak ada"] = r.status
+    halaman["akun tidak ada"] = r
 
     nonaktif = UserUji(realm, "nonaktif")
     ADMIN.call("PUT", f"{realm}/users/{nonaktif.id}", {"enabled": False})
@@ -511,10 +516,150 @@ def cek_penguncian_dan_pesan(realm):
     r = kirim_password(b, r, nonaktif.email, nonaktif.password)
     pesan["akun nonaktif, password benar"] = pesan_galat(r)
     status["akun nonaktif, password benar"] = r.status
+    halaman["akun nonaktif, password benar"] = r
 
     periksa(all(v == PESAN_SERAGAM for v in pesan.values()), f"[{realm}] pesan login gagal identik kata per kata untuk 4 kondisi (US-103 AC2)",
             "; ".join(f"{a}={b_!r}" for a, b_ in pesan.items()))
     periksa(len(set(status.values())) == 1, f"[{realm}] kode HTTP halaman login gagal sama untuk 4 kondisi", str(status))
+    cek_dom_seragam(realm, halaman)
+
+
+# ------------------------------------------------------------------------------------- tema login (F1-T35)
+
+TEMA = "ruang-sehat"
+RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+HOST_BASE = urllib.parse.urlsplit(BASE).netloc
+CSP_BAWAAN = "frame-src 'self'; frame-ancestors 'self'; object-src 'none';"
+
+
+def normalisasi(body):
+    """Buang bagian yang memang berbeda per sesi/percobaan (nilai isian, URL bersesi, isi skrip, spasi);
+    sisanya adalah struktur DOM dan teks yang harus identik untuk keempat kegagalan login."""
+    b = re.sub(r"<script\b.*?</script>", "<script/>", body, flags=re.S | re.I)
+    b = re.sub(r'\b(action|href)="[^"]*(?:session_code|tab_id|execution|client_data)[^"]*"', r'\1="#"', b)
+    b = re.sub(r'(<input\b[^>]*?)\bvalue="[^"]*"', r'\1value=""', b)
+    b = re.sub(r"\s+", " ", b)
+    return re.sub(r">\s*<", ">\n<", b).strip()
+
+
+def cek_dom_seragam(realm, halaman):
+    """UP-73 opsi B, TD-16: DOM halaman login gagal identik untuk password salah, akun tidak ada, terkunci,
+    dan nonaktif. Bukan hanya teks: banner vs galat isian pada tema bawaan membedakan status akun."""
+    norm = {n: normalisasi(r.body) for n, r in halaman.items()}
+    acuan_nama = "password salah"
+    acuan = norm[acuan_nama]
+    for nama, dom in norm.items():
+        if nama == acuan_nama:
+            continue
+        sama = dom == acuan
+        rincian = ""
+        if not sama:
+            rincian = "\n".join(list(difflib.unified_diff(acuan.splitlines(), dom.splitlines(), acuan_nama, nama, lineterm="", n=1))[:30])
+        periksa(sama, f"[{realm}] DOM halaman login gagal '{nama}' identik dengan '{acuan_nama}' setelah normalisasi (TD-16)", rincian)
+    for nama, r in halaman.items():
+        b = r.body
+        periksa(b.count('id="kc-login-error"') == 1 and 'role="alert"' in b and 'aria-invalid="true"' not in b
+                and b.count("kc-feedback-text") == 1 and 'id="input-error-username"' not in b,
+                f"[{realm}] '{nama}': satu blok galat role=alert, tanpa galat isian per-kolom")
+        periksa('lang="id"' in b, f"[{realm}] '{nama}': halaman berbahasa Indonesia (lang=id)")
+
+
+def url_luar(teks):
+    """URL absolut ke host selain Keycloak sendiri. Namespace XML SVG bukan permintaan jaringan."""
+    ketemu = []
+    # Komentar JS baris penuh (mis. rujukan bugzilla di template.ftl bawaan) bukan permintaan jaringan.
+    teks = re.sub(r"^[ \t]*//[^\n]*$", "", teks, flags=re.M)
+    for m in re.finditer(r"(?:https?:)?//([A-Za-z0-9.-]+\.[A-Za-z]{2,}|\d+\.\d+\.\d+\.\d+)(?::\d+)?([^\s\"'<>)]*)", teks):
+        host = m.group(1)
+        if host == "www.w3.org" and re.match(r"/(2000/svg|1999/xlink|1999/xhtml)", m.group(2)):
+            continue
+        penuh = m.group(0) if m.group(0).startswith("http") else "http:" + m.group(0)
+        if urllib.parse.urlsplit(penuh).netloc == HOST_BASE:
+            continue
+        ketemu.append(m.group(0) + "  (konteks: " + teks[max(0, m.start() - 12):m.start()].strip() + ")")
+    return ketemu
+
+
+def cek_tema(realm):
+    print(f"== [{realm}] tema login {TEMA} (F1-T35)")
+    d = ADMIN.get(realm)
+    periksa(d.get("loginTheme") == TEMA, f"[{realm}] realm memakai tema login {TEMA}", str(d.get("loginTheme")))
+    periksa(d.get("internationalizationEnabled") is True and d.get("supportedLocales") == ["id"] and d.get("defaultLocale") == "id",
+            f"[{realm}] satu bahasa: Indonesia (tanpa pemilih bahasa)")
+    b, _, r = mulai(realm)
+    halaman = r.body
+    periksa(r.status == 200 and f"/login/{TEMA}/" in halaman and "css/ruang-sehat.css" in halaman,
+            f"[{realm}] halaman login memuat sumber daya tema {TEMA} (bukan tema bawaan)", f"HTTP {r.status}")
+    periksa('lang="id"' in halaman and "<title>Masuk ke Ruang Sehat" in halaman and "login-select-toggle" not in halaman,
+            f"[{realm}] halaman login berbahasa Indonesia, tanpa pemilih bahasa")
+    periksa("Ruang Sehat" in (k.Page(halaman).text("kc-header-wrapper") or ""), f"[{realm}] kepala halaman memuat nama produk")
+    periksa("pf-v5-theme-dark" not in halaman and "prefers-color-scheme" not in halaman, f"[{realm}] mode gelap tidak aktif (rilis 1)")
+    # CSP Keycloak tetap ketat: tema dan realm tidak melonggarkannya.
+    csp = r.headers.get("Content-Security-Policy") or ""
+    periksa(csp == CSP_BAWAAN, f"[{realm}] CSP halaman login tetap bawaan Keycloak (tanpa pelonggaran)", csp)
+    luar = url_luar(halaman)
+    periksa(not luar, f"[{realm}] HTML halaman login tanpa URL ke domain luar", "; ".join(luar[:5]))
+    # Tidak ada permintaan ke domain luar: setiap stylesheet/skrip/modul yang ditautkan dari halaman.
+    aset = set()
+    for m in re.finditer(r'<(?:link|script)\b[^>]*?\b(?:href|src)="([^"]+)"', halaman):
+        aset.add(k.unescape(m.group(1)))
+    for m in re.finditer(r'"rfc4648":\s*"([^"]+)"', halaman):
+        aset.add(k.unescape(m.group(1)))
+    periksa(len(aset) >= 3, f"[{realm}] aset halaman login terdaftar", str(len(aset)))
+    for a in sorted(aset):
+        a_abs = urllib.parse.urljoin(BASE + "/", a)
+        nama = urllib.parse.urlsplit(a).path.rsplit("/", 1)[-1]
+        if urllib.parse.urlsplit(a_abs).netloc != HOST_BASE:
+            periksa(False, f"[{realm}] aset {a} berasal dari domain luar")
+            continue
+        ra = k.request("GET", a_abs)
+        periksa(ra.status == 200, f"[{realm}] aset {nama} dapat diambil dari Keycloak", f"HTTP {ra.status}")
+        l2 = url_luar(ra.body)
+        periksa(not l2, f"[{realm}] aset {nama} tanpa URL ke domain luar", "; ".join(l2[:5]))
+        if a_abs.endswith(".css"):
+            for u in re.findall(r"url\(\s*['\"]?([^'\")]+)", ra.body):
+                if not u.startswith("data:"):
+                    uabs = urllib.parse.urljoin(a_abs, u)
+                    periksa(urllib.parse.urlsplit(uabs).netloc == HOST_BASE, f"[{realm}] url() di {nama} menuju Keycloak sendiri", uabs)
+    # Token desain: tokens.css yang disajikan = web/packages/ui/src/tokens.css.
+    css_tema = [a for a in aset if a.endswith("/css/tokens.css")]
+    if periksa(len(css_tema) == 1, f"[{realm}] tokens.css dimuat halaman login"):
+        sajian = k.request("GET", urllib.parse.urljoin(BASE + "/", css_tema[0])).body
+        with open(os.path.join(RAIZ, "web", "packages", "ui", "src", "tokens.css"), encoding="utf-8") as fh:
+            sumber = fh.read()
+        periksa(sajian == sumber, f"[{realm}] tokens.css tema identik dengan web/packages/ui/src/tokens.css (token desain)")
+    # Halaman Lupa password.
+    m = re.search(r'href="([^"]*reset-credentials[^"]*)"', halaman)
+    if periksa(m is not None, f"[{realm}] tautan Lupa password ada"):
+        rr = b.open(k.unescape(m.group(1)))
+        periksa(rr.status == 200 and "Lupa password" in rr.body and 'lang="id"' in rr.body and "Kirim" in rr.body,
+                f"[{realm}] halaman Lupa password berbahasa Indonesia", f"HTTP {rr.status}")
+        periksa(not url_luar(rr.body), f"[{realm}] halaman Lupa password tanpa URL ke domain luar", "; ".join(url_luar(rr.body)[:5]))
+
+
+def cek_halaman_mfa_tema(realm):
+    """Tema di halaman OTP, kode pemulihan, dan pendaftaran TOTP: berbahasa Indonesia dan tanpa domain luar.
+    Memakai user baru supaya tidak mengganggu skenario lain."""
+    print(f"== [{realm}] tema: pendaftaran TOTP, kode pemulihan, OTP")
+    user = UserUji(realm, "tema")
+    b, _, r = mulai(realm)
+    r = kirim_password(b, r, user.email, user.password)
+    periksa(k.Page(r.body).form("kc-totp-settings-form") is not None and "Siapkan aplikasi autentikator" in r.body and 'lang="id"' in r.body,
+            f"[{realm}] halaman pendaftaran TOTP bertema dan berbahasa Indonesia")
+    periksa(not url_luar(r.body), f"[{realm}] halaman pendaftaran TOTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    r = daftar_mfa(b, r, user)
+    periksa(k.Page(r.body).form("kc-recovery-codes-settings-form") is not None and "Kode pemulihan hanya ditampilkan sekali" in r.body,
+            f"[{realm}] halaman kode pemulihan bertema dan berbahasa Indonesia")
+    periksa(not url_luar(r.body), f"[{realm}] halaman kode pemulihan tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    simpan_kode_pemulihan(b, r, user)
+    b, _, r = mulai(realm)
+    r = kirim_password(b, r, user.email, user.password)
+    periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode OTP" in r.body and "Pakai cara lain" in r.body and 'lang="id"' in r.body,
+            f"[{realm}] halaman OTP berbahasa Indonesia dengan tautan kode pemulihan")
+    periksa(not url_luar(r.body), f"[{realm}] halaman OTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    r = kirim_otp(b, r, user.kode_salah())
+    periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode tidak sesuai." in r.body,
+            f"[{realm}] kode OTP salah: pesan berbahasa Indonesia")
 
 
 def baca_email(setelah):
@@ -754,6 +899,8 @@ def main():
                         "butuh user MFA dari skenario sebelumnya")
             jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
             jalankan(f"[{realm}] Argon2 dan kebijakan password", cek_argon2_dan_kebijakan, realm)
+            jalankan(f"[{realm}] tema login", cek_tema, realm)
+            jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
             jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
         jalankan("[uji] pasca-kunci", cek_pasca_kunci)
     finally:

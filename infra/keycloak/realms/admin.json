@@ -3,6 +3,10 @@
   "enabled": true,
   "displayName": "Ruang Sehat Admin",
   "sslRequired": "external",
+  "loginTheme": "ruang-sehat",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["id"],
+  "defaultLocale": "id",
   "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "loginWithEmailAllowed": true,
@@ -48,7 +52,7 @@
     "auth": "false"
   },
   "messageBundles": {
-    "en": {
+    "id": {
       "invalidUserMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountTemporarilyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",

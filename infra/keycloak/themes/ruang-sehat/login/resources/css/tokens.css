@@ -1,0 +1,82 @@
+/*
+ * Design token Ruang Sehat untuk web (docs/06-design-guideline.md §3; P7: nama dan nilai sama dengan
+ * paket Flutter rs_design). Satu-satunya sumber nilai warna untuk skrip kontras
+ * (packages/ui/scripts/kontras.mjs), yang membaca berkas ini. Deklarasi warna harus berbentuk
+ * `--c-nama: #RRGGBB;` satu per baris supaya terbaca skrip.
+ *
+ * Status nilai: warna dasar adalah usulan [UP-58] yang disetujui di Checkpoint 2; nilai turunan
+ * dipilih agar lulus kontras (§3.2, KEPUTUSAN-161, KEPUTUSAN-163). Mode gelap tidak ada di rilis 1.
+ */
+:root {
+  /* §3.1 warna dasar (pamflet) */
+  --c-primary: #087f78; /* color.brand.primary: tombol utama, ikon aktif, batas kontrol terpilih */
+  --c-mint: #dff4ed; /* color.brand.mint: latar ubin, badge info/sukses, navigasi aktif */
+  --c-bg-app: #fafbf7; /* color.bg.app */
+  --c-bg-surface: #ffffff; /* color.bg.surface */
+
+  /* §3.1 warna turunan */
+  --c-primary-strong: #065f59; /* teks di atas mint (K6), hover tombol utama, cincin fokus, chip terpilih */
+  --c-text-primary: #1a2b2e;
+  --c-text-secondary: #5c6b6f;
+  --c-border-control: #7a898c; /* batas isian, chip, checkbox (komponen yang wajib terlihat, N1) */
+  --c-border-divider: #dce3e1; /* dekoratif saja, bukan satu-satunya batas komponen */
+  --c-bg-neutral: #eef1f0;
+  --c-danger: #b3261e;
+  --c-danger-bg: #fdecea;
+  --c-success: #1e7a3e;
+  --c-warning: #8a5300;
+  --c-warning-bg: #fff4db;
+  --c-on-primary: #ffffff; /* teks di atas primary, primary-strong, danger, success */
+
+  /* §3.3 tipografi (web): font sistem, tanpa font jarak jauh (KEPUTUSAN-164) */
+  --f-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --t-display-size: 28px;
+  --t-display-line: 36px;
+  --t-display-weight: 700;
+  --t-title-lg-size: 24px;
+  --t-title-lg-line: 32px;
+  --t-title-lg-weight: 600;
+  --t-title-size: 18px;
+  --t-title-line: 24px;
+  --t-title-weight: 600;
+  --t-subtitle-size: 16px;
+  --t-subtitle-line: 24px;
+  --t-subtitle-weight: 600;
+  --t-body-size: 14px;
+  --t-body-line: 20px;
+  --t-body-weight: 400;
+  --t-body-sm-size: 13px;
+  --t-body-sm-line: 18px;
+  --t-body-sm-weight: 400;
+  --t-label-size: 14px;
+  --t-label-line: 20px;
+  --t-label-weight: 600;
+  --t-caption-size: 12px;
+  --t-caption-line: 16px;
+  --t-caption-weight: 400;
+
+  /* §3.4 spacing (nama = nilai / 4), radius, elevation */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s16: 64px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 999px;
+  --e0: none;
+  --e1: 0 1px 2px rgb(26 43 46 / 12%), 0 0 0 1px var(--c-border-divider);
+  --e2: 0 4px 12px rgb(26 43 46 / 16%);
+  --e3: 0 8px 24px rgb(26 43 46 / 20%);
+
+  /* §7.2 A8: cincin fokus 2 px primary-strong dengan jarak 2 px putih; A9: tinggi kontrol web 40 px */
+  --focus-ring: 0 0 0 2px var(--c-bg-surface), 0 0 0 4px var(--c-primary-strong);
+  --control-height: 40px;
+}
