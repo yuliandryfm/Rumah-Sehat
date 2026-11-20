@@ -49,7 +49,10 @@ pub fn scan(src: &str) -> Scanned {
             }
         } else if c == b'"'
             || (c == b'r' && is_raw_start(b, i))
-            || (c == b'b' && (at(b, i + 1) == b'"' || at(b, i + 1) == b'r') && !prev_is_ident(b, i))
+            // b"..." atau br"..."/br#"..."#; identifier berawalan `br` (mis. `break`) bukan literal (F1-T23).
+            || (c == b'b'
+                && (at(b, i + 1) == b'"' || (at(b, i + 1) == b'r' && raw_quote_follows(b, i + 2)))
+                && !prev_is_ident(b, i))
         {
             let start = out.len();
             let (end, raw) = string_end(b, i);
@@ -96,6 +99,14 @@ pub fn scan(src: &str) -> Scanned {
 
 fn prev_is_ident(b: &[u8], i: usize) -> bool {
     i > 0 && is_ident(at(b, i - 1))
+}
+
+/// Benar bila mulai `k` ada nol atau lebih `#` lalu `"` (sisa pembuka raw string setelah `r`).
+fn raw_quote_follows(b: &[u8], mut k: usize) -> bool {
+    while at(b, k) == b'#' {
+        k += 1;
+    }
+    at(b, k) == b'"'
 }
 
 fn is_raw_start(b: &[u8], i: usize) -> bool {

@@ -1,0 +1,49 @@
+[package]
+name = "authn"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Validasi token akses Keycloak di backend (F1-T32, modul kritis T1, ADR-011 butir 8 dan 11,
+# coding-standards §5.4). Dipakai backend Ruang Sehat dan RME lewat workspace (ADR-006 butir 2).
+# Versi dipin persis untuk pustaka autentikasi (KEPUTUSAN-137):
+# - jsonwebtoken 12.0.0 (docs/05-stack.md §1.1, [SRC-169]); fitur bawaan (`use_pem`) dimatikan, backend
+#   kripto `aws_lc_rs` (satu pustaka kripto, KEPUTUSAN-74; `rust_crypto` tidak dipakai). API yang dipakai
+#   diverifikasi ke source 12.0.0: docs/sources.md SRC-530.
+# - Klien JWKS memakai hyper langsung seperti crates/crypto (reqwest ditolak lisensi, [SRC-489]): hyper 1.12.0,
+#   hyper-util 0.1.21, http-body-util 0.1.5, bytes 1.12.2 [SRC-484]; http 1.5.0 [SRC-334].
+# - axum 0.8.9 [SRC-163]; tokio 1.54.1 [SRC-162]; serde 1.0.229 [SRC-167]; serde_json 1.0.154 [SRC-335];
+#   time 0.3.55 [SRC-177]; base64 0.23.1 [SRC-483]; tracing 0.1.44 [SRC-174].
+[dependencies]
+foundation = { path = "../foundation" }
+envelope = { path = "../envelope" }
+jsonwebtoken = { version = "=12.0.0", default-features = false, features = ["aws_lc_rs"] }
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path"] }
+base64 = { version = "=0.23.1", default-features = false, features = ["alloc"] }
+bytes = { version = "=1.12.2", default-features = false, features = ["std"] }
+http = "=1.5.0"
+http-body-util = { version = "=0.1.5", default-features = false }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time", "sync"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# Hanya untuk fitur `testing` (kunci RSA uji; crate crypto satu-satunya pemegang aws-lc-rs, KEPUTUSAN-129).
+crypto = { path = "../crypto", optional = true, features = ["test-keys"] }
+
+# Fitur `testing`: pembantu test (kunci realm uji, JWKS, token bertanda tangan). Hanya dipasang lewat
+# [dev-dependencies] (crate ini sendiri dan crate `authz`), tidak ikut biner produksi.
+[features]
+testing = ["dep:crypto"]
+
+[dev-dependencies]
+authn = { path = ".", features = ["testing"] }
+observability = { path = "../observability" }
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time", "io-util", "sync"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

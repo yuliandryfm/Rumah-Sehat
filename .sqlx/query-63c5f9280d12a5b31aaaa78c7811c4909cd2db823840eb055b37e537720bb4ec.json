@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.job SET status = CASE WHEN attempt_count >= max_attempts THEN 'failed' ELSE 'queued' END, finished_at = CASE WHEN attempt_count >= max_attempts THEN $1::timestamptz ELSE NULL END, locked_by = CASE WHEN attempt_count >= max_attempts THEN locked_by ELSE NULL END, locked_until = NULL, last_error = $3 WHERE status = 'running' AND locked_until < $1::timestamptz AND job_type = ANY($2::text[]) RETURNING status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "job",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "63c5f9280d12a5b31aaaa78c7811c4909cd2db823840eb055b37e537720bb4ec"
+}

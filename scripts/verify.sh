@@ -228,6 +228,24 @@ pakai_sqlx() { # benar bila workspace sudah memakai sqlx
   [ -f Cargo.lock ] && grep -q '^name = "sqlx"$' Cargo.lock
 }
 
+sqlx_prepare_check() { # F1-T23: .sqlx identik dengan metadata hasil generate terhadap skema migrasi terbaru
+  # PostgreSQL sekali pakai + migrasi db/migrations/app dari scripts/db-ephemeral.sh; DATABASE_URL = role
+  # pemilik skema tiruan (hanya untuk describe query). --all-targets: query di test ikut diperiksa.
+  # sqlx-cli 0.9.1 hanya memperingatkan berkas .sqlx yang tidak dipakai lagi; di sini peringatan itu GAGAL
+  # supaya metadata usang tidak tertinggal (SRC-490).
+  local log status=0
+  log="$(mktemp)" || return 1
+  tanpa_env_git bash scripts/db-ephemeral.sh sh -c \
+    'DATABASE_URL="$RS_TEST_DB_OWNER_URL" exec cargo sqlx prepare --check --workspace -- --all-targets --locked' \
+    2>&1 | tee "$log" || status=1
+  if [ "$status" -eq 0 ] && grep -q 'potentially unused queries found in .sqlx' "$log"; then
+    echo "berkas .sqlx usang (query tidak dipakai lagi); perbarui: bash scripts/db-ephemeral.sh sh -c 'DATABASE_URL=\"\$RS_TEST_DB_OWNER_URL\" cargo sqlx prepare --workspace -- --all-targets --locked'" >&2
+    status=1
+  fi
+  rm -f "$log"
+  return "$status"
+}
+
 tanpa_env_git() { # tanpa_env_git <perintah...>: jalankan perintah tanpa variabel GIT_* warisan git hook
   # Hook pre-commit mengeset GIT_INDEX_FILE ke index repo ini. Alat yang menjalankan git di repo lain
   # ikut memakainya: cargo-audit 0.23.0 yang mengambil advisory-db menimpa index repo ini dengan index
@@ -366,6 +384,13 @@ if [ -e .cargo/audit.toml ]; then
   gagal "lingkungan" ".cargo/audit.toml ada di repo tetapi belum disetujui sebagai bagian verifikasi; perbarui scripts/verify.sh (perlu persetujuan user)"
 fi
 
+# Makro query sqlx selalu memakai metadata offline .sqlx yang di-commit (coding-standards §5.2), bukan
+# database dari DATABASE_URL atau .env developer: nilai lingkungan/berkas .env diabaikan dengan menimpa
+# kedua variabel ini (variabel proses didahulukan atas .env, SRC-490). Langkah sqlx-prepare menjalankan
+# `cargo check` dengan SQLX_OFFLINE=false dan direktori sementara yang diset sqlx-cli sendiri.
+export SQLX_OFFLINE=true
+export SQLX_OFFLINE_DIR="$ROOT/.sqlx"
+
 # --- Langkah 1: Rust (docs/05-stack.md §6 butir 1) ---
 if [ ! -f Cargo.toml ]; then
   gagal "rust" "Cargo.toml (workspace, KEPUTUSAN-89) tidak ada"
@@ -376,11 +401,13 @@ else
   jalankan "cargo-fmt" cargo fmt --all --check
   # clippy dan test menjalankan build script dan test, yang dapat memanggil git: tanpa GIT_* warisan hook.
   jalankan "cargo-clippy" tanpa_env_git cargo clippy --workspace --all-targets --locked -- -D warnings
-  jalankan "cargo-test" tanpa_env_git cargo test --workspace --locked
+  # Sejak F1-T23 test integrasi memakai PostgreSQL 18 sekali pakai (scripts/db-ephemeral.sh, butuh docker);
+  # test yang butuh database GAGAL bila variabel RS_TEST_DB_* tidak ada, tidak dilewati.
+  jalankan "cargo-test" tanpa_env_git bash scripts/db-ephemeral.sh cargo test --workspace --locked
 fi
 
 if pakai_sqlx; then
-  gagal "sqlx-prepare" "workspace memakai sqlx tetapi 'cargo sqlx prepare --check --workspace' belum diterapkan (task belum ditetapkan di phase plan §7.3); perbarui scripts/verify.sh (perlu persetujuan user)"
+  jalankan "sqlx-prepare" sqlx_prepare_check
 else
   belum "sqlx-prepare" "task pertama yang memakai sqlx; belum ditetapkan di phase plan §7.3"
 fi

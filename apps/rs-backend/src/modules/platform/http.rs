@@ -2,22 +2,23 @@
 //! respons tidak memuat data pribadi, versi, atau status dependensi per nama.
 
 use super::dto::{HealthData, HealthEnvelope, HealthStatus};
+use super::policy;
 use super::service;
 use crate::app::AppState;
 use crate::http_support::{ApiFailure, ApiSuccess};
 use crate::openapi::ErrorEnvelope;
+use authz::PolicyRouter;
 use axum::Extension;
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use envelope::{CommonError, Success};
 use foundation::CorrelationId;
-use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
-pub(super) fn router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new()
-        .routes(routes!(live))
-        .routes(routes!(ready))
+pub(super) fn router() -> PolicyRouter<AppState> {
+    PolicyRouter::new()
+        .routes(policy::health(), routes!(live))
+        .routes(policy::health(), routes!(ready))
 }
 
 /// Liveness: proses hidup dan dapat melayani HTTP. Tidak memeriksa dependensi.

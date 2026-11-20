@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.job (id, job_type, payload, run_at, status, attempt_count, max_attempts) VALUES ($1, $2, '{}'::jsonb, now(), 'queued', 0, 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "49dcb88a1c85dc65a0b62d2665bce23bf8d4844631cd7d9ef6fa87a2e5e5f27c"
+}

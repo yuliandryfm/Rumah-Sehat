@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.job SET status = 'succeeded', finished_at = $4, locked_until = NULL, last_error = NULL WHERE id = $1 AND status = 'running' AND locked_by = $2 AND attempt_count = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int2",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2222018e78495592da2c48bb94847eb3e64b13ca1f2475f38126eeb813e849dd"
+}

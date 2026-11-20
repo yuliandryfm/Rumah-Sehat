@@ -28,7 +28,7 @@ tables = ["consent_text_version", "consent_item", "consent_record"]
 # reason_code (A6.7): data rujukan lintas modul tanpa pemetaan eksplisit di docs/04-arsitektur.md §3;
 # dimiliki platform (F1-T18), modul lain membacanya lewat api platform.
 [modules.platform]
-tables = ["job", "upload_slot", "stored_file", "reason_code"]
+tables = ["upload_slot", "stored_file", "reason_code"]
 
 # Pengecualian yang sah (coding-standards §1.3): tabel milik crate bersama, hanya ditulis lewat crate itu.
 [crates.audit]
@@ -36,3 +36,8 @@ tables = ["audit_outbox"]
 
 [crates.crypto]
 tables = ["data_key", "data_key_retention_anchor"]
+
+# Antrean job (A19.4) hanya lewat crate platform-jobs (F1-T20; coding-standards §1.3 "tabel job ... lewat
+# platform-jobs"); modul platform dan modul lain memakai API crate itu.
+[crates.platform-jobs]
+tables = ["job"]

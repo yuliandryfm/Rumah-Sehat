@@ -141,7 +141,12 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
     let listener = TcpListener::bind(config.base.http_bind).await?;
     tracing::info!(bind = %listener.local_addr()?, "api_listening");
     let state = AppState::new(&config.problem_type_base, Vec::new());
-    axum::serve(listener, build_router(state))
+    let router = build_router(state).map_err(|e| {
+        // Rute tanpa kebijakan atau kebijakan tidak valid: start gagal (KEPUTUSAN-127).
+        tracing::error!("policy_setup_failed: {e}");
+        std::io::Error::other("policy_setup_failed")
+    })?;
+    axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())
         .await
 }

@@ -4,13 +4,15 @@
 pub mod api;
 mod dto;
 mod http;
+mod policy;
 mod service;
 
 use crate::app::AppState;
-use utoipa_axum::router::OpenApiRouter;
+use authz::PolicyRouter;
 
 /// Rute modul ini beserta metadata OpenAPI-nya (rute dan spesifikasi dibangun dari anotasi yang
-/// sama, sehingga tidak dapat berbeda: ADR-022 butir 3).
-pub(crate) fn router() -> OpenApiRouter<AppState> {
+/// sama, sehingga tidak dapat berbeda: ADR-022 butir 3), masing-masing dengan kebijakannya
+/// (`policy.rs`, KEPUTUSAN-127).
+pub(crate) fn router() -> PolicyRouter<AppState> {
     http::router()
 }
