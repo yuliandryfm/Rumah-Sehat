@@ -8,6 +8,8 @@ Dua kelompok pemeriksaan:
 - perilaku lewat OIDC/halaman login: MFA wajib, kode pemulihan wajib, penguncian 5 gagal, pesan seragam,
   pendaftaran mati, PKCE wajib, rotasi token penyegar, Argon2, kebijakan password, atur ulang password
   tidak melewati OTP (US-103 AC4e), grant password ditolak.
+- klien layanan pengambil event `rs-backend-event-reader` (F1-T34): hanya client credentials,
+  `realm-management/view-events`, cakupan `kc-admin-api`; bentuk event LOGIN_ERROR yang dipetakan backend.
 
 Jalur email (KC_CHECK_EMAIL_MODE):
 - `relay` (mode ephemeral, F1-T36/ADR-026): email realm dikirim apa adanya lewat SMTP realm (STARTTLS) ke relay
@@ -1009,6 +1011,68 @@ def cek_drift(realm):
     periksa(idp == [], f"[{realm}] tidak ada identity provider", str([i.get("alias") for i in idp]))
 
 
+PEMBACA = "rs-backend-event-reader"
+
+
+def cek_pembaca_event(realm):
+    """F1-T34 (ADR-011 butir 10): klien layanan pengambil event berhak minimum, dan bentuk event yang
+    dipetakan backend (crates rs-backend modul identity) sama dengan Keycloak sungguhan."""
+    print(f"== [{realm}] klien pembaca event rs-backend worker (F1-T34)")
+    klien = {c["clientId"]: c for c in ADMIN.get(f"{realm}/clients")}
+    c = klien.get(PEMBACA)
+    if not periksa(c is not None, f"[{realm}] klien {PEMBACA} ada"):
+        return
+    periksa(c.get("publicClient") is False and c.get("serviceAccountsEnabled") is True
+            and c.get("standardFlowEnabled") is False and c.get("implicitFlowEnabled") is False
+            and c.get("directAccessGrantsEnabled") is False and c.get("fullScopeAllowed") is False
+            and not c.get("redirectUris"),
+            f"[{realm}] {PEMBACA}: rahasia, hanya client credentials, tanpa redirect, fullScopeAllowed mati")
+    cakupan = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/default-client-scopes"))
+    opsional = ADMIN.get(f"{realm}/clients/{c['id']}/optional-client-scopes")
+    periksa("kc-admin-api" in cakupan and not ({"profile", "email", "address", "phone", "roles"} & set(cakupan)) and opsional == [],
+            f"[{realm}] {PEMBACA}: cakupan kc-admin-api (audience Admin REST 26.8.2), tanpa cakupan data pribadi", str(cakupan))
+    nama_env = f"RS_KC_EVENT_READER_{realm.upper()}_SECRET"
+    rahasia = os.environ.get(nama_env)
+    s = ADMIN.get(f"{realm}/clients/{c['id']}/client-secret")
+    periksa(rahasia and s.get("value") == rahasia, f"[{realm}] {PEMBACA}: secret berasal dari variabel lingkungan saat penerapan")
+    rm = ADMIN.get(f"{realm}/clients?clientId=realm-management")
+    sa = ADMIN.get(f"{realm}/clients/{c['id']}/service-account-user")
+    efektif = sorted(x["name"] for x in ADMIN.get(f"{realm}/users/{sa['id']}/role-mappings/clients/{rm[0]['id']}/composite"))
+    periksa(efektif == ["view-events"], f"[{realm}] service account hanya realm-management/view-events", str(efektif))
+    peta = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/scope-mappings/clients/{rm[0]['id']}"))
+    periksa(peta == ["view-events"], f"[{realm}] cakupan peran token klien hanya view-events", str(peta))
+
+    r = k.request("POST", f"{BASE}/realms/{realm}/protocol/openid-connect/token",
+                  form={"grant_type": "client_credentials", "client_id": PEMBACA, "client_secret": rahasia or ""})
+    if not periksa(r.status == 200, f"[{realm}] token client credentials terbit", f"HTTP {r.status}"):
+        return
+    h = {"Authorization": "Bearer " + r.json()["access_token"]}
+
+    def status(metode, path):
+        return k.request(metode, f"{BASE}/admin/realms/{path}", headers=h).status
+
+    awal = int(time.time() * 1000) - 300_000
+    surel = f"t34-{secrets.token_hex(4)}@uji.invalid"
+    b, _, r0 = mulai(realm)
+    kirim_password(b, r0, surel, "Salah-" + secrets.token_hex(4))
+    r = k.request("GET", f"{BASE}/admin/realms/{realm}/events?type=LOGIN_ERROR&direction=asc&first=0&max=500&dateFrom={awal}", headers=h)
+    ev = [e for e in (r.json() or []) if (e.get("details") or {}).get("username") == surel] if r.status == 200 else []
+    e0 = ev[0] if len(ev) == 1 else {}
+    periksa(r.status == 200 and len(ev) == 1 and e0.get("error") == "user_not_found" and "userId" not in e0
+            and isinstance(e0.get("time"), int) and len(e0.get("id", "")) == 36 and e0.get("ipAddress")
+            and e0.get("clientId") == KLIEN[realm]["client_id"],
+            f"[{realm}] pembaca event: LOGIN_ERROR email tak terdaftar berbentuk yang dipetakan backend "
+            "(id UUID, time ms, error user_not_found, tanpa userId, details.username = email)", f"HTTP {r.status}, {len(ev)} event")
+    lain = "admin" if realm == "pasien" else "pasien"
+    hasil = {p: status(m, q) for p, (m, q) in {
+        "users": ("GET", f"{realm}/users"), "clients": ("GET", f"{realm}/clients"),
+        "hapus-event": ("DELETE", f"{realm}/events"), "event-realm-lain": ("GET", f"{lain}/events")}.items()}
+    periksa(all(v == 403 for v in hasil.values()),
+            f"[{realm}] pembaca event tidak dapat membaca user/klien, menghapus event, atau membaca realm lain", str(hasil))
+    periksa(status("GET", f"{realm}/events?type=TIDAK_ADA") == 500,
+            f"[{realm}] type event tak dikenal dijawab 500 (daftar type backend wajib persis nama EventType)")
+
+
 def cek_pasca_kunci():
     """US-103 AC3 (revisi, KEPUTUSAN-285): perilaku penguncian Keycloak 26.8.2 SETELAH masa kunci berakhir
     (SRC-525). Hitungan gagal hanya kembali nol setelah login berhasil atau Failure Reset Time 12 jam, sehingga
@@ -1081,6 +1145,7 @@ def main():
                 continue
             jalankan(f"[{realm}] konfigurasi", cek_konfigurasi, realm)
             jalankan(f"[{realm}] drift", cek_drift, realm)
+            jalankan(f"[{realm}] pembaca event", cek_pembaca_event, realm)
             print(f"== [{realm}] pendaftaran, PKCE")
             jalankan(f"[{realm}] pendaftaran mati", cek_pendaftaran_mati, realm)
             jalankan(f"[{realm}] PKCE wajib", cek_pkce_wajib, realm)

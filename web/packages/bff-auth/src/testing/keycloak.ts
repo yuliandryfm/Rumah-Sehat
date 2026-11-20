@@ -32,7 +32,12 @@ export class EphemeralKeycloak {
       image: composeImage("quay.io/keycloak/keycloak"),
       ports: [8080],
       env: { KC_BOOTSTRAP_ADMIN_USERNAME: "admin-uji", KC_BOOTSTRAP_ADMIN_PASSWORD: adminPassword },
-      extra: ["-v", `${REPO_ROOT}infra/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro`],
+      extra: [
+        "-v",
+        `${REPO_ROOT}infra/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro`,
+        "-v",
+        `${REPO_ROOT}infra/keycloak/themes/ruang-sehat:/opt/keycloak/themes/ruang-sehat:ro`,
+      ],
       cmd: ["start-dev"],
     });
     try {
@@ -51,6 +56,8 @@ export class EphemeralKeycloak {
         KEYCLOAK_PASSWORD: adminPassword,
         RS_KC_BACKOFFICE_BFF_SECRET: backofficeSecret,
         RS_KC_PORTAL_BFF_SECRET: randomSecret(),
+        RS_KC_EVENT_READER_PASIEN_SECRET: randomSecret(),
+        RS_KC_EVENT_READER_ADMIN_SECRET: randomSecret(),
       };
       const args = ["run", "--rm", "--network", `container:${container.id}`, "-v", `${REPO_ROOT}infra/keycloak/realms:/config:ro`];
       for (const [k, v] of Object.entries({

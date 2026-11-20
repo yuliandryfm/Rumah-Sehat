@@ -1,5 +1,6 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
+use crate::modules::identity::api::KeycloakEventConfig;
 use foundation::Sensitive;
 use observability::{BaseConfig, ConfigError, EnvSource};
 use std::path::PathBuf;
@@ -296,6 +297,29 @@ impl EmailRelayConfig {
     }
 }
 
+/// Konfigurasi `rs-backend worker` (F1-T34): login `rs_worker` ke `ruang_sehat` dan pengambil event Keycloak
+/// (ADR-011 butir 10). Proses ini tidak memegang kredensial relay/penulis audit (ADR-009 butir 3).
+#[derive(Debug, Clone)]
+pub struct WorkerConfig {
+    /// `LOG_LEVEL` (dan `HTTP_BIND`, tidak dipakai proses ini).
+    pub base: BaseConfig,
+    /// `WORKER_DATABASE_URL`: login `rs_worker` (anggota `rs_app`) ke `ruang_sehat` (rahasia).
+    pub database_url: Sensitive<String>,
+    /// Pengambil event Keycloak (`KEYCLOAK_ADMIN_URL`, `KEYCLOAK_EVENT_*`).
+    pub keycloak_events: KeycloakEventConfig,
+}
+
+impl WorkerConfig {
+    /// Memuat dari sumber; gagal cepat tanpa mencetak nilai.
+    pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
+        Ok(Self {
+            base: BaseConfig::load(env)?,
+            database_url: env.required_secret("WORKER_DATABASE_URL")?,
+            keycloak_events: KeycloakEventConfig::load(env)?,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,5 +514,36 @@ mod tests {
         );
         let bad = EnvSource::from_pairs([("HTTP_BIND", "bukan-alamat")]);
         assert!(ApiConfig::load(&bad).is_err());
+    }
+
+    #[test]
+    fn worker_needs_database_and_keycloak_event_credentials() {
+        let ok = EnvSource::from_pairs([
+            (
+                "WORKER_DATABASE_URL",
+                "postgres://rs_worker@localhost/ruang_sehat",
+            ),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
+            ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+        ]);
+        let c = WorkerConfig::load(&ok).unwrap();
+        assert_eq!(c.keycloak_events.options().realms.len(), 2);
+        let dbg = format!("{c:?}");
+        assert!(!dbg.contains("postgres://") && !dbg.contains("rahasia"));
+        let no_db = EnvSource::from_pairs([("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081")]);
+        assert_eq!(
+            WorkerConfig::load(&no_db).unwrap_err().name(),
+            "WORKER_DATABASE_URL"
+        );
+        let no_secret = EnvSource::from_pairs([
+            ("WORKER_DATABASE_URL", "postgres://x"),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "x"),
+        ]);
+        assert_eq!(
+            WorkerConfig::load(&no_secret).unwrap_err().name(),
+            "KEYCLOAK_EVENT_SECRET_ADMIN"
+        );
     }
 }

@@ -1,5 +1,6 @@
 -- db/test/tabel-app-a1.sql: test tabel A1 identitas dan akun (F1-T16) di database ruang_sehat:
--- account, rs_admin_role, session_revocation. Didahului db/test/lib.sql; dijalankan superuser setelah
+-- account, rs_admin_role, session_revocation, ditambah idp_event_cursor dan idp_event_receipt (F1-T34,
+-- pengambil event Keycloak; rancangan task, belum di DD). Didahului db/test/lib.sql; dijalankan superuser setelah
 -- migrasi. Aturan kelas generik (T-06/T-07/T-08) diperiksa db/test/kelas-app.sql bagian A; berkas ini
 -- menambah (1) ketentuan DDL umum §4.1 atas seluruh skema app beserta test negatif pemeriksanya,
 -- (2) struktur per tabel yang tidak tertangkap aturan kelas (index, kolom anonymize, komentar kelas),
@@ -13,10 +14,11 @@ SELECT pg_temp.uji_nol('KEPUTUSAN-93 (ruang_sehat) skema app: id tanpa default, 
   ARRAY(SELECT pg_temp.uji_ddl_umum('app')));
 
 -- 2. Struktur per tabel.
-SELECT pg_temp.uji_nol('A1 komentar kelas: account M, rs_admin_role M, session_revocation O (modul identitas)',
+SELECT pg_temp.uji_nol('A1 komentar kelas: account M, rs_admin_role M, session_revocation O, idp_event_cursor O, idp_event_receipt O (modul identitas)',
   ARRAY(SELECT format('%s: %s', t, coalesce(obj_description(to_regclass('app.' || t), 'pg_class'), '<tidak ada>'))
           FROM (VALUES ('account', 'class:M module:identitas'), ('rs_admin_role', 'class:M module:identitas'),
-                       ('session_revocation', 'class:O module:identitas')) v(t, k)
+                       ('session_revocation', 'class:O module:identitas'), ('idp_event_cursor', 'class:O module:identitas'),
+                       ('idp_event_receipt', 'class:O module:identitas')) v(t, k)
          WHERE obj_description(to_regclass('app.' || t), 'pg_class') IS DISTINCT FROM k));
 SELECT pg_temp.uji_nol('A1.1 account: kolom anonymize persis email, full_name (DD A1.1 "Anonimkan")',
   ARRAY(SELECT x FROM (
@@ -24,9 +26,10 @@ SELECT pg_temp.uji_nol('A1.1 account: kolom anonymize persis email, full_name (D
       FROM pg_attribute WHERE attrelid = 'app.account'::regclass AND attnum > 0 AND NOT attisdropped
        AND col_description(attrelid, attnum) = 'anonymize') s
    WHERE x <> 'kolom anonymize email,full_name'));
-SELECT pg_temp.uji_nol('A1 tabel lain tanpa kolom anonymize (rs_admin_role, session_revocation)',
+SELECT pg_temp.uji_nol('A1 tabel lain tanpa kolom anonymize (rs_admin_role, session_revocation, idp_event_cursor, idp_event_receipt)',
   ARRAY(SELECT format('%s.%s', attrelid::regclass, attname) FROM pg_attribute
-         WHERE attrelid IN ('app.rs_admin_role'::regclass, 'app.session_revocation'::regclass)
+         WHERE attrelid IN ('app.rs_admin_role'::regclass, 'app.session_revocation'::regclass,
+                            'app.idp_event_cursor'::regclass, 'app.idp_event_receipt'::regclass)
            AND attnum > 0 AND col_description(attrelid, attnum) IS NOT NULL));
 SELECT pg_temp.uji_nol('A1.1 account: index persis pk, uqp (idp_realm, idp_subject) aktif, ix status aktif',
   ARRAY(SELECT pg_temp.uji_indeks('app.account', ARRAY[
@@ -43,15 +46,26 @@ SELECT pg_temp.uji_nol('A1.4 session_revocation: index persis pk, uq idp_session
     'CREATE UNIQUE INDEX pk_session_revocation ON app.session_revocation USING btree (id)',
     'CREATE UNIQUE INDEX uq_session_revocation_idp_session_id ON app.session_revocation USING btree (idp_session_id)',
     'CREATE INDEX ix_session_revocation_expires_at ON app.session_revocation USING btree (expires_at)'])));
+SELECT pg_temp.uji_nol('F1-T34 idp_event_cursor: index persis pk, uq idp_realm (satu posisi per realm)',
+  ARRAY(SELECT pg_temp.uji_indeks('app.idp_event_cursor', ARRAY[
+    'CREATE UNIQUE INDEX pk_idp_event_cursor ON app.idp_event_cursor USING btree (id)',
+    'CREATE UNIQUE INDEX uq_idp_event_cursor_idp_realm ON app.idp_event_cursor USING btree (idp_realm)'])));
+SELECT pg_temp.uji_nol('F1-T34 idp_event_receipt: index persis pk, uq (idp_realm, idp_event_id), ix (idp_realm, event_time) pemangkasan',
+  ARRAY(SELECT pg_temp.uji_indeks('app.idp_event_receipt', ARRAY[
+    'CREATE UNIQUE INDEX pk_idp_event_receipt ON app.idp_event_receipt USING btree (id)',
+    'CREATE UNIQUE INDEX uq_idp_event_receipt_idp_realm_idp_event_id ON app.idp_event_receipt USING btree (idp_realm, idp_event_id)',
+    'CREATE INDEX ix_idp_event_receipt_idp_realm_event_time ON app.idp_event_receipt USING btree (idp_realm, event_time)'])));
 SELECT pg_temp.uji_nol('A1 tanpa hak untuk rs_audit_relay dan rs_key_rotation (tabel maupun kolom)',
   ARRAY(SELECT format('%s: %s', c.relname, pg_get_userbyid(a.grantee))
           FROM pg_class c, aclexplode(c.relacl) a
-         WHERE c.oid IN ('app.account'::regclass, 'app.rs_admin_role'::regclass, 'app.session_revocation'::regclass)
+         WHERE c.oid IN ('app.account'::regclass, 'app.rs_admin_role'::regclass, 'app.session_revocation'::regclass,
+                         'app.idp_event_cursor'::regclass, 'app.idp_event_receipt'::regclass)
            AND pg_get_userbyid(a.grantee) IN ('rs_audit_relay', 'rs_key_rotation')
         UNION ALL
         SELECT format('%s.%s: %s', att.attrelid::regclass, att.attname, pg_get_userbyid(a.grantee))
           FROM pg_attribute att, aclexplode(att.attacl) a
-         WHERE att.attrelid IN ('app.account'::regclass, 'app.rs_admin_role'::regclass, 'app.session_revocation'::regclass)
+         WHERE att.attrelid IN ('app.account'::regclass, 'app.rs_admin_role'::regclass, 'app.session_revocation'::regclass,
+                                'app.idp_event_cursor'::regclass, 'app.idp_event_receipt'::regclass)
            AND pg_get_userbyid(a.grantee) <> 'rs_privacy_worker'));
 
 -- 3. Test negatif atas pemeriksa DDL umum dan pemeriksa index, lalu perilaku. Semua di-ROLLBACK.
@@ -174,11 +188,42 @@ SELECT pg_temp.uji_boleh('A1.4 rs_worker membersihkan baris kedaluwarsa (DELETE,
 SELECT pg_temp.uji_tolak('A1.4 NEG pekerja privasi membaca session_revocation', 'rs_privacy_worker_login', 'SELECT * FROM app.session_revocation', '42501', 'permission denied for table session_revocation');
 SELECT pg_temp.uji_tolak('A1.4 NEG relay audit membaca session_revocation', 'rs_audit_relay_login', 'SELECT * FROM app.session_revocation', '42501', 'permission denied for table session_revocation');
 SELECT pg_temp.uji_tolak('A1.4 NEG rs_api TRUNCATE session_revocation', 'rs_api', 'TRUNCATE app.session_revocation', '42501', 'permission denied for table session_revocation');
+
+-- idp_event_cursor, idp_event_receipt (O, F1-T34): S, I, U, D untuk rs_app (login rs_worker); tanpa data pribadi.
+SELECT pg_temp.uji_boleh('F1-T34 rs_worker mencatat posisi baca realm pasien', 'rs_worker',
+  'INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-00000000e001'', ''pasien'', 1795168199998)', 1);
+SELECT pg_temp.uji_boleh('F1-T34 rs_worker memajukan posisi (ON CONFLICT DO UPDATE, GREATEST)', 'rs_worker',
+  'INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-00000000e002'', ''pasien'', 1795168200000) ON CONFLICT (idp_realm) DO UPDATE SET position_ms = GREATEST(app.idp_event_cursor.position_ms, EXCLUDED.position_ms)', 1);
+SELECT pg_temp.uji_tolak('F1-T34 NEG posisi kedua untuk realm yang sama', 'rs_worker',
+  'INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-00000000e003'', ''pasien'', 0)',
+  '23505', 'uq_idp_event_cursor_idp_realm');
+SELECT pg_temp.uji_tolak('F1-T34 NEG realm di luar daftar (rme bukan milik backend Ruang Sehat, ADR-011 butir 11)', 'rs_worker',
+  'INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-00000000e003'', ''rme'', 0)',
+  '23514', 'ck_idp_event_cursor_idp_realm');
+SELECT pg_temp.uji_tolak('F1-T34 NEG posisi negatif', 'rs_worker',
+  'INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-00000000e003'', ''admin'', -1)',
+  '23514', 'ck_idp_event_cursor_position_ms');
+SELECT pg_temp.uji_boleh('F1-T34 rs_api mencatat tanda terima event Keycloak', 'rs_api',
+  'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) VALUES (''00000000-0000-7000-8000-00000000e101'', ''pasien'', ''67a5bdd7-ac56-4601-9235-8a0ca7a400c3'', now())', 1);
+SELECT pg_temp.uji_tolak('F1-T34 NEG event Keycloak yang sama dicatat dua kali (idempotensi)', 'rs_api',
+  'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) VALUES (''00000000-0000-7000-8000-00000000e102'', ''pasien'', ''67a5bdd7-ac56-4601-9235-8a0ca7a400c3'', now())',
+  '23505', 'uq_idp_event_receipt_idp_realm_idp_event_id');
+SELECT pg_temp.uji_boleh('F1-T34 ID event sama di realm lain adalah event lain', 'rs_api',
+  'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) VALUES (''00000000-0000-7000-8000-00000000e103'', ''admin'', ''67a5bdd7-ac56-4601-9235-8a0ca7a400c3'', now())', 1);
+SELECT pg_temp.uji_tolak('F1-T34 NEG ID event bukan UUID', 'rs_api',
+  'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) VALUES (''00000000-0000-7000-8000-00000000e104'', ''pasien'', ''budi@example.invalid'', now())',
+  '22P02', 'uuid');
+SELECT pg_temp.uji_boleh('F1-T34 rs_worker memangkas tanda terima di luar jendela (DELETE, kelas O)', 'rs_worker',
+  'DELETE FROM app.idp_event_receipt WHERE idp_realm = ''admin'' AND event_time < now() + interval ''1 minute''', 1);
+SELECT pg_temp.uji_tolak('F1-T34 NEG pekerja privasi membaca idp_event_receipt', 'rs_privacy_worker_login', 'SELECT * FROM app.idp_event_receipt', '42501', 'permission denied for table idp_event_receipt');
+SELECT pg_temp.uji_tolak('F1-T34 NEG relay audit membaca idp_event_cursor', 'rs_audit_relay_login', 'SELECT * FROM app.idp_event_cursor', '42501', 'permission denied for table idp_event_cursor');
+SELECT pg_temp.uji_tolak('F1-T34 NEG rs_api TRUNCATE idp_event_receipt', 'rs_api', 'TRUNCATE app.idp_event_receipt', '42501', 'permission denied for table idp_event_receipt');
 ROLLBACK;
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM app.account) OR EXISTS (SELECT 1 FROM app.rs_admin_role) OR EXISTS (SELECT 1 FROM app.session_revocation) THEN
+  IF EXISTS (SELECT 1 FROM app.account) OR EXISTS (SELECT 1 FROM app.rs_admin_role) OR EXISTS (SELECT 1 FROM app.session_revocation)
+     OR EXISTS (SELECT 1 FROM app.idp_event_cursor) OR EXISTS (SELECT 1 FROM app.idp_event_receipt) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a1: data uji tersisa';
   END IF;
   RAISE NOTICE 'LULUS pembersihan tabel-app-a1: tidak ada data uji tersisa (ROLLBACK)';
