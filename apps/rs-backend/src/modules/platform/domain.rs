@@ -20,8 +20,20 @@ pub const MAX_PHOTO_BYTES: u64 = 5_242_880;
 /// foto kamera ponsel 108 MP (±12.000 × 9.000 piksel).
 pub(crate) const MAX_IMAGE_DIMENSION: u32 = 12_000;
 
-/// Batas alokasi dekoder (byte). Usulan teknis F1-T29.
-pub(crate) const MAX_DECODE_ALLOC: u64 = 512 * 1024 * 1024;
+/// Batas ukuran gambar hasil dekode (byte, lebar × tinggi × byte per piksel), diperiksa dari header sebelum
+/// piksel didekode dan juga dipasang sebagai `max_alloc` dekoder. Usulan teknis TD-17 (menggantikan 512 MiB
+/// F1-T29): 256 MiB masih memuat foto RGB 8-bit ±89 MP atau RGBA 8-bit ±67 MP.
+pub(crate) const MAX_DECODED_BYTES: u64 = 256 * 1024 * 1024;
+
+/// Anggaran memori puncak satu validasi foto: hasil dekode ditambah satu salinan seukuran (putaran
+/// orientasi `rotate90`/`rotate270` dan konversi warna `to_rgb8` membuat buffer baru) [SRC-560].
+/// Isi berkas (≤ 5 MiB) dan hasil kode ulang kecil dibanding anggaran ini.
+pub const PEAK_VALIDATION_MEMORY_BYTES: u64 = 2 * MAX_DECODED_BYTES;
+
+/// Prefiks kunci objek unggahan mentah dari URL bertanda tangan (belum divalidasi, TD-17).
+pub(crate) const INCOMING_PREFIX: &str = "incoming/";
+/// Prefiks kunci objek berkas yang lolos validasi dan sudah dikode ulang (TD-17).
+pub(crate) const FILES_PREFIX: &str = "files/";
 
 /// Kualitas JPEG hasil kode ulang (1–100). Usulan teknis F1-T29.
 pub(crate) const JPEG_REENCODE_QUALITY: u8 = 90;
@@ -191,8 +203,13 @@ fn decode_limits() -> Limits {
     let mut limits = Limits::default();
     limits.max_image_width = Some(MAX_IMAGE_DIMENSION);
     limits.max_image_height = Some(MAX_IMAGE_DIMENSION);
-    limits.max_alloc = Some(MAX_DECODE_ALLOC);
+    limits.max_alloc = Some(MAX_DECODED_BYTES);
     limits
+}
+
+/// Apakah ukuran hasil dekode (dari header) masih dalam [`MAX_DECODED_BYTES`].
+pub(crate) fn decoded_size_allowed(total_bytes: u64) -> bool {
+    total_bytes <= MAX_DECODED_BYTES
 }
 
 /// Memvalidasi dan mengode ulang foto. `declared` adalah jenis yang dinyatakan saat slot diminta (dan
@@ -215,6 +232,10 @@ pub(crate) fn sanitize_photo(
     let mut decoder = reader
         .into_decoder()
         .map_err(|_| ContentRejection::UnsupportedType)?;
+    // Anggaran memori (TD-17): ukuran hasil dekode dihitung dari header, sebelum piksel dialokasikan.
+    if !decoded_size_allowed(decoder.total_bytes()) {
+        return Err(ContentRejection::UnsupportedType);
+    }
     // EXIF rusak tidak menggagalkan: orientasi dianggap normal (EXIF tetap dibuang).
     let orientation = decoder.orientation().ok();
     let mut image =
@@ -346,6 +367,51 @@ mod tests {
             sanitize_photo(&out, PhotoFormat::Png, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
+    }
+
+    /// PNG berisi header saja: IHDR `w` × `h` RGBA 8-bit dan IDAT pendek (bukan zlib sah).
+    fn png_header_only(w: u32, h: u32) -> Vec<u8> {
+        fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
+            let mut crc = 0xFFFF_FFFFu32;
+            for &b in kind.iter().chain(data) {
+                crc ^= u32::from(b);
+                for _ in 0..8 {
+                    crc = if crc & 1 != 0 {
+                        (crc >> 1) ^ 0xEDB8_8320
+                    } else {
+                        crc >> 1
+                    };
+                }
+            }
+            out.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            out.extend_from_slice(kind);
+            out.extend_from_slice(data);
+            out.extend_from_slice(&(!crc).to_be_bytes());
+        }
+        let mut out = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+        let mut ihdr = w.to_be_bytes().to_vec();
+        ihdr.extend_from_slice(&h.to_be_bytes());
+        ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);
+        chunk(&mut out, b"IHDR", &ihdr);
+        chunk(&mut out, b"IDAT", &[0x78, 0x9C, 0x00]);
+        chunk(&mut out, b"IEND", &[]);
+        out
+    }
+
+    // trace: TD-17 (anggaran memori dekoder: piksel × 2)
+    #[test]
+    fn decoded_size_budget_is_checked_from_header() {
+        // 11.000 × 11.000 lolos batas dimensi tetapi RGBA 8-bit = 484 MB > 256 MiB: ditolak tanpa dekode.
+        const { assert!(11_000 <= MAX_IMAGE_DIMENSION) };
+        let header_only = png_header_only(11_000, 11_000);
+        assert!(header_only.len() < 100);
+        assert!(matches!(
+            sanitize_photo(&header_only, PhotoFormat::Png, MAX_PHOTO_BYTES),
+            Err(ContentRejection::UnsupportedType)
+        ));
+        assert!(decoded_size_allowed(MAX_DECODED_BYTES));
+        assert!(!decoded_size_allowed(MAX_DECODED_BYTES + 1));
+        assert_eq!(PEAK_VALIDATION_MEMORY_BYTES, 2 * MAX_DECODED_BYTES);
     }
 
     #[test]

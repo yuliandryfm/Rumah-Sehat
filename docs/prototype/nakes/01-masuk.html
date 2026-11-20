@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Nakes 1/5 Masuk - Prototipe Ruang Sehat</title><link rel="stylesheet" href="../assets/prototype.css"></head><body>
+<div class="pbar"><a href="../index.html">&larr; Indeks</a><b>Aplikasi Tenaga Kesehatan &middot; 1/5 Masuk dengan MFA</b><span class="pnote">Prototipe tampilan, belum terhubung sistem</span><span class="pnav"><a href="02-sesi.html">Berikutnya</a></span></div>
+<main class="stage"><div class="phone">
+<div class="sb"><span>07.50</span><span></span></div>
+<div class="appbar"><span class="logo" style="padding-left:8px">Ruang Sehat &middot; Tenaga Kesehatan</span></div>
+<form class="phone-body" action="02-sesi.html">
+  <h1 class="t-title">Masuk</h1>
+  <div class="field"><label for="e">Email</label><input id="e" class="input" type="email" value="dr.contoh@example.test" autocomplete="username"></div>
+  <div class="field"><label for="p">Password</label><input id="p" class="input" type="password" value="contohpassword" autocomplete="current-password"></div>
+  <div class="field"><label for="o">Kode dari aplikasi authenticator (6 digit)</label><input id="o" class="input otp" inputmode="numeric" maxlength="6" value="123456" autocomplete="one-time-code"></div>
+  <a href="#">Pakai kode pemulihan</a>
+  <button class="btn btn-primary btn-block" type="submit">Masuk</button>
+  <div class="note">Akun tenaga kesehatan aktif setelah dokumen (STR, SIP, penugasan) diverifikasi tim Ruang Sehat. Daftar dokumen final <span class="td">[TIDAK DIKETAHUI]</span>.</div>
+</form>
+</div></main></body></html>

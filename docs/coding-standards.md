@@ -46,7 +46,7 @@ Struktur puncak mengikuti `[KEPUTUSAN-89]`:
 
 ```
 apps/rs-backend/        crate binary Ruang Sehat: subcommand api | realtime | worker | audit-relay |
-                        audit-verify | privacy-worker
+                        audit-verify | privacy-worker | email-relay (ADR-026, F1-T36)
 apps/rme-backend/       crate binary RME minimalis: subcommand api | worker | audit-relay | audit-verify |
                         privacy-worker
 crates/                 pustaka Rust bersama: audit, crypto, authz, envelope, platform-jobs,
@@ -172,7 +172,7 @@ pub(crate) async fn record_payment_attempt(
 
 ### 1.4 Proses dan subcommand
 
-- Binary `rs-backend` dengan subcommand `api | realtime | worker | audit-relay | audit-verify | privacy-worker`; `rme-backend` dengan `api | worker | audit-relay | audit-verify | privacy-worker` `[KEPUTUSAN-74]` `[DOK: review/tahap-05-dba.md]`.
+- Binary `rs-backend` dengan subcommand `api | realtime | worker | audit-relay | audit-verify | privacy-worker`, ditambah `email-relay` (relay SMTP ke SES per host, ADR-026 butir 1; logika di crate `email-relay`, adaptor SES v2 bersama di crate `ses`, F1-T36); `rme-backend` dengan `api | worker | audit-relay | audit-verify | privacy-worker` `[KEPUTUSAN-74]` `[DOK: review/tahap-05-dba.md]`.
 - Setiap subcommand dijalankan sebagai deployment sendiri dengan **identitas OpenBao sendiri** dan policy minimum; kredensial database hanya yang dibutuhkan deployment itu `[KEPUTUSAN-79]` (ADR-021 butir 3).
 - `audit-relay` hanya memegang kredensial `audit_relay` dan `audit_writer`; proses lain **dilarang** memuat kredensial itu (ADR-009 butir 3). Relay **tidak** memegang kredensial `audit_verifier`; kredensial itu hanya milik `audit-verify` (ADR-009 butir 4). Kredensial role pekerja privasi hanya milik `privacy-worker` (ADR-013 butir 5).
 - Job tunggal (relay audit, pengambil event Keycloak) memakai `pg_try_advisory_lock` tingkat sesi `[SRC-234]` lewat `platform-jobs` `[KEPUTUSAN-74]`. Job biasa diambil dengan `SELECT ... FOR UPDATE SKIP LOCKED` `[SRC-36]` dan **wajib idempoten** (ADR-007 konsekuensi).
@@ -621,7 +621,7 @@ Mengikuti `[KEPUTUSAN-88]`, ADR-013 butir 8, ADR-021 butir 4:
 
 | Jenis | Cakupan | Alat | Sumber |
 | --- | --- | --- | --- |
-| Unit | Domain murni: transisi status, perhitungan harga dan markup, masking audit, format ciphertext, validasi | `cargo test` | `[KEPUTUSAN-74]` |
+| Unit | Domain murni: transisi status, perhitungan harga dan margin, masking audit, format ciphertext, validasi | `cargo test` | `[KEPUTUSAN-74]` |
 | Integrasi | Service + repository di PostgreSQL 18, Valkey, dan Keycloak sungguhan, dengan migrasi dan **role aplikasi** (bukan pemilik skema) sehingga hak tabel ikut teruji | testcontainers 0.28.0 | `[SRC-181]` `[KEPUTUSAN-74]` |
 | Kontrak | OpenAPI hasil generate identik dengan `openapi/`; Schemathesis terhadap backend efemeral; `response_code` terdaftar dan konsisten | utoipa, Schemathesis 4.33.4 | `[SRC-168]` `[SRC-148]` `[KEPUTUSAN-82]` |
 | Arsitektur | Batas modul (tabel per modul), pola logging terlarang, larangan `unwrap`, pemakai langsung aws-lc-rs, pemanggilan jam sistem | skrip di `scripts/verify.sh` | `[KEPUTUSAN-82]` |

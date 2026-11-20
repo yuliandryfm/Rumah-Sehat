@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.upload_slot SET consumed_at = $2 WHERE id = $1 AND consumed_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cf56f9a5cd4e2d45121f98cea545ebc93fd40dd6894eb0096d2b68165412cb07"
+}

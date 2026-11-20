@@ -46,7 +46,7 @@ Kode modul mengikuti pembagian modul di arsitektur §3 `[DOK: 04-arsitektur.md]`
 | `05` | Katalog salinan | Layanan, harga, jadwal, slot, katalog, stok, pencarian |
 | `06` | Pemesanan | Pesanan, penahanan slot/stok, harga terkunci, status, pembatalan |
 | `07` | Konsultasi | Sesi, chat, video, catatan, resep, verifikasi resep publik |
-| `08` | Pembayaran | Adaptor PG, notifikasi PG, jurnal, refund, klaim, kewajiban, markup |
+| `08` | Pembayaran | Adaptor PG, notifikasi PG, jurnal, refund, klaim, kewajiban, margin |
 | `09` | Hasil lab | Penerimaan dan penyajian hasil lab |
 | `10` | Notifikasi | Templat, email, kotak notifikasi di aplikasi |
 | `11` | Konten dan layanan pelanggan | CMS, tiket keluhan |

@@ -328,7 +328,7 @@ BEGIN
 END;
 $$;
 ```
-Dipasang `BEFORE UPDATE ... FOR EACH ROW` di `markup_rule`, `partner_fee_rule`, `consultation_rate`, `business_parameter`, `payment_method_fee`, `retention_policy`, `consent_text_version`, dan `rme_retention_policy` `[DOK: DD §0.8, A3.1, C6.9]`.
+Dipasang `BEFORE UPDATE ... FOR EACH ROW` di `margin_rule`, `partner_fee_rule`, `consultation_rate`, `business_parameter`, `payment_method_fee`, `retention_policy`, `consent_text_version`, dan `rme_retention_policy` `[DOK: DD §0.8, A3.1, C6.9]`.
 
 ```sql
 -- (3b) Larangan menanggalmundurkan baris berlaku-mulai baru (review N07)

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.stored_file (id, created_by, updated_by, bucket, object_key, category, owner_account_id, mime_type, size_bytes, sha256, validated_at) VALUES ($1, $2, $2, 'claim_evidence', $3, 'claim_photo', $2, 'image/jpeg', 10, '\\x00', now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d39d57eddb2045b40646838931b3cceaf49c18e2c2c79390d0388c9cb38199c9"
+}

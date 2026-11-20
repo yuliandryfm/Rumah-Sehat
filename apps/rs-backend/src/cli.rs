@@ -1,11 +1,12 @@
 //! Pemilihan subcommand dan siklus hidup proses. Satu biner, satu argumen: nama subcommand.
 //!
-//! Yang berfungsi: `api`, `audit-relay` (F1-T24), dan `audit-verify` (F1-T25). `worker` adalah kerangka:
+//! Yang berfungsi: `api`, `audit-relay` (F1-T24), `audit-verify` (F1-T25), dan `email-relay` (F1-T36,
+//! ADR-026). `worker` adalah kerangka:
 //! proses mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
 //! penyebaran yang mengira proses itu berjalan.
 
 use crate::app::{AppState, build_router};
-use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig};
+use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig, EmailRelayConfig};
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
 use foundation::{Clock, SystemClock};
@@ -16,7 +17,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 
 /// Teks bantuan.
-pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-verify>";
+pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-verify|email-relay>";
 
 /// Subcommand yang dikenal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,8 @@ pub enum Command {
     AuditRelay,
     /// Verifikasi rantai audit (F1-T25).
     AuditVerify,
+    /// Relay SMTP ke SES API v2 (F1-T36, ADR-026).
+    EmailRelay,
 }
 
 /// Galat argumen baris perintah. Nilai argumen tidak pernah disertakan di pesan.
@@ -55,6 +58,7 @@ impl Command {
             "worker" => Ok(Self::Worker),
             "audit-relay" => Ok(Self::AuditRelay),
             "audit-verify" => Ok(Self::AuditVerify),
+            "email-relay" => Ok(Self::EmailRelay),
             _ => Err(CliError::Unknown),
         }
     }
@@ -66,6 +70,7 @@ impl Command {
             Self::Worker => Component::Worker,
             Self::AuditRelay => Component::AuditRelay,
             Self::AuditVerify => Component::AuditVerify,
+            Self::EmailRelay => Component::EmailRelay,
         }
     }
 
@@ -76,6 +81,7 @@ impl Command {
             Self::Worker => "worker",
             Self::AuditRelay => "audit-relay",
             Self::AuditVerify => "audit-verify",
+            Self::EmailRelay => "email-relay",
         }
     }
 }
@@ -85,6 +91,7 @@ enum Loaded {
     Api(ApiConfig),
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
+    EmailRelay(Box<EmailRelayConfig>),
     Skeleton(Command, BaseConfig),
 }
 
@@ -94,6 +101,7 @@ impl Loaded {
             Command::Api => Self::Api(ApiConfig::load(env)?),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
+            Command::EmailRelay => Self::EmailRelay(Box::new(EmailRelayConfig::load(env)?)),
             other => Self::Skeleton(other, BaseConfig::load(env)?),
         })
     }
@@ -103,6 +111,7 @@ impl Loaded {
             Self::Api(c) => &c.base,
             Self::AuditRelay(c) => &c.base,
             Self::AuditVerify(c) => &c.base,
+            Self::EmailRelay(c) => &c.base,
             Self::Skeleton(_, b) => b,
         }
     }
@@ -138,6 +147,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
         Loaded::Api(config) => run_api(config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
+        Loaded::EmailRelay(config) => run_email_relay(*config),
         Loaded::Skeleton(other, base) => not_implemented(other, &base),
     }
 }
@@ -187,6 +197,79 @@ fn run_audit_relay(config: AuditRelayConfig) -> ExitCode {
     });
     tracing::info!("audit_relay_stopped");
     ExitCode::SUCCESS
+}
+
+/// Batas waktu satu permintaan ke OpenBao saat memuat kredensial SES.
+const OPENBAO_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// `email-relay` (F1-T36, ADR-026): memuat sertifikat TLS relay dan kunci akses SES dari OpenBao KV saat start
+/// (rotasi kunci = restart proses), lalu melayani SMTP sampai SIGINT/SIGTERM. Galat start keluar dengan kode
+/// gagal tanpa mencetak nilai rahasia.
+fn run_email_relay(config: EmailRelayConfig) -> ExitCode {
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
+    };
+    runtime.block_on(async move {
+        let tls = match email_relay::server_tls(&config.tls_cert_file, &config.tls_key_file) {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!(error = %e, "relay_tls_setup_failed");
+                return ExitCode::FAILURE;
+            }
+        };
+        let openbao = crypto::OpenBaoConfig {
+            address: config.openbao_addr.clone(),
+            token: config.openbao_token.clone(),
+            timeout: OPENBAO_TIMEOUT,
+        };
+        let credentials =
+            match ses::load_from_openbao(&openbao, &config.ses_kv_mount, &config.ses_kv_path).await
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::error!(error = %e, "relay_ses_credentials_failed");
+                    return ExitCode::FAILURE;
+                }
+            };
+        let client = match ses::SesClient::new(&ses::SesConfig {
+            local_endpoint: config.ses_local_endpoint.clone(),
+            ca_file: config.ses_ca_file.clone(),
+            timeout: Duration::from_millis(config.ses_timeout_ms),
+            configuration_set: config.ses_configuration_set.clone(),
+            credentials,
+        }) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!(error = %e, "relay_ses_setup_failed");
+                return ExitCode::FAILURE;
+            }
+        };
+        let sender = email_relay::SesSender::new(client, Arc::new(SystemClock));
+        let relay = match email_relay::Relay::new(config.relay_settings(), tls, sender) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(error = %e, "relay_setup_failed");
+                return ExitCode::FAILURE;
+            }
+        };
+        let listener = match TcpListener::bind(config.bind).await {
+            Ok(l) => l,
+            Err(_) => {
+                tracing::error!("relay_bind_failed");
+                return ExitCode::FAILURE;
+            }
+        };
+        match listener.local_addr() {
+            Ok(addr) => tracing::info!(bind = %addr, "relay_listening"),
+            Err(_) => tracing::info!("relay_listening"),
+        }
+        tokio::select! {
+            () = relay.serve(listener) => {}
+            () = shutdown_signal() => {}
+        }
+        tracing::info!("relay_stopped");
+        ExitCode::SUCCESS
+    })
 }
 
 fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
@@ -307,6 +390,10 @@ mod tests {
             Command::parse(&a(&["audit-verify"])),
             Ok(Command::AuditVerify)
         );
+        assert_eq!(
+            Command::parse(&a(&["email-relay"])),
+            Ok(Command::EmailRelay)
+        );
     }
 
     #[test]
@@ -324,6 +411,7 @@ mod tests {
             Command::Worker,
             Command::AuditRelay,
             Command::AuditVerify,
+            Command::EmailRelay,
         ] {
             assert_eq!(Command::parse(&a(&[c.name()])), Ok(c));
         }
