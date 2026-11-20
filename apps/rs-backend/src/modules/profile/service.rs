@@ -276,7 +276,9 @@ fn as_count(v: Option<&Vec<u8>>) -> i64 {
         .unwrap_or(0)
 }
 
-/// Apakah pengajuan NIK tertahan (per akun, per NIK lintas akun, atau per IP). Valkey tidak tersedia =
+/// Apakah pengajuan NIK tertahan (per akun, per NIK lintas akun, atau per IP). Tertahan bila kunci
+/// penahanan ada **atau** penghitung jendela sudah mencapai ambang: kunci penahanan yang gagal ditulis tepat
+/// saat ambang tercapai tidak membuka penahanan (gagal-tertutup, review N1 F1-T60). Valkey tidak tersedia =
 /// gagal-tertutup (`503`): kontrol anti-enumerasi tidak dilewati diam-diam.
 async fn is_held(s: &IdentityServices, keys: &LimitKeys) -> Result<bool, ProfileError> {
     let values = s
@@ -284,13 +286,19 @@ async fn is_held(s: &IdentityServices, keys: &LimitKeys) -> Result<bool, Profile
         .get_many(&[
             keys.account_hold.as_str(),
             keys.nik_hold.as_str(),
+            keys.account_count.as_str(),
+            keys.nik_count.as_str(),
             keys.ip_count.as_str(),
         ])
         .await
         .map_err(|_| ProfileError::Database)?;
-    let held = values.first().is_some_and(Option::is_some)
-        || values.get(1).is_some_and(Option::is_some)
-        || as_count(values.get(2).and_then(Option::as_ref)) >= IP_REJECTIONS_LIMIT;
+    let present = |i: usize| values.get(i).is_some_and(Option::is_some);
+    let count = |i: usize| as_count(values.get(i).and_then(Option::as_ref));
+    let held = present(0)
+        || present(1)
+        || count(2) >= ACCOUNT_REJECTIONS_BEFORE_HOLD
+        || count(3) >= NIK_REJECTIONS_BEFORE_HOLD
+        || count(4) >= IP_REJECTIONS_LIMIT;
     Ok(held)
 }
 

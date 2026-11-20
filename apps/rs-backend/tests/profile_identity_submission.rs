@@ -764,3 +764,108 @@ async fn valkey_unavailable_fails_closed() {
         0
     );
 }
+
+/// Penghitung penolakan di Valkey diisi langsung tanpa kunci penahanan: meniru kegagalan `SET` kunci
+/// penahanan tepat saat ambang tercapai (review N1 F1-T60).
+async fn set_counter(c: &Ctx, key: &str, value: &[u8]) {
+    c.env
+        .valkey
+        .client(Duration::from_millis(500))
+        .set(key, value, Duration::from_secs(600))
+        .await
+        .unwrap();
+}
+
+// trace: US-106 AC4 (penahanan tetap berlaku bila kunci penahanan gagal ditulis saat ambang tercapai:
+// penghitung >= ambang sudah menahan, per akun dan per NIK lintas akun)
+#[tokio::test]
+async fn counter_at_threshold_holds_even_without_hold_key() {
+    let _g = SERIAL.lock().await;
+    let c = ctx().await;
+
+    // Per akun: 3 penolakan tercatat, kunci penahanan tidak ada.
+    let a = new_patient(&c.env.pool).await;
+    let who_a = c.principals.patient(&a, true).await;
+    let account_key = format!(
+        "rs:profile:nik-limit:account:{}:count",
+        a.account_id.hyphenated()
+    );
+    set_counter(&c, &account_key, b"3").await;
+    let slot = c.env.uploaded_slot(a.account_id).await;
+    let err = submit_identity_document(
+        &c.services,
+        &who_a,
+        PATIENT_ROUTE,
+        a.owner_care_recipient_id,
+        &synthetic_nik(),
+        slot,
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, ProfileError::NikUnavailable), "{err:?}");
+    assert_eq!(
+        request_count(&c.env.pool, a.owner_care_recipient_id).await,
+        0
+    );
+    assert!(
+        !files::slot_consumed(&c.env.pool, slot).await,
+        "penahanan diputuskan sebelum foto divalidasi"
+    );
+
+    // Per NIK lintas akun: 3 penolakan untuk NIK ini (kunci = SHA-256 blind index versi terbaru).
+    let b = new_patient(&c.env.pool).await;
+    let who_b = c.principals.patient(&b, true).await;
+    let nik = synthetic_nik();
+    let bidx = c
+        .env
+        .blind_index
+        .compute(&Nik::parse(&nik).unwrap())
+        .unwrap();
+    let digest: String = crypto::sha256(&bidx.value)
+        .iter()
+        .map(|x| format!("{x:02x}"))
+        .collect();
+    set_counter(
+        &c,
+        &format!("rs:profile:nik-limit:nik:{digest}:count"),
+        b"3",
+    )
+    .await;
+    let slot_b = c.env.uploaded_slot(b.account_id).await;
+    let err = submit_identity_document(
+        &c.services,
+        &who_b,
+        PATIENT_ROUTE,
+        b.owner_care_recipient_id,
+        &nik,
+        slot_b,
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, ProfileError::NikUnavailable), "{err:?}");
+    assert_eq!(
+        request_count(&c.env.pool, b.owner_care_recipient_id).await,
+        0
+    );
+
+    // Di bawah ambang (2) tidak menahan.
+    let d = new_patient(&c.env.pool).await;
+    let who_d = c.principals.patient(&d, true).await;
+    let d_key = format!(
+        "rs:profile:nik-limit:account:{}:count",
+        d.account_id.hyphenated()
+    );
+    set_counter(&c, &d_key, b"2").await;
+    let slot_d = c.env.uploaded_slot(d.account_id).await;
+    let ok = submit_identity_document(
+        &c.services,
+        &who_d,
+        PATIENT_ROUTE,
+        d.owner_care_recipient_id,
+        &synthetic_nik(),
+        slot_d,
+    )
+    .await
+    .unwrap();
+    assert_eq!(ok.status, "pending");
+}

@@ -1,4 +1,4 @@
--- db/migrations/app/20261120210000_profile_identity_composite_fk.sql
+-- db/migrations/app/20261121200000_profile_identity_composite_fk.sql
 -- F1-T59 (TD-08, review F1-T18): FK komposit (id, care_recipient_id) supaya permintaan verifikasi,
 -- penunjuk status terkini penerima layanan, dan registri NIK pemilik akun tidak dapat dikaitkan ke
 -- dokumen atau permintaan milik penerima layanan LAIN (pola KEPUTUSAN-142: FK komposit sebagai penjaga
@@ -26,8 +26,8 @@ BEGIN
   IF current_user <> 'rs_migration' THEN
     RAISE EXCEPTION 'migration must run as rs_migration, got % (session %)', current_user, session_user;
   END IF;
-  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261120210000) THEN
-    RAISE EXCEPTION 'migration order: version 20261120210000 is older than an applied migration (forward-only, ADR-019)';
+  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261121200000) THEN
+    RAISE EXCEPTION 'migration order: version 20261121200000 is older than an applied migration (forward-only, ADR-019)';
   END IF;
 END $$;
 SET LOCAL lock_timeout = '5s';
