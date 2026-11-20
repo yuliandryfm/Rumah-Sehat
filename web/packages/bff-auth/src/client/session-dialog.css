@@ -1,0 +1,42 @@
+/* Dialog peringatan sesi (KEPUTUSAN-170). Token dari @rs/ui/tokens.css; elevation.3 + scrim 48%
+   (design guideline, tabel elevasi). Impor setelah @rs/ui/tokens.css dan @rs/ui/ui.css. */
+.rs-session-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s4);
+  background: rgb(0 0 0 / 48%);
+}
+.rs-session-dialog {
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--e3);
+}
+.rs-session-dialog__judul {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-subtitle-size);
+  line-height: var(--t-subtitle-line);
+  font-weight: var(--t-subtitle-weight);
+}
+.rs-session-dialog__isi,
+.rs-session-dialog__sisa,
+.rs-session-dialog__galat {
+  margin: 0 0 var(--s3);
+  font-size: var(--t-body-sm-size);
+  line-height: var(--t-body-sm-line);
+}
+.rs-session-dialog__sisa {
+  color: var(--c-text-secondary);
+}
+.rs-session-dialog__galat {
+  color: var(--c-danger);
+}
+.rs-session-dialog__aksi {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin: 0;
+}

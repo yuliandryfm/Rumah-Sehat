@@ -10,7 +10,7 @@
 -- Dasar: docs/05-physical-schema.md §4.1-§4.11, §11.4, §12; DD §0.3, §0.6 A; ADR-004, ADR-008, ADR-013 §5.
 
 -- Daftar tabel pola berlaku-mulai (§4.2 (3)).
-\set berlaku '{markup_rule,partner_fee_rule,consultation_rate,business_parameter,payment_method_fee,retention_policy,consent_text_version}'
+\set berlaku '{margin_rule,partner_fee_rule,consultation_rate,business_parameter,payment_method_fee,retention_policy,consent_text_version}'
 
 -- A. Skema app nyata: semua tabel memenuhi aturan kelas (tabel bisnis sejak F1-T16; test per tabel
 --    di db/test/tabel-app-*.sql).

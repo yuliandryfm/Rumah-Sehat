@@ -38,9 +38,9 @@ static PAYOUT_ACCOUNT: ObjectPolicy = ObjectPolicy::non_clinical(
     ],
 );
 static PRICING: ObjectPolicy = ObjectPolicy::non_clinical(
-    "markup_rule",
+    "margin_rule",
     &[
-        FieldRule::value("markup_percent_bp"),
+        FieldRule::value("margin_percent_bp"),
         FieldRule::value("fee_idr"),
     ],
 );
@@ -500,12 +500,12 @@ fn invalid_app_version_and_codes_rejected() {
 fn money_values_recorded_as_integers() {
     let rec = AuditEvent::new(
         EventCode::E14,
-        code("markup_changed"),
+        code("margin_changed"),
         user(),
         ObjectRef::with_uuid(&PRICING, new_id()),
     )
     .change(FieldChange::new(
-        "markup_percent_bp",
+        "margin_percent_bp",
         Some(Value::Int(1000)),
         Some(Value::Int(1250)),
     ))
@@ -519,7 +519,7 @@ fn money_values_recorded_as_integers() {
     .finish(&clock())
     .unwrap();
     let p = rec.payload();
-    assert_eq!(p["before_values"]["markup_percent_bp"], json!(1000));
+    assert_eq!(p["before_values"]["margin_percent_bp"], json!(1000));
     assert_eq!(p["after_values"]["fee_idr"], json!(15000));
 }
 

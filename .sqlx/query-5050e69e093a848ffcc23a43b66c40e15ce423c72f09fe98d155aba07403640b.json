@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT position_ms, last_pulled_at FROM app.idp_event_cursor WHERE idp_realm = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "position_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "idp_event_cursor",
+            "name": "position_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "last_pulled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "idp_event_cursor",
+            "name": "last_pulled_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "5050e69e093a848ffcc23a43b66c40e15ce423c72f09fe98d155aba07403640b"
+}
