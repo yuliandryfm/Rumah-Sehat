@@ -20,7 +20,7 @@ export default defineConfig({
         test: {
           name: "ui",
           environment: "jsdom",
-          include: ["packages/ui/src/**/*.test.{ts,tsx}"],
+          include: ["packages/ui/src/**/*.test.{ts,tsx}", "situs/src/**/*.test.tsx"],
         },
       },
     ],
