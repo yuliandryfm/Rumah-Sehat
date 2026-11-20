@@ -37,7 +37,9 @@ time = { version = "=0.3.55", default-features = false, features = ["std"] }
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
 
 [dev-dependencies]
-tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time"] }
+# Token uji dari kunci uji (coding-standards §7.2); fitur `testing` hanya lewat dev-dependencies (TD-15).
+authn = { path = "../../crates/authn", features = ["testing"] }
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).

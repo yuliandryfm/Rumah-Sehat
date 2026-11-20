@@ -12,6 +12,7 @@
 //! dalamnya tidak pernah keluar, penambahan itu menjadi galat compile. Test arsitektur (aturan
 //! `router-bypass`, crate arch-check) menolak pembuatan router axum sendiri di `apps/*/src`.
 
+use crate::denial::DenialSink;
 use crate::enforce::{EnforcerState, deny_fallback, enforce};
 use crate::error::PolicySetupError;
 use crate::policy::Policy;
@@ -34,7 +35,7 @@ use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouter};
 /// Perangkat penegakan yang dipasang [`PolicyRouter::finish`].
 #[derive(Clone)]
 pub struct Enforcement {
-    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>, DenialSink)>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
@@ -48,11 +49,12 @@ impl Enforcement {
         }
     }
 
-    /// Validator token (`authn`) dan resolver akun. Pembentuk respons galat diambil dari `auth`.
-    pub fn new(auth: AuthState, resolver: Arc<dyn PrincipalResolver>) -> Self {
+    /// Validator token (`authn`), resolver akun, dan antrean pencatatan penolakan objek ([`DenialSink`],
+    /// F1-T38). Pembentuk respons galat diambil dari `auth`.
+    pub fn new(auth: AuthState, resolver: Arc<dyn PrincipalResolver>, denials: DenialSink) -> Self {
         let renderer = Arc::clone(auth.renderer());
         Self {
-            authentication: Some((auth, resolver)),
+            authentication: Some((auth, resolver, denials)),
             renderer,
         }
     }
@@ -174,7 +176,7 @@ where
                     path: path.clone(),
                 });
             }
-            let Some((auth, _)) = &enforcement.authentication else {
+            let Some((auth, _, _)) = &enforcement.authentication else {
                 return Err(PolicySetupError::MissingAuthentication);
             };
             let accepted = auth.authenticator().realms();

@@ -1,12 +1,14 @@
 //! Pemanggil terotorisasi: identitas dari token yang sudah divalidasi (`authn`) ditambah akun dan
 //! sub-peran dari database aplikasi (ADR-011 butir 6: peran disimpan di aplikasi, bukan di token).
 
+use crate::denial::{DenialSink, DeniedAccess};
 use crate::role::{AccountStatus, AccountType, AdminSubRole};
 use authn::AuthContext;
-use foundation::Uuid;
+use foundation::{CorrelationId, Uuid};
 use std::collections::BTreeSet;
 use std::fmt;
 use std::future::Future;
+use std::net::IpAddr;
 use std::pin::Pin;
 
 /// Data akun yang dibaca resolver dari database aplikasi untuk satu `(realm, subject)`.
@@ -42,17 +44,27 @@ pub trait PrincipalResolver: Send + Sync {
 
 /// Pemanggil yang lolos autentikasi, status akun aktif, dan kebijakan endpoint. Hanya dibangun crate
 /// ini (field privat), lalu dipasang di extensions permintaan oleh middleware kebijakan; handler
-/// mengambilnya dengan ekstraktor [`Principal`].
-#[derive(Clone, PartialEq, Eq)]
+/// mengambilnya dengan ekstraktor [`Principal`]. Membawa konteks permintaan untuk pencatatan penolakan
+/// objek (ID korelasi, IP klien, antrean penolakan; F1-T38).
+#[derive(Clone)]
 pub struct Principal {
     account_id: Uuid,
     account_type: AccountType,
     sub_roles: BTreeSet<AdminSubRole>,
     auth: AuthContext,
+    correlation_id: CorrelationId,
+    client_ip: Option<IpAddr>,
+    denials: DenialSink,
 }
 
 impl Principal {
-    pub(crate) fn new(record: AccountRecord, auth: AuthContext) -> Self {
+    pub(crate) fn new(
+        record: AccountRecord,
+        auth: AuthContext,
+        correlation_id: CorrelationId,
+        client_ip: Option<IpAddr>,
+        denials: DenialSink,
+    ) -> Self {
         // Sub-peran hanya bermakna untuk admin Ruang Sehat; untuk jenis lain dibuang.
         let sub_roles = if record.account_type == AccountType::RsAdmin {
             record.sub_roles.into_iter().collect()
@@ -64,7 +76,25 @@ impl Principal {
             account_type: record.account_type,
             sub_roles,
             auth,
+            correlation_id,
+            client_ip,
+            denials,
         }
+    }
+
+    /// ID korelasi permintaan.
+    pub fn correlation_id(&self) -> CorrelationId {
+        self.correlation_id
+    }
+
+    /// Alamat IP klien bila middleware IP klien terpasang ([`crate::ClientIp`]).
+    pub fn client_ip(&self) -> Option<IpAddr> {
+        self.client_ip
+    }
+
+    /// Penolakan objek dicatat di latar belakang (tanpa menunggu).
+    pub(crate) fn report_denial(&self, denial: DeniedAccess) {
+        self.denials.submit(denial);
     }
 
     /// `account.id` pemanggil.
@@ -100,6 +130,7 @@ impl fmt::Debug for Principal {
             .field("account_type", &self.account_type)
             .field("sub_roles", &self.sub_roles)
             .field("auth", &self.auth)
-            .finish()
+            .field("correlation_id", &self.correlation_id)
+            .finish_non_exhaustive()
     }
 }

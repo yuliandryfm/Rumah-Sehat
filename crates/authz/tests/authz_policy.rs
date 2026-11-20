@@ -1,6 +1,8 @@
-//! Test otorisasi endpoint lewat HTTP sungguhan di localhost (F1-T37, T1): default deny dan pemeriksaan
-//! saat start (KEPUTUSAN-127), realm per endpoint, status akun, sub-peran admin (UP-18), 403 vs 404
-//! (ADR-012 butir 4, KU-03), dan security log `access_denied`. Token dari kunci uji (tanpa Keycloak).
+//! Test otorisasi endpoint lewat HTTP sungguhan di localhost (F1-T37, F1-T38, T1): default deny dan
+//! pemeriksaan saat start (KEPUTUSAN-127), realm per endpoint, status akun, sub-peran admin (UP-18),
+//! 403 vs 404 (ADR-012 butir 4, KU-03), relasi kepemilikan pasien atas penerima layanan, dan pencatatan
+//! penolakan di latar belakang (security log `access_denied`, audit E-05 hasil gagal lewat
+//! `DenialAuditor`). Token dari kunci uji (tanpa Keycloak).
 
 #![allow(clippy::unwrap_used, clippy::expect_used)] // berkas test
 
@@ -10,9 +12,11 @@ use authn::{
     RealmConfig,
 };
 use authz::{
-    AccountRecord, AccountStatus, AccountType, AdminSubRole, Enforcement, Policy, PolicyRegistry,
-    PolicyRouter, PolicySetupError, Principal, PrincipalResolver, PublicReason, ResolveError,
-    ResolveFuture, check_coverage, visible_object,
+    AccountRecord, AccountStatus, AccountType, AdminSubRole, CareRecipientOwner, ClientIp,
+    DenialAuditError, DenialAuditFuture, DenialAuditor, DenialSink, DeniedAccess, Enforcement,
+    Policy, PolicyRegistry, PolicyRouter, PolicySetupError, Principal, PrincipalResolver,
+    PublicReason, ResolveError, ResolveFuture, Sensitivity, care_recipient_access, check_coverage,
+    visible_object,
 };
 use axum::extract::Path;
 use axum::http::header::CONTENT_TYPE;
@@ -24,11 +28,15 @@ use observability::log::{Component, JsonLogLayer, LogSink, MemorySink, subscribe
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 use time::macros::datetime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Semaphore;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -86,6 +94,64 @@ async fn order(p: Principal, Path(order_id): Path<String>) -> Response {
         Ok(_) => format!("order:{order_id}").into_response(),
         Err(e) => render_common(e.to_common_error()),
     }
+}
+
+/// Simpanan uji penerima layanan: (pemilik, pemilik akun sendiri?).
+fn care_recipients() -> HashMap<Uuid, CareRecipientOwner> {
+    HashMap::from([
+        (
+            uuid(0x21),
+            CareRecipientOwner {
+                account_id: patient_a(),
+                is_account_owner: true,
+            },
+        ),
+        (
+            uuid(0x22),
+            CareRecipientOwner {
+                account_id: patient_a(),
+                is_account_owner: false,
+            },
+        ),
+        (
+            uuid(0x23),
+            CareRecipientOwner {
+                account_id: patient_b(),
+                is_account_owner: true,
+            },
+        ),
+    ])
+}
+
+fn render_care_recipient(p: &Principal, route: &str, raw_id: &str) -> Response {
+    // ID tidak valid diperlakukan sama dengan tidak ada.
+    let Ok(id) = Uuid::parse_str(raw_id) else {
+        return render_common(CommonError::NotFound);
+    };
+    let owner = care_recipients().get(&id).copied();
+    match care_recipient_access(p, route, id, owner, Sensitivity::Sensitive) {
+        Ok(owned) => format!(
+            "cr:{}:{}",
+            owned.care_recipient_id(),
+            owned.is_account_owner()
+        )
+        .into_response(),
+        Err(e) => render_common(e.to_common_error()),
+    }
+}
+
+#[utoipa::path(get, path = "/patient/v1/care-recipients/{care_recipient_id}", params(("care_recipient_id" = String, Path)), responses((status = 200)))]
+async fn care_recipient(p: Principal, Path(id): Path<String>) -> Response {
+    render_care_recipient(&p, "/patient/v1/care-recipients/{care_recipient_id}", &id)
+}
+
+#[utoipa::path(get, path = "/practitioner/v1/care-recipients/{care_recipient_id}", params(("care_recipient_id" = String, Path)), responses((status = 200)))]
+async fn care_recipient_by_health_worker(p: Principal, Path(id): Path<String>) -> Response {
+    render_care_recipient(
+        &p,
+        "/practitioner/v1/care-recipients/{care_recipient_id}",
+        &id,
+    )
 }
 
 #[utoipa::path(get, path = "/public/v1/public-only", responses((status = 200)))]
@@ -235,6 +301,65 @@ fn app_router() -> PolicyRouter {
             Policy::Public(PublicReason::PublicContent),
             routes!(context_on_public),
         )
+        .routes(Policy::patient(), routes!(care_recipient))
+        .routes(
+            Policy::health_worker(),
+            routes!(care_recipient_by_health_worker),
+        )
+}
+
+/// Penulis audit penolakan dalam memori: mencatat panggilan, dapat dibuat gagal atau ditahan.
+#[derive(Default)]
+struct MemAuditor {
+    seen: Mutex<Vec<DeniedAccess>>,
+    calls: AtomicUsize,
+    fail_retryable: Mutex<usize>,
+    permanent: Mutex<bool>,
+    gate: Option<Arc<Semaphore>>,
+}
+
+impl DenialAuditor for MemAuditor {
+    fn record<'a>(&'a self, denial: &'a DeniedAccess) -> DenialAuditFuture<'a> {
+        Box::pin(async move {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            if let Some(g) = &self.gate {
+                let _p = g.acquire().await.unwrap();
+            }
+            if *self.permanent.lock().unwrap() {
+                return Err(DenialAuditError::Permanent);
+            }
+            {
+                let mut left = self.fail_retryable.lock().unwrap();
+                if *left > 0 {
+                    *left -= 1;
+                    return Err(DenialAuditError::Retryable);
+                }
+            }
+            self.seen.lock().unwrap().push(denial.clone());
+            Ok(())
+        })
+    }
+}
+
+fn sink(auditor: Option<Arc<MemAuditor>>) -> DenialSink {
+    DenialSink::start(64, 2, auditor.map(|a| a as Arc<dyn DenialAuditor>)).unwrap()
+}
+
+async fn with_client_ip(mut req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    req.extensions_mut()
+        .insert(ClientIp(IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7))));
+    next.run(req).await
+}
+
+/// Menunggu sampai `cond` benar (pencatatan di latar belakang), paling lama 3 detik.
+async fn eventually(mut cond: impl FnMut() -> bool) -> bool {
+    for _ in 0..300 {
+        if cond() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    cond()
 }
 
 fn token(key: &TestRealmKey, realm: &str, sub: &str) -> String {
@@ -247,6 +372,10 @@ fn token(key: &TestRealmKey, realm: &str, sub: &str) -> String {
 }
 
 async fn spawn(keys: &Keys, resolver: Arc<MemResolver>) -> SocketAddr {
+    spawn_with(keys, resolver, sink(None)).await
+}
+
+async fn spawn_with(keys: &Keys, resolver: Arc<MemResolver>, denials: DenialSink) -> SocketAddr {
     let auth = AuthState::new(
         Arc::new(authenticator(
             keys,
@@ -255,11 +384,13 @@ async fn spawn(keys: &Keys, resolver: Arc<MemResolver>) -> SocketAddr {
         Arc::new(Renderer),
     );
     let (router, _spec) = app_router()
-        .finish(Enforcement::new(auth, resolver))
+        .finish(Enforcement::new(auth, resolver, denials))
         .unwrap();
-    let app = router.layer(axum::middleware::from_fn(
-        observability::correlation_middleware,
-    ));
+    let app = router
+        .layer(axum::middleware::from_fn(with_client_ip))
+        .layer(axum::middleware::from_fn(
+            observability::correlation_middleware,
+        ));
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move { app.serve(listener, std::future::pending()).await.unwrap() });
@@ -395,6 +526,7 @@ fn stale_duplicate_and_unsatisfiable_policies_fail_startup() {
         .finish(Enforcement::new(
             auth.clone(),
             Arc::new(MemResolver::default()),
+            sink(None),
         ))
         .err()
         .unwrap();
@@ -407,7 +539,11 @@ fn stale_duplicate_and_unsatisfiable_policies_fail_startup() {
             Policy::accounts(&[AccountType::RsAdmin]),
             routes!(verifications),
         )
-        .finish(Enforcement::new(auth, Arc::new(MemResolver::default())))
+        .finish(Enforcement::new(
+            auth,
+            Arc::new(MemResolver::default()),
+            sink(None),
+        ))
         .err()
         .unwrap();
     assert!(
@@ -432,7 +568,11 @@ fn authenticated_route_requires_configured_authenticator_and_realm() {
     );
     let err = PolicyRouter::<()>::new()
         .routes(Policy::health_worker(), routes!(sessions))
-        .finish(Enforcement::new(auth, Arc::new(MemResolver::default())))
+        .finish(Enforcement::new(
+            auth,
+            Arc::new(MemResolver::default()),
+            sink(None),
+        ))
         .err()
         .unwrap();
     assert_eq!(err, PolicySetupError::RealmNotConfigured { realm: "nakes" });
@@ -708,6 +848,10 @@ async fn foreign_object_is_indistinguishable_from_missing_and_logged() {
     // KU-03: isi respons identik untuk "milik orang lain" dan "tidak ada".
     assert_eq!(foreign.body, missing.body);
 
+    assert!(
+        eventually(|| sec_log.text().contains("foreign_resource_id")).await,
+        "security log penolakan tidak tercatat"
+    );
     let sec = sec_log.text();
     let lines: Vec<&str> = sec
         .lines()
@@ -721,4 +865,177 @@ async fn foreign_object_is_indistinguishable_from_missing_and_logged() {
         "{line}"
     );
     assert!(!sec.contains("o-2"), "ID objek tidak masuk log: {sec}");
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn care_recipient_ownership_is_enforced_and_sensitive_denials_are_audited() {
+    // trace: KU-03 (akses ditolak ke data sensitif tercatat hasil gagal), ADR-012 butir 1 dan 4, E-05
+    let (_app_log, sec_log, _guard) = capture();
+    let keys = keys();
+    let resolver = Arc::new(MemResolver::default());
+    resolver.add(
+        Realm::Pasien,
+        "p-a",
+        record(
+            patient_a(),
+            AccountType::Patient,
+            AccountStatus::Active,
+            &[],
+        ),
+    );
+    resolver.add(
+        Realm::Nakes,
+        "n-1",
+        record(
+            uuid(0x31),
+            AccountType::HealthWorker,
+            AccountStatus::Active,
+            &[],
+        ),
+    );
+    let auditor = Arc::new(MemAuditor::default());
+    let addr = spawn_with(&keys, resolver, sink(Some(auditor.clone()))).await;
+    let t = token(&keys.pasien, "pasien", "p-a");
+    let path = |id: Uuid| format!("/patient/v1/care-recipients/{id}");
+
+    // Pemilik akun sendiri dan anggota keluarganya: lolos, dengan penanda E-05 untuk anggota keluarga.
+    let own = call(addr, "GET", &path(uuid(0x21)), Some(&t)).await;
+    assert_eq!(
+        (own.status, own.body.clone()),
+        (200, format!("cr:{}:true", uuid(0x21)))
+    );
+    let family = call(addr, "GET", &path(uuid(0x22)), Some(&t)).await;
+    assert_eq!(family.body, format!("cr:{}:false", uuid(0x22)));
+    // Ganti ID ke penerima layanan pasien lain: 404 identik dengan yang tidak ada (KU-03).
+    let foreign = call(addr, "GET", &path(uuid(0x23)), Some(&t)).await;
+    let missing = call(addr, "GET", &path(uuid(0x99)), Some(&t)).await;
+    assert_eq!(foreign.status, 404);
+    assert_eq!(foreign.json()["response_code"], "4040001");
+    assert_eq!(foreign.body, missing.body);
+    // Tenaga kesehatan tanpa relasi: 404 dan tercatat.
+    let nakes = call(
+        addr,
+        "GET",
+        &format!("/practitioner/v1/care-recipients/{}", uuid(0x21)),
+        Some(&token(&keys.nakes, "nakes", "n-1")),
+    )
+    .await;
+    assert_eq!(nakes.body, missing.body);
+
+    assert!(eventually(|| auditor.seen.lock().unwrap().len() == 2).await);
+    let seen = auditor.seen.lock().unwrap().clone();
+    let by_patient = seen
+        .iter()
+        .find(|d| d.account_id == patient_a())
+        .expect("penolakan pasien");
+    let target = by_patient.sensitive.unwrap();
+    assert_eq!(target.object_type, "care_recipient");
+    assert_eq!(target.subject_care_recipient_id, uuid(0x23));
+    assert_eq!(
+        by_patient.route,
+        "/patient/v1/care-recipients/{care_recipient_id}"
+    );
+    assert_eq!(by_patient.correlation_id.to_string(), CID);
+    assert_eq!(
+        by_patient.client_ip,
+        Some(IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7)))
+    );
+    let by_nakes = seen
+        .iter()
+        .find(|d| d.account_type == AccountType::HealthWorker)
+        .expect("penolakan tenaga kesehatan");
+    assert_eq!(
+        by_nakes.sensitive.unwrap().subject_care_recipient_id,
+        uuid(0x21)
+    );
+    // Objek yang tidak ada dan akses sah tidak dicatat sebagai penolakan.
+    assert!(!seen.iter().any(|d| {
+        d.sensitive
+            .is_some_and(|s| s.object_id == uuid(0x99) || s.object_id == uuid(0x22))
+    }));
+    assert!(eventually(|| sec_log.text().matches("foreign_resource_id").count() == 2).await);
+    assert!(
+        !sec_log
+            .text()
+            .contains(&uuid(0x23).hyphenated().to_string())
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn denial_audit_is_retried_and_permanent_failure_is_logged_without_changing_response() {
+    let (app_log, _sec_log, _guard) = capture();
+    let keys = keys();
+    let resolver = Arc::new(MemResolver::default());
+    resolver.add(
+        Realm::Pasien,
+        "p-a",
+        record(
+            patient_a(),
+            AccountType::Patient,
+            AccountStatus::Active,
+            &[],
+        ),
+    );
+    let auditor = Arc::new(MemAuditor::default());
+    *auditor.fail_retryable.lock().unwrap() = 2;
+    let addr = spawn_with(&keys, resolver, sink(Some(auditor.clone()))).await;
+    let t = token(&keys.pasien, "pasien", "p-a");
+    let foreign = format!("/patient/v1/care-recipients/{}", uuid(0x23));
+    assert_eq!(call(addr, "GET", &foreign, Some(&t)).await.status, 404);
+    // Dua kegagalan sementara lalu berhasil (jeda 100 ms + 1 s).
+    for _ in 0..40 {
+        if auditor.seen.lock().unwrap().len() == 1 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert_eq!(auditor.seen.lock().unwrap().len(), 1);
+    assert_eq!(auditor.calls.load(Ordering::SeqCst), 3);
+
+    *auditor.permanent.lock().unwrap() = true;
+    assert_eq!(call(addr, "GET", &foreign, Some(&t)).await.status, 404);
+    assert!(eventually(|| app_log.text().contains("access_denial_audit_failed")).await);
+    assert!(app_log.text().contains("\"reason\":\"permanent\""));
+    assert_eq!(
+        auditor.calls.load(Ordering::SeqCst),
+        4,
+        "galat permanen tidak dicoba ulang"
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn full_denial_queue_never_delays_responses_and_overflow_is_reported() {
+    let (app_log, _sec_log, _guard) = capture();
+    let keys = keys();
+    let resolver = Arc::new(MemResolver::default());
+    resolver.add(
+        Realm::Pasien,
+        "p-a",
+        record(
+            patient_a(),
+            AccountType::Patient,
+            AccountStatus::Active,
+            &[],
+        ),
+    );
+    let gate = Arc::new(Semaphore::new(0));
+    let auditor = Arc::new(MemAuditor {
+        gate: Some(gate.clone()),
+        ..MemAuditor::default()
+    });
+    let denials = DenialSink::start(1, 1, Some(auditor.clone() as Arc<dyn DenialAuditor>)).unwrap();
+    let addr = spawn_with(&keys, resolver, denials).await;
+    let t = token(&keys.pasien, "pasien", "p-a");
+    let foreign = format!("/patient/v1/care-recipients/{}", uuid(0x23));
+    for _ in 0..10 {
+        let started = Instant::now();
+        let r = call(addr, "GET", &foreign, Some(&t)).await;
+        assert_eq!(r.status, 404);
+        assert!(
+            started.elapsed() < Duration::from_millis(500),
+            "respons tertahan antrean"
+        );
+    }
+    gate.add_permits(100);
+    assert!(eventually(|| app_log.text().contains("access_denial_queue_overflow")).await);
 }

@@ -10,10 +10,16 @@
 //! - Respons: token tidak sah atau realm lain `401`, peran tidak diizinkan `403`, objek terlarang `404`
 //!   yang identik dengan objek tidak ada ([`visible_object`], ADR-012 butir 4, KU-03).
 //!
-//! Belum di sini (task lain): relasi kepemilikan/penugasan/tenant dan E-05 hasil gagal (F1-T38),
-//! status akun dari database dan sesi yang dicabut (F1-T33), cakupan tenant `PartnerScope`
+//! - Relasi kepemilikan pasien atas penerima layanan ([`care_recipient_access`], bukti
+//!   [`OwnedCareRecipient`]) dan penolakan objek yang dicatat di latar belakang ([`DenialSink`]:
+//!   security log, dan untuk data sensitif event audit E-05 hasil gagal lewat [`DenialAuditor`]) tanpa
+//!   menambah waktu tanggap jalur `404` (F1-T38, KU-03, TD-15).
+//!
+//! Belum di sini (task lain): relasi penugasan dan tenant, status akun dari database dan sesi yang
+//! dicabut (F1-T33), cakupan tenant `PartnerScope`
 //! (KEPUTUSAN-128), kebijakan klien realm `integrasi` (ADR-014), realm `korporat` (F1-T86/F1-T100).
 
+mod denial;
 mod enforce;
 mod error;
 mod object;
@@ -23,8 +29,15 @@ mod registry;
 mod role;
 mod router;
 
+pub use denial::{
+    ClientIp, DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DenialAuditError,
+    DenialAuditFuture, DenialAuditor, DenialSink, DenialSinkError, DeniedAccess, SensitiveTarget,
+};
 pub use error::{AuthzError, PolicySetupError};
-pub use object::{deny_action, visible_object};
+pub use object::{
+    CareRecipientOwner, OwnedCareRecipient, Sensitivity, care_recipient_access, deny_action,
+    visible_object, visible_sensitive_object,
+};
 pub use policy::{Policy, PublicReason, Requirement};
 pub use principal::{AccountRecord, Principal, PrincipalResolver, ResolveError, ResolveFuture};
 pub use registry::{EndpointKey, PolicyRegistry, check_coverage};

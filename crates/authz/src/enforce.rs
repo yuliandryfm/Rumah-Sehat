@@ -12,6 +12,7 @@
 //!    `access_denied` (`role_not_allowed`).
 //! 7. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
 
+use crate::denial::{ClientIp, DenialSink};
 use crate::policy::Policy;
 use crate::principal::{Principal, PrincipalResolver};
 use crate::registry::PolicyRegistry;
@@ -30,14 +31,14 @@ use std::sync::Arc;
 /// Keadaan middleware penegak.
 pub(crate) struct EnforcerState {
     registry: PolicyRegistry,
-    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>, DenialSink)>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
 impl EnforcerState {
     pub(crate) fn new(
         registry: PolicyRegistry,
-        authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+        authentication: Option<(AuthState, Arc<dyn PrincipalResolver>, DenialSink)>,
         renderer: Arc<dyn ErrorRenderer>,
     ) -> Self {
         Self {
@@ -86,7 +87,7 @@ pub(crate) async fn enforce(
         Policy::Public(_) => return next.run(req).await,
         Policy::Require(r) => r,
     };
-    let Some((auth, resolver)) = &state.authentication else {
+    let Some((auth, resolver, denials)) = &state.authentication else {
         // Dicegah pemeriksaan saat start; bila tetap terjadi, tolak.
         tracing::error!(route = route.as_str(), "authentication_not_configured");
         return state.renderer.render(CommonError::Internal, cid);
@@ -124,7 +125,8 @@ pub(crate) async fn enforce(
         tracing::info!(route = route.as_str(), reason = reason, "account_rejected");
         return state.renderer.render(CommonError::Unauthenticated, cid);
     }
-    let principal = Principal::new(record, ctx.clone());
+    let client_ip = parts.extensions.get::<ClientIp>().map(|c| c.0);
+    let principal = Principal::new(record, ctx.clone(), cid, client_ip, denials.clone());
     if !requirement.allows(&principal) {
         security::access_denied(
             Some(principal.account_id()),
