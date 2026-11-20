@@ -12,22 +12,29 @@
 //! - Security log dipancarkan utas pekerja dengan subscriber `tracing` milik permintaan (ditangkap saat
 //!   antre), sehingga tujuan lognya sama dengan log permintaan itu. Sink log yang lambat hanya menahan
 //!   utas pekerja, bukan runtime yang melayani permintaan.
-//! - Event audit ditulis [`DenialAuditor`] milik aplikasi (crate ini tidak bergantung pada database) di
-//!   transaksi tersendiri, dicoba ulang dengan jeda membesar; percobaan ulang tidak mengubah respons yang
-//!   sudah terkirim (coding-standards §4.4 butir 3). Gagal permanen dicatat di application log.
+//! - Event audit dibentuk **sekali** per penolakan ([`DenialAuditor::prepare`]: ID event dan waktunya
+//!   tetap), lalu ditulis [`DenialAuditor::write`] milik aplikasi (crate ini tidak bergantung pada
+//!   database) di transaksi tersendiri, dicoba ulang dengan jeda membesar memakai event yang sama, sehingga
+//!   percobaan ulang tidak menggandakan event. Percobaan ulang tidak mengubah respons yang sudah terkirim
+//!   (coding-standards §4.4 butir 3). Gagal permanen dicatat di application log.
+//! - Security log dipancarkan pekerja tanpa menunggu kuota penulisan audit; penulisan audit yang
+//!   menunggu kuota dibatasi jumlahnya (kapasitas antrean), kelebihannya dibuang dan dihitung.
 //! - Antrean penuh (misalnya banjir percobaan ganti ID): catatan dibuang dan dihitung, respons tetap
-//!   `404` tanpa menunggu; jumlah yang dibuang dilaporkan di application log oleh pekerja.
+//!   `404` tanpa menunggu. Pembuangan pertama dalam satu jendela [`DROP_REPORT_WINDOW`] langsung
+//!   dilaporkan di application log (`access_denial_queue_overflow`, jumlah sejak laporan sebelumnya);
+//!   sisanya dilaporkan pada pembuangan pertama jendela berikutnya atau oleh pekerja.
 
 use crate::role::{AccountType, AdminSubRole};
 use foundation::{CorrelationId, Uuid};
 use observability::security::{self, AccessDenial};
+use std::any::Any;
 use std::fmt;
 use std::future::Future;
 use std::net::IpAddr;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
 use tokio::sync::{Semaphore, mpsc};
 
@@ -35,6 +42,9 @@ use tokio::sync::{Semaphore, mpsc};
 pub const DEFAULT_DENIAL_QUEUE_CAPACITY: usize = 1024;
 /// Bawaan jumlah penulisan audit penolakan yang berjalan bersamaan. Usulan teknis F1-T38.
 pub const DEFAULT_DENIAL_AUDIT_CONCURRENCY: usize = 4;
+
+/// Jendela laporan pembuangan antrean: pembuangan pertama per jendela langsung dilaporkan.
+pub const DROP_REPORT_WINDOW: Duration = Duration::from_secs(10);
 
 /// Jeda sebelum percobaan ulang penulisan audit (jumlah percobaan = panjang + 1).
 const AUDIT_RETRY_DELAYS: [Duration; 3] = [
@@ -101,15 +111,40 @@ pub enum DenialAuditError {
     Permanent,
 }
 
-/// Future hasil [`DenialAuditor::record`].
+/// Future hasil [`DenialAuditor::write`].
 pub type DenialAuditFuture<'a> =
     Pin<Box<dyn Future<Output = Result<(), DenialAuditError>> + Send + 'a>>;
 
-/// Penulis event audit E-05 hasil gagal untuk penolakan atas data sensitif (implementasi aplikasi,
-/// lewat `audit::in_audited_tx` di transaksi tersendiri).
+/// Event audit yang sudah dibentuk untuk satu penolakan (isi milik implementasi [`DenialAuditor`]).
+pub struct PreparedDenialAudit(Box<dyn Any + Send + Sync>);
+
+impl PreparedDenialAudit {
+    /// Membungkus event yang sudah dibentuk.
+    pub fn new<T: Any + Send + Sync>(event: T) -> Self {
+        Self(Box::new(event))
+    }
+
+    /// Isi event bila jenisnya `T`.
+    pub fn get<T: Any>(&self) -> Option<&T> {
+        self.0.downcast_ref::<T>()
+    }
+}
+
+impl fmt::Debug for PreparedDenialAudit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PreparedDenialAudit")
+            .finish_non_exhaustive()
+    }
+}
+
+/// Penulis event audit E-05 hasil gagal untuk penolakan atas data sensitif (implementasi aplikasi).
+/// Dipanggil hanya untuk penolakan dengan [`DeniedAccess::sensitive`].
 pub trait DenialAuditor: Send + Sync {
-    /// Menulis satu event. Dipanggil hanya untuk penolakan dengan [`DeniedAccess::sensitive`].
-    fn record<'a>(&'a self, denial: &'a DeniedAccess) -> DenialAuditFuture<'a>;
+    /// Membentuk event satu kali per penolakan (ID event dan waktu tetap untuk semua percobaan).
+    fn prepare(&self, denial: &DeniedAccess) -> Result<PreparedDenialAudit, DenialAuditError>;
+    /// Menulis event yang sudah dibentuk; wajib idempoten (percobaan ulang dengan event yang sama tidak
+    /// menggandakannya).
+    fn write<'a>(&'a self, prepared: &'a PreparedDenialAudit) -> DenialAuditFuture<'a>;
 }
 
 /// Galat pembuatan [`DenialSink`].
@@ -143,7 +178,54 @@ struct Queued {
 #[derive(Clone)]
 pub struct DenialSink {
     tx: mpsc::Sender<Queued>,
-    dropped: Arc<AtomicU64>,
+    drops: Arc<DropCounter>,
+}
+
+/// Penghitung pembuangan dengan laporan pertama per jendela waktu.
+struct DropCounter {
+    count: AtomicU64,
+    started: Instant,
+    /// Milidetik sejak `started` saat laporan terakhir; `u64::MAX` = belum pernah.
+    last_report_ms: AtomicU64,
+}
+
+impl DropCounter {
+    fn new() -> Self {
+        Self {
+            count: AtomicU64::new(0),
+            started: Instant::now(),
+            last_report_ms: AtomicU64::new(u64::MAX),
+        }
+    }
+
+    /// Mencatat satu pembuangan; mengembalikan jumlah yang harus dilaporkan sekarang (pembuangan pertama
+    /// dalam jendela baru), atau `None`.
+    fn record_drop(&self) -> Option<u64> {
+        self.count.fetch_add(1, Ordering::Relaxed);
+        let now = u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX - 1);
+        let window = u64::try_from(DROP_REPORT_WINDOW.as_millis()).unwrap_or(u64::MAX);
+        let last = self.last_report_ms.load(Ordering::Relaxed);
+        let due = last == u64::MAX || now.saturating_sub(last) >= window;
+        if due
+            && self
+                .last_report_ms
+                .compare_exchange(last, now, Ordering::AcqRel, Ordering::Relaxed)
+                .is_ok()
+        {
+            return Some(self.count.swap(0, Ordering::Relaxed));
+        }
+        None
+    }
+
+    fn take(&self) -> u64 {
+        self.count.swap(0, Ordering::Relaxed)
+    }
+}
+
+fn report_overflow(lost: u64) {
+    if lost > 0 {
+        tracing::error!(count = lost, "access_denial_queue_overflow");
+    }
 }
 
 impl fmt::Debug for DenialSink {
@@ -165,14 +247,18 @@ impl DenialSink {
             return Err(DenialSinkError::InvalidCapacity);
         }
         let (tx, rx) = mpsc::channel(capacity);
-        let dropped = Arc::new(AtomicU64::new(0));
-        let worker_dropped = Arc::clone(&dropped);
-        let permits = Arc::new(Semaphore::new(audit_concurrency));
+        let drops = Arc::new(DropCounter::new());
+        let limits = AuditLimits {
+            permits: Arc::new(Semaphore::new(audit_concurrency)),
+            pending: Arc::new(AtomicUsize::new(0)),
+            max_pending: capacity,
+        };
+        let worker_drops = Arc::clone(&drops);
         std::thread::Builder::new()
             .name("authz-denials".to_string())
-            .spawn(move || worker(rx, auditor, permits, worker_dropped))
+            .spawn(move || worker(rx, auditor, limits, worker_drops))
             .map_err(|_| DenialSinkError::Thread)?;
-        Ok(Self { tx, dropped })
+        Ok(Self { tx, drops })
     }
 
     /// Memasukkan penolakan ke antrean tanpa menunggu. Antrean penuh = dibuang dan dihitung.
@@ -184,17 +270,26 @@ impl DenialSink {
             dispatch,
             runtime,
         };
-        if self.tx.try_send(queued).is_err() {
-            self.dropped.fetch_add(1, Ordering::Relaxed);
+        if self.tx.try_send(queued).is_err()
+            && let Some(lost) = self.drops.record_drop()
+        {
+            report_overflow(lost);
         }
     }
+}
+
+/// Batas penulisan audit: konkurensi dan jumlah penulisan yang menunggu kuota.
+struct AuditLimits {
+    permits: Arc<Semaphore>,
+    pending: Arc<AtomicUsize>,
+    max_pending: usize,
 }
 
 fn worker(
     mut rx: mpsc::Receiver<Queued>,
     auditor: Option<Arc<dyn DenialAuditor>>,
-    permits: Arc<Semaphore>,
-    dropped: Arc<AtomicU64>,
+    limits: AuditLimits,
+    drops: Arc<DropCounter>,
 ) {
     while let Some(Queued {
         denial,
@@ -202,11 +297,9 @@ fn worker(
         runtime,
     }) = rx.blocking_recv()
     {
-        let lost = dropped.swap(0, Ordering::Relaxed);
+        let lost = drops.take();
         tracing::dispatcher::with_default(&dispatch, || {
-            if lost > 0 {
-                tracing::error!(count = lost, "access_denial_queue_overflow");
-            }
+            report_overflow(lost);
             security::access_denied(
                 Some(denial.account_id),
                 &denial.route,
@@ -216,26 +309,51 @@ fn worker(
         let (Some(auditor), Some(_), Some(handle)) = (&auditor, denial.sensitive, runtime) else {
             continue;
         };
-        // Batas konkurensi audit ditunggu di utas pekerja, bukan di runtime.
-        let Ok(permit) = handle.block_on(Arc::clone(&permits).acquire_owned()) else {
-            continue;
+        // Event dibentuk sekali; percobaan ulang memakai event yang sama.
+        let prepared = match auditor.prepare(&denial) {
+            Ok(p) => p,
+            Err(_) => {
+                audit_failed(&dispatch, &denial.route, "permanent");
+                continue;
+            }
         };
+        // Pekerja tidak menunggu kuota audit (security log berikutnya tidak tertahan); penulisan yang
+        // menunggu kuota dibatasi jumlahnya.
+        if limits.pending.fetch_add(1, Ordering::AcqRel) >= limits.max_pending {
+            limits.pending.fetch_sub(1, Ordering::AcqRel);
+            if let Some(lost) = drops.record_drop() {
+                tracing::dispatcher::with_default(&dispatch, || report_overflow(lost));
+            }
+            continue;
+        }
         let auditor = Arc::clone(auditor);
+        let permits = Arc::clone(&limits.permits);
+        let pending = Arc::clone(&limits.pending);
+        let route = denial.route;
         handle.spawn(async move {
-            record_with_retry(auditor.as_ref(), &denial, &dispatch).await;
-            drop(permit);
+            if let Ok(_permit) = permits.acquire_owned().await {
+                write_with_retry(auditor.as_ref(), &prepared, &route, &dispatch).await;
+            }
+            pending.fetch_sub(1, Ordering::AcqRel);
         });
     }
 }
 
-async fn record_with_retry(
+fn audit_failed(dispatch: &tracing::Dispatch, route: &str, reason: &str) {
+    tracing::dispatcher::with_default(dispatch, || {
+        tracing::error!(route = route, reason = reason, "access_denial_audit_failed");
+    });
+}
+
+async fn write_with_retry(
     auditor: &dyn DenialAuditor,
-    denial: &DeniedAccess,
+    prepared: &PreparedDenialAudit,
+    route: &str,
     dispatch: &tracing::Dispatch,
 ) {
     let mut attempt = 0usize;
     loop {
-        let reason = match auditor.record(denial).await {
+        let reason = match auditor.write(prepared).await {
             Ok(()) => return,
             Err(DenialAuditError::Permanent) => "permanent",
             Err(DenialAuditError::Retryable) => match AUDIT_RETRY_DELAYS.get(attempt) {
@@ -247,13 +365,7 @@ async fn record_with_retry(
                 None => "retries_exhausted",
             },
         };
-        tracing::dispatcher::with_default(dispatch, || {
-            tracing::error!(
-                route = denial.route.as_str(),
-                reason = reason,
-                "access_denial_audit_failed"
-            );
-        });
+        audit_failed(dispatch, route, reason);
         return;
     }
 }

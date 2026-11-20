@@ -291,6 +291,29 @@ fn router_bypass_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
             ));
         }
     }
+    // Alias crate axum (`use axum as x`, `use axum::{self as x}`, `extern crate axum as x`) menyembunyikan
+    // token di atas; alias ditolak dan pemakaian `x::serve`/`x::routing`/`x::Router` ikut dilaporkan.
+    for (off, alias) in axum_aliases(code) {
+        out.push(Finding::new(
+            "router-bypass",
+            file,
+            line_of(code, off),
+            "axum-alias",
+            msg,
+        ));
+        for item in ["serve", "routing", "Router"] {
+            let tok = format!("{alias}::{item}");
+            for at in find_tokens(code, &tok) {
+                out.push(Finding::new(
+                    "router-bypass",
+                    file,
+                    line_of(code, at),
+                    item,
+                    msg,
+                ));
+            }
+        }
+    }
     // `use axum::{serve, routing::get}`: nama yang diimpor dari dalam kurung kurawal.
     for off in find_tokens(code, "use axum") {
         let end = code
@@ -307,6 +330,37 @@ fn router_bypass_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
                     tok,
                     msg,
                 ));
+            }
+        }
+    }
+    out
+}
+
+/// Alias crate axum: (offset, nama alias).
+fn axum_aliases(code: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    for start in ["use axum", "extern crate axum"] {
+        for off in find_tokens(code, start) {
+            let end = code
+                .get(off..)
+                .and_then(|s| s.find(';'))
+                .map_or(code.len(), |p| off + p);
+            let stmt = code.get(off + start.len()..end).unwrap_or("");
+            let words: Vec<&str> = stmt
+                .split(|c: char| c.is_whitespace() || matches!(c, '{' | '}' | ','))
+                .filter(|w| !w.is_empty())
+                .collect();
+            for (i, w) in words.iter().enumerate() {
+                if *w != "as" {
+                    continue;
+                }
+                let crate_alias = i == 0;
+                let self_alias = i > 0 && words.get(i - 1) == Some(&"self");
+                if (crate_alias || self_alias)
+                    && let Some(name) = words.get(i + 1)
+                {
+                    out.push((off, (*name).to_string()));
+                }
             }
         }
     }

@@ -79,14 +79,40 @@ pub fn visible_sensitive_object<T>(
     }
 }
 
-/// Pemilik penerima layanan menurut database (dibaca modul profil): `patient.account_id` dan
-/// `care_recipient.is_account_owner`.
+/// Pemilik penerima layanan menurut database (dibaca modul profil): `care_recipient.id`,
+/// `patient.account_id`, dan `care_recipient.is_account_owner`. ID penerima layanan ikut dibawa supaya
+/// pemilik penerima layanan lain tidak dapat dipakai tertukar ([`care_recipient_access`] memeriksanya).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CareRecipientOwner {
+    care_recipient_id: Uuid,
+    account_id: Uuid,
+    is_account_owner: bool,
+}
+
+impl CareRecipientOwner {
+    /// Hasil baca pemilik satu penerima layanan.
+    pub fn new(care_recipient_id: Uuid, account_id: Uuid, is_account_owner: bool) -> Self {
+        Self {
+            care_recipient_id,
+            account_id,
+            is_account_owner,
+        }
+    }
+
+    /// `care_recipient.id`.
+    pub fn care_recipient_id(&self) -> Uuid {
+        self.care_recipient_id
+    }
+
     /// `patient.account_id` pemilik.
-    pub account_id: Uuid,
+    pub fn account_id(&self) -> Uuid {
+        self.account_id
+    }
+
     /// Penerima layanan adalah pemilik akun sendiri (bukan anggota keluarga).
-    pub is_account_owner: bool,
+    pub fn is_account_owner(&self) -> bool {
+        self.is_account_owner
+    }
 }
 
 /// Bukti bahwa pemanggil adalah akun pasien pemilik penerima layanan ini. Hanya dibangun
@@ -117,9 +143,11 @@ impl OwnedCareRecipient {
 }
 
 /// Relasi kepemilikan pasien atas penerima layanan (ADR-012 butir 1, KU-03). `owner` = hasil baca
-/// pemilik dari modul profil (`None` = tidak ada atau terhapus). Lolos hanya bila pemanggil akun pasien
-/// dan `owner.account_id` sama dengan akunnya; selain itu `404` yang identik dengan "tidak ada", dan
-/// penolakan atas penerima layanan yang ada dicatat (data sensitif: E-05 hasil gagal).
+/// pemilik dari modul profil (`None` = tidak ada atau terhapus). Lolos hanya bila `owner` milik
+/// `care_recipient_id` yang diminta, pemanggil akun pasien, dan `owner.account_id` sama dengan akunnya;
+/// selain itu `404` yang identik dengan "tidak ada", dan penolakan atas penerima layanan yang ada dicatat
+/// (data sensitif: E-05 hasil gagal). Pemilik untuk ID lain adalah kesalahan pemrograman: ditolak `404`
+/// dan dicatat di application log, tanpa catatan penolakan.
 pub fn care_recipient_access(
     principal: &Principal,
     route: &str,
@@ -130,6 +158,10 @@ pub fn care_recipient_access(
     let Some(owner) = owner else {
         return Err(AuthzError::NotFound);
     };
+    if owner.care_recipient_id != care_recipient_id {
+        tracing::error!(route = route, "care_recipient_owner_mismatch");
+        return Err(AuthzError::NotFound);
+    }
     if principal.account_type() == AccountType::Patient
         && owner.account_id == principal.account_id()
     {

@@ -94,6 +94,7 @@ pub mod codes {
         ResponseCode::new("4000001", "Permintaan tidak dapat dibaca");
     pub const UNAUTHENTICATED: ResponseCode =
         ResponseCode::new("4010001", "Belum login atau sesi berakhir");
+    pub const ACCOUNT_INACTIVE: ResponseCode = ResponseCode::new("4010002", "Akun nonaktif");
     pub const FORBIDDEN: ResponseCode = ResponseCode::new("4030001", "Tidak diizinkan");
     pub const NOT_FOUND: ResponseCode = ResponseCode::new("4040001", "Data tidak ditemukan");
     pub const STATUS_CONFLICT: ResponseCode = ResponseCode::new("4090001", "Konflik status");
@@ -120,12 +121,13 @@ pub mod codes {
         ResponseCode::new("5040001", "Layanan pihak ketiga melewati batas waktu");
 
     /// Semua kode umum; test registry mencocokkannya dengan §3 dokumen (dua arah).
-    pub const ALL: [ResponseCode; 17] = [
+    pub const ALL: [ResponseCode; 18] = [
         OK,
         CREATED,
         ACCEPTED,
         BAD_REQUEST,
         UNAUTHENTICATED,
+        ACCOUNT_INACTIVE,
         FORBIDDEN,
         NOT_FOUND,
         STATUS_CONFLICT,

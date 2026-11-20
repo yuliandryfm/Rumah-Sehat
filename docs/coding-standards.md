@@ -458,7 +458,7 @@ Audit trail dibuat aplikasi lewat **satu pustaka**, crate `audit`, yang dipakai 
 
 1. **Aksi yang mengubah data**: event ditulis ke `audit_outbox` **di transaksi yang sama** dengan perubahan bisnisnya. Kalau penulisan event gagal, seluruh transaksi batal dan pengguna menerima galat (ADR-009 butir 2, KEPUTUSAN-15).
 2. **Akses baca data sensitif (E-05)**: event ditulis dan di-commit **sebelum** data didekripsi dan dikirim. Kalau gagal, akses ditolak (ADR-009 butir 2, ADR-012 butir 2).
-3. **Aksi yang gagal atau ditolak** (misalnya akses ditolak menurut KU-03): event ditulis di transaksi tersendiri dan dicoba ulang, tanpa mengubah hasil aksi (ADR-009 butir 2).
+3. **Aksi yang gagal atau ditolak** (misalnya akses ditolak menurut KU-03): event ditulis di transaksi tersendiri dan dicoba ulang, tanpa mengubah hasil aksi (ADR-009 butir 2). Event dibentuk sekali (`AuditEvent::finish`) lalu ditulis idempoten lewat `audit::insert_finished`, sehingga percobaan ulang tidak menggandakan event (F1-T38).
 4. **Aksi sistem dan integrasi**: job tidak ditandai selesai sebelum event-nya tertulis (ADR-009 butir 2).
 5. **Pemanggil tidak melakukan masking.** Masking dan larangan PRD §7.3 diterapkan pustaka (ADR-009 butir 7). API pustaka **tidak menyediakan** tempat untuk password, PIN, OTP, token, atau rahasia MFA; nilai before/after hanya untuk field di daftar izin per jenis objek; NIK dan nomor rekening hanya 4 digit terakhir; field klinis dan dokumen hanya nama field dan versinya.
 6. Field wajib PRD §7.2 (aktor, aksi, objek, sumber, hasil, ID korelasi, dan subjek data bila ada) diisi dari `RequestContext`, bukan disusun ulang di setiap handler.

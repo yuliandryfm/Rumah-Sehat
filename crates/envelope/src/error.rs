@@ -38,8 +38,10 @@ pub trait ApiError {
 pub enum CommonError {
     /// 400: badan atau parameter tidak dapat dibaca.
     BadRequest,
-    /// 401: belum login, token tidak sah, sesi berakhir.
+    /// 401: belum login, token tidak sah, sesi berakhir atau dicabut.
     Unauthenticated,
+    /// 401: akun pemegang sesi yang sah berstatus nonaktif (KU-10 bagian sesi, layar "Akun nonaktif").
+    AccountInactive,
     /// 403: peran tidak boleh menjalankan fungsi (keberadaan fungsi tidak rahasia).
     Forbidden,
     /// 404: data tidak ada **atau** tidak boleh diakses (KU-03).
@@ -71,6 +73,7 @@ impl ApiError for CommonError {
         match self {
             Self::BadRequest => codes::BAD_REQUEST,
             Self::Unauthenticated => codes::UNAUTHENTICATED,
+            Self::AccountInactive => codes::ACCOUNT_INACTIVE,
             Self::Forbidden => codes::FORBIDDEN,
             Self::NotFound => codes::NOT_FOUND,
             Self::StatusConflict => codes::STATUS_CONFLICT,
@@ -102,6 +105,7 @@ mod tests {
         vec![
             (CommonError::BadRequest, 400, "4000001"),
             (CommonError::Unauthenticated, 401, "4010001"),
+            (CommonError::AccountInactive, 401, "4010002"),
             (CommonError::Forbidden, 403, "4030001"),
             (CommonError::NotFound, 404, "4040001"),
             (CommonError::StatusConflict, 409, "4090001"),

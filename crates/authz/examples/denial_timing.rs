@@ -19,7 +19,7 @@ use authn::{
 };
 use authz::{
     AccountRecord, AccountStatus, AccountType, DenialSink, Enforcement, Policy, PolicyRouter,
-    Principal, PrincipalResolver, ResolveFuture, visible_object,
+    Principal, PrincipalResolver, ResolveFuture, RevocationFuture, SessionGuard, visible_object,
 };
 use axum::extract::Path;
 use axum::http::header::CONTENT_TYPE;
@@ -84,6 +84,12 @@ impl PrincipalResolver for OneResolver {
                 sub_roles: vec![],
             }))
         })
+    }
+}
+
+impl SessionGuard for OneResolver {
+    fn is_revoked<'a>(&'a self, _ctx: &'a AuthContext) -> RevocationFuture<'a> {
+        Box::pin(async move { Ok(false) })
     }
 }
 
@@ -190,6 +196,7 @@ async fn main() {
         .routes(Policy::patient(), routes!(sync_order))
         .finish(Enforcement::new(
             AuthState::new(Arc::new(auth), Arc::new(Renderer)),
+            Arc::new(OneResolver),
             Arc::new(OneResolver),
             denials,
         ))

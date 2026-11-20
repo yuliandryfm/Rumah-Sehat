@@ -42,6 +42,9 @@ const ALLOW_INVALID_OK: &[&str] = &["time::OffsetDateTime::now_local"];
 const FORBIDDEN_DEPS: &[&str] = &["ring", "aes-gcm", "chrono"];
 /// Crate yang hanya boleh dideklarasikan di `crates/crypto`.
 const CRYPTO_ONLY_DEPS: &[&str] = &["aws-lc-rs", "aws-lc-sys", "aws-lc-fips-sys"];
+/// Crate yang hanya boleh dideklarasikan di `crates/valkey` (F1-T33: batas waktu dan galat tanpa isi
+/// seragam untuk semua akses Valkey).
+const VALKEY_ONLY_DEPS: &[&str] = &["redis"];
 
 /// Fitur pembantu test per paket: (paket, fitur). TD-15.
 pub const TEST_FEATURES: &[(&str, &str)] = &[("authn", "testing"), ("crypto", "test-keys")];
@@ -171,7 +174,45 @@ fn check_member(root: &Path, rel: &str) -> Vec<Finding> {
     }
     let crate_dir = rel.rsplit('/').next().unwrap_or("");
     out.extend(check_deps(&file, crate_dir, &table));
+    if rel.starts_with("apps/") {
+        out.extend(check_axum_rename(&file, &table));
+    }
     out.extend(check_test_features(&file, crate_dir, &table));
+    out
+}
+
+/// `router-bypass` (TD-15, review F1-T38): aplikasi tidak boleh mengganti nama dependensi axum
+/// (`x = { package = "axum" }`), karena nama baru menyembunyikan token yang diperiksa aturan sumber.
+fn check_axum_rename(file: &str, table: &Table) -> Vec<Finding> {
+    let mut out = Vec::new();
+    let mut tables: Vec<&Table> = Vec::new();
+    for k in ["dependencies", "dev-dependencies", "build-dependencies"] {
+        if let Some(t) = table.get(k).and_then(Value::as_table) {
+            tables.push(t);
+        }
+    }
+    if let Some(targets) = table.get("target").and_then(Value::as_table) {
+        for cfg in targets.values() {
+            for k in ["dependencies", "dev-dependencies", "build-dependencies"] {
+                if let Some(t) = cfg.get(k).and_then(Value::as_table) {
+                    tables.push(t);
+                }
+            }
+        }
+    }
+    for deps in tables {
+        for (key, spec) in deps {
+            if key != "axum" && spec.get("package").and_then(Value::as_str) == Some("axum") {
+                out.push(Finding::new(
+                    "router-bypass",
+                    file,
+                    0,
+                    "axum-rename",
+                    format!("dependensi axum diganti nama menjadi `{key}` di aplikasi (TD-15)"),
+                ));
+            }
+        }
+    }
     out
 }
 
@@ -313,6 +354,13 @@ fn check_deps(file: &str, crate_dir: &str, table: &Table) -> Vec<Finding> {
                     format!(
                         "dependensi `{pkg}` dilarang (docs/05-stack.md, coding-standards §5.7)"
                     ),
+                ));
+            }
+            if VALKEY_ONLY_DEPS.contains(&pkg) && crate_dir != "valkey" {
+                out.push(finding(
+                    file,
+                    pkg,
+                    format!("`{pkg}` hanya boleh dideklarasikan di crates/valkey (F1-T33)"),
                 ));
             }
             if CRYPTO_ONLY_DEPS.contains(&pkg) && crate_dir != "crypto" {

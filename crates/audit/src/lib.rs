@@ -6,6 +6,8 @@
 //! F1-T23: [`in_audited_tx`] memegang begin/commit transaksi tingkat atas, menjalankan aksi bisnis, lalu
 //! menulis event-nya ke `audit_outbox` di transaksi yang sama; gagal tulis membatalkan semuanya
 //! (ADR-009 butir 2, KEPUTUSAN-15). Tidak ada API publik untuk menulis ke transaksi milik pemanggil.
+//! F1-T38: [`insert_finished`] menulis event yang sudah dibentuk di transaksi tersendiri secara idempoten
+//! (`ON CONFLICT DO NOTHING`), untuk event berhasil-gagal yang dicoba ulang di luar aksi bisnis.
 //! F1-T24: [`relay`] memindahkan event dari `audit_outbox` ke database audit (rantai hash lewat crate
 //! `audit-store`) dengan satu relay aktif (kunci advisory `platform_jobs::lock`), ADR-009 butir 3.
 //!
@@ -42,7 +44,7 @@ pub use event::{
     OBJECT_VERSION_MAX, ObjectId, ObjectRef, Outcome, PAYLOAD_VERSION, Source, SourceComponent,
     Subject, SubjectKind, USER_AGENT_MAX_CHARS,
 };
-pub use outbox::{AuditedTxError, AuditedWork, in_audited_tx};
+pub use outbox::{AuditedTxError, AuditedWork, in_audited_tx, insert_finished};
 pub use policy::{
     ContentClass, FieldKind, FieldRule, ObjectPolicy, is_forbidden_field_name, is_number_field_name,
 };

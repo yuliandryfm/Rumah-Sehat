@@ -22,8 +22,5 @@ pub async fn care_recipient_owner(
     let row = repo::care_recipient_owner(pool, care_recipient_id)
         .await
         .map_err(|_| ProfileError::Database)?;
-    Ok(row.map(|r| CareRecipientOwner {
-        account_id: r.account_id,
-        is_account_owner: r.is_account_owner,
-    }))
+    Ok(row.map(|r| CareRecipientOwner::new(care_recipient_id, r.account_id, r.is_account_owner)))
 }

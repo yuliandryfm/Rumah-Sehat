@@ -159,6 +159,32 @@ where
     Ok(value)
 }
 
+/// Menulis satu event yang **sudah dibentuk** ([`AuditEvent::finish`]) ke `app.audit_outbox` di
+/// transaksi tersendiri, idempoten: event dengan ID yang sama yang sudah ada tidak ditulis ulang
+/// (`ON CONFLICT DO NOTHING`). Untuk event berhasil-gagal yang dicoba ulang di luar aksi bisnis
+/// (coding-standards §4.4 butir 3, F1-T38): event dan ID-nya dibentuk sekali, sehingga percobaan ulang
+/// setelah commit yang balasannya hilang tidak menggandakan event. Bila baris sudah dipindah relay,
+/// event yang ditulis ulang dilewati relay berdasarkan ID event (F1-T24). Tidak menerima transaksi milik
+/// pemanggil.
+pub async fn insert_finished(pool: &PgPool, record: &AuditRecord) -> Result<(), AuditError> {
+    let result = sqlx::query!(
+        "INSERT INTO app.audit_outbox (id, occurred_at, payload) VALUES ($1, $2, $3) \
+         ON CONFLICT DO NOTHING",
+        record.event_id(),
+        record.occurred_at(),
+        record.payload(),
+    )
+    .execute(pool)
+    .await;
+    match result {
+        Ok(_) => Ok(()),
+        Err(_) => {
+            security::audit_write_failed(record.code().as_str(), AuditWriteFailure::StoreError);
+            Err(AuditError::new(AuditErrorKind::Write, "audit_outbox"))
+        }
+    }
+}
+
 /// Rollback eksplisit. Bila rollback sendiri gagal (koneksi putus), koneksi dibuang pool dan server
 /// membatalkan transaksi yang belum di-commit; tidak ada jalur commit yang tersisa.
 async fn abort(tx: Transaction<'_, Postgres>) {

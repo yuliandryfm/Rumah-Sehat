@@ -34,12 +34,24 @@ pub type ResolveFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<AccountRecord>, ResolveError>> + Send + 'a>>;
 
 /// Memetakan konteks autentikasi ke akun aplikasi (`account.idp_realm`, `account.idp_subject`, tanpa
-/// baris terhapus). `Ok(None)` = akun tidak ada → `401`. Implementasi database dan pemeriksaan sesi
-/// yang dicabut menyusul (F1-T33); aksi berisiko membaca status langsung dari database (ADR-011
+/// baris terhapus). `Ok(None)` = akun tidak ada → `401`. Implementasi database dengan cache Valkey ada
+/// di modul `identity` backend (F1-T33); aksi berisiko membaca status langsung dari database (ADR-011
 /// butir 8).
 pub trait PrincipalResolver: Send + Sync {
     /// Mencari akun untuk `ctx`.
     fn resolve<'a>(&'a self, ctx: &'a AuthContext) -> ResolveFuture<'a>;
+}
+
+/// Future hasil [`SessionGuard::is_revoked`].
+pub type RevocationFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<bool, ResolveError>> + Send + 'a>>;
+
+/// Daftar sesi yang dicabut (ADR-011 butir 8, US-103 AC5, KU-10; DD A1.4 `session_revocation`).
+/// `Ok(true)` = sesi dicabut → `401` `4010001`; galat → `503` (tidak pernah dilewatkan). Konteks tanpa ID
+/// sesi wajib dianggap dicabut.
+pub trait SessionGuard: Send + Sync {
+    /// Apakah sesi `ctx.session_id()` sudah dicabut.
+    fn is_revoked<'a>(&'a self, ctx: &'a AuthContext) -> RevocationFuture<'a>;
 }
 
 /// Pemanggil yang lolos autentikasi, status akun aktif, dan kebijakan endpoint. Hanya dibangun crate

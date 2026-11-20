@@ -464,3 +464,41 @@ fn test_features_in_dev_dependencies_and_authn_testing_are_allowed() {
     );
     assert!(details(&r).is_empty(), "{:?}", details(&r));
 }
+
+#[test]
+fn redis_only_in_valkey_crate() {
+    let r = Repo::new();
+    r.put(
+        "apps/x/Cargo.toml",
+        "[package]\nname = \"x\"\n[dependencies]\nredis = \"=1.8.2\"\n[lints]\nworkspace = true\n",
+    );
+    r.put(
+        "crates/valkey/Cargo.toml",
+        "[package]\nname = \"valkey\"\n[dependencies]\nredis = \"=1.8.2\"\n[lints]\nworkspace = true\n",
+    );
+    let d = details(&r);
+    assert!(d.contains(&"apps/x/Cargo.toml|redis".to_string()), "{d:?}");
+    assert!(!d.iter().any(|x| x.starts_with("crates/valkey/")), "{d:?}");
+}
+
+#[test]
+fn renamed_axum_dependency_in_apps_is_rejected() {
+    let r = Repo::new();
+    r.put(
+        "apps/x/Cargo.toml",
+        "[package]\nname = \"x\"\n[dependencies]\nweb = { package = \"axum\", version = \"=0.8.9\" }\n[lints]\nworkspace = true\n",
+    );
+    r.put(
+        "apps/y/Cargo.toml",
+        "[package]\nname = \"y\"\n[dependencies]\naxum = { version = \"=0.8.9\" }\n[lints]\nworkspace = true\n",
+    );
+    let found: Vec<String> = manifests::check_manifests(r.path())
+        .into_iter()
+        .map(|f| format!("{}|{}", f.file, f.detail))
+        .collect();
+    assert!(
+        found.contains(&"apps/x/Cargo.toml|axum-rename".to_string()),
+        "{found:?}"
+    );
+    assert!(!found.iter().any(|x| x.starts_with("apps/y/")), "{found:?}");
+}

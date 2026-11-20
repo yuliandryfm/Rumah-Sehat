@@ -35,6 +35,9 @@ time = { version = "=0.3.55", default-features = false, features = ["std"] }
 # image 0.25.10 [SRC-554]: hanya dekoder/enkoder JPEG (zune-jpeg) dan PNG (png); fitur bawaan (rayon, format
 # lain) dimatikan untuk memperkecil permukaan serang dekoder.
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
+# Modul identity (F1-T33): cache status akun dan pencabutan sesi di Valkey (crate valkey, satu-satunya
+# pemakai crate redis).
+valkey = { path = "../../crates/valkey" }
 
 [dev-dependencies]
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time"] }

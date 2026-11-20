@@ -16,7 +16,7 @@ use crate::denial::DenialSink;
 use crate::enforce::{EnforcerState, deny_fallback, enforce};
 use crate::error::PolicySetupError;
 use crate::policy::Policy;
-use crate::principal::PrincipalResolver;
+use crate::principal::{PrincipalResolver, SessionGuard};
 use crate::registry::{PolicyRegistry, check_coverage, operations};
 use authn::{AuthState, ErrorRenderer};
 use axum::Router;
@@ -32,10 +32,18 @@ use tower_service::Service;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouter};
 
+/// Validator token, resolver akun, penjaga sesi, dan antrean penolakan objek.
+pub(crate) type Authentication = (
+    AuthState,
+    Arc<dyn PrincipalResolver>,
+    Arc<dyn SessionGuard>,
+    DenialSink,
+);
+
 /// Perangkat penegakan yang dipasang [`PolicyRouter::finish`].
 #[derive(Clone)]
 pub struct Enforcement {
-    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>, DenialSink)>,
+    authentication: Option<Authentication>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
@@ -49,12 +57,18 @@ impl Enforcement {
         }
     }
 
-    /// Validator token (`authn`), resolver akun, dan antrean pencatatan penolakan objek ([`DenialSink`],
-    /// F1-T38). Pembentuk respons galat diambil dari `auth`.
-    pub fn new(auth: AuthState, resolver: Arc<dyn PrincipalResolver>, denials: DenialSink) -> Self {
+    /// Validator token (`authn`), resolver akun, penjaga sesi yang dicabut (ADR-011 butir 8), dan
+    /// antrean pencatatan penolakan objek ([`DenialSink`], F1-T38). Pembentuk respons galat diambil dari
+    /// `auth`.
+    pub fn new(
+        auth: AuthState,
+        resolver: Arc<dyn PrincipalResolver>,
+        sessions: Arc<dyn SessionGuard>,
+        denials: DenialSink,
+    ) -> Self {
         let renderer = Arc::clone(auth.renderer());
         Self {
-            authentication: Some((auth, resolver, denials)),
+            authentication: Some((auth, resolver, sessions, denials)),
             renderer,
         }
     }
@@ -176,7 +190,7 @@ where
                     path: path.clone(),
                 });
             }
-            let Some((auth, _, _)) = &enforcement.authentication else {
+            let Some((auth, _, _, _)) = &enforcement.authentication else {
                 return Err(PolicySetupError::MissingAuthentication);
             };
             let accepted = auth.authenticator().realms();

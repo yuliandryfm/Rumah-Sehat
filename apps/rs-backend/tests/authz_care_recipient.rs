@@ -18,8 +18,8 @@ use authn::{
 };
 use authz::{
     AccountRecord, AccountStatus, AccountType, ClientIp, DenialAuditor, DenialSink, Enforcement,
-    Policy, PolicyRouter, Principal, PrincipalResolver, ResolveFuture, Sensitivity,
-    care_recipient_access,
+    Policy, PolicyRouter, Principal, PrincipalResolver, ResolveFuture, RevocationFuture,
+    Sensitivity, SessionGuard, care_recipient_access,
 };
 use axum::extract::{Path, State};
 use axum::http::header::CONTENT_TYPE;
@@ -175,6 +175,13 @@ impl PrincipalResolver for MemResolver {
     }
 }
 
+/// Sesi uji tidak pernah dicabut (penolakan sesi diuji di identity_session.rs).
+impl SessionGuard for MemResolver {
+    fn is_revoked<'a>(&'a self, _ctx: &'a AuthContext) -> RevocationFuture<'a> {
+        Box::pin(async move { Ok(false) })
+    }
+}
+
 #[derive(Clone)]
 struct TestState {
     pool: PgPool,
@@ -235,6 +242,7 @@ async fn spawn(pool: PgPool, key: &TestRealmKey, resolver: Arc<MemResolver>) -> 
         .routes(Policy::patient(), routes!(care_recipient))
         .finish(Enforcement::new(
             AuthState::new(Arc::new(auth), Arc::new(Renderer)),
+            resolver.clone(),
             resolver,
             denials,
         ))

@@ -499,3 +499,37 @@ fn s() -> &'static str { "axum::serve .route(" }
         );
     }
 }
+
+#[test]
+fn axum_aliases_in_app_sources_are_rejected() {
+    // Review F1-T38 butir 2: alias crate menyembunyikan token axum::serve/axum::routing/Router.
+    let cases = [
+        ("use axum as ax;\nfn f() {}", "router-bypass:axum-alias"),
+        ("use axum::{self as ax, Json};", "router-bypass:axum-alias"),
+        ("extern crate axum as ax;", "router-bypass:axum-alias"),
+        (
+            "use axum as ax;\nasync fn f(l: L, r: R) { ax::serve(l, r).await; }",
+            "router-bypass:serve",
+        ),
+        (
+            "use axum as ax;\nfn f() { let _ = ax::routing::get(h); }",
+            "router-bypass:routing",
+        ),
+        (
+            "use axum::{self as ax};\nfn f(r: ax::Router) {}",
+            "router-bypass:Router",
+        ),
+    ];
+    for (src, want) in cases {
+        assert!(has(SRC, src, want), "lolos: {src}: {:?}", rules(SRC, src));
+    }
+    // Impor biasa tanpa alias tidak ditolak.
+    assert!(
+        !rules(
+            SRC,
+            "use axum::extract::Path;\nuse axum::http::StatusCode as Status;"
+        )
+        .iter()
+        .any(|r| r == "router-bypass:axum-alias")
+    );
+}

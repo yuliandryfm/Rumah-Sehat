@@ -1,0 +1,25 @@
+[package]
+name = "valkey"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Klien Valkey (F1-T33; ADR-007, ADR-011 butir 8, RT-18). Satu-satunya crate yang boleh bergantung pada
+# `redis` (aturan arch-check `manifest`), supaya batas waktu dan galat tanpa isi berlaku seragam.
+# - redis 1.8.2 (docs/05-stack.md §1.1, [SRC-171]); lisensi BSD-3-Clause; fitur bawaan (acl, streams,
+#   geospatial, script, num-bigint) dimatikan; hanya `tokio-comp` (koneksi async tokio) dan
+#   `connection-manager` (sambung ulang otomatis). Pemeriksaan registry, dependensi baru di Cargo.lock,
+#   dan API yang dipakai: docs/sources.md SRC-571. Kompatibilitas Valkey 9.1.3: SRC-572.
+# - tokio 1.54.1 [SRC-162] untuk batas waktu per operasi.
+[dependencies]
+foundation = { path = "../foundation" }
+redis = { version = "=1.8.2", default-features = false, features = ["tokio-comp", "connection-manager"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "time"] }
+
+[dev-dependencies]
+crypto = { path = "../crypto" }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "time"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

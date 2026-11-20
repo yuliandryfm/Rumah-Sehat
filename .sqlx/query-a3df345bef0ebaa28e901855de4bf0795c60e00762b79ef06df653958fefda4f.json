@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.rs_admin_role SET deleted_at = now(), delete_reason = 'uji perubahan peran' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a3df345bef0ebaa28e901855de4bf0795c60e00762b79ef06df653958fefda4f"
+}

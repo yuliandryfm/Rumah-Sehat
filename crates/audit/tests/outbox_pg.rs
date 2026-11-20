@@ -231,3 +231,23 @@ async fn app_role_has_insert_only_on_outbox() {
         assert_eq!(code.as_deref(), Some("42501"), "{sql}: {err}");
     }
 }
+
+#[tokio::test]
+async fn finished_event_insert_is_idempotent_for_retries() {
+    // F1-T38 review butir 5: event berhasil-gagal dibentuk sekali; percobaan ulang menulis event yang sama
+    // tanpa menggandakan baris (balasan commit yang hilang tidak menghasilkan dua event).
+    let app = app_pool().await;
+    let relay = relay_pool().await;
+    let subject = new_id();
+    let record = valid_event(subject).finish(&clock()).unwrap();
+    audit::insert_finished(&app, &record).await.unwrap();
+    audit::insert_finished(&app, &record).await.unwrap();
+    let n = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.audit_outbox WHERE id = $1"#,
+        record.event_id()
+    )
+    .fetch_one(&relay)
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+}

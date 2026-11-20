@@ -91,7 +91,8 @@ Rentang `50`–`69` dicadangkan untuk RME minimalis `[KEPUTUSAN-84]`. Modul RME 
 | `2010000` | 201 | Berhasil dibuat | Sumber daya baru dibuat | `data` |
 | `2020000` | 202 | Diterima untuk diproses | Permintaan diterima dan diproses asinkron lewat job (misalnya refund lewat job, ADR-015) | `data` berisi ID untuk pelacakan bila ada |
 | `4000001` | 400 | Permintaan tidak dapat dibaca | Badan permintaan bukan JSON yang sah, header wajib tidak ada, atau parameter tidak dapat diurai. Bukan untuk aturan isian (pakai `4220001`) | — |
-| `4010001` | 401 | Belum login atau sesi berakhir | Token tidak ada, tidak sah, kedaluwarsa, issuer atau audience salah (ADR-011 butir 8), sesi dicabut, atau akun dinonaktifkan | — |
+| `4010001` | 401 | Belum login atau sesi berakhir | Token tidak ada, tidak sah, kedaluwarsa, issuer atau audience salah (ADR-011 butir 8), sesi dicabut (US-103 AC5), akun tidak dikenal, atau akun belum aktif. Akun nonaktif memakai `4010002` | — |
+| `4010002` | 401 | Akun nonaktif | Token sah, tetapi akun pemiliknya berstatus nonaktif: permintaan berikutnya ditolak dan aplikasi menampilkan layar "Akun nonaktif" dengan kontak Layanan Pelanggan (KU-10 bagian sesi). Hanya untuk pemegang sesi yang sah; jalur masuk memakai pesan seragam login gagal (US-103 AC2). Ditambahkan F1-T33 (klarifikasi AC Fase 1 §5 S-05) | — |
 | `4030001` | 403 | Tidak diizinkan | Peran pengguna tidak boleh menjalankan fungsi atau endpoint itu, dan keberadaan fungsinya tidak rahasia. Untuk objek data tertentu yang tidak boleh diakses, pakai `4040001` | — |
 | `4040001` | 404 | Data tidak ditemukan | Data tidak ada, **atau** ada tetapi tidak boleh diakses pengguna (KU-03, ADR-012). Percobaan akses ke data sensitif dicatat di audit trail dengan hasil "gagal" | — |
 | `4090001` | 409 | Konflik status | Transisi status kalah dari transisi yang tersimpan lebih dulu, atau tidak sah dari status saat ini (AB-36) | — |
