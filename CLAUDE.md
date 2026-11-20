@@ -64,8 +64,8 @@ Berlaku setelah repositori kode dibuat di Tahap 8 Fase 1 (rancangan: `docs/05-st
 - Verifikasi penuh (wajib sebelum commit dan sebelum menyatakan selesai): `bash scripts/verify.sh`
 - Backend Rust: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo sqlx prepare --check --workspace`
 - Migrasi (per database, SQL murni lewat sqlx-cli): `sqlx migrate run --source db/migrations/<app|audit|rme>`; migrasi production hanya lewat skrip deploy dengan kredensial dinamis OpenBao, tidak dari laptop
-- Web (per aplikasi di `web/`): `pnpm install --frozen-lockfile`, `pnpm tsc --noEmit`, `pnpm test`, `pnpm build`
-- Mobile (di `mobile/`): `dart format --set-exit-if-changed .`, `flutter analyze`, `flutter test`
+- Web (workspace di `web/`): `pnpm install --frozen-lockfile`, `pnpm typecheck` (tsc 7 lewat alias `typescript-7`), `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm kontras`
+- Mobile: repositori terpisah (CR-019), tidak dijalankan di repo ini
 - Menjalankan lokal: `docker compose -f infra/local/compose.yaml up` (PostgreSQL, Valkey, Keycloak, OpenBao dev, LiveKit, Swagger UI)
 
 Nama perintah final dikunci di reference implementation Tahap 8 Fase 1. Kalau berbeda, bagian ini diperbarui di task yang sama.
