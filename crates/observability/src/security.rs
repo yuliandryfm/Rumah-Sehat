@@ -88,6 +88,39 @@ pub fn audit_relay_delayed(lag_seconds: u64) {
     warn!(target: SECURITY_TARGET, event_type = "audit_relay_delayed", lag_seconds = lag_seconds, "security_event");
 }
 
+/// Tahap kegagalan relay audit (daftar tertutup; F1-T24).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditRelayFailure {
+    /// Membaca atau menghapus `audit_outbox` gagal.
+    Outbox,
+    /// Payload outbox tidak dapat dipetakan ke kolom `audit_event` (relay berhenti di event ini).
+    InvalidPayload,
+    /// `seq` sudah dipakai: relay lain menulis rantai bersamaan; batch dibatalkan (KEPUTUSAN-284).
+    SeqConflict,
+    /// Penulisan ke database audit gagal; batch dibatalkan, event tetap di outbox.
+    AuditStore,
+    /// Koneksi atau kunci relay hilang.
+    Connection,
+}
+
+impl AuditRelayFailure {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Outbox => "outbox",
+            Self::InvalidPayload => "invalid_payload",
+            Self::SeqConflict => "seq_conflict",
+            Self::AuditStore => "audit_store",
+            Self::Connection => "connection",
+        }
+    }
+}
+
+/// Relay audit gagal memproses batch; event tetap di outbox dan dicoba ulang (ADR-009 butir 3).
+/// `event_id` hanya untuk payload tidak valid (ID event, bukan data pribadi).
+pub fn audit_relay_failed(stage: AuditRelayFailure, event_id: Option<Uuid>) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_relay_failed", stage = stage.as_str(), event_id = %opt(event_id), "security_event");
+}
+
 /// Tahap kegagalan penulisan event audit (daftar tertutup).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuditWriteFailure {

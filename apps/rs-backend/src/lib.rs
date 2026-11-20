@@ -1,6 +1,7 @@
 //! Backend Ruang Sehat (F1-T11): satu biner dengan subcommand `api`, `worker`, `audit-relay`, dan
-//! `audit-verify` (docs/coding-standards.md §1.1, KEPUTUSAN-89). Hanya `api` yang berfungsi pada
-//! task ini; subcommand lain adalah kerangka yang gagal dengan pesan jelas.
+//! `audit-verify` (docs/coding-standards.md §1.1, KEPUTUSAN-89). Yang berfungsi: `api` dan
+//! `audit-relay` (F1-T24, relay audit di crate `audit`); subcommand lain adalah kerangka yang gagal dengan
+//! pesan jelas.
 //!
 //! Lapisan: [`cli`] (pemilihan subcommand dan siklus hidup proses), [`config`] (konfigurasi bertipe),
 //! [`app`] (perakitan router, middleware, fallback), [`http_support`] (adaptor envelope ADR-023 ke

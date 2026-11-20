@@ -1,15 +1,16 @@
 //! Pemilihan subcommand dan siklus hidup proses. Satu biner, satu argumen: nama subcommand.
 //!
-//! Hanya `api` yang berfungsi. `worker`, `audit-relay`, dan `audit-verify` adalah kerangka: proses
+//! Yang berfungsi: `api` dan `audit-relay` (F1-T24). `worker` dan `audit-verify` adalah kerangka: proses
 //! mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
 //! penyebaran yang mengira proses itu berjalan.
 
 use crate::app::{AppState, build_router};
-use crate::config::ApiConfig;
-use foundation::SystemClock;
-use observability::{BaseConfig, Component, EnvSource, JsonLogLayer, install};
+use crate::config::{ApiConfig, AuditRelayConfig};
+use foundation::{Clock, SystemClock};
+use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
 
 /// Teks bantuan.
@@ -22,7 +23,7 @@ pub enum Command {
     Api,
     /// Pekerja job (kerangka).
     Worker,
-    /// Relay audit (kerangka).
+    /// Relay audit (F1-T24).
     AuditRelay,
     /// Verifikasi rantai audit (kerangka).
     AuditVerify,
@@ -77,6 +78,31 @@ impl Command {
     }
 }
 
+/// Konfigurasi bertipe per subcommand (KEPUTUSAN-132): setiap proses hanya memuat yang dibutuhkannya.
+enum Loaded {
+    Api(ApiConfig),
+    AuditRelay(AuditRelayConfig),
+    Skeleton(Command, BaseConfig),
+}
+
+impl Loaded {
+    fn load(command: Command, env: &EnvSource) -> Result<Self, ConfigError> {
+        Ok(match command {
+            Command::Api => Self::Api(ApiConfig::load(env)?),
+            Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
+            other => Self::Skeleton(other, BaseConfig::load(env)?),
+        })
+    }
+
+    fn base(&self) -> &BaseConfig {
+        match self {
+            Self::Api(c) => &c.base,
+            Self::AuditRelay(c) => &c.base,
+            Self::Skeleton(_, b) => b,
+        }
+    }
+}
+
 /// Menjalankan proses. `args` adalah argumen setelah nama program.
 pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     let command = match Command::parse(args) {
@@ -86,7 +112,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let config = match ApiConfig::load(env) {
+    let loaded = match Loaded::load(command, env) {
         Ok(c) => c,
         Err(e) => {
             // ConfigError tidak memuat nilai, hanya nama variabel dan jenis galat.
@@ -96,17 +122,56 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     };
     let layer = JsonLogLayer::new(
         command.component(),
-        config.base.log_level,
+        loaded.base().log_level,
         Arc::new(SystemClock),
     );
     if install(layer).is_err() {
         eprintln!("subscriber log global sudah terpasang");
         return ExitCode::FAILURE;
     }
-    match command {
-        Command::Api => run_api(config),
-        other => not_implemented(other, &config.base),
+    match loaded {
+        Loaded::Api(config) => run_api(config),
+        Loaded::AuditRelay(config) => run_audit_relay(config),
+        Loaded::Skeleton(other, base) => not_implemented(other, &base),
     }
+}
+
+fn runtime() -> Option<tokio::runtime::Runtime> {
+    match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(r) => Some(r),
+        Err(_) => {
+            tracing::error!("runtime_start_failed");
+            None
+        }
+    }
+}
+
+/// `audit-relay`: satu relay aktif (kunci 7001001), instans lain siaga; berhenti pada SIGINT/SIGTERM.
+fn run_audit_relay(config: AuditRelayConfig) -> ExitCode {
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
+    };
+    let settings = audit::relay::RelaySettings {
+        lock_key: platform_jobs::lock::RS_AUDIT_RELAY,
+        app_database_url: config.app_database_url,
+        audit_database_url: config.audit_database_url,
+        batch_size: config.batch_size.get(),
+        poll_interval: Duration::from_millis(config.poll_ms),
+        retry_interval: Duration::from_millis(config.retry_ms),
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    tracing::info!(lock_key = settings.lock_key.key(), "audit_relay_starting");
+    runtime.block_on(async move {
+        tokio::select! {
+            () = audit::relay::run_relay(settings, clock) => {}
+            () = shutdown_signal() => {}
+        }
+    });
+    tracing::info!("audit_relay_stopped");
+    ExitCode::SUCCESS
 }
 
 fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
@@ -118,15 +183,8 @@ fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
 }
 
 fn run_api(config: ApiConfig) -> ExitCode {
-    let runtime = match tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(r) => r,
-        Err(_) => {
-            tracing::error!("runtime_start_failed");
-            return ExitCode::FAILURE;
-        }
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
     };
     match runtime.block_on(serve(config)) {
         Ok(()) => ExitCode::SUCCESS,

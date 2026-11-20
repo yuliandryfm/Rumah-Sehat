@@ -15,10 +15,16 @@ time = { version = "=0.3.55", default-features = false, features = ["std", "form
 # sqlx 0.9.1 [SRC-165][SRC-166]; fitur diverifikasi dari Cargo.toml sqlx 0.9.1 [SRC-490]. Tanpa fitur TLS:
 # pilihan TLS koneksi milik biner aplikasi, bukan pustaka ini.
 sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
+# Relay (F1-T24): database audit lewat crate audit-store, kunci relay lewat platform-jobs (KEPUTUSAN-103);
+# tokio 1.54.1 [SRC-162] untuk jeda putaran relay; tracing 0.1.44 [SRC-174] untuk application log relay.
+audit-store = { path = "../audit-store" }
+platform-jobs = { path = "../platform-jobs" }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "time"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 time = { version = "=0.3.55", default-features = false, features = ["std", "formatting", "macros"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "sync"] }
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).

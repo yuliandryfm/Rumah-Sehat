@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO audit.audit_event (\n             event_id, recorded_at, seq, occurred_at, event_code, action_name, actor_type,\n             actor_account_id, actor_account_type, actor_roles, actor_partner_id, object_type, object_id,\n             object_version, subject_id, subject_count, tenant_id, source_component, source_ip, user_agent,\n             app_version, changed_fields, before_values, after_values, disclosure_recipient,\n             disclosure_data_categories, outcome, outcome_reason_code, correlation_id, canonical_version,\n             prev_hash, event_hash)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,\n                   ($19::text)::inet, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Int8",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "TextArray",
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Uuid",
+        "Int4",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "TextArray",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "TextArray",
+        "Text",
+        "Text",
+        "Uuid",
+        "Int2",
+        "Bytea",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7062efea7fdea69ae39099edb65f2f019d83374bd0d2ad3203fce458b2893c2c"
+}

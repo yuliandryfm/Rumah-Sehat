@@ -1,0 +1,27 @@
+[package]
+name = "audit-store"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Akses database audit (DD B1-B6; ADR-009 butir 3-5, KEPUTUSAN-102, KEPUTUSAN-284), modul kritis T1:
+# bentuk kanonis + hash berantai, jalur tulis relay (`*_audit_writer`), dan (F1-T25) verifikasi rantai.
+# Dipisah dari crate `audit` karena query-nya menyasar database lain: makro sqlx satu crate hanya punya satu
+# sumber metadata, dan `sqlx.toml` crate ini mengarahkan makronya ke `AUDIT_DATABASE_URL` (fitur `sqlx-toml`
+# sqlx 0.9.1, docs/sources.md SRC-540). Versi: docs/05-stack.md §1.1 (serde_json 1.0.154 [SRC-335];
+# time 0.3.55 [SRC-177]; tracing 0.1.44 [SRC-174]); sqlx 0.9.1 [SRC-165][SRC-510].
+[dependencies]
+foundation = { path = "../foundation" }
+crypto = { path = "../crypto" }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json", "sqlx-toml"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "time"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

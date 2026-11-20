@@ -34,6 +34,12 @@ tables = ["upload_slot", "stored_file", "reason_code"]
 [crates.audit]
 tables = ["audit_outbox"]
 
+# Tabel database audit (DD B1-B6; db/migrations/audit, bukan database `app` di atas) hanya diakses lewat
+# crate audit-store (F1-T24): makronya dicek terhadap database audit (crates/audit-store/sqlx.toml).
+# audit_archive_manifest belum diakses kode (prosedur arsip §6.5 milik pemilik skema).
+[crates.audit-store]
+tables = ["audit_event", "audit_event_subject", "audit_event_key", "audit_chain_anchor", "audit_chain_verification"]
+
 [crates.crypto]
 tables = ["data_key", "data_key_retention_anchor"]
 

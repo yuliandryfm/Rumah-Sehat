@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM pg_locks\n               WHERE locktype = 'advisory' AND classid = 0 AND objid = 7001001 AND objsubid = 1 AND granted",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2135f54d75aa45ccf09de508be6511aa47d5551402ecf90ff0a2ecfbfafed50b"
+}
