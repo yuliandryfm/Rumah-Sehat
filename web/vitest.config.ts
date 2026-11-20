@@ -12,7 +12,25 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: ["*/src/**/*.test.ts", "packages/api-client/src/**/*.test.ts", "packages/ui/scripts/**/*.test.ts"],
+          include: [
+            "*/src/**/*.test.ts",
+            "packages/api-client/src/**/*.test.ts",
+            "packages/ui/scripts/**/*.test.ts",
+            "packages/bff-auth/src/**/*.test.ts",
+          ],
+          exclude: ["**/node_modules/**", "**/*.integration.test.ts"],
+        },
+      },
+      {
+        // Test integrasi BFF (F1-T41/F1-T42): Valkey, OpenBao, dan Keycloak sungguhan di kontainer sekali
+        // pakai (docker wajib; tanpa docker test GAGAL, tidak dilewati). Image dari infra/local/compose.yaml.
+        extends: true,
+        test: {
+          name: "integrasi",
+          environment: "node",
+          include: ["packages/bff-auth/src/**/*.integration.test.ts"],
+          testTimeout: 120_000,
+          hookTimeout: 420_000,
         },
       },
       {
