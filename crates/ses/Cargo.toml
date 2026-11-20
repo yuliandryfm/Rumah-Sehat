@@ -1,0 +1,37 @@
+[package]
+name = "ses"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Adaptor Amazon SES API v2 (F1-T36; ADR-026 butir 1-5, ADR-016 butir 5): `SendEmail` dengan isi Raw ke region
+# ap-southeast-3, dipakai relay email Keycloak dan kelak modul notifikasi. Tanda tangan SigV4 disusun dari
+# HMAC-SHA256/SHA-256 crate `crypto` (satu pustaka kripto, KEPUTUSAN-74); bentuk API dari [SRC-580].
+# HTTPS: rustls 0.23.46 + tokio-rustls 0.26.6 + rustls-pki-types 1.16.0 dengan penyedia kripto aws-lc-rs
+# (fitur `aws_lc_rs`, tanpa `ring`, tanpa `logging`) [SRC-582]; root CA dari berkas PEM (tanpa webpki-roots,
+# lisensinya di luar deny.toml [SRC-489]). Klien HTTP: hyper HTTP/1 seperti crate crypto/object-storage
+# (reqwest ditolak lisensi, [SRC-489]). Tidak memakai SDK AWS.
+[dependencies]
+foundation = { path = "../foundation" }
+crypto = { path = "../crypto" }
+base64 = { version = "=0.23.1", default-features = false, features = ["alloc"] }
+bytes = { version = "=1.12.2", default-features = false, features = ["std"] }
+http = "=1.5.0"
+http-body-util = { version = "=0.1.5", default-features = false }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+rustls-pki-types = { version = "=1.16.0", default-features = false, features = ["std"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time"] }
+
+[dev-dependencies]
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time", "io-util"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

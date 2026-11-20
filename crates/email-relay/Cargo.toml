@@ -1,0 +1,34 @@
+[package]
+name = "email-relay"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Relay SMTP internal untuk email Keycloak (dan Alertmanager) ke Amazon SES API v2 (F1-T36, ADR-026,
+# KEPUTUSAN-226-232). Subset SMTP ditulis sendiri (EHLO/HELO, STARTTLS wajib, MAIL, RCPT, DATA, RSET, NOOP,
+# QUIT) karena relay dan crate server SMTP pihak ketiga tidak aktif dirilis [SRC-303]. TLS server: rustls
+# 0.23.46 + tokio-rustls 0.26.6 dengan penyedia aws-lc-rs [SRC-582] (versi sama dengan crate `ses`).
+# Pengiriman lewat trait `MailSender`; implementasi production memakai crate `ses`.
+[dependencies]
+foundation = { path = "../foundation" }
+crypto = { path = "../crypto" }
+ses = { path = "../ses" }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+rustls-pki-types = { version = "=1.16.0", default-features = false, features = ["std"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time", "io-util", "sync", "macros"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# Security log pembuangan batas per penerima (review keamanan F1-T36).
+observability = { path = "../observability" }
+
+[dev-dependencies]
+# Test integrasi: tiruan SES (JSON, base64) dan penangkap log (observability MemorySink).
+base64 = { version = "=0.23.1", default-features = false, features = ["alloc"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time", "io-util", "sync", "test-util"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true
