@@ -227,14 +227,19 @@ pub fn valid_bucket_name(bucket: &str) -> bool {
         && b.last().is_some_and(u8::is_ascii_alphanumeric)
 }
 
-/// Kunci objek: 1–256 karakter `[A-Za-z0-9._-]` (kunci dibuat aplikasi dari UUID, ADR-018 butir 2).
+/// Kunci objek: 1–256 karakter, satu atau lebih segmen `[A-Za-z0-9._-]` dipisah `/` tunggal (kunci dibuat
+/// aplikasi dari UUID dengan prefiks seperti `incoming/` dan `files/`, ADR-018 butir 2, TD-17). Segmen kosong
+/// (`//`, `/` di awal atau akhir), `.`, dan `..` ditolak.
 pub fn valid_object_key(key: &str) -> bool {
     (1..=256).contains(&key.len())
-        && key
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
-        && key != "."
-        && key != ".."
+        && key.split('/').all(|segment| {
+            !segment.is_empty()
+                && segment != "."
+                && segment != ".."
+                && segment
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+        })
 }
 
 #[cfg(test)]
@@ -299,6 +304,25 @@ mod tests {
         assert!(!valid_object_key("../etc"));
         assert!(!valid_object_key("a b"));
         assert!(!valid_object_key(".."));
+        // Prefiks berbatas `/` (TD-17): segmen sah saja.
+        assert!(valid_object_key(
+            "incoming/0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+        ));
+        assert!(valid_object_key(
+            "files/0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+        ));
+        for bad in [
+            "/files/k",
+            "files/",
+            "files//k",
+            "files/../k",
+            "files/./k",
+            "files/a b",
+            "files\\k",
+        ] {
+            assert!(!valid_object_key(bad), "harus ditolak: {bad}");
+        }
+        assert!(!valid_object_key(&"a".repeat(257)));
         assert!(valid_region("us-east-1"));
         assert!(!valid_region("US"));
         assert!(!valid_region(""));

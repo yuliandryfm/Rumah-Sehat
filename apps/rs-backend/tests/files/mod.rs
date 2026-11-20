@@ -93,6 +93,35 @@ pub async fn slot_object_key(pool: &PgPool, id: Uuid) -> String {
         .unwrap()
 }
 
+/// Slot ada dan sudah menjadi tombstone (`consumed_at` terisi, TD-17).
+pub async fn slot_consumed(pool: &PgPool, id: Uuid) -> bool {
+    sqlx::query_scalar!(
+        r#"SELECT consumed_at IS NOT NULL AS "consumed!" FROM app.upload_slot WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(pool)
+    .await
+    .unwrap()
+    .unwrap_or(false)
+}
+
+/// Memundurkan `expires_at` slot sehingga sudah lewat batas pembersihan (`expires_at` + jeda 15 menit)
+/// menurut jam sungguhan. Jam aplikasi tidak dimajukan: permintaan bertanda tangan SigV4 dengan waktu
+/// ±25 menit di depan jam penyedia diamati ditolak 403 oleh SeaweedFS [SRC-562], jadi pembersih di test
+/// memakai `SystemClock`.
+pub async fn expire_slot_past_grace(pool: &PgPool, id: Uuid) {
+    let n = sqlx::query!(
+        "UPDATE app.upload_slot SET expires_at = $2 WHERE id = $1",
+        id,
+        now() - time::Duration::minutes(16),
+    )
+    .execute(pool)
+    .await
+    .unwrap()
+    .rows_affected();
+    assert_eq!(n, 1, "slot tidak ada");
+}
+
 pub struct StoredFileRow {
     pub bucket: String,
     pub object_key: String,
@@ -228,6 +257,7 @@ impl SeaweedFs {
             slot_ttl: ttl,
             upload_method: method,
             validation_concurrency: 2,
+            validation_queue_timeout: Duration::from_secs(10),
         };
         let storage = FileStorage::new(&config).unwrap();
         let bucket = storage.bucket_name(LogicalBucket::IdentityDocument);
@@ -235,6 +265,19 @@ impl SeaweedFs {
         store.create_bucket(&bucket, now()).await.unwrap();
         store.enable_versioning(&bucket, now()).await.unwrap();
         storage
+    }
+
+    /// Membuat (dengan versi objek) bucket logis lain selain dokumen identitas.
+    pub async fn create_other_buckets(&self, storage: &FileStorage) {
+        let store = storage.object_store();
+        for b in LogicalBucket::ALL {
+            if b == LogicalBucket::IdentityDocument {
+                continue;
+            }
+            let name = storage.bucket_name(b);
+            store.create_bucket(&name, now()).await.unwrap();
+            store.enable_versioning(&name, now()).await.unwrap();
+        }
     }
 }
 
@@ -405,4 +448,26 @@ pub fn png_chunk_types(bytes: &[u8]) -> Vec<String> {
 
 pub fn contains(haystack: &[u8], needle: &[u8]) -> bool {
     haystack.windows(needle.len()).any(|w| w == needle)
+}
+
+/// Semua kunci berversi di bawah prefiks bucket dokumen identitas (TD-17).
+pub async fn keys_under(storage: &FileStorage, prefix: &str) -> Vec<String> {
+    let bucket = storage.bucket_name(LogicalBucket::IdentityDocument);
+    let mut out = Vec::new();
+    let mut cursor = None;
+    loop {
+        let page = storage
+            .object_store()
+            .list_version_keys(&bucket, prefix, cursor.as_ref(), now())
+            .await
+            .unwrap();
+        out.extend(page.keys);
+        match page.next {
+            Some(n) => cursor = Some(n),
+            None => break,
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
 }

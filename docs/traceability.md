@@ -48,7 +48,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-060 | Backoffice admin Ruang Sehat menyediakan verifikasi dan pengelolaan akun (pasien, tenaga kesehatan, reka… | `[DOK] P8.2a` | US-207, US-208 | TC-US-207-1–17; TC-US-208-1–27 |  | BRD v1.0 |
 | BR-061 | Backoffice admin Ruang Sehat menyediakan CMS untuk banner, halaman info, artikel/konten edukasi kesehata… | `[DOK] P8.2a` | US-1101, US-1102 | TC-US-1101-1–6; TC-US-1102-1–2 |  | BRD v1.0 |
 | BR-062 | Backoffice admin Ruang Sehat menyediakan layanan pelanggan, termasuk penanganan keluhan | `[DOK] P8.2a` | US-1003, US-1103, US-1104 | TC-US-1003-1–4; TC-US-1103-1–4; TC-US-1104-1–4 |  | BRD v1.0 |
-| BR-063 | Backoffice admin Ruang Sehat menyediakan pengaturan markup per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | US-809, US-810, US-812 | TC-US-809-1–6; TC-US-810-1–3; TC-US-812-1–7 |  | BRD v1.0 |
+| BR-063 | Backoffice admin Ruang Sehat menyediakan pengaturan margin per rekanan dan biaya rekanan | `[USER] T2-Q1, T2-Q6` | US-809, US-810, US-812 | TC-US-809-1–6; TC-US-810-1–3; TC-US-812-1–7 |  | BRD v1.0 |
 | BR-064 | Portal admin klinik dan admin lab menyediakan laporan transaksi dan pembagian dana, profil, dan keluhan.… | `[DOK] PS6c` `[USER] T3-Q14, T3-Q16` | US-301, US-1104, US-1201, US-1202, US-1203 | TC-US-301-1–6; TC-US-1104-1–4; TC-US-1201-1–5; TC-US-1202-1–3; TC-US-1203-1–2 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-065 | Portal admin outlet (toko kecantikan, toko alat kesehatan, apotek) menyediakan laporan, pembagian dana,… | `[DOK] PS6d` `[USER] T2-Q3b` | US-1104, US-1201, US-1202, US-1203 | TC-US-1104-1–4; TC-US-1201-1–5; TC-US-1202-1–3; TC-US-1203-1–2 |  | BRD v1.0 |
 | BR-070 | Ruang Sehat terintegrasi otomatis dengan sistem klinik, lab, dan outlet rekanan untuk jadwal, harga dan… | `[DOK] PS6a, P4.3` `[USER] T2-Q6, T2-Q13, T3-Q14` | US-404, US-502, US-901, US-1304, US-1401, US-1402, US-1403, US-1404, US-1405 | TC-US-404-1–6; TC-US-502-1–3; TC-US-901-1–5; TC-US-1304-1–4; TC-US-1401-1–3; TC-US-1402-1–7; TC-US-1403-1–4; TC-US-1404-1–5; TC-US-1405-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
@@ -90,7 +90,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-135 | Lokasi on-site atau di rekanan per pesanan | `[USER] C21-P3-2` | US-1906, US-1911 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-136 | Perusahaan daftar sendiri + verifikasi (NIB/NPWP, bukti kewenangan, Verifikator) atau dibuatkan Verifikator; NIB ganda ditolak | `[USER] C21-P2-1, C21-P4` | US-1901, US-1902, US-1903, US-1916 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-137 | Pesan dari katalog harga tetap | `[USER] C21-P2-2` | US-1905, US-1906 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
-| BR-138 | Harga korporat = harga rekanan (lewat integrasi) + markup | `[USER] C21-P3-1, C21-P4` | US-1905 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-138 | Harga korporat = harga rekanan (lewat integrasi) + margin | `[USER] C21-P3-1, C21-P4` | US-1905 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-139 | HR unggah peserta Excel/CSV; NIK hanya bila wajib | `[USER] C21-P2-3` | US-1907 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-140 | Undangan email; akun pasien yang sama | `[USER] C21-P2-3` | US-1908 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-141 | Invoice B2B tanpa payment gateway (pengecualian BR-040) | `[USER] C21-P1-4, C21-P4` | US-1909, US-1910 | — (dibuat QA) |  | BRD v1.4 (CR-021) |

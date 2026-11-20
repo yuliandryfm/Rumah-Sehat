@@ -20,7 +20,7 @@ platform-jobs = { path = "../../crates/platform-jobs" }
 authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
 axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
 serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
@@ -40,6 +40,9 @@ time = { version = "=0.3.55", default-features = false, features = ["std"] }
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
 
 [dev-dependencies]
+# F1-T30: kunci realm uji dan token bertanda tangan untuk test unduh lewat PolicyRouter (fitur testing hanya
+# di dev-dependencies, tidak ikut biner produksi; pola sama dengan crate authz).
+authn = { path = "../../crates/authn", features = ["testing"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 

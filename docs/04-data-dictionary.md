@@ -1,7 +1,7 @@
 # Data Dictionary: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.1 (2026-11-19, CR-021: bagian A20 "Layanan korporat" ditambahkan sebagai **rancangan**, beserta usulan perubahan A1.1, A13.1, A15.4, A19.7, B3; rincian kolom, index, dan hak role final ditetapkan di task migrasi dengan review DBA dan keamanan; keputusan user `[USER] C21-P4`, PRD v1.3 EP-19, ADR-028, ADR-029). Versi 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
+Versi: 1.2 (2026-11-20, CR-024: istilah "markup" diganti "margin", termasuk nama tabel dan kolom `margin_rule`, `margin_type`, `margin_percent_bp`, `margin_fixed_idr`, `margin_rule_id`, `service_margin_total_idr`, `unit_margin_idr`, `purpose_code = margin_revenue`; belum ada migrasi yang membuat objek ini, jadi hanya dokumen yang berubah; struktur tidak berubah). Versi 1.1 (2026-11-19, CR-021: bagian A20 "Layanan korporat" ditambahkan sebagai **rancangan**, beserta usulan perubahan A1.1, A13.1, A15.4, A19.7, B3; rincian kolom, index, dan hak role final ditetapkan di task migrasi dengan review DBA dan keamanan; keputusan user `[USER] C21-P4`, PRD v1.3 EP-19, ADR-028, ADR-029). Versi 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis** (model data, data pribadi spesifik, uang, audit)
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-021 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).
@@ -236,7 +236,7 @@ Rahasia TOTP tidak lagi disimpan aplikasi karena MFA dikelola Keycloak `[USER] T
 
 ### 0.8 Pola pengaturan berlaku-mulai
 
-Berlaku untuk `markup_rule`, `partner_fee_rule`, `consultation_rate`, `business_parameter`, `payment_method_fee`, dan `retention_policy` `[KEPUTUSAN-40]`:
+Berlaku untuk `margin_rule`, `partner_fee_rule`, `consultation_rate`, `business_parameter`, `payment_method_fee`, dan `retention_policy` `[KEPUTUSAN-40]`:
 
 1. Setiap perubahan adalah **baris baru** dengan `effective_from timestamptz`. Nilai yang berlaku pada instan *t* = baris dengan `effective_from <= t` terbesar dan `deleted_at IS NULL`. Riwayat perubahan tersedia tanpa membaca audit (US-809 AC1, US-810 AC1, US-812 AC1).
 2. Baris yang `effective_from`-nya sudah lewat **tidak boleh diubah atau di-soft delete** (trigger penolak), karena dirujuk harga terkunci (AB-17). Baris yang dijadwalkan untuk masa depan boleh dibatalkan dengan soft delete.
@@ -695,7 +695,7 @@ Klinik, lab, toko kecantikan, toko alat kesehatan, atau apotek rekanan. Sumber: 
 | integration_status | text | tidak | | — | CHECK (`not_started`, `testing`, `active`, `disrupted`, `inactive`) (US-1405 AC1). Perubahan oleh admin dicatat E-10 |
 | integration_status_changed_at | timestamptz | tidak | | — | |
 
-Index: index trigram `display_name WHERE deleted_at IS NULL` `[SRC-42]`; `ix (city_name, lifecycle_status, integration_status) WHERE deleted_at IS NULL`. Rekanan tampil ke pasien bila izin disetujui, markup ada, dan `integration_status = 'active'` (US-205 AC2), dihitung aplikasi.
+Index: index trigram `display_name WHERE deleted_at IS NULL` `[SRC-42]`; `ix (city_name, lifecycle_status, integration_status) WHERE deleted_at IS NULL`. Rekanan tampil ke pasien bila izin disetujui, margin ada, dan `integration_status = 'active'` (US-205 AC2), dihitung aplikasi.
 
 #### A5.2 `partner_capability` (M)
 
@@ -773,20 +773,20 @@ Index: `UQp (subject_kind, subject_subtype, document_type_code) WHERE deleted_at
 
 ### A6. Pengaturan
 
-#### A6.1 `markup_rule` (M, berlaku-mulai)
+#### A6.1 `margin_rule` (M, berlaku-mulai)
 
-Markup per rekanan (PB-11). Nilainya `[TIDAK DIKETAHUI]` sampai ditetapkan CEO (PT-17). Pola §0.8. Sumber: BR-042, US-809, AB-10, AB-11a, AB-17, `[KEPUTUSAN-59]`.
+Margin per rekanan (PB-11). Margin = persentase dari harga rekanan (bukan dari harga jual); harga ke pasien = harga rekanan × (1 + margin%) [CR-024]. Nilainya `[TIDAK DIKETAHUI]` sampai ditetapkan CEO (PT-17). Pola §0.8. Sumber: BR-042, US-809, AB-10, AB-11a, AB-17, `[KEPUTUSAN-59]`.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | `created_by` = Keuangan (US-809 AC4) |
 | partner_id | uuid | tidak | FK→partner | — | |
-| markup_type | text | tidak | | — | CHECK (`percent`, `fixed`) |
+| margin_type | text | tidak | | — | CHECK (`percent`, `fixed`) |
 | percent_bp | integer | ya | | — | CHECK `percent_bp BETWEEN 0 AND 10000` (0–100%, US-809 AC1) |
 | fixed_idr | bigint | ya | | — | CHECK `fixed_idr >= 0` |
 | effective_from | timestamptz | tidak | | — | Segera atau tanggal mendatang |
 
-CHECK: `(markup_type = 'percent' AND percent_bp IS NOT NULL AND fixed_idr IS NULL) OR (markup_type = 'fixed' AND fixed_idr IS NOT NULL AND percent_bp IS NULL)`. Index: `UQp (partner_id, effective_from) WHERE deleted_at IS NULL`. Apakah persen boleh pecahan desimal tidak dinyatakan PRD; basis poin menampung sampai dua desimal, dan UI dapat membatasi ke bilangan bulat.
+CHECK: `(margin_type = 'percent' AND percent_bp IS NOT NULL AND fixed_idr IS NULL) OR (margin_type = 'fixed' AND fixed_idr IS NOT NULL AND percent_bp IS NULL)`. Index: `UQp (partner_id, effective_from) WHERE deleted_at IS NULL`. Apakah persen boleh pecahan desimal tidak dinyatakan PRD; basis poin menampung sampai dua desimal, dan UI dapat membatasi ke bilangan bulat.
 
 #### A6.2 `partner_fee_rule` (M, berlaku-mulai)
 
@@ -804,7 +804,7 @@ Index: `UQp (partner_id, effective_from) WHERE deleted_at IS NULL`.
 
 #### A6.3 `business_parameter` (M, berlaku-mulai)
 
-Parameter PB-01–PB-10 dan PB-15–PB-20. PB-11 di `markup_rule`, PB-12 di `partner_fee_rule`, PB-13 di `consultation_rate`, PB-14 di `document_requirement`. Sumber: §3.7, US-812, AB-17, AB-43.
+Parameter PB-01–PB-10 dan PB-15–PB-20. PB-11 di `margin_rule`, PB-12 di `partner_fee_rule`, PB-13 di `consultation_rate`, PB-14 di `document_requirement`. Sumber: §3.7, US-812, AB-17, AB-43.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -892,8 +892,8 @@ Layanan klinik, pemeriksaan lab, paket MCU, dan home visit beserta harga rekanan
 | name | text | tidak | | — | |
 | description | text | ya | | — | |
 | preparation_info | text | ya | | — | Informasi persiapan (US-601 AC2) |
-| partner_price_idr | bigint | tidak | | — | CHECK `>= 0`. Harga pasien = harga rekanan + markup (AB-10), dihitung server |
-| patient_price_idr | bigint | tidak | | — | Harga tampil terhitung (harga rekanan + markup berlaku per unit, AB-11a), dihitung ulang saat sinkron dan saat markup berganti. Hanya untuk tampilan dan urutan (US-601 AC1); harga bayar selalu dihitung ulang saat dikunci (AB-17) (review DBA S06) |
+| partner_price_idr | bigint | tidak | | — | CHECK `>= 0`. Harga pasien = harga rekanan + margin (AB-10), dihitung server |
+| patient_price_idr | bigint | tidak | | — | Harga tampil terhitung (harga rekanan + margin berlaku per unit, AB-11a), dihitung ulang saat sinkron dan saat margin berganti. Hanya untuk tampilan dan urutan (US-601 AC1); harga bayar selalu dihitung ulang saat dikunci (AB-17) (review DBA S06) |
 | is_bookable | boolean | tidak | | — | |
 | synced_at | timestamptz | tidak | | — | |
 
@@ -1068,14 +1068,14 @@ Harga terkunci saat pembayaran dibuat (AB-17). Dibuat satu per percobaan pembaya
 | --- | --- | --- | --- | --- | --- |
 | *STD-T* | | | | | |
 | patient_order_id | uuid | tidak | FK→patient_order | — | |
-| markup_rule_id | uuid | tidak | FK→markup_rule | — | |
-| markup_type | text | tidak | | — | Nilai salinan dari aturan |
-| markup_percent_bp | integer | ya | | — | |
-| markup_fixed_idr | bigint | ya | | — | |
+| margin_rule_id | uuid | tidak | FK→margin_rule | — | |
+| margin_type | text | tidak | | — | Nilai salinan dari aturan |
+| margin_percent_bp | integer | ya | | — | |
+| margin_fixed_idr | bigint | ya | | — | |
 | consultation_rate_id | uuid | ya | FK→consultation_rate | — | Konsultasi saja |
 | service_partner_total_idr | bigint | tidak | | Keu | Jumlah harga rekanan semua baris |
-| service_markup_total_idr | bigint | tidak | | Keu | |
-| service_price_total_idr | bigint | tidak | | Keu | CHECK `= service_partner_total_idr + service_markup_total_idr` |
+| service_margin_total_idr | bigint | tidak | | Keu | |
+| service_price_total_idr | bigint | tidak | | Keu | CHECK `= service_partner_total_idr + service_margin_total_idr` |
 | shipping_fee_idr | bigint | tidak | | Keu | 0 untuk non-produk. Penerima dana ongkos kirim `[TIDAK DIKETAHUI]` (PT-31) |
 | payment_method_fee_id | uuid | tidak | FK→payment_method_fee | — | |
 | payment_method_code | text | tidak | | — | |
@@ -1088,7 +1088,7 @@ Semua kolom `_idr` CHECK `>= 0`. Index `ix (patient_order_id)`; `UQ (id, patient
 
 #### A8.7 `order_price_lock_line` (T)
 
-Rincian per unit untuk perhitungan markup per unit (AB-11a). Baris harga terkunci adalah **satu-satunya sumber jumlah barang** pesanan produk; jumlah yang berlaku = baris dari harga terkunci percobaan yang tertangkap (review DBA S04). Tabel `product_order_item` dihapus karena menduplikasi jumlah. Sumber: AB-11, AB-11a, UP-51, US-801 AC2, US-703, US-706.
+Rincian per unit untuk perhitungan margin per unit (AB-11a). Baris harga terkunci adalah **satu-satunya sumber jumlah barang** pesanan produk; jumlah yang berlaku = baris dari harga terkunci percobaan yang tertangkap (review DBA S04). Tabel `product_order_item` dihapus karena menduplikasi jumlah. Sumber: AB-11, AB-11a, UP-51, US-801 AC2, US-703, US-706.
 
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
@@ -1101,8 +1101,8 @@ Rincian per unit untuk perhitungan markup per unit (AB-11a). Baris harga terkunc
 | description | text | tidak | | — | Nama layanan atau produk saat dikunci |
 | quantity | integer | tidak | | — | CHECK `> 0` |
 | unit_partner_price_idr | bigint | tidak | | Keu | CHECK `>= 0` |
-| unit_markup_idr | bigint | tidak | | Keu | Markup per unit setelah pembulatan (setengah ke atas); CHECK `>= 0` |
-| line_total_idr | bigint | tidak | | Keu | CHECK `= quantity * (unit_partner_price_idr + unit_markup_idr)` |
+| unit_margin_idr | bigint | tidak | | Keu | Margin per unit setelah pembulatan (setengah ke atas); CHECK `>= 0` |
+| line_total_idr | bigint | tidak | | Keu | CHECK `= quantity * (unit_partner_price_idr + unit_margin_idr)` |
 
 Index: `UQ (order_price_lock_id, line_no)`; `UQp (order_price_lock_id, product_id) WHERE product_id IS NOT NULL`; `ix (product_id)` (riwayat pesanan per produk). CHECK `(item_kind = 'product') = (product_id IS NOT NULL)`. Konsistensi jumlah baris dengan kolom total di kepala diperiksa dengan mekanisme yang sama seperti keseimbangan jurnal (§D.4).
 
@@ -1636,7 +1636,7 @@ Bagan akun jurnal. Sumber: ADR-015 butir 4, AB-26, AB-34.
 | name | text | tidak | | — | |
 | account_class | text | tidak | | — | CHECK (`asset`, `liability`, `equity`, `revenue`, `expense`) |
 | normal_side | text | tidak | | — | CHECK (`debit`, `credit`) |
-| purpose_code | text | tidak | | — | CHECK (`patient_funds`, `partner_share`, `markup_revenue`, `gateway_fee`, `partner_refund_obligation`, `platform_refund_obligation`, `shipping_funds`). Akun kurir (PT-29) dan pajak (PT-28) `[TIDAK DIKETAHUI]`, dapat ditambah tanpa ubah struktur (ADR-015) |
+| purpose_code | text | tidak | | — | CHECK (`patient_funds`, `partner_share`, `margin_revenue`, `gateway_fee`, `partner_refund_obligation`, `platform_refund_obligation`, `shipping_funds`). Akun kurir (PT-29) dan pajak (PT-28) `[TIDAK DIKETAHUI]`, dapat ditambah tanpa ubah struktur (ADR-015) |
 | partner_id | uuid | ya | FK→partner | — | Sub-akun per rekanan |
 
 Index: `UQp (code) WHERE deleted_at IS NULL`; dua partial unique index supaya `NULL` di `partner_id` tidak meloloskan duplikat akun platform (review DBA S03): `UQp (purpose_code) WHERE partner_id IS NULL AND deleted_at IS NULL` (akun platform) dan `UQp (purpose_code, partner_id) WHERE partner_id IS NOT NULL AND deleted_at IS NULL` (sub-akun rekanan).
@@ -2254,9 +2254,13 @@ Slot unggah yang belum dikonfirmasi. Berkas yang gagal validasi atau tidak perna
 | owner_account_id | uuid | ya | FK→account | — | `NULL` untuk unggahan rekanan (PDF hasil lab) |
 | owner_partner_id | uuid | ya | FK→partner | — | Belum dibuat di migrasi F1-T17 karena tabel `partner` (A5) belum ada di Fase 1. Kolom dibuat bersama migrasi A5 (expand §11.3 skema fisik: kolom `NULL`, FK ditambah `NOT VALID` lalu `VALIDATE`) (review DBA F1-T17 butir 3) |
 | bucket | text | tidak | | — | Sama dengan `stored_file.bucket` |
-| object_key | text | tidak | UQ | — | UUID buatan aplikasi |
+| object_key | text | tidak | UQ | — | UUID buatan aplikasi; berprefiks `incoming/` sejak TD-17 |
 | allowed_mime_type | text | tidak | | — | |
 | max_size_bytes | integer | tidak | | — | 5 MB foto, 10 MB PDF (KEPUTUSAN-08) |
+| consumed_at | timestamptz | ya | | — | TD-17: slot sudah dipakai (`stored_file` dicatat) atau berkasnya ditolak. Baris tetap ada sebagai tombstone sampai pembersih menghapusnya setelah `expires_at` + jeda, karena URL unggah masih dapat dipakai sampai kedaluwarsa |
+| sanitized_object_key | text | ya | UQ | — | TD-17: kunci objek hasil kode ulang (prefiks `files/`) yang diklaim slot sebelum objeknya ditulis; CHECK `<> object_key` |
+
+Pembersihan (TD-17, migrasi `20261120131700_platform_upload_slot_tombstone.sql`): job pembersih menghapus semua versi objek `object_key` dan objek `sanitized_object_key` yang tidak tercatat di `stored_file`, lalu barisnya, setelah `expires_at` + jeda 15 menit (usulan teknis); rekonsiliasi berkala menghapus objek di prefiks `incoming/` dan `files/` yang tidak tercatat.
 
 #### A19.6 `stored_file` (M)
 
@@ -2363,7 +2367,7 @@ Status: **rancangan** (data dictionary v1.1). Sumber: PRD v1.3 EP-19, AB-80–AB
 | `corporate_package` | M (salinan rekanan) | `partner_id`, `external_id`, `package_kind` CHECK (`mass_vaccination`, `mass_mcu`, `mass_lab`), nama, isi, `location_options`, `partner_price_idr`, `requires_nik`, `synced_at`. Masuk lewat Partner Integration API (K-04 opsi a) | — | 3 |
 | `corporate_order` | T | `corporate_client_id`, `corporate_package_id`, `partner_id`, `location_kind` CHECK (`onsite`, `partner_site`), alamat on-site, jumlah peserta | — | 3 |
 | `corporate_order_status_event` / `corporate_order_state` | R / P | Status UP-80 | — | 3 |
-| `corporate_order_price_lock` | T | Harga rekanan per satuan, `markup_rule_id` dan nilainya, markup per satuan, jumlah, tarif dan nominal pajak, total (AB-81) | — | 3 |
+| `corporate_order_price_lock` | T | Harga rekanan per satuan, `margin_rule_id` dan nilainya, margin per satuan, jumlah, tarif dan nominal pajak, total (AB-81) | — | 3 |
 | `corporate_participant` | M | `corporate_client_id`, `full_name`, `email`, `phone`, `birth_date` (Anonimkan); `nik_enc`, `nik_bidx`, `nik_bidx_key_version`, `nik_last4` opsional | PII; NIK Spesifik, Enc (wadah `corporate_participant_identity`) | 3 |
 | `corporate_order_participant` | T | Keikutsertaan peserta dalam pesanan; pencabutan lewat baris pembalik | Keikutsertaan diperlakukan sensitif sampai L-08/L-18 | 3 |
 | `participant_import_batch` | L | Pesanan, pengunggah, jumlah valid/galat/ganda, status; tanpa isi baris | — | 3 |
@@ -2385,7 +2389,7 @@ Komposisi kunci juga diverifikasi terhadap format mutasi bank yang dipakai.
 - A1.1 `account`: `account_type` + `corporate_admin`; `idp_realm` + `korporat`; CHECK pasangan `corporate_admin`→`korporat` (F1-T99, Fase 1).
 - A15.4 `cms_content`: kanal (`app`, `site`) dan halaman tujuan situs (F1-T91, Fase 1).
 - A19.7 `data_key.container_type`: + `corporate_participant_identity`, `corporate_import_preview`, `corporate_result_summary` `[KEPUTUSAN-258]` (Fase 3).
-- A13.1 `journal_account`: piutang korporat per perusahaan, pendapatan markup korporat, dan (bila L-21 memilih penerimaan penuh oleh PT. Arunika) kewajiban kepada rekanan atas pesanan korporat (ADR-029, Fase 3).
+- A13.1 `journal_account`: piutang korporat per perusahaan, pendapatan margin korporat, dan (bila L-21 memilih penerimaan penuh oleh PT. Arunika) kewajiban kepada rekanan atas pesanan korporat (ADR-029, Fase 3).
 - B3 `audit_event_subject`: subjek dapat berupa `corporate_participant` sebelum peserta tertaut ke `care_recipient` (ADR-028 butir 7).
 
 ## B. Database audit
@@ -3239,7 +3243,7 @@ Index: `ix (fasyankes_id, created_at DESC)`.
 | Perlakuan pajak | Kolom atau akun pajak belum dibuat | PT-28 |
 | Penerima dana ongkos kirim | `fund_split_instruction_line.recipient_type = 'shipping_recipient'` dan akun `shipping_funds` belum final | PT-31, AB-23 |
 | Penanggung kegagalan kurir | Kewajiban kelompok `courier_cause` | PT-29 |
-| Nilai markup dan biaya rekanan, cara penagihan | Isi `markup_rule`, `partner_fee_rule`; status tagihan | PT-17, AB-24 |
+| Nilai margin dan biaya rekanan, cara penagihan | Isi `margin_rule`, `partner_fee_rule`; status tagihan | PT-17, AB-24 |
 | Metode pembayaran dan field penyedia | `payment_method_fee.method_code`, `gateway_recipient_ref`, isi `payload_sanitized` | AB-25, US-205 AC5, Tahap 5 |
 | Data minimal ke rekanan dan payment gateway | Isi payload `integration_outbox`, kolom `order_personal_snapshot` yang dikirim | L-08, AB-75 |
 | NIK pasien di RME | `rme_patient.nik_*` tetap kosong | L-05, L-08 |

@@ -142,7 +142,7 @@ Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]
 | Katalog salinan | Salinan layanan, harga, jadwal, slot, katalog, dan stok dari rekanan, serta pencarian | EP-04, EP-05, EP-06, EP-07 |
 | Pemesanan | Pesanan semua jenis, penahanan slot/stok, harga terkunci, status, pembatalan | EP-03–EP-07, US-805 |
 | Konsultasi | Sesi, kehadiran, chat, video, catatan, resep, halaman verifikasi resep publik (CR-008) | EP-03 |
-| Pembayaran | Adaptor PG, notifikasi PG, jurnal, refund, klaim, kewajiban, rekonsiliasi, pengaturan markup dan biaya | EP-08 |
+| Pembayaran | Adaptor PG, notifikasi PG, jurnal, refund, klaim, kewajiban, rekonsiliasi, pengaturan margin dan biaya | EP-08 |
 | Hasil lab | Penerimaan dan penyajian hasil lab berversi | EP-09 |
 | Notifikasi | Matriks kanal, templat, email, kotak notifikasi di dalam aplikasi | EP-10 |
 | Konten dan layanan pelanggan | CMS, tiket keluhan | EP-11 |
@@ -153,7 +153,7 @@ Pembagian komponen dan alasannya ada di ADR-006 `[KEPUTUSAN-18]` `[KEPUTUSAN-19]
 | KPI | Dasbor KPI | EP-17 |
 | Platform | Berkas, job, outbox, kalender hari kerja, parameter bisnis | Lintas modul |
 
-**Pemetaan modul ke data dictionary** (`docs/04-data-dictionary.md`): Identitas dan akses → A1; Profil dan verifikasi → A2; Tenaga kesehatan → A4; Rekanan → A5; Katalog salinan → A7; Pemesanan → A8, A10 (klinik, lab, home visit), A11 (produk); Konsultasi → A9; Hasil lab → A10; Pembayaran → A6 (markup, biaya rekanan, tarif metode), A12, A13, A14; Notifikasi, Konten dan layanan pelanggan → A15, A16; Portal rekanan → tanpa tabel sendiri (membaca A5, A14, A16); Gateway integrasi → A18; Privasi → A3, A6 (kebijakan retensi), A17, `data_key` di A19; Platform dan KPI → A6 (parameter bisnis, kalender hari kerja), A19; Audit → B; RME minimalis → C1–C6.
+**Pemetaan modul ke data dictionary** (`docs/04-data-dictionary.md`): Identitas dan akses → A1; Profil dan verifikasi → A2; Tenaga kesehatan → A4; Rekanan → A5; Katalog salinan → A7; Pemesanan → A8, A10 (klinik, lab, home visit), A11 (produk); Konsultasi → A9; Hasil lab → A10; Pembayaran → A6 (margin, biaya rekanan, tarif metode), A12, A13, A14; Notifikasi, Konten dan layanan pelanggan → A15, A16; Portal rekanan → tanpa tabel sendiri (membaca A5, A14, A16); Gateway integrasi → A18; Privasi → A3, A6 (kebijakan retensi), A17, `data_key` di A19; Platform dan KPI → A6 (parameter bisnis, kalender hari kerja), A19; Audit → B; RME minimalis → C1–C6.
 
 **Modul RME minimalis**: identitas dan akses RME, onboarding fasyankes (Operator RME), layanan/jadwal/harga, appointment dan check-in, antrean, rekam medis kunjungan, hasil lab, home visit, SATUSEHAT, klien integrasi ke Ruang Sehat, dan audit (EP-13) `[DOK: 03-prd.md]`.
 

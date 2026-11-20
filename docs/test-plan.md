@@ -26,7 +26,7 @@ Alat mengikuti yang sudah ditetapkan, tanpa alat baru `[DOK: coding-standards.md
 
 | Level (kolom "Level") | Cakupan | Alat |
 | --- | --- | --- |
-| unit | Domain murni: transisi status, harga/markup/pajak, batas waktu, masking audit, validasi, format ciphertext | `cargo test`, `flutter test`, test unit web |
+| unit | Domain murni: transisi status, harga/margin/pajak, batas waktu, masking audit, validasi, format ciphertext | `cargo test`, `flutter test`, test unit web |
 | integrasi | Service + repository pada PostgreSQL 18, Valkey, Keycloak, OpenBao sungguhan dengan role aplikasi (bukan pemilik skema); endpoint HTTP; kontrak OpenAPI | testcontainers, Schemathesis (kontrak) |
 | E2E | Alur utama per aplikasi web dan mobile terhadap stack lokal | Playwright (web), integration test Flutter (mobile) |
 | manual | Yang tidak praktis diotomasi: kamera/galeri, TalkBack/VoiceOver, perangkat nyata, tinjauan dokumen/konfigurasi penyedia | Eksekusi QA mengikuti langkah di test case; bukti tangkapan layar/log |
@@ -606,7 +606,7 @@ Story baru Checkpoint 2. Berlaku di aplikasi pasien, aplikasi tenaga kesehatan, 
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-US-205-1 | US-205 AC1 | G: data rekanan lengkap (nama, jenis, alamat, zona waktu, izin, rekening, sumber sistem); W: Verifikator menyimpan; T: "Menunggu verifikasi", E-10; klinik dapat sekaligus outlet | positif | E2E | T1 | F2 |
 | TC-US-205-2 | US-205 AC1 | G: field wajib kosong, zona waktu di luar WIB/WITA/WIT; W: simpan; T: ditolak per field | negatif | unit | - | F2 |
-| TC-US-205-3 | US-205 AC2 | G: izin disetujui, markup diatur, integrasi "Aktif"; W: pasien mencari; T: rekanan tampil (integrasi Aktif tersedia di F3; di F2 memakai stub status, T-23) | positif | integrasi | T1 | F2 |
+| TC-US-205-3 | US-205 AC2 | G: izin disetujui, margin diatur, integrasi "Aktif"; W: pasien mencari; T: rekanan tampil (integrasi Aktif tersedia di F3; di F2 memakai stub status, T-23) | positif | integrasi | T1 | F2 |
 | TC-US-205-4 | US-205 AC2 | G: tepat satu dari tiga syarat tidak terpenuhi (tiga test); W: pasien mencari; T: rekanan tidak tampil | negatif | integrasi | T1 | F2 |
 | TC-US-205-5 | US-205 AC3 | G: toko kecantikan atau toko alat kesehatan dengan produk berkategori obat bebas; W: katalog diterima; T: produk obat bebas tidak ditampilkan | negatif | integrasi | - | F4 |
 | TC-US-205-6 | US-205 AC1 | G: peran selain Verifikator; W: membuat atau menyetujui rekanan; T: 403 | negatif | integrasi | T1 | F2 |
@@ -653,7 +653,7 @@ Story baru Checkpoint 2. Berlaku di aplikasi pasien, aplikasi tenaga kesehatan, 
 | TC-US-301-3 | US-301 AC2 | G: jenis belum diberi tarif; W: pasien melihat nakes; T: jenis itu tidak dapat dipesan | negatif | integrasi | - | F2 |
 | TC-US-301-4 | US-301 AC3 | G: pembayaran dibuat dengan tarif lama lalu tarif diubah; W: pasien membayar setelah perubahan; T: pesanan lama tetap tarif lama; pembayaran baru memakai tarif baru | batas | integrasi | T1 | F2 |
 | TC-US-301-5 | US-301 AC4 | G: admin klinik A; W: mengatur nakes klinik B lewat ID; T: ditolak (404), TC-SEC-6 | negatif | integrasi | T1 | F2 |
-| TC-US-301-6 | US-301 AC5 | G: tarif dan markup rekanan; W: pasien melihat harga; T: harga = tarif + markup, satu angka | positif | unit | T1 | F2 |
+| TC-US-301-6 | US-301 AC5 | G: tarif dan margin rekanan; W: pasien melihat harga; T: harga = tarif + margin, satu angka | positif | unit | T1 | F2 |
 
 ### US-302 Jadwal praktik online (BR-017)
 
@@ -672,9 +672,9 @@ Story baru Checkpoint 2. Berlaku di aplikasi pasien, aplikasi tenaga kesehatan, 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-US-303-1 | US-303 AC1 | G: nakes siap melayani (AB-54) dengan slot, nakes aktif tanpa tarif, nakes nonaktif, nakes tanpa slot masa depan; W: pasien memilih jenis atau mencari nama; T: hanya yang siap dan punya minimal satu slot masa depan | negatif | integrasi | - | F2 |
-| TC-US-303-2 | US-303 AC2 | G: hasil tampil; W: lihat kartu; T: nama, jenis, klinik penaung, harga chat dan/atau video (tarif + markup), slot terdekat | positif | E2E | - | F2 |
+| TC-US-303-2 | US-303 AC2 | G: hasil tampil; W: lihat kartu; T: nama, jenis, klinik penaung, harga chat dan/atau video (tarif + margin), slot terdekat | positif | E2E | - | F2 |
 | TC-US-303-3 | US-303 AC3 | G: tidak ada hasil; W: pencarian selesai; T: pesan "tidak ada tenaga kesehatan tersedia" | negatif | E2E | - | F2 |
-| TC-US-303-4 | US-303 AC1 | G: klinik penaung dinonaktifkan atau markup belum diatur; W: pencarian; T: nakesnya tidak tampil | negatif | integrasi | - | F2 |
+| TC-US-303-4 | US-303 AC1 | G: klinik penaung dinonaktifkan atau margin belum diatur; W: pencarian; T: nakesnya tidak tampil | negatif | integrasi | - | F2 |
 
 ### US-304 Pesan sesi konsultasi (BR-040)
 
@@ -783,15 +783,15 @@ Nilai pajak nyata dan perilaku saat tarif belum diatur belum ditetapkan (sisa PT
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-801-1 | US-801 AC1 | G: harga rekanan 100.000, markup 10.000, metode non-QRIS dengan biaya transaksi uji, tarif pajak uji; W: pilih metode; T: harga layanan satu angka (110.000), pajak sebagai baris terpisah dihitung dari harga rekanan + markup, ongkos kirim (produk), biaya transaksi, total, semua dihitung server | positif | unit | T1 | F2 |
+| TC-US-801-1 | US-801 AC1 | G: harga rekanan 100.000, margin 10.000, metode non-QRIS dengan biaya transaksi uji, tarif pajak uji; W: pilih metode; T: harga layanan satu angka (110.000), pajak sebagai baris terpisah dihitung dari harga rekanan + margin, ongkos kirim (produk), biaya transaksi, total, semua dihitung server | positif | unit | T1 | F2 |
 | TC-US-801-2 | US-801 AC1 | G: metode QRIS; W: ringkasan; T: biaya transaksi Rp0 | positif | unit | T1 | F2 |
 | TC-US-801-3 | US-801 AC1 | G: klien mengirim total atau harga sendiri di permintaan; W: server menghitung; T: nilai klien diabaikan, server memakai perhitungan sendiri | negatif | integrasi | T1 | F2 |
-| TC-US-801-4 | US-801 AC2 | G: markup persen (misalnya 10% dari 12.345, 12,5% dari 10.001, 0%, 100%); W: hitung; T: dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), baru dikalikan jumlah | batas | unit | T1 | F2 |
-| TC-US-801-5 | US-801 AC2 | G: markup nominal 5.000 dengan jumlah 3; W: hitung; T: 5.000 per unit, total markup 15.000; nilai besar tidak meluap | batas | unit | T1 | F2 |
+| TC-US-801-4 | US-801 AC2 | G: margin persen (misalnya 10% dari 12.345, 12,5% dari 10.001, 0%, 100%); W: hitung; T: dibulatkan per unit ke Rupiah penuh terdekat (setengah ke atas), baru dikalikan jumlah | batas | unit | T1 | F2 |
+| TC-US-801-5 | US-801 AC2 | G: margin nominal 5.000 dengan jumlah 3; W: hitung; T: 5.000 per unit, total margin 15.000; nilai besar tidak meluap | batas | unit | T1 | F2 |
 | TC-US-801-6 | US-801 AC2 | G: nilai harga dan jumlah ekstrem (luapan aritmetika uang); W: hitung; T: ditolak atau diperlakukan aman, tidak ada nilai salah diam-diam | negatif | unit | T1 | F2 |
 | TC-US-801-7 | US-801 AC3 | G: layanan terjadwal; W: ringkasan tampil; T: aturan pembatalan (PB-01, no-show) tampil; untuk klinik/lab/home visit pernyataan AB-16 juga tampil (F3/F4) | positif | E2E | - | F2 |
 | TC-US-801-8 | US-801 AC4 | G: pesanan produk; W: ringkasan; T: pernyataan tidak dapat dibatalkan setelah dibayar | positif | E2E | - | F4 |
-| TC-US-801-9 | US-801 AC5 | G: markup atau tarif berubah setelah ringkasan tampil; W: pasien menekan bayar; T: total baru tampil dan harus disetujui sebelum pembayaran dibuat; tanpa persetujuan tidak ada pembayaran | negatif | integrasi | T1 | F2 |
+| TC-US-801-9 | US-801 AC5 | G: margin atau tarif berubah setelah ringkasan tampil; W: pasien menekan bayar; T: total baru tampil dan harus disetujui sebelum pembayaran dibuat; tanpa persetujuan tidak ada pembayaran | negatif | integrasi | T1 | F2 |
 
 ### US-802 Pembayaran lewat payment gateway (BR-040, BR-115)
 
@@ -817,13 +817,13 @@ Nilai pajak nyata dan perilaku saat tarif belum diatur belum ditetapkan (sisa PT
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-803-1 | US-803 AC1 | G: pembayaran QRIS berhasil (harga rekanan 100.000, markup 10.000, MDR uji); W: transaksi dicatat; T: bagian rekanan = harga rekanan dikurangi MDR, markup ke Ruang Sehat, MDR, rekening tujuan sebagai instruksi pembagian; jumlah seimbang | positif | unit | T1 | F2 |
+| TC-US-803-1 | US-803 AC1 | G: pembayaran QRIS berhasil (harga rekanan 100.000, margin 10.000, MDR uji); W: transaksi dicatat; T: bagian rekanan = harga rekanan dikurangi MDR, margin ke Ruang Sehat, MDR, rekening tujuan sebagai instruksi pembagian; jumlah seimbang | positif | unit | T1 | F2 |
 | TC-US-803-2 | US-803 AC1 | G: pembayaran non-QRIS dengan biaya transaksi; W: transaksi dicatat; T: bagian rekanan = harga rekanan penuh; biaya transaksi tercatat; jumlah seimbang | positif | unit | T1 | F2 |
 | TC-US-803-3 | US-803 AC1 | G: jurnal/catatan transaksi tidak seimbang (debit tidak sama kredit); W: simpan; T: ditolak | negatif | unit | T1 | F2 |
 | TC-US-803-4 | US-803 AC1 | G: rekening tujuan; W: periksa audit dan log; T: nomor rekening hanya 4 digit terakhir | negatif | integrasi | T1 | F2 |
 | TC-US-803-5 | US-803 AC2 | G: gateway melaporkan hasil pembagian dana; W: laporan diterima; T: hasil per pihak tercatat dan dapat dicocokkan (US-811); laporan ganda tidak menggandakan | positif | integrasi | T1 | F2 |
 | TC-US-803-6 | US-803 AC3 | G: catatan transaksi sudah dibuat; W: koreksi (`UPDATE`/`DELETE` atau koreksi lewat aplikasi); T: `UPDATE`/`DELETE` ditolak; koreksi hanya lewat entri pembalik yang merujuk transaksi asal | negatif | integrasi | T1 | F2 |
-| TC-US-803-7 | US-803 AC1 | G: instruksi pembagian dan harga dikunci saat pembayaran dibuat; W: markup berubah kemudian; T: transaksi lama tidak berubah (AB-17) | negatif | integrasi | T1 | F2 |
+| TC-US-803-7 | US-803 AC1 | G: instruksi pembagian dan harga dikunci saat pembayaran dibuat; W: margin berubah kemudian; T: transaksi lama tidak berubah (AB-17) | negatif | integrasi | T1 | F2 |
 
 ### US-804 Bukti pembayaran (BR-040, BR-014)
 
@@ -857,10 +857,10 @@ Kejadian RF-08, RF-09, RF-15 berlaku untuk produk (F4); RF-18 untuk klinik/lab/h
 | TC-US-806-4 | US-806 AC2 | G: refund untuk satu pesanan sudah dibuat; W: kejadian lain atau kejadian sama tercatat (tersimpan lebih dulu yang berlaku); T: refund kedua tidak dibuat; transisi tidak sah ditolak dan E-09 hasil gagal | negatif | integrasi | T1 | F2 |
 | TC-US-806-5 | US-806 AC2 | G: kejadian refund yang sama datang dua kali paralel; W: diproses; T: satu refund (KU-05) | negatif | integrasi | T1 | F2 |
 | TC-US-806-6 | US-806 AC2 | G: refund pertama RF-12 atau RF-13 atau RF-14 sudah ada; W: refund atas pesanan yang sama untuk dana berbeda; T: diizinkan (pengecualian AB-36) | batas | integrasi | T1 | F2 |
-| TC-US-806-7 | US-806 AC3 | G: RF-01 dengan QRIS dan non-QRIS (harga rekanan 100.000, markup 10.000, biaya transaksi uji); W: hitung; T: pasien menerima harga layanan tanpa biaya transaksi non-QRIS, kewajiban rekanan = harga rekanan penuh, kewajiban Ruang Sehat = markup | positif | unit | T1 | F2 |
+| TC-US-806-7 | US-806 AC3 | G: RF-01 dengan QRIS dan non-QRIS (harga rekanan 100.000, margin 10.000, biaya transaksi uji); W: hitung; T: pasien menerima harga layanan tanpa biaya transaksi non-QRIS, kewajiban rekanan = harga rekanan penuh, kewajiban Ruang Sehat = margin | positif | unit | T1 | F2 |
 | TC-US-806-8 | US-806 AC3 | G: kelompok penyebab rekanan (RF-04, RF-05) dan penyebab platform (RF-12, RF-13); W: hitung; T: pasien menerima seluruh pembayaran; kewajiban per pihak mengikuti AB-34 (tabel uji per kelompok dan metode) | positif | unit | T1 | F2 |
 | TC-US-806-9 | US-806 AC3 | G: refund melebihi dana yang diterima; W: buat; T: ditolak | negatif | unit | T1 | F2 |
-| TC-US-806-10 | US-806 AC3 | G: nominal dihitung dari harga yang dikunci; W: markup/tarif berubah setelahnya; T: nominal refund memakai harga terkunci (AB-17) | batas | unit | T1 | F2 |
+| TC-US-806-10 | US-806 AC3 | G: nominal dihitung dari harga yang dikunci; W: margin/tarif berubah setelahnya; T: nominal refund memakai harga terkunci (AB-17) | batas | unit | T1 | F2 |
 
 ### US-808 Eksekusi dan status refund (BR-045)
 
@@ -878,16 +878,16 @@ Kejadian RF-08, RF-09, RF-15 berlaku untuk produk (F4); RF-18 untuk klinik/lab/h
 | TC-US-808-10 | US-808 AC6 | G: PB-20 habis tanpa penetapan (batas 23.59 WIB hari kerja ke-3); W: batas terlewati; T: berlaku penyebab platform, Super Admin diberi tahu | batas | integrasi | T1 | F3 |
 | TC-US-808-11 | US-808 AC1 | G: pembalikan kewajiban; W: ubah atau hapus catatan asal; T: ditolak (immutable), hanya entri pembalik | negatif | integrasi | T1 | F2 |
 
-### US-809 Pengaturan markup per rekanan (BR-042, BR-063)
+### US-809 Pengaturan margin per rekanan (BR-042, BR-063)
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-809-1 | US-809 AC1 | G: Keuangan; W: atur markup persen 0, 50, 100 atau nominal 0, 1.000 dengan waktu berlaku segera dan tanggal mendatang; T: tersimpan, riwayat tetap ada, E-14 | positif | integrasi | T1 | F2 |
+| TC-US-809-1 | US-809 AC1 | G: Keuangan; W: atur margin persen 0, 50, 100 atau nominal 0, 1.000 dengan waktu berlaku segera dan tanggal mendatang; T: tersimpan, riwayat tetap ada, E-14 | positif | integrasi | T1 | F2 |
 | TC-US-809-2 | US-809 AC1 | G: persen -1, 100,01, kosong; nominal negatif, desimal; waktu berlaku di masa lalu; W: simpan; T: ditolak (KU-01) | batas | unit | T1 | F2 |
-| TC-US-809-3 | US-809 AC2 | G: markup diubah dengan waktu berlaku besok; W: pembayaran dibuat sebelum waktu berlaku lalu diselesaikan sesudahnya; T: harga memakai markup lama (AB-17) | batas | integrasi | T1 | F2 |
-| TC-US-809-4 | US-809 AC3 | G: rekanan belum punya markup; W: Verifikator mencoba menampilkan ke pasien; T: tidak tampil; markup 0 diperbolehkan | negatif | integrasi | T1 | F2 |
-| TC-US-809-5 | US-809 AC4 | G: Super Admin, Verifikator, Layanan Pelanggan, Konten, Auditor, Petugas PDP, admin rekanan; W: ubah markup; T: ditolak (403) | negatif | integrasi | T1 | F2 |
-| TC-US-809-6 | US-809 AC1 | G: dua perubahan markup bersamaan untuk rekanan sama; W: simpan; T: dua versi berurutan tanpa tabrakan, riwayat utuh | negatif | integrasi | T1 | F2 |
+| TC-US-809-3 | US-809 AC2 | G: margin diubah dengan waktu berlaku besok; W: pembayaran dibuat sebelum waktu berlaku lalu diselesaikan sesudahnya; T: harga memakai margin lama (AB-17) | batas | integrasi | T1 | F2 |
+| TC-US-809-4 | US-809 AC3 | G: rekanan belum punya margin; W: Verifikator mencoba menampilkan ke pasien; T: tidak tampil; margin 0 diperbolehkan | negatif | integrasi | T1 | F2 |
+| TC-US-809-5 | US-809 AC4 | G: Super Admin, Verifikator, Layanan Pelanggan, Konten, Auditor, Petugas PDP, admin rekanan; W: ubah margin; T: ditolak (403) | negatif | integrasi | T1 | F2 |
+| TC-US-809-6 | US-809 AC1 | G: dua perubahan margin bersamaan untuk rekanan sama; W: simpan; T: dua versi berurutan tanpa tabrakan, riwayat utuh | negatif | integrasi | T1 | F2 |
 
 ### US-812 Pengaturan parameter bisnis (BR-045, BR-063)
 
@@ -951,7 +951,7 @@ Story Fase 3: US-401–US-404, US-406, US-601, US-602 (Should), US-807, US-810, 
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-401-1 | US-401 AC1 | G: rekanan aktif+terintegrasi, rekanan nonaktif, rekanan integrasi "Belum/Uji/Terganggu"; W: cari kota dan layanan; T: hanya aktif dan terintegrasi, dengan layanan, harga (rekanan + markup), jadwal berlabel zona (misalnya "10.00 WITA") | positif | integrasi | - | F3 |
+| TC-US-401-1 | US-401 AC1 | G: rekanan aktif+terintegrasi, rekanan nonaktif, rekanan integrasi "Belum/Uji/Terganggu"; W: cari kota dan layanan; T: hanya aktif dan terintegrasi, dengan layanan, harga (rekanan + margin), jadwal berlabel zona (misalnya "10.00 WITA") | positif | integrasi | - | F3 |
 | TC-US-401-2 | US-401 AC1 | G: kota atau layanan tidak ada; W: cari; T: keadaan kosong tanpa galat | negatif | E2E | - | F3 |
 | TC-US-401-3 | US-401 AC2 | G: data rekanan tidak dapat diambil; W: buka rekanan; T: KU-08 (tidak tampil data lama sebagai terbaru) | negatif | integrasi | T1 | F3 |
 | TC-US-401-4 | US-401 AC3 | G: izin lokasi ditolak; W: cari berdasarkan kota; T: pencarian tetap berjalan | negatif | manual | - | F3 |
@@ -1045,7 +1045,7 @@ Story Fase 3: US-401–US-404, US-406, US-601, US-602 (Should), US-807, US-810, 
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-811-1 | US-811 AC1 | G: Keuangan memilih periode, rekanan, jenis, status; W: laporan tampil; T: tiap transaksi memuat total, bagian rekanan, markup, pajak, MDR/biaya transaksi, refund, status pembagian, dalam WIB | positif | integrasi | T1 | F3 |
+| TC-US-811-1 | US-811 AC1 | G: Keuangan memilih periode, rekanan, jenis, status; W: laporan tampil; T: tiap transaksi memuat total, bagian rekanan, margin, pajak, MDR/biaya transaksi, refund, status pembagian, dalam WIB | positif | integrasi | T1 | F3 |
 | TC-US-811-2 | US-811 AC1 | G: peran lain (Konten, Auditor); W: buka laporan; T: ditolak; Layanan Pelanggan hanya pesanan terkait klaim/tiket miliknya; Super Admin baca | negatif | integrasi | T1 | F3 |
 | TC-US-811-3 | US-811 AC2 | G: data penyedia berbeda dari catatan (selisih nominal, pembagian tidak terlaporkan, pembayaran ganda); W: rekonsiliasi harian berjalan; T: ketiganya ditandai untuk tindak lanjut; pembayaran ganda memicu RF-12 | negatif | integrasi | T1 | F3 |
 | TC-US-811-4 | US-811 AC2 | G: rekonsiliasi berjalan dua kali pada hari yang sama; W: berjalan; T: tidak ada penandaan ganda | negatif | integrasi | T1 | F3 |
@@ -1110,7 +1110,7 @@ Story Fase 3: US-401–US-404, US-406, US-601, US-602 (Should), US-807, US-810, 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-US-1201-1 | US-1201 AC1 | G: admin rekanan memilih periode, jenis, status; W: laporan tampil; T: tanggal (zona rekanan), nomor, layanan/produk, nama penerima, harga rekanan, MDR, bagian rekanan, refund, kewajiban pengembalian, tagihan biaya rekanan, rekap harian dan bulanan | positif | integrasi | T1 | F3 |
-| TC-US-1201-2 | US-1201 AC2 | G: laporan tampil; W: periksa respons API dan UI; T: tidak ada markup, total bayar pasien, dan data klinis | negatif | integrasi | T1 | F3 |
+| TC-US-1201-2 | US-1201 AC2 | G: laporan tampil; W: periksa respons API dan UI; T: tidak ada margin, total bayar pasien, dan data klinis | negatif | integrasi | T1 | F3 |
 | TC-US-1201-3 | US-1201 AC3 | G: klinik yang juga outlet; W: buka laporan; T: terpisah atau gabungan | positif | integrasi | - | F3 |
 | TC-US-1201-4 | US-1201 AC4 | G: admin rekanan A mengekspor; W: file dibuat; T: CSV hanya data A, E-12, tanpa injeksi rumus | negatif | integrasi | T1 | F3 |
 | TC-US-1201-5 | US-1201 AC1 | G: admin rekanan A; W: menyelipkan `partner_id` B di query/body; T: data B tidak muncul (TC-SEC-6) | negatif | integrasi | T1 | F3 |
@@ -1434,7 +1434,7 @@ Story Fase 4: US-108, US-109 (Should; di Opsi B dipindah ke Fase 3), US-405, US-
 
 | ID | AC | Skenario | Tipe | Level | T1 | Fase |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-US-701-1 | US-701 AC1 | G: pengguna belum masuk; W: pilih kategori, outlet, atau cari nama; T: produk dari outlet aktif dan terintegrasi dengan harga (rekanan + markup) dan status stok | positif | integrasi | - | F4 |
+| TC-US-701-1 | US-701 AC1 | G: pengguna belum masuk; W: pilih kategori, outlet, atau cari nama; T: produk dari outlet aktif dan terintegrasi dengan harga (rekanan + margin) dan status stok | positif | integrasi | - | F4 |
 | TC-US-701-2 | US-701 AC2 | G: stok 0 dan 1; W: tampil; T: 0 ditandai "habis" dan tidak dapat masuk keranjang; 1 dapat | batas | integrasi | - | F4 |
 | TC-US-701-3 | US-701 AC3 | G: katalog outlet tidak dapat diambil; W: buka outlet; T: KU-08 | negatif | integrasi | T1 | F4 |
 
@@ -1456,7 +1456,7 @@ Story Fase 4: US-108, US-109 (Should; di Opsi B dipindah ke Fase 3), US-405, US-
 | TC-US-703-4 | US-703 AC4 | G: harga atau stok di outlet berbeda; W: tekan bayar; T: nilai terbaru dan wajib disetujui (AB-15) | negatif | integrasi | T1 | F4 |
 | TC-US-703-5 | US-703 AC5 | G: pembayaran berhasil; W: notifikasi; T: "Dibayar" dan dikirim ke sistem outlet (US-1403) | positif | integrasi | T1 | F4 |
 | TC-US-703-6 | US-703 AC1, KU-09 | G: dua pasien membeli stok terakhir; W: bersamaan; T: satu berhasil | negatif | integrasi | T1 | F4 |
-| TC-US-703-7 | US-703 AC3 | G: total = jumlah harga produk + pajak + ongkos kirim (AB-11); W: hitung; T: sesuai; ongkos kirim tidak dikenai markup (AB-11a) | batas | unit | T1 | F4 |
+| TC-US-703-7 | US-703 AC3 | G: total = jumlah harga produk + pajak + ongkos kirim (AB-11); W: hitung; T: sesuai; ongkos kirim tidak dikenai margin (AB-11a) | batas | unit | T1 | F4 |
 
 ### US-704 Status dan pelacakan pesanan (BR-033, BR-034)
 
