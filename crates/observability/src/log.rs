@@ -41,6 +41,8 @@ pub enum Component {
     AuditVerify,
     /// `privacy-worker` Ruang Sehat.
     PrivacyWorker,
+    /// `email-relay` (relay SMTP ke SES per host, ADR-026; F1-T36).
+    EmailRelay,
     /// `rme-backend api`.
     RmeApi,
     /// `rme-backend worker`.
@@ -63,6 +65,7 @@ impl Component {
             Self::AuditRelay => "audit-relay",
             Self::AuditVerify => "audit-verify",
             Self::PrivacyWorker => "privacy-worker",
+            Self::EmailRelay => "email-relay",
             Self::RmeApi => "rme-api",
             Self::RmeWorker => "rme-worker",
             Self::RmeAuditRelay => "rme-audit-relay",
