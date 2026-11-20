@@ -5,7 +5,8 @@ import * as login from "./app/auth/login/route.ts";
 import * as logout from "./app/auth/logout/route.ts";
 import * as extend from "./app/auth/session/extend/route.ts";
 import * as session from "./app/auth/session/route.ts";
-import { routes } from "./lib/server/bff.ts";
+import { createBffRoutes, type BffCore } from "@rs/bff-auth";
+import { OPSI_ROUTES, routes } from "./lib/server/bff.ts";
 
 describe("rute BFF terpasang dari createBffRoutes", () => {
   test("setiap berkas rute mengekspor handler yang sama dengan createBffRoutes", () => {
@@ -40,5 +41,19 @@ describe("rute BFF terpasang dari createBffRoutes", () => {
     const badan = (await res.text()).toLowerCase();
     expect(badan).not.toContain("bff_");
     expect(badan).not.toContain("valkey");
+  });
+
+  test("galat login mendarat di halaman publik /masuk-gagal (bukan halaman terautentikasi → tanpa putaran login)", async () => {
+    expect(OPSI_ROUTES.loginErrorPath).toBe("/masuk-gagal");
+    // Core tiruan: transaksi login tidak ditemukan/state tidak valid → callback menolak.
+    const inti = {
+      config: { appName: "backoffice" },
+      sessions: { takeLogin: () => Promise.resolve(null) },
+    } as unknown as BffCore;
+    const rute = createBffRoutes(() => Promise.resolve(inti), OPSI_ROUTES);
+    const res = await rute.callback.GET(new Request("http://127.0.0.1/auth/callback?code=x&state=salah"));
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("/masuk-gagal?auth_error=expired");
+    expect(res.headers.get("location")).not.toBe("/");
   });
 });

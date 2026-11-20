@@ -15,10 +15,15 @@ export const getCore = (): Promise<BffCore> =>
     throw e;
   }));
 
-/** Namespace API Rust untuk kanal admin (ADR-006 butir 5); path lain dijawab 404 tanpa diteruskan. */
-export const routes = createBffRoutes(getCore, {
+/**
+ * Namespace API Rust untuk kanal admin (ADR-006 butir 5); path lain dijawab 404 tanpa diteruskan.
+ * `loginErrorPath` harus halaman publik: halaman terautentikasi mengalihkan ke login lagi (putaran).
+ */
+export const OPSI_ROUTES = {
   allowedApiPrefixes: ["v1/admin/"],
   defaultReturnPath: "/",
-  loginErrorPath: "/",
+  loginErrorPath: "/masuk-gagal",
   afterLogoutPath: "/",
-});
+} as const;
+
+export const routes = createBffRoutes(getCore, OPSI_ROUTES);

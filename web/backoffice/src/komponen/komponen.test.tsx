@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import MasukGagal from "../app/(publik)/masuk-gagal/page.tsx";
 import AkunNonaktif from "../app/(publik)/akun-nonaktif/page.tsx";
 import Galat from "../app/error.tsx";
 import GalatGlobal from "../app/global-error.tsx";
@@ -77,6 +78,13 @@ describe("layar akses ditolak, akun nonaktif, galat", () => {
     render(<AkunNonaktif />);
     expect(screen.getByRole("status").textContent).toContain("Akun nonaktif");
     expect(screen.getByText("Hubungi admin Ruang Sehat.")).toBeDefined();
+  });
+
+  test("masuk gagal: pesan umum, ajakan masuk lagi, tanpa tautan ke akun nonaktif", async () => {
+    render(await MasukGagal({ searchParams: Promise.resolve({ auth_error: "failed" }) }));
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Masuk tidak berhasil");
+    expect(screen.getByRole("link", { name: "Masuk lagi" }).getAttribute("href")).toBe("/auth/login");
+    expect(screen.queryByRole("link", { name: /nonaktif/i })).toBeNull();
   });
 
   test("galat server: kode referensi dari digest; pesan galat internal tidak tampil", () => {

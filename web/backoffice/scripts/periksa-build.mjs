@@ -88,30 +88,30 @@ const server = spawn(process.execPath, ["server.js"], {
 const dasar = `http://127.0.0.1:${port}`;
 
 try {
-  await tunggu(`${dasar}/akses-ditolak`, server);
+  await tunggu(`${dasar}/halaman-yang-tidak-ada`, server);
 
-  const ditolak = await fetch(`${dasar}/akses-ditolak`);
-  periksa(ditolak.status === 200, `/akses-ditolak: status ${ditolak.status}`);
-  periksaHeader("/akses-ditolak", ditolak);
+  const ditolak = await fetch(`${dasar}/halaman-yang-tidak-ada`);
+  periksa(ditolak.status === 404, `/halaman-yang-tidak-ada: status ${ditolak.status}, seharusnya 404 (identik not-found, KU-03)`);
+  periksaHeader("/halaman-yang-tidak-ada", ditolak);
   const html = await ditolak.text();
   const nonce = /'nonce-([^']+)'/.exec(ditolak.headers.get("content-security-policy") ?? "")?.[1];
-  periksa(nonce !== undefined, "/akses-ditolak: CSP tanpa nonce");
+  periksa(nonce !== undefined, "/halaman-yang-tidak-ada: CSP tanpa nonce");
   const skrip = [...html.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1] ?? "");
-  periksa(skrip.length > 0, "/akses-ditolak: tidak ada <script> (runtime Next seharusnya ada)");
+  periksa(skrip.length > 0, "/halaman-yang-tidak-ada: tidak ada <script> (runtime Next seharusnya ada)");
   for (const atribut of skrip) {
     periksa(nonce !== undefined && atribut.includes(`nonce="${nonce}"`), `<script> tanpa nonce yang cocok: ${atribut.slice(0, 80)}`);
   }
-  periksa(!/\son[a-z]+\s*=/i.test(html), "/akses-ditolak: ada atribut event handler inline");
-  periksa(!/\sstyle\s*=/i.test(html), "/akses-ditolak: ada atribut style inline");
-  periksa(/<main[^>]*id="isi"/.test(html), "/akses-ditolak: landmark <main id=isi> tidak ada");
-  periksa(html.includes("Data tidak ditemukan"), "/akses-ditolak: teks tidak tampil");
+  periksa(!/\son[a-z]+\s*=/i.test(html), "/halaman-yang-tidak-ada: ada atribut event handler inline");
+  periksa(!/\sstyle\s*=/i.test(html), "/halaman-yang-tidak-ada: ada atribut style inline");
+  periksa(/<main[^>]*id="isi"/.test(html), "/halaman-yang-tidak-ada: landmark <main id=isi> tidak ada");
+  periksa(html.includes("Data tidak ditemukan"), "/halaman-yang-tidak-ada: teks tidak tampil");
   const idHeader = ditolak.headers.get("x-correlation-id") ?? "";
-  periksa(html.replaceAll("<!-- -->", "").includes(`Kode referensi: ${idHeader}`), "/akses-ditolak: kode referensi tidak sama dengan X-Correlation-Id");
+  periksa(html.replaceAll("<!-- -->", "").includes(`Kode referensi: ${idHeader}`), "/halaman-yang-tidak-ada: kode referensi tidak sama dengan X-Correlation-Id");
 
   const dikirim = "0193a5e6-7f00-7abc-8def-0123456789ab";
-  const gema = await fetch(`${dasar}/akses-ditolak`, { headers: { "x-correlation-id": dikirim } });
+  const gema = await fetch(`${dasar}/halaman-yang-tidak-ada`, { headers: { "x-correlation-id": dikirim } });
   periksa(gema.headers.get("x-correlation-id") === dikirim, "X-Correlation-Id UUID sah dari klien tidak dipakai ulang");
-  const palsu = await fetch(`${dasar}/akses-ditolak`, { headers: { "x-correlation-id": "<script>x</script>" } });
+  const palsu = await fetch(`${dasar}/halaman-yang-tidak-ada`, { headers: { "x-correlation-id": "<script>x</script>" } });
   periksa(UUID.test(palsu.headers.get("x-correlation-id") ?? ""), "X-Correlation-Id tidak sah tidak diganti UUID baru");
   const nonce2 = /'nonce-([^']+)'/.exec(gema.headers.get("content-security-policy") ?? "")?.[1];
   periksa(nonce2 !== undefined && nonce2 !== nonce, "nonce tidak berganti antar permintaan");
@@ -159,7 +159,7 @@ try {
   periksa(salahMetode.status === 405, `GET /auth/logout: status ${salahMetode.status}, seharusnya 405`);
 
   const css = /href="(\/_next\/static\/[^"]+\.css)"/.exec(html)?.[1];
-  periksa(css !== undefined, "/akses-ditolak: tautan CSS berkas statis tidak ditemukan");
+  periksa(css !== undefined, "/halaman-yang-tidak-ada: tautan CSS berkas statis tidak ditemukan");
   if (css !== undefined) {
     const res = await fetch(`${dasar}${css}`);
     periksa(res.status === 200, `statis: status ${res.status}`);

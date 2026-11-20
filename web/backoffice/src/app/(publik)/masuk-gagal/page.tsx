@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LayarStatus } from "../../../komponen/LayarStatus.tsx";
 
 export const metadata: Metadata = { title: "Masuk tidak berhasil" };
@@ -17,9 +16,6 @@ export default async function MasukGagal({ searchParams }: { searchParams: Promi
       <a className="rs-btn rs-btn--primary" href="/auth/login">
         Masuk lagi
       </a>
-      <Link href="/akun-nonaktif" prefetch={false}>
-        Akun saya nonaktif
-      </Link>
     </LayarStatus>
   );
 }
