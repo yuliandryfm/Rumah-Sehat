@@ -82,4 +82,6 @@ docker compose -f infra/local/compose.yaml exec -e BAO_TOKEN="$BAO_DEV_ROOT_TOKE
 - Rahasia dibaca sekali saat start; pemuatan ulang saat rotasi tanpa restart `[TIDAK DIKETAHUI]` (belum dirancang).
 - Cookie `Secure` dari `http://127.0.0.1` saat pengembangan lokal: MDN hanya menyebut pengecualian untuk "localhost" `[SRC-597]`; perilaku browser untuk alamat IP loopback `[TIDAK DIKETAHUI]`, dibuktikan di e2e Playwright aplikasi.
 - Klien Keycloak belum punya back-channel logout URL, sehingga sesi yang diakhiri di Keycloak terdeteksi BFF saat penyegaran token berikutnya (paling lama masa token akses 5 menit, atau segera saat "Tetap masuk"), bukan seketika; API Rust tetap menolak lewat daftar sesi dicabut (ADR-011 butir 8).
+- Logout dari server gagal → browser diarahkan ke `end_session_endpoint` (hanya `client_id`; Keycloak meminta konfirmasi) supaya sesi SSO tidak tertinggal (review keamanan F1-T42).
+- Terbuka dari review keamanan F1-T42: penerusan IP klien ke API Rust/log (perlu keputusan trusted proxy Caddy); selisih idle BFF (aktivitas = permintaan BFF) dan idle Keycloak (diperbarui hanya saat penyegaran token); log security BFF belum memuat subjek atau IP.
 - Next.js belum dipasang di `web/backoffice`; berkas `route.ts` dan `next build` ditambahkan di task kerangka aplikasi.

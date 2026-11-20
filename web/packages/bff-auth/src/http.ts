@@ -131,16 +131,36 @@ export function readCookie(request: Request, name: string): string | undefined {
 
 /** Path relatif aman untuk redirect setelah login (mencegah open redirect). */
 export function safeReturnPath(value: string | null, fallback: string): string {
-  if (value === null || value.length > 512) {
+  // Review keamanan F1-T42 B-1: input ambigu ditolak SEBELUM parsing, lalu hasil normalisasi `URL` wajib
+  // identik dengan input dan tidak diawali `//` atau `/\`.
+  if (value === null || value.length === 0 || value.length > 512) {
     return fallback;
   }
-  // Hanya path absolut satu garis miring, tanpa skema/host, tanpa backslash atau karakter kontrol.
-  if (!/^\/(?![/\\])[A-Za-z0-9\-._~!$&'()*+,;=:@/%?]*$/.test(value)) {
+  // Daftar izin karakter: tanpa backslash, spasi, tab/newline/karakter kontrol, `#`, atau non-ASCII.
+  if (!/^\/[A-Za-z0-9\-._~!$&'()*+,;=:@/%?]*$/.test(value)) {
     return fallback;
   }
-  const u = new URL(value, "http://bff.invalid");
-  if (u.origin !== "http://bff.invalid") {
+  // Encoding yang dapat dinormalkan menjadi titik, garis miring, backslash, atau karakter kontrol; `%` liar.
+  if (/%(2e|2f|5c|[01][0-9a-f]|7f)/i.test(value) || /%(?![0-9a-f]{2})/i.test(value)) {
     return fallback;
   }
-  return `${u.pathname}${u.search}`;
+  const path = value.split("?", 1)[0] ?? "";
+  if (path !== "/") {
+    const segments = path.slice(1).split("/");
+    // Segmen `.`/`..` dan segmen kosong (`//`, `/a//b`) ditolak; hanya garis miring akhir tunggal yang boleh.
+    if (segments.some((seg, i) => seg === "." || seg === ".." || (seg === "" && i !== segments.length - 1))) {
+      return fallback;
+    }
+  }
+  let u: URL;
+  try {
+    u = new URL(value, "http://bff.invalid");
+  } catch {
+    return fallback;
+  }
+  const hasil = `${u.pathname}${u.search}`;
+  if (u.origin !== "http://bff.invalid" || hasil !== value || hasil.startsWith("//") || hasil.startsWith("/\\")) {
+    return fallback;
+  }
+  return hasil;
 }

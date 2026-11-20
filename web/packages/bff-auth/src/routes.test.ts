@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { loadBffConfig } from "./config.ts";
 import { createBffCore, type BffCore } from "./core.ts";
+import { safeReturnPath } from "./http.ts";
 import { createBffRoutes, type BffLogger, type BffRoutes } from "./routes.ts";
 import { BffBrowser, FakeApi, ORIGIN, expectNoSecrets, json, type Sent } from "./testing/bff-harness.ts";
 import { FakeOp } from "./testing/fake-op.ts";
@@ -103,6 +104,27 @@ describe("login dan callback (trace: ADR-011 butir 7)", () => {
     ["/\\evil.contoh.invalid"],
     ["javascript:alert(1)"],
     ["/%0d%0aSet-Cookie:x"],
+    // Review keamanan F1-T42 B-1: dinormalkan URL menjadi //evil.
+    ["/.//evil.contoh.invalid"],
+    ["/..//evil.contoh.invalid"],
+    ["/a/..//evil.contoh.invalid"],
+    ["/%2e//evil.contoh.invalid"],
+    ["/%2E%2E//evil.contoh.invalid"],
+    ["/.%2e//evil.contoh.invalid"],
+    ["/%2f/evil.contoh.invalid"],
+    ["/%2F%2Fevil.contoh.invalid"],
+    ["/%5cevil.contoh.invalid"],
+    ["/%5C%5Cevil.contoh.invalid"],
+    ["/\t/evil.contoh.invalid"],
+    ["/\n/evil.contoh.invalid"],
+    ["/%09/evil.contoh.invalid"],
+    ["/%0a/evil.contoh.invalid"],
+    ["\t//evil.contoh.invalid"],
+    ["/a//evil.contoh.invalid"],
+    ["/./x"],
+    ["/x/../y"],
+    ["/%zz"],
+    ["/x#//evil.contoh.invalid"],
   ])("return_to %s → diganti /", async (rt) => {
     const r1 = await browser.send(routes.login.GET, `/auth/login?return_to=${encodeURIComponent(rt)}`);
     const search = op.authorize(new URL(r1.res.headers.get("location") ?? ""));
@@ -112,6 +134,16 @@ describe("login dan callback (trace: ADR-011 butir 7)", () => {
     expect(loc.startsWith("//")).toBe(false);
     expect(new URL(loc, ORIGIN).origin).toBe(ORIGIN);
     expect(loc).not.toMatch(/[\r\n]/);
+    expect(loc).toBe("/");
+  });
+
+  test.each([
+    ["/antrean", "/antrean"],
+    ["/verifikasi?hal=2&q=a%20b", "/verifikasi?hal=2&q=a%20b"],
+    ["/akun/0193a1b2-0000-7000-8000-000000000001/", "/akun/0193a1b2-0000-7000-8000-000000000001/"],
+    ["/", "/"],
+  ])("return_to sah %s → dipertahankan", (rt, hasil) => {
+    expect(safeReturnPath(rt, "/")).toBe(hasil);
   });
 
   test("callback tanpa cookie transaksi login (CSRF login) → tidak ada sesi, kode tidak ditukar", async () => {
@@ -488,6 +520,12 @@ describe("status sesi, Tetap masuk, dan keluar (trace: KEPUTUSAN-170, US-103 AC5
       expect(r.res.status).toBe(303);
       expect((await core.sessions.load(sid)).status).toBe("absent");
       expect(events.some((e) => e.event === "bff_keycloak_logout_failed")).toBe(true);
+      // Cadangan: browser diarahkan ke end_session_endpoint dengan client_id saja (tanpa token di URL).
+      const loc = new URL(r.res.headers.get("location") ?? "");
+      expect(`${loc.origin}${loc.pathname}`).toBe(`${op.issuer}/protocol/openid-connect/logout`);
+      expect(loc.searchParams.get("client_id")).toBe("rs-backoffice-bff");
+      expect(loc.searchParams.has("id_token_hint")).toBe(false);
+      expectNoSecrets(browser.responses, op.issuedSecrets);
     } finally {
       await op.restart();
     }

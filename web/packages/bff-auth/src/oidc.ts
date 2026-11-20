@@ -175,6 +175,18 @@ export class OidcClient {
   }
 
   /**
+   * URL RP-Initiated Logout untuk browser (cadangan bila logout dari server gagal): hanya `client_id`, tanpa
+   * `id_token_hint`, sehingga tidak ada token di URL; Keycloak lalu meminta konfirmasi keluar [SRC-593].
+   * `null` bila issuer tidak mengiklankan `end_session_endpoint`.
+   */
+  endSessionUrl(): URL | null {
+    if (this.#config.serverMetadata().end_session_endpoint === undefined) {
+      return null;
+    }
+    return oidc.buildEndSessionUrl(this.#config, { client_id: this.#options.clientId });
+  }
+
+  /**
    * Mengakhiri sesi Keycloak dari server (lihat komentar berkas). Galat dilempar sebagai `OidcError`;
    * `invalid_grant`/400 berarti sesi Keycloak sudah tidak berlaku.
    */

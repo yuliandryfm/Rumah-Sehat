@@ -30,7 +30,7 @@ import {
   success,
   type BffCode,
 } from "./http.ts";
-import { OidcError } from "./oidc.ts";
+import { OidcError, type OidcClient } from "./oidc.ts";
 import { freshTokens } from "./refresh.ts";
 import { LOGIN_TX_TTL_MS, type Session } from "./session.ts";
 
@@ -322,13 +322,21 @@ export function createBffRoutes(getCore: () => Promise<BffCore>, options: BffRou
     // Sesi server diakhiri lebih dulu, apa pun hasil panggilan ke Keycloak.
     await core.sessions.destroy(r.session.id);
     if (tokens !== null) {
+      let oidc: OidcClient | null = null;
       try {
-        await (await core.oidc()).logout(tokens);
+        oidc = await core.oidc();
+        await oidc.logout(tokens);
       } catch (err) {
         logger?.security("bff_keycloak_logout_failed", {
           reason: err instanceof OidcError ? err.kind : "unknown",
           correlation_id: cid,
         });
+        // Cadangan (review keamanan F1-T42, non-blokir a): browser diarahkan ke end_session_endpoint supaya
+        // sesi SSO Keycloak tidak tertinggal di komputer bersama. Hanya `client_id`, tanpa token di URL.
+        const fallbackUrl = oidc?.endSessionUrl() ?? null;
+        if (fallbackUrl !== null) {
+          return redirect(fallbackUrl.href, cid, [clearCookie(names.session)]);
+        }
       }
     }
     return redirect(afterLogout, cid, [clearCookie(names.session)]);
