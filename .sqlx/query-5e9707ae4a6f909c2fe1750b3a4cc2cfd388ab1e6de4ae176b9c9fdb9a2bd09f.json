@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes FROM app.upload_slot WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "owner_account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "bucket",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "bucket"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "object_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "object_key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "allowed_mime_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "allowed_mime_type"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "max_size_bytes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "upload_slot",
+            "name": "max_size_bytes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5e9707ae4a6f909c2fe1750b3a4cc2cfd388ab1e6de4ae176b9c9fdb9a2bd09f"
+}

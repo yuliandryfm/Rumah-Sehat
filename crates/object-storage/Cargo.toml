@@ -1,0 +1,34 @@
+[package]
+name = "object-storage"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Klien object storage S3-kompatibel minimal (F1-T29; ADR-018, KEPUTUSAN-234, KEPUTUSAN-235; spike
+# docs/spike/F1-T03-penyimpanan-berkas.md): URL unggah bertanda tangan SigV4 (presigned POST dengan policy,
+# presigned PUT dengan Content-Type/Content-Length bertanda tangan) dan operasi server (HEAD, GET terbatas,
+# PUT, hapus semua versi). Tanda tangan SigV4 disusun dari HMAC-SHA256/SHA-256 crate `crypto` (satu pustaka
+# kripto, KEPUTUSAN-74/129); algoritma [SRC-550], vektor uji dihasilkan botocore [SRC-551].
+# Versi sama dengan yang sudah dipin crate crypto (F1-T27, [SRC-484] [SRC-483]); tidak ada crate eksternal baru.
+# Klien HTTP: hyper HTTP/1 langsung seperti klien OpenBao (reqwest ditolak lisensi, [SRC-489]); hanya `http://`
+# (lokal). TLS ke NEO belum diterapkan (gagal-tertutup), lihat dokumentasi crate.
+[dependencies]
+foundation = { path = "../foundation" }
+crypto = { path = "../crypto" }
+base64 = { version = "=0.23.1", default-features = false, features = ["alloc"] }
+bytes = { version = "=1.12.2", default-features = false, features = ["std"] }
+http = "=1.5.0"
+http-body-util = { version = "=0.1.5", default-features = false }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time"] }
+
+[dev-dependencies]
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true
