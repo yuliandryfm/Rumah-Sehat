@@ -7,6 +7,7 @@ Modul kritis T1 (`CLAUDE.md`, ADR-011). Perubahan manual lewat konsol admin dila
 | `keycloak.conf` | Konfigurasi server: parameter Argon2 19456 KB / 2 iterasi / paralelisme 1 `[SRC-526]` `[SRC-527]` |
 | `realms/pasien.json`, `realms/admin.json` | Realm `pasien` dan `admin` untuk keycloak-config-cli 6.5.1 `[SRC-520]` |
 | `test/keycloak_check.py`, `test/kc_http.py` | Test konfigurasi (Admin REST) dan perilaku (OIDC, halaman login), pustaka standar Python 3 |
+| `themes/ruang-sehat/login/` | Tema login Ruang Sehat (F1-T35): lihat bagian "Tema login" |
 | `test/SmtpSink.java` | Penangkap SMTP khusus test tanpa TLS, dipakai mode `compose` (bukan relay ADR-026) |
 | `test/SesTiruan.java` | Tiruan SES API v2 HTTPS khusus test (mode `ephemeral`): memvalidasi SigV4, menyimpan MIME yang diterima, jawaban galat dapat diatur (F1-T36) |
 
@@ -33,7 +34,7 @@ Sama di `pasien` dan `admin`, kecuali batas sesi dan klien:
 - **Verifikasi email lebih dulu**: required action Verify Email berprioritas 5, sebelum Configure OTP (10), sehingga TOTP tidak dapat didaftarkan pada akun yang emailnya belum terverifikasi (review keamanan F1-T31, cegah pre-account hijack).
 - **Konsol akun Keycloak tertutup**: klien `account-console` nonaktif dan default role tanpa `account/manage-account`, supaya ubah password/TOTP tidak lewat konsol akun di luar alur aplikasi.
 - **Direct grant**: tidak ada klien dengan grant password (termasuk `admin-cli` realm), dan alur `rs-direct-grant-mfa` tetap mewajibkan OTP bila kelak diaktifkan tanpa sengaja.
-- **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage`, `invalidEmailMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); penyamaan struktur halaman menjadi bagian tema (F1-T35).
+- **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); struktur halaman disamakan oleh tema `ruang-sehat` (F1-T35, bagian "Tema login").
 - **SMTP** ke relay internal ADR-026: STARTTLS wajib, tanpa AUTH, tanpa `debug`, host/port/pengirim dari variabel lingkungan (KEPUTUSAN-231). Relay: `rs-backend email-relay` (F1-T36, crate `crates/email-relay` + adaptor `crates/ses`). Sertifikat relay dari CA internal dipercaya Keycloak lewat `conf/truststores`/`KC_TRUSTSTORE_PATHS` dengan `tls-hostname-verifier` `DEFAULT` `[SRC-583]`.
 - **Event** login dan admin disimpan 7 hari, tanpa detail representasi admin (ADR-011 butir 10).
 
@@ -48,9 +49,20 @@ Audience API backend dan pemeta klaim belum diatur; ditetapkan bersama validasi 
 
 Impor keycloak-config-cli dijalankan tanpa cache, tetapi hanya menimpa atribut yang ada di JSON: klien atau IdP tambahan buatan manual tidak terhapus. `scripts/keycloak-check.sh` GAGAL bila ada klien di luar konfigurasi (ditambah klien bawaan Keycloak) atau IdP apa pun.
 
+## Tema login (F1-T35)
+
+Tema `ruang-sehat` (jenis `login`, parent `keycloak.v2`, SRC-630, SRC-631), dipakai realm `pasien` dan `admin` (`loginTheme`), satu bahasa Indonesia (`supportedLocales: ["id"]`, tanpa pemilih bahasa). Mencakup login, Lupa password, OTP dan kode pemulihan, pendaftaran TOTP, verifikasi email, dan ubah password (aktivasi undangan) lewat templat bawaan yang distel oleh `messages_id.properties` dan CSS.
+
+- `theme.properties`: `parent=keycloak.v2`, `locales=id`, `darkMode=false`, `styles` = `css/styles.css css/tokens.css css/ruang-sehat.css`.
+- `resources/css/tokens.css`: salinan persis `web/packages/ui/src/tokens.css`; test membandingkan isi yang disajikan Keycloak dengan berkas sumber. Perbarui salinan ini bila token berubah.
+- `login.ftl`: satu-satunya templat yang ditimpa. Galat login digambar sebagai satu blok `#kc-login-error` (`role="alert"`) untuk semua kegagalan (password salah, akun tidak ada, terkunci, nonaktif), tanpa galat per isian, sehingga DOM identik (UP-73, TD-16). Pesan dari kunci tema `rsLoginGagal`; realm override pesan tetap dipasang sebagai lapis kedua.
+- Tanpa skrip, font, atau aset pihak ketiga: semua sumber daya dari Keycloak sendiri; font sistem. CSP Keycloak tidak diubah (`frame-src 'self'; frame-ancestors 'self'; object-src 'none';`, diuji).
+- Dipasang dengan mount `infra/keycloak/themes/ruang-sehat` ke `/opt/keycloak/themes/ruang-sehat` (compose dan `scripts/keycloak-check.sh ephemeral`).
+
 ## Belum diketahui dan temuan terbuka
 
-- Struktur halaman akun nonaktif (banner) berbeda dari password salah (galat isian) walau teksnya identik: tema F1-T35.
+- Pemaketan tema untuk production (JAR dengan `META-INF/keycloak-themes.json` di `providers/`, SRC-630) dan nilai cache tema di luar `start-dev`: ditetapkan bersama skrip deploy `[TIDAK DIKETAHUI]`; lokal dan CI memasang direktori tema ke `/opt/keycloak/themes/ruang-sehat`.
+- Tema belum diuji dengan peramban sungguhan (kontras, reflow 320 px, pembaca layar): hanya DOM, header, dan aset yang diuji otomatis; uji manual `[TIDAK DIKETAHUI]`.
 - Alur atur ulang password langsung menerbitkan kode otorisasi setelah password baru, berbeda dengan US-103 AC4d ("tidak otomatis masuk"): F1-T74.
 
 - Daftar kata sandi umum/bocor dan lisensinya untuk kebijakan "Password blacklist" (KEPUTUSAN-188) `[TIDAK DIKETAHUI]`; kebijakan `passwordBlacklist` belum dipasang.
