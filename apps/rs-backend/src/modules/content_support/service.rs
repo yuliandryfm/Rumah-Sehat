@@ -600,7 +600,7 @@ fn file_error(e: FileError) -> ContentError {
         FileError::TooLarge => ContentError::PayloadTooLarge,
         FileError::UnsupportedType => ContentError::UnsupportedMediaType,
         FileError::Validation(v) => ContentError::Validation(v),
-        FileError::StorageUnavailable => ContentError::Unavailable,
+        FileError::StorageUnavailable | FileError::Busy => ContentError::Unavailable,
         FileError::Internal(what) => ContentError::Internal(what),
     }
 }
@@ -695,7 +695,7 @@ pub(super) async fn attach_image(
         if !domain::can_edit(status) {
             return Err(ContentError::StatusConflict);
         }
-        let file_id = platform::record_stored_file(&mut tx, &upload, None)
+        let file_id = platform::record_stored_file(&mut tx, clock, &upload, None)
             .await
             .map_err(file_error)?;
         if !repo::set_image(&mut tx, id, actor.account_id(), file_id, &alt).await? {

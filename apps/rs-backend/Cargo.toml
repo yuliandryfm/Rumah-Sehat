@@ -5,7 +5,7 @@ edition = "2024"
 publish = false
 default-run = "rs-backend"
 
-# Satu biner dengan subcommand api | worker | audit-relay | audit-verify (KEPUTUSAN-89; realtime dan
+# Satu biner dengan subcommand api | worker | audit-relay | audit-verify | email-relay (KEPUTUSAN-89; realtime dan
 # privacy-worker menyusul di task masing-masing). Versi: docs/05-stack.md §1.1 (axum 0.8.9 [SRC-163];
 # tokio 1.54.1 [SRC-162]; utoipa 6.0.0 [SRC-168]; serde 1.0.229 [SRC-167]; serde_json 1.0.154 [SRC-335];
 # utoipa-axum 0.3.0 dan pengecekan lain: docs/sources.md SRC-377 dst).
@@ -21,7 +21,7 @@ authn = { path = "../../crates/authn" }
 authz = { path = "../../crates/authz" }
 # F1-T92: fitur `query` (ekstraktor Query; menarik serde_urlencoded 0.7.1 [SRC-601]).
 axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path", "json", "query"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
 utoipa-axum = { version = "=0.3.0", default-features = false }
 serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
@@ -30,6 +30,9 @@ tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
 # Modul platform berkas (F1-T29, ADR-018): object storage, metadata berkas di DB aplikasi, validasi isi foto.
 object-storage = { path = "../../crates/object-storage" }
 crypto = { path = "../../crates/crypto" }
+# email-relay (F1-T36, ADR-026): relay SMTP di crate email-relay, adaptor SES v2 di crate ses.
+email-relay = { path = "../../crates/email-relay" }
+ses = { path = "../../crates/ses" }
 # sqlx 0.9.1 [SRC-165][SRC-510]: fitur sama dengan crate audit/platform-jobs (tanpa TLS di pustaka).
 sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
 # F1-T92: `formatting`/`parsing` untuk waktu ISO 8601/RFC 3339 dengan offset di API CMS (ADR-017 butir 1);
@@ -43,10 +46,11 @@ image = { version = "=0.25.10", default-features = false, features = ["jpeg", "p
 pulldown-cmark = { version = "=0.13.6", default-features = false }
 
 [dev-dependencies]
+# F1-T30: kunci realm uji dan token bertanda tangan untuk test unduh lewat PolicyRouter (fitur testing hanya
+# di dev-dependencies, tidak ikut biner produksi; pola sama dengan crate authz).
+authn = { path = "../../crates/authn", features = ["testing"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
 time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
-# Token uji bertanda tangan kunci realm uji (tanpa Keycloak; F1-T92, coding-standards §7.2).
-authn = { path = "../../crates/authn", features = ["testing"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
 [lints]

@@ -6,7 +6,7 @@
 //! [`ObjectStorageError::TlsUnsupported`] sampai klien TLS diterapkan (TLS antar-host: docs/05-stack.md §2.1).
 //! Isi respons penyedia tidak pernah dibawa ke galat atau log.
 
-use crate::config::{ObjectStorageConfig, Scheme};
+use crate::config::{ObjectStorageConfig, Scheme, valid_object_key};
 use crate::error::ObjectStorageError;
 use crate::presign::{Presigner, Target};
 use crate::xml::{VersionEntry, parse_version_page};
@@ -43,6 +43,23 @@ impl fmt::Debug for GetOutcome {
             Self::Body(b) => write!(f, "Body({} byte)", b.len()),
         }
     }
+}
+
+/// Kursor halaman [`ObjectStore::list_version_keys`] (penanda `key-marker`/`version-id-marker` dari
+/// respons sebelumnya) [SRC-553].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionListCursor {
+    key_marker: String,
+    version_id_marker: Option<String>,
+}
+
+/// Satu halaman kunci berversi di bawah satu prefiks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionKeysPage {
+    /// Kunci (lengkap dengan prefiks) yang masih punya versi atau penanda hapus.
+    pub keys: Vec<String>,
+    /// Kursor halaman berikutnya; `None` bila ini halaman terakhir.
+    pub next: Option<VersionListCursor>,
 }
 
 /// Klien object storage: penanda tangan + operasi server.
@@ -290,6 +307,52 @@ impl ObjectStore {
         }
     }
 
+    /// Satu halaman `ListObjectVersions` dengan prefiks dan penanda (DELETE dan daftar memakai halaman ini).
+    async fn version_page(
+        &self,
+        bucket: &str,
+        prefix: &str,
+        key_marker: Option<&str>,
+        version_marker: Option<&str>,
+        now: OffsetDateTime,
+    ) -> Result<crate::xml::VersionPage, ObjectStorageError> {
+        let target = self.presigner.target(bucket, None)?;
+        let mut query: Vec<(&str, &str)> = vec![("versions", ""), ("prefix", prefix)];
+        if let Some(m) = key_marker {
+            query.push(("key-marker", m));
+        }
+        if let Some(m) = version_marker {
+            query.push(("version-id-marker", m));
+        }
+        let r = self
+            .send(
+                Op {
+                    query: &query,
+                    max_response: MAX_LIST_RESPONSE_BYTES,
+                    ..Op::new(Method::GET, &target)
+                },
+                now,
+            )
+            .await?;
+        if !r.status.is_success() {
+            return Err(ObjectStorageError::Rejected {
+                status: r.status.as_u16(),
+            });
+        }
+        if r.over_limit {
+            return Err(ObjectStorageError::InvalidResponse);
+        }
+        let text = std::str::from_utf8(&r.body).map_err(|_| ObjectStorageError::InvalidResponse)?;
+        let page = parse_version_page(text)?;
+        if page.is_truncated
+            && page.next_key_marker.is_none()
+            && page.next_version_id_marker.is_none()
+        {
+            return Err(ObjectStorageError::InvalidResponse);
+        }
+        Ok(page)
+    }
+
     /// Semua versi dan penanda hapus milik kunci persis `key` (`ListObjectVersions` dengan prefiks,
     /// berhalaman) [SRC-553].
     pub async fn list_versions(
@@ -298,39 +361,22 @@ impl ObjectStore {
         key: &str,
         now: OffsetDateTime,
     ) -> Result<Vec<String>, ObjectStorageError> {
-        let target = self.presigner.target(bucket, None)?;
+        if !valid_object_key(key) {
+            return Err(ObjectStorageError::InvalidInput("key"));
+        }
         let mut out = Vec::new();
         let mut key_marker: Option<String> = None;
         let mut version_marker: Option<String> = None;
         for _ in 0..MAX_LIST_PAGES {
-            let mut query: Vec<(&str, &str)> = vec![("versions", ""), ("prefix", key)];
-            if let Some(m) = key_marker.as_deref() {
-                query.push(("key-marker", m));
-            }
-            if let Some(m) = version_marker.as_deref() {
-                query.push(("version-id-marker", m));
-            }
-            let r = self
-                .send(
-                    Op {
-                        query: &query,
-                        max_response: MAX_LIST_RESPONSE_BYTES,
-                        ..Op::new(Method::GET, &target)
-                    },
+            let page = self
+                .version_page(
+                    bucket,
+                    key,
+                    key_marker.as_deref(),
+                    version_marker.as_deref(),
                     now,
                 )
                 .await?;
-            if !r.status.is_success() {
-                return Err(ObjectStorageError::Rejected {
-                    status: r.status.as_u16(),
-                });
-            }
-            if r.over_limit {
-                return Err(ObjectStorageError::InvalidResponse);
-            }
-            let text =
-                std::str::from_utf8(&r.body).map_err(|_| ObjectStorageError::InvalidResponse)?;
-            let page = parse_version_page(text)?;
             out.extend(
                 page.entries
                     .into_iter()
@@ -340,13 +386,63 @@ impl ObjectStore {
             if !page.is_truncated {
                 return Ok(out);
             }
-            if page.next_key_marker.is_none() && page.next_version_id_marker.is_none() {
-                return Err(ObjectStorageError::InvalidResponse);
-            }
             key_marker = page.next_key_marker;
             version_marker = page.next_version_id_marker;
         }
         Err(ObjectStorageError::InvalidResponse)
+    }
+
+    /// Satu halaman kunci yang masih punya versi atau penanda hapus di bawah `prefix` (diakhiri `/`,
+    /// misalnya `incoming/`), untuk rekonsiliasi bucket terhadap database (TD-17). Versi lama ikut
+    /// dihitung: kunci yang versi terbarunya penanda hapus masih menyimpan isi di versi lamanya. Kunci
+    /// diurutkan penyedia dan dideduplikasi per halaman; kunci yang terbelah dua halaman dapat muncul
+    /// dua kali (pemrosesan pemanggil wajib idempoten). `cursor` = [`VersionKeysPage::next`] halaman
+    /// sebelumnya.
+    pub async fn list_version_keys(
+        &self,
+        bucket: &str,
+        prefix: &str,
+        cursor: Option<&VersionListCursor>,
+        now: OffsetDateTime,
+    ) -> Result<VersionKeysPage, ObjectStorageError> {
+        if !prefix.strip_suffix('/').is_some_and(valid_object_key) {
+            return Err(ObjectStorageError::InvalidInput("prefix"));
+        }
+        let page = self
+            .version_page(
+                bucket,
+                prefix,
+                cursor.map(|c| c.key_marker.as_str()),
+                cursor.and_then(|c| c.version_id_marker.as_deref()),
+                now,
+            )
+            .await?;
+        let mut keys: Vec<String> = page
+            .entries
+            .into_iter()
+            .map(|e| e.key)
+            .filter(|k| k.starts_with(prefix))
+            .collect();
+        keys.sort();
+        keys.dedup();
+        let next = if page.is_truncated {
+            let key_marker = page
+                .next_key_marker
+                .or_else(|| cursor.map(|c| c.key_marker.clone()))
+                .ok_or(ObjectStorageError::InvalidResponse)?;
+            let next = VersionListCursor {
+                key_marker,
+                version_id_marker: page.next_version_id_marker,
+            };
+            // Penanda yang tidak maju berarti putaran tanpa akhir: respons tidak valid.
+            if cursor == Some(&next) {
+                return Err(ObjectStorageError::InvalidResponse);
+            }
+            Some(next)
+        } else {
+            None
+        };
+        Ok(VersionKeysPage { keys, next })
     }
 
     /// Menghapus objek beserta seluruh versi dan penanda hapusnya (ADR-018 butir 2 dan 5), lalu memastikan
