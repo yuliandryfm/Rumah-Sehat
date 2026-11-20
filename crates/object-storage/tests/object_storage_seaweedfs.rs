@@ -185,3 +185,51 @@ async fn wrong_secret_is_rejected_by_provider() {
         other => panic!("harus ditolak 403: {other:?}"),
     }
 }
+
+// trace: TD-17 (rekonsiliasi: kunci berversi per prefiks `incoming/` dan `files/`)
+#[tokio::test(flavor = "multi_thread")]
+async fn version_keys_are_listed_per_prefix_with_old_versions() {
+    let sw = SeaweedFs::start().await;
+    let store = sw.store();
+    let bucket = sw.versioned_bucket("rs-uji-list").await;
+    let a = format!("incoming/{}", foundation::new_id());
+    let b = format!("incoming/{}", foundation::new_id());
+    let f = format!("files/{}", foundation::new_id());
+    for (k, n) in [(&a, 2u8), (&b, 1), (&f, 1)] {
+        for i in 0..n {
+            store
+                .put_object(&bucket, k, "image/png", vec![i; 4], now())
+                .await
+                .unwrap();
+        }
+    }
+    let page = store
+        .list_version_keys(&bucket, "incoming/", None, now())
+        .await
+        .unwrap();
+    let mut want = vec![a.clone(), b.clone()];
+    want.sort();
+    // Kunci dengan dua versi muncul sekali; kunci di prefiks lain tidak ikut.
+    assert_eq!(page.keys, want);
+    assert!(page.next.is_none());
+    let page = store
+        .list_version_keys(&bucket, "files/", None, now())
+        .await
+        .unwrap();
+    assert_eq!(page.keys, vec![f.clone()]);
+    // Setelah semua versi dihapus, kunci tidak lagi terdaftar.
+    store.delete_all_versions(&bucket, &a, now()).await.unwrap();
+    let page = store
+        .list_version_keys(&bucket, "incoming/", None, now())
+        .await
+        .unwrap();
+    assert_eq!(page.keys, vec![b.clone()]);
+    // Prefiks harus berakhiran `/` dan bersegmen sah (ditolak sebelum permintaan dikirim).
+    for bad in ["incoming", "", "/", "../", "a//"] {
+        assert_eq!(
+            store.list_version_keys(&bucket, bad, None, now()).await,
+            Err(ObjectStorageError::InvalidInput("prefix")),
+            "{bad}"
+        );
+    }
+}

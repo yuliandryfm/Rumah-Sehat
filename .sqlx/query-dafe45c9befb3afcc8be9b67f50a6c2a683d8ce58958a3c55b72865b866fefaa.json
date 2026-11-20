@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.upload_slot SET sanitized_object_key = NULL WHERE id = $1 AND sanitized_object_key = $2 AND consumed_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dafe45c9befb3afcc8be9b67f50a6c2a683d8ce58958a3c55b72865b866fefaa"
+}
