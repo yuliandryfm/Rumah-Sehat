@@ -5,12 +5,13 @@
 //! tidak dapat berbeda. Berkas hasilnya di-commit di `openapi/` dan harus sama dengan hasil generate
 //! (test `tests/openapi_sync.rs`, langkah `openapi-sinkron` di `scripts/verify.sh`).
 //!
-//! Berkas yang dihasilkan: `ops.json` (endpoint operasional tanpa audiens: kesehatan). Berkas per
-//! audiens (`pasien`, `nakes`, `backoffice`, `portal`, `partner-v1`, `webhook`, `rme`;
-//! docs/05-stack.md §7) ditambahkan task yang memperkenalkan endpoint audiens itu.
+//! Berkas yang dihasilkan: `ops.json` (endpoint operasional tanpa audiens: kesehatan) dan `backoffice.json`
+//! (F1-T92, `/backoffice/v1`). Berkas audiens lain (`pasien`, `nakes`, `portal`, `partner-v1`, `webhook`,
+//! `rme`; docs/05-stack.md §7) ditambahkan task yang memperkenalkan endpoint audiens itu.
 
 use serde::Serialize;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{Modify, OpenApi, ToSchema};
 
 /// Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.
 #[derive(Debug, Serialize, ToSchema)]
@@ -52,6 +53,34 @@ pub struct ErrorEnvelope {
     pub correlation_id: String,
 }
 
+/// Pagination cursor `meta` (ADR-023 butir 1), sama dengan `envelope::Meta`.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MetaSchema {
+    /// Cursor halaman berikutnya; `null` bila tidak ada.
+    pub next_cursor: Option<String>,
+    /// Apakah masih ada data setelah halaman ini.
+    pub has_more: bool,
+}
+
+/// Skema keamanan `bearer`: token akses Keycloak di header `Authorization` (diteruskan BFF backoffice,
+/// ADR-011 butir 7; token tidak pernah sampai ke browser).
+struct BearerAuth;
+
+impl Modify for BearerAuth {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "bearer",
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .bearer_format("JWT")
+                    .build(),
+            ),
+        );
+    }
+}
+
 /// Dasar spesifikasi operasional; path dan skema ditambahkan dari anotasi handler.
 #[derive(OpenApi)]
 #[openapi(
@@ -64,13 +93,37 @@ pub struct ErrorEnvelope {
 )]
 pub struct OpsApiDoc;
 
+/// Dasar spesifikasi backoffice (admin Ruang Sehat, realm `admin`); path dari anotasi handler modul.
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Ruang Sehat: API backoffice",
+        description = "Endpoint backoffice admin Ruang Sehat (realm admin, sub-peran per endpoint, UP-18). Format respons: ADR-023.",
+        version = env!("CARGO_PKG_VERSION")
+    ),
+    tags((name = "cms", description = "Konten (CMS) aplikasi dan situs")),
+    modifiers(&BearerAuth)
+)]
+pub struct BackofficeApiDoc;
+
 /// Seluruh spesifikasi yang dihasilkan sebagai pasangan (nama berkas, isi JSON). Isi diakhiri satu
 /// baris baru; urutan kunci deterministik (utoipa memakai BTreeMap tanpa fitur `preserve_order`).
+/// `ops.json` selalu pertama (dipakai test `openapi_schema_drift`).
 pub fn generate() -> Result<Vec<(&'static str, String)>, serde_json::Error> {
-    let mut ops = crate::app::ops_router().into_openapi();
-    // utoipa mengisi lisensi kosong bawaan; lisensi proyek [TIDAK DIKETAHUI], jadi tidak diklaim.
-    ops.info.license = None;
-    let mut json = ops.to_pretty_json()?;
-    json.push('\n');
-    Ok(vec![("ops.json", json)])
+    let specs = [
+        ("ops.json", crate::app::ops_router().into_openapi()),
+        (
+            "backoffice.json",
+            crate::app::backoffice_router().into_openapi(),
+        ),
+    ];
+    let mut out = Vec::with_capacity(specs.len());
+    for (name, mut spec) in specs {
+        // utoipa mengisi lisensi kosong bawaan; lisensi proyek [TIDAK DIKETAHUI], jadi tidak diklaim.
+        spec.info.license = None;
+        let mut json = spec.to_pretty_json()?;
+        json.push('\n');
+        out.push((name, json));
+    }
+    Ok(out)
 }

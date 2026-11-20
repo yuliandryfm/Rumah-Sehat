@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.stored_file (id, bucket, object_key, category, mime_type, size_bytes, sha256, validated_at) VALUES ($1, 'public_content', $2, 'cms_image', 'image/png', 10, $3, now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6732c5a902e25f46cb2a18a36693d9a45704acb0e6c739ceb046c5e0dc3c2954"
+}

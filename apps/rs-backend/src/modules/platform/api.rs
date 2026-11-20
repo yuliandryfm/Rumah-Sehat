@@ -41,6 +41,30 @@ pub trait ReadinessCheck: Send + Sync {
     fn check(&self) -> ReadinessFuture<'_>;
 }
 
+/// Kesiapan database aplikasi: satu koneksi dari pool dapat diambil (sqlx memeriksa koneksi sebelum
+/// diserahkan). Tanpa query ke tabel mana pun.
+#[derive(Debug, Clone)]
+pub struct DatabaseReadiness {
+    pool: PgPool,
+}
+
+impl DatabaseReadiness {
+    /// Pemeriksaan atas pool proses `api`.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+impl ReadinessCheck for DatabaseReadiness {
+    fn name(&self) -> &'static str {
+        "database_app"
+    }
+
+    fn check(&self) -> ReadinessFuture<'_> {
+        Box::pin(async move { self.pool.acquire().await.is_ok() })
+    }
+}
+
 /// Bawaan umur slot dan URL unggah (detik). Usulan teknis F1-T29: ADR-018 hanya menyebut "berumur pendek";
 /// 10 menit memberi ruang unggah 5 MiB lewat jaringan seluler lambat.
 pub const DEFAULT_UPLOAD_SLOT_TTL_SECONDS: u64 = 600;

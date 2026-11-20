@@ -4,12 +4,20 @@
 //! proses mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
 //! penyebaran yang mengira proses itu berjalan.
 
-use crate::app::{AppState, build_router};
+use crate::app::{AppServices, AppState, build_router};
 use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig};
+use crate::http_support::EnvelopeRenderer;
+use crate::modules::identity::api::DbPrincipalResolver;
+use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
+use authn::{
+    Algorithm, AuthState, Authenticator, AuthnConfig, Backend, HttpJwksSource, Realm, RealmConfig,
+};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
+use sqlx::postgres::PgPoolOptions;
+use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
@@ -254,16 +262,65 @@ fn run_api(config: ApiConfig) -> ExitCode {
 
 async fn serve(config: ApiConfig) -> std::io::Result<()> {
     let listener = TcpListener::bind(config.base.http_bind).await?;
-    tracing::info!(bind = %listener.local_addr()?, "api_listening");
-    let state = AppState::new(&config.problem_type_base, Vec::new());
-    let router = build_router(state).map_err(|e| {
+    // Galat penyiapan dicatat dengan nama bagian saja (tanpa nilai konfigurasi, KEPUTUSAN-132).
+    let setup_failed = |part: &'static str| {
+        tracing::error!(part = part, "api_setup_failed");
+        std::io::Error::other("api_setup_failed")
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    let pool = PgPoolOptions::new()
+        .max_connections(config.database_max_connections.get())
+        .acquire_timeout(Duration::from_secs(5))
+        .connect_lazy(config.database_url.expose())
+        .map_err(|_| setup_failed("api_database_url"))?;
+    let files = FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
+    let jwks = HttpJwksSource::new(&config.admin_realm.jwks_url, Duration::from_secs(5))
+        .map_err(|_| setup_failed("auth_admin_jwks_url"))?;
+    let authenticator = Authenticator::new(
+        AuthnConfig::with_defaults(
+            Backend::RuangSehat,
+            vec![RealmConfig {
+                realm: Realm::Admin,
+                issuer: config.admin_realm.issuer.clone(),
+                audiences: vec![config.admin_realm.audience.clone()],
+                algorithms: vec![Algorithm::RS256],
+                authorized_parties: Vec::new(),
+                jwks: Arc::new(jwks),
+            }],
+        ),
+        Arc::clone(&clock),
+    )
+    .map_err(|_| setup_failed("auth_admin"))?;
+    let auth = AuthState::new(
+        Arc::new(authenticator),
+        Arc::new(EnvelopeRenderer::new(&config.problem_type_base)),
+    );
+    let resolver = Arc::new(DbPrincipalResolver::new(pool.clone()));
+    let readiness: Vec<Arc<dyn ReadinessCheck>> =
+        vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
+    let state = AppState::new(
+        &config.problem_type_base,
+        readiness,
+        AppServices {
+            pool,
+            clock,
+            files: Arc::new(files),
+        },
+    );
+    let router = build_router(state, auth, resolver).map_err(|e| {
         // Rute tanpa kebijakan atau kebijakan tidak valid: start gagal (KEPUTUSAN-127).
         tracing::error!("policy_setup_failed: {e}");
         std::io::Error::other("policy_setup_failed")
     })?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
+    tracing::info!(bind = %listener.local_addr()?, "api_listening");
+    // ConnectInfo: alamat peer TCP untuk sumber audit dan batas laju per sumber. Di balik reverse proxy,
+    // alamat ini adalah proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md, PT-39).
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
 }
 
 /// Selesai pada SIGINT atau SIGTERM (Docker Compose mengirim SIGTERM).
