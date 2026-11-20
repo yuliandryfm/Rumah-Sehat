@@ -267,6 +267,7 @@ LANGUAGE sql AS $f$
              THEN 'SECURITY DEFINER tidak diizinkan dokumen'
            WHEN p.prosecdef AND p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, audit']
              THEN 'SECURITY DEFINER tanpa SET search_path persis pg_catalog, audit (§6.3)'
+           WHEN p.prosecdef THEN NULL                       -- audit.fn_chain_head yang sah (F1-T21)
            WHEN (n.nspname, p.proname) = ('util', 'fn_current_fasyankes_id')
              THEN CASE WHEN p.proconfig IS NOT NULL THEN 'fn_current_fasyankes_id tidak boleh memasang SET (§5.2)' END
            WHEN p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, pg_temp']
