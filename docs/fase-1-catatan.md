@@ -52,3 +52,11 @@ Catatan orkestrator selama Fase 1 (bahan `docs/fase-1-laporan.md` di F1-T71). St
   - TD-01(a) + F1-T16 + F1-T17 (branch `worktree-agent-ae5db0b532d091f0e`: 8c7ec79, 4c46e11, 65389a7): verify hijau, 506 pemeriksaan migrasi. **Belum direview DBA + keamanan.**
   - F1-T19 BERHENTI: `consent_record` butuh FK ke `patient`/`care_recipient` (F1-T18), padahal phase plan menulis F1-T19 hanya bergantung F1-T16. Usulan: kerjakan F1-T19 setelah F1-T18.
 - CR-021: analisis + review kepatuhan/keamanan LULUS DENGAN CATATAN; keputusan user diajukan (Telegram, 1–4); fact-check `docs/fact-check/CR-021.md` sedang/baru berjalan.
+
+## Posisi akhir pemanggilan /runbook auto (2026-11-19, batas 20 task)
+
+- Di-merge ke `tahap-08-fase-1` (HEAD setelah b9300ee): F1-T01–F1-T18 kecuali F1-T19, spike F1-T02 (ADR-026) dan F1-T03, TD-01, desain CR-021 F1-T83/F1-T84. verify.sh 14 langkah HIJAU.
+- Berikutnya (urutan CR-022, Fase 1 asli dulu): F1-T19 (persetujuan, setelah T18), F1-T20 dst. (audit trail, Keycloak realm + MFA, RBAC, enkripsi, berkas, BFF, kerangka web), lalu CR-021 F1-T85 dst.
+- Dokumen yang perlu dihitung ulang: phase plan §6.2a dengan 7 hari/minggu (arahan user), urutan CR-022.
+- Tech debt baru: TD-07–TD-10 (review F1-T18).
+- Tindakan user: branch protection `main` di GitHub; bersihkan folder scratchpad lama bila masih ada.
