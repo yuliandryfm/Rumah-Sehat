@@ -669,10 +669,11 @@ def cek_drift(realm):
 
 
 def cek_pasca_kunci():
-    """Mendokumentasikan perilaku penguncian Keycloak 26.8.2 SETELAH masa kunci berakhir (SRC-525), di realm
-    uji sementara dengan Wait Increment/Max Wait pendek dan parameter lain disalin dari realm `pasien`.
-    Bukan penetapan AC3: keputusan user atas temuan ini masih ditunggu; ubah harapan test bila diputuskan lain."""
-    print("== [uji] perilaku pasca-kunci (dokumentasi, realm uji sementara)")
+    """US-103 AC3 (revisi, KEPUTUSAN-285): perilaku penguncian Keycloak 26.8.2 SETELAH masa kunci berakhir
+    (SRC-525). Hitungan gagal hanya kembali nol setelah login berhasil atau Failure Reset Time 12 jam, sehingga
+    satu gagal setelah kunci berakhir langsung mengunci lagi. Diuji di realm uji sementara dengan Wait
+    Increment/Max Wait pendek; parameter lain disalin dari realm `pasien`."""
+    print("== [uji] penguncian pasca-kunci (US-103 AC3, KEPUTUSAN-285; realm uji sementara)")
     nama = f"t31-kunci-{secrets.token_hex(3)}"
     sumber = ADMIN.get("pasien")
     tunggu = 4
@@ -708,7 +709,7 @@ def cek_pasca_kunci():
         coba("Salah-" + secrets.token_hex(4))
         st = status()
         periksa(st.get("disabled") is True and st.get("numFailures") == 6,
-                "[uji] PERILAKU SEKARANG: satu gagal setelah kunci berakhir langsung mengunci lagi (hitungan tidak direset)", str(st))
+                "[uji] satu gagal setelah kunci berakhir langsung mengunci lagi; hitungan tidak direset (KEPUTUSAN-285)", str(st))
         time.sleep(tunggu + 1.5)
         periksa(coba(user.password) and status().get("numFailures") == 0,
                 "[uji] login berhasil setelah kunci berakhir mereset hitungan ke 0")

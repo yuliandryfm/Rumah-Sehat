@@ -23,7 +23,7 @@ bash scripts/keycloak-check.sh ephemeral   # Keycloak sekali pakai, untuk CI/ver
 Sama di `pasien` dan `admin`, kecuali batas sesi dan klien:
 
 - **Pendaftaran bawaan mati** (`registrationAllowed: false`), email sebagai username, profil user hanya `username` dan `email` yang hanya dapat diubah admin (lewat backend), required action Update Email/Update Profile mati (KEPUTUSAN-201, ADR-011 butir 6).
-- **Brute force sementara**: 5 gagal, kunci 900 detik, strategi linear, Max Wait 900 detik, Failure Reset Time 12 jam, Quick Login Check bawaan (KEPUTUSAN-190) `[SRC-521]` `[SRC-525]`.
+- **Brute force sementara**: 5 gagal, kunci 900 detik, strategi linear, Max Wait 900 detik, Failure Reset Time 12 jam, Quick Login Check bawaan (KEPUTUSAN-190) `[SRC-521]` `[SRC-525]`. Hitungan gagal kembali nol hanya setelah login berhasil atau Failure Reset Time, sehingga satu gagal setelah kunci berakhir langsung mengunci lagi (US-103 AC3 revisi, KEPUTUSAN-285; test `cek_pasca_kunci`).
 - **Token**: Revoke Refresh Token aktif dengan `refreshTokenMaxReuse` 0, token akses 300 detik. Sesi `pasien` 30 hari/90 hari, `admin` 30 menit/12 jam (ADR-011 butir 7).
 - **MFA wajib**: alur `rs-browser-mfa` mengikuti pola dokumentasi "Conditional 2FA sub-flow with OTP default" `[SRC-523]`. User yang punya OTP atau kode pemulihan wajib memasukkan salah satunya; user tanpa faktor kedua dipaksa Configure OTP sebelum kode otorisasi terbit `[SRC-524]`. Configure OTP memakai `add-recovery-codes`, sehingga kode pemulihan wajib dibuat setelah TOTP dan tersimpan sebagai required action user (KEPUTUSAN-203) `[SRC-522]`. Kebijakan OTP TOTP SHA1 6 digit 30 detik, kode tidak dapat dipakai ulang (KEPUTUSAN-85).
 - **Atur ulang password tidak melewati MFA**: alur `rs-reset-credentials-mfa` meminta OTP atau kode pemulihan setelah tautan email dibuka dan sebelum Reset Password. Langkah bawaan `reset-otp` (yang mengatur ulang OTP) tidak dipakai (KEPUTUSAN-199, US-103 AC4e) `[SRC-521]`. Tautan berlaku 60 menit.
@@ -47,7 +47,6 @@ Impor keycloak-config-cli dijalankan tanpa cache, tetapi hanya menimpa atribut y
 
 ## Belum diketahui dan temuan terbuka
 
-- Penguncian setelah masa kunci berakhir: satu kegagalan berikutnya langsung mengunci lagi karena hitungan hanya direset oleh login berhasil atau Failure Reset Time `[SRC-525]`. Berbeda dengan rumusan "5 kegagalan baru" di US-103 AC3; menunggu keputusan user. Perilaku sekarang didokumentasikan test `cek_pasca_kunci` (realm uji sementara).
 - Struktur halaman akun nonaktif (banner) berbeda dari password salah (galat isian) walau teksnya identik: tema F1-T35.
 - Alur atur ulang password langsung menerbitkan kode otorisasi setelah password baru, berbeda dengan US-103 AC4d ("tidak otomatis masuk"): F1-T74.
 
