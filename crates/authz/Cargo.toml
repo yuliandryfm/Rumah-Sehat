@@ -1,0 +1,30 @@
+[package]
+name = "authz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Otorisasi endpoint (F1-T37, modul kritis T1, ADR-012, KEPUTUSAN-127, coding-standards §5.4): registri
+# kebijakan per endpoint, pembungkus router yang mewajibkan kebijakan + pemeriksaan saat start, middleware
+# default deny, sub-peran admin (UP-18), dan 404 untuk objek terlarang (ADR-012 butir 4, KU-03).
+# Versi: axum 0.8.9 [SRC-163]; utoipa 6.0.0 [SRC-168]; utoipa-axum 0.3.0 [SRC-378]; tracing 0.1.44 [SRC-174].
+# Tanpa dependensi pihak ketiga baru.
+[dependencies]
+authn = { path = "../authn" }
+envelope = { path = "../envelope" }
+foundation = { path = "../foundation" }
+observability = { path = "../observability" }
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "matched-path"] }
+utoipa = { version = "=6.0.0", default-features = false, features = ["macros"] }
+utoipa-axum = { version = "=0.3.0", default-features = false }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+authn = { path = "../authn", features = ["testing"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

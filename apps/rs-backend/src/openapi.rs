@@ -67,7 +67,7 @@ pub struct OpsApiDoc;
 /// Seluruh spesifikasi yang dihasilkan sebagai pasangan (nama berkas, isi JSON). Isi diakhiri satu
 /// baris baru; urutan kunci deterministik (utoipa memakai BTreeMap tanpa fitur `preserve_order`).
 pub fn generate() -> Result<Vec<(&'static str, String)>, serde_json::Error> {
-    let mut ops = crate::app::ops_router().split_for_parts().1;
+    let mut ops = crate::app::ops_router().into_openapi();
     // utoipa mengisi lisensi kosong bawaan; lisensi proyek [TIDAK DIKETAHUI], jadi tidak diklaim.
     ops.info.license = None;
     let mut json = ops.to_pretty_json()?;
