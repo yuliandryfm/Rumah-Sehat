@@ -37,6 +37,12 @@ impl ConfigError {
         }
     }
 
+    /// Galat "tidak valid" untuk aturan lintas variabel yang diperiksa pemanggil, misalnya variabel yang hanya
+    /// sah di lingkungan tertentu (F1-T36). Tetap hanya memuat nama variabel.
+    pub fn invalid(name: &str) -> Self {
+        Self::new(ConfigErrorKind::Invalid, name)
+    }
+
     /// Jenis masalah.
     pub fn kind(&self) -> ConfigErrorKind {
         self.kind

@@ -1,7 +1,8 @@
-//! Backend Ruang Sehat (F1-T11): satu biner dengan subcommand `api`, `worker`, `audit-relay`, dan
-//! `audit-verify` (docs/coding-standards.md §1.1, KEPUTUSAN-89): `api`, `worker` (F1-T34, pengambil event
-//! Keycloak di modul `identity`), `audit-relay` (F1-T24, relay audit di crate `audit`), dan `audit-verify`
-//! (F1-T25, crate `audit-store`).
+//! Backend Ruang Sehat (F1-T11): satu biner dengan subcommand `api`, `worker`, `audit-relay`,
+//! `audit-verify`, dan `email-relay` (docs/coding-standards.md §1.1, KEPUTUSAN-89): `api`, `worker` (F1-T34,
+//! pengambil event Keycloak di modul `identity`), `audit-relay` (F1-T24, relay audit di crate `audit`),
+//! `audit-verify` (F1-T25, crate `audit-store`), dan `email-relay` (F1-T36, ADR-026: crate `email-relay` +
+//! adaptor `ses`).
 //!
 //! Lapisan: [`cli`] (pemilihan subcommand dan siklus hidup proses), [`config`] (konfigurasi bertipe),
 //! [`app`] (perakitan router, middleware, fallback), [`http_support`] (adaptor envelope ADR-023 ke

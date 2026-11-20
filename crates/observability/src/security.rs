@@ -234,6 +234,12 @@ impl AuditWriteFailure {
     }
 }
 
+/// Relay email membuang pesan karena batas laju per penerima tercapai (ADR-026 butir 4; review keamanan F1-T36):
+/// dasar peringatan atas kemungkinan penahanan email korban. Hanya ID korelasi relay; tanpa alamat.
+pub fn email_recipient_rate_dropped(correlation_id: Uuid) {
+    warn!(target: SECURITY_TARGET, event_type = "email_recipient_rate_dropped", relay_correlation_id = %correlation_id.hyphenated(), "security_event");
+}
+
 /// Penulisan event audit gagal; aksi pemanggil dibatalkan (ADR-009 butir 2, klarifikasi T-21 US-1501 AC3).
 /// Hanya kode event dan tahap kegagalan; isi event dan pesan galat database tidak dicatat.
 pub fn audit_write_failed(event_code: &'static str, stage: AuditWriteFailure) {

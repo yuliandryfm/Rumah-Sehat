@@ -148,6 +148,155 @@ impl AuditVerifyConfig {
     }
 }
 
+/// Lingkungan penerapan (`DEPLOY_ENV`) untuk `email-relay`: `local`, `staging`, atau `production`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeployEnv {
+    /// Laptop developer dan test.
+    Local,
+    /// Staging.
+    Staging,
+    /// Production.
+    Production,
+}
+
+impl std::str::FromStr for DeployEnv {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "local" => Ok(Self::Local),
+            "staging" => Ok(Self::Staging),
+            "production" => Ok(Self::Production),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Daftar izin pengirim `EMAIL_RELAY_ALLOWED_FROM` (dipisah koma, minimal satu alamat valid).
+#[derive(Debug, Clone)]
+pub struct AllowedFrom(pub Vec<email_relay::address::Mailbox>);
+
+impl std::str::FromStr for AllowedFrom {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let list = s
+            .split(',')
+            .map(|a| email_relay::address::Mailbox::parse(a.trim()).ok_or(()))
+            .collect::<Result<Vec<_>, _>>()?;
+        if list.is_empty() {
+            Err(())
+        } else {
+            Ok(Self(list))
+        }
+    }
+}
+
+/// Konfigurasi `rs-backend email-relay` (F1-T36, ADR-026): relay SMTP per host ke SES API v2 Jakarta.
+/// Proses ini hanya memegang token OpenBao yang dapat membaca kunci SES (policy per host, KEPUTUSAN-79) dan
+/// sertifikat TLS relay; tidak memegang kredensial database.
+#[derive(Debug, Clone)]
+pub struct EmailRelayConfig {
+    /// `LOG_LEVEL` (dan `HTTP_BIND`, tidak dipakai proses ini).
+    pub base: BaseConfig,
+    /// `DEPLOY_ENV`: `SES_LOCAL_ENDPOINT` hanya diterima bila `local`.
+    pub deploy_env: DeployEnv,
+    /// `EMAIL_RELAY_BIND`: alamat listen SMTP di jaringan Docker khusus host (wajib, tanpa bawaan).
+    pub bind: std::net::SocketAddr,
+    /// `EMAIL_RELAY_HOSTNAME` (bawaan `email-relay`): nama di sapaan/EHLO, sama dengan SAN sertifikat.
+    pub hostname: String,
+    /// `EMAIL_RELAY_TLS_CERT_FILE`: rantai sertifikat PEM relay (CA internal).
+    pub tls_cert_file: PathBuf,
+    /// `EMAIL_RELAY_TLS_KEY_FILE`: kunci privat PEM relay.
+    pub tls_key_file: PathBuf,
+    /// `EMAIL_RELAY_ALLOWED_FROM`: daftar izin pengirim.
+    pub allowed_from: AllowedFrom,
+    /// `EMAIL_RELAY_MAX_MESSAGE_BYTES` (bawaan 262144).
+    pub max_message_bytes: usize,
+    /// `EMAIL_RELAY_GLOBAL_PER_MINUTE` (bawaan 60; kuota SES bawaan 1 email/detik [SRC-294]).
+    pub global_per_minute: u32,
+    /// `EMAIL_RELAY_PER_RECIPIENT_PER_HOUR` (bawaan 5).
+    pub per_recipient_per_hour: u32,
+    /// `EMAIL_RELAY_MAX_CONNECTIONS` (bawaan 16).
+    pub max_connections: usize,
+    /// `EMAIL_RELAY_IDLE_TIMEOUT_SECS` (bawaan 30).
+    pub idle_timeout_secs: u64,
+    /// `EMAIL_RELAY_SESSION_TIMEOUT_SECS` (bawaan 120).
+    pub session_timeout_secs: u64,
+    /// `SES_CONFIGURATION_SET`: configuration set email Keycloak (wajib TLS ke penerima, KEPUTUSAN-229).
+    pub ses_configuration_set: String,
+    /// `SES_TIMEOUT_MS` (bawaan 8000, maksimum 9000; < batas tulis Keycloak 10000 ms).
+    pub ses_timeout_ms: u64,
+    /// `SES_CA_FILE` (bawaan `/etc/ssl/certs/ca-certificates.crt`): CA tepercaya untuk TLS ke SES.
+    pub ses_ca_file: PathBuf,
+    /// `SES_LOCAL_ENDPOINT` (opsional, hanya `DEPLOY_ENV=local`): tiruan SES HTTPS untuk test.
+    pub ses_local_endpoint: Option<String>,
+    /// `OPENBAO_ADDR`: alamat OpenBao.
+    pub openbao_addr: String,
+    /// `OPENBAO_TOKEN`: token OpenBao proses relay (rahasia).
+    pub openbao_token: Sensitive<String>,
+    /// `SES_CREDENTIALS_KV_MOUNT` (bawaan `secret`): mount KV v2.
+    pub ses_kv_mount: String,
+    /// `SES_CREDENTIALS_KV_PATH`: path rahasia berisi `access_key_id` dan `secret_access_key`.
+    pub ses_kv_path: String,
+}
+
+impl EmailRelayConfig {
+    /// Memuat dari sumber; gagal cepat tanpa mencetak nilai.
+    pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
+        let deploy_env: DeployEnv = env.required("DEPLOY_ENV")?;
+        let ses_local_endpoint: Option<String> =
+            match env.optional_or("SES_LOCAL_ENDPOINT", String::new())? {
+                v if v.is_empty() => None,
+                // Endpoint selain SES Jakarta hanya untuk tiruan SES lokal (ADR-026: region ap-southeast-3).
+                _ if deploy_env != DeployEnv::Local => {
+                    return Err(ConfigError::invalid("SES_LOCAL_ENDPOINT"));
+                }
+                v => Some(v),
+            };
+        Ok(Self {
+            base: BaseConfig::load(env)?,
+            deploy_env,
+            bind: env.required("EMAIL_RELAY_BIND")?,
+            hostname: env.optional_or("EMAIL_RELAY_HOSTNAME", "email-relay".to_string())?,
+            tls_cert_file: env.required("EMAIL_RELAY_TLS_CERT_FILE")?,
+            tls_key_file: env.required("EMAIL_RELAY_TLS_KEY_FILE")?,
+            allowed_from: env.required("EMAIL_RELAY_ALLOWED_FROM")?,
+            max_message_bytes: env.optional_or("EMAIL_RELAY_MAX_MESSAGE_BYTES", 262_144)?,
+            global_per_minute: env.optional_or("EMAIL_RELAY_GLOBAL_PER_MINUTE", 60)?,
+            per_recipient_per_hour: env.optional_or("EMAIL_RELAY_PER_RECIPIENT_PER_HOUR", 5)?,
+            max_connections: env.optional_or("EMAIL_RELAY_MAX_CONNECTIONS", 16)?,
+            idle_timeout_secs: env.optional_or("EMAIL_RELAY_IDLE_TIMEOUT_SECS", 30)?,
+            session_timeout_secs: env.optional_or("EMAIL_RELAY_SESSION_TIMEOUT_SECS", 120)?,
+            ses_configuration_set: env.required("SES_CONFIGURATION_SET")?,
+            ses_timeout_ms: env.optional_or("SES_TIMEOUT_MS", 8_000)?,
+            ses_ca_file: env.optional_or(
+                "SES_CA_FILE",
+                PathBuf::from("/etc/ssl/certs/ca-certificates.crt"),
+            )?,
+            ses_local_endpoint,
+            openbao_addr: env.required("OPENBAO_ADDR")?,
+            openbao_token: env.required_secret("OPENBAO_TOKEN")?,
+            ses_kv_mount: env.optional_or("SES_CREDENTIALS_KV_MOUNT", "secret".to_string())?,
+            ses_kv_path: env.required("SES_CREDENTIALS_KV_PATH")?,
+        })
+    }
+
+    /// Pengaturan relay (divalidasi lagi oleh `email_relay::Relay::new`).
+    pub fn relay_settings(&self) -> email_relay::RelaySettings {
+        email_relay::RelaySettings {
+            hostname: self.hostname.clone(),
+            allowed_from: self.allowed_from.0.clone(),
+            max_message_bytes: self.max_message_bytes,
+            global_per_minute: self.global_per_minute,
+            per_recipient_per_hour: self.per_recipient_per_hour,
+            max_connections: self.max_connections,
+            idle_timeout: std::time::Duration::from_secs(self.idle_timeout_secs),
+            session_timeout: std::time::Duration::from_secs(self.session_timeout_secs),
+        }
+    }
+}
+
 /// Konfigurasi `rs-backend worker` (F1-T34): login `rs_worker` ke `ruang_sehat` dan pengambil event Keycloak
 /// (ADR-011 butir 10). Proses ini tidak memegang kredensial relay/penulis audit (ADR-009 butir 3).
 #[derive(Debug, Clone)]
@@ -271,6 +420,81 @@ mod tests {
             assert_eq!(e.name(), "DEPLOY_ENV", "{deploy:?}");
             let e = AuditVerifyConfig::load(&EnvSource::from_pairs(verify)).unwrap_err();
             assert_eq!(e.name(), "DEPLOY_ENV", "{deploy:?}");
+        }
+    }
+
+    fn email_relay_env(extra: &[(&'static str, &'static str)]) -> EnvSource {
+        let mut v = vec![
+            ("DEPLOY_ENV", "local"),
+            ("EMAIL_RELAY_BIND", "127.0.0.1:2525"),
+            ("EMAIL_RELAY_TLS_CERT_FILE", "/run/relay/cert.pem"),
+            ("EMAIL_RELAY_TLS_KEY_FILE", "/run/relay/key.pem"),
+            (
+                "EMAIL_RELAY_ALLOWED_FROM",
+                "noreply@uji.invalid, alert@uji.invalid",
+            ),
+            ("SES_CONFIGURATION_SET", "rs-keycloak"),
+            ("OPENBAO_ADDR", "http://127.0.0.1:8200"),
+            ("OPENBAO_TOKEN", "token-uji-sintetis"),
+            ("SES_CREDENTIALS_KV_PATH", "ruang-sehat/ses/email-relay"),
+        ];
+        v.extend_from_slice(extra);
+        EnvSource::from_pairs(v)
+    }
+
+    #[test]
+    fn email_relay_loads_with_defaults_and_hides_token() {
+        let c = EmailRelayConfig::load(&email_relay_env(&[])).unwrap();
+        assert_eq!(c.allowed_from.0.len(), 2);
+        assert_eq!((c.ses_timeout_ms, c.max_message_bytes), (8_000, 262_144));
+        assert_eq!((c.global_per_minute, c.per_recipient_per_hour), (60, 5));
+        assert_eq!(c.ses_kv_mount, "secret");
+        assert!(c.ses_local_endpoint.is_none());
+        assert!(c.relay_settings().validate().is_ok());
+        assert!(!format!("{c:?}").contains("token-uji-sintetis"));
+    }
+
+    #[test]
+    fn email_relay_rejects_invalid_values_by_name() {
+        for (k, v) in [
+            ("EMAIL_RELAY_ALLOWED_FROM", "bukan-alamat"),
+            ("EMAIL_RELAY_ALLOWED_FROM", "a@uji.invalid,,b@uji.invalid"),
+            ("EMAIL_RELAY_BIND", "semua"),
+            ("DEPLOY_ENV", "dev"),
+            ("SES_TIMEOUT_MS", "x"),
+        ] {
+            let e = EmailRelayConfig::load(&email_relay_env(&[(k, v)])).unwrap_err();
+            assert_eq!(
+                (e.kind(), e.name()),
+                (ConfigErrorKind::Invalid, k),
+                "{k}={v}"
+            );
+        }
+        let missing = EnvSource::from_pairs([("DEPLOY_ENV", "local")]);
+        assert_eq!(
+            EmailRelayConfig::load(&missing).unwrap_err().kind(),
+            ConfigErrorKind::Missing
+        );
+    }
+
+    #[test]
+    fn ses_local_endpoint_only_in_local() {
+        let ok = EmailRelayConfig::load(&email_relay_env(&[(
+            "SES_LOCAL_ENDPOINT",
+            "https://127.0.0.1:18443",
+        )]))
+        .unwrap();
+        assert_eq!(
+            ok.ses_local_endpoint.as_deref(),
+            Some("https://127.0.0.1:18443")
+        );
+        for d in ["staging", "production"] {
+            let env = EnvSource::from_pairs([
+                ("DEPLOY_ENV", d),
+                ("SES_LOCAL_ENDPOINT", "https://127.0.0.1:18443"),
+            ]);
+            let e = EmailRelayConfig::load(&env).unwrap_err();
+            assert_eq!(e.name(), "SES_LOCAL_ENDPOINT", "{d}");
         }
     }
 

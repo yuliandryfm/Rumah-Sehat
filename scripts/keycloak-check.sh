@@ -15,10 +15,15 @@
 #   bash scripts/keycloak-check.sh ephemeral [rinci]
 #       Kontainer Keycloak sekali pakai (image dan konfigurasi server sama dengan compose, DB dev-file),
 #       port acak di 127.0.0.1, kredensial admin dan secret klien acak sekali pakai. Untuk CI/verify.
+#       Email realm berjalan end-to-end lewat relay ADR-026 sungguhan (F1-T36): Keycloak → STARTTLS ke
+#       `email-relay` (rs-backend email-relay, sertifikat dari CA uji yang dibangkitkan saat test, dipercaya
+#       lewat conf/truststores Keycloak) → tiruan SES HTTPS yang memvalidasi SigV4 (SesTiruan.java). Kunci
+#       akses SES (contoh fiktif AWS) dibaca relay dari OpenBao dev sekali pakai. Tidak ada panggilan ke AWS.
 #   "rinci" mencetak setiap baris LULUS; tanpa itu hanya galat dan ringkasan.
 #
-# Butuh: docker, python3 (pustaka standar saja). Penangkap SMTP uji dijalankan di kontainer image Keycloak
-# yang sama, di namespace jaringan kontainer Keycloak (hanya 127.0.0.1), dan selalu dihapus saat keluar.
+# Butuh: docker, python3 (pustaka standar saja), cargo dan openssl (mode ephemeral). Kontainer bantu (penangkap
+# SMTP pada mode compose; relay, tiruan SES, dan OpenBao pada mode ephemeral) berada di namespace jaringan
+# kontainer Keycloak (hanya 127.0.0.1) dan selalu dihapus saat keluar.
 # Tidak ada rahasia di berkas ini; nilai rahasia tidak dicetak. Jangan dipakai ke staging/production.
 
 set -euo pipefail
@@ -44,13 +49,18 @@ cd "$ROOT"
 
 COMPOSE_FILE="infra/local/compose.yaml"
 SINK_PORT=2526
+SES_PORT=18443
 SINK=""
+RELAY=""
+BAO=""
 KC_EPHEMERAL=""
 KERJA="$(mktemp -d)"
 
 bersihkan() {
-  if [ -n "$SINK" ]; then docker rm -f "$SINK" >/dev/null 2>&1 || true; fi
-  if [ -n "$KC_EPHEMERAL" ]; then docker rm -f "$KC_EPHEMERAL" >/dev/null 2>&1 || true; fi
+  local c
+  for c in "$RELAY" "$SINK" "$BAO" "$KC_EPHEMERAL"; do
+    if [ -n "$c" ]; then docker rm -f "$c" >/dev/null 2>&1 || true; fi
+  done
   rm -rf "$KERJA"
 }
 trap bersihkan EXIT
@@ -62,7 +72,8 @@ for alat in docker python3; do
   fi
 done
 for f in "$COMPOSE_FILE" infra/keycloak/keycloak.conf infra/keycloak/realms/pasien.json infra/keycloak/realms/admin.json \
-  infra/keycloak/test/keycloak_check.py infra/keycloak/test/kc_http.py infra/keycloak/test/SmtpSink.java; do
+  infra/keycloak/test/keycloak_check.py infra/keycloak/test/kc_http.py infra/keycloak/test/SmtpSink.java \
+  infra/keycloak/test/SesTiruan.java; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -75,8 +86,12 @@ baca_image() { # baca_image <awalan repo>
 }
 IMG_KC="$(baca_image quay.io/keycloak/keycloak)"
 IMG_CLI="$(baca_image adorsys/keycloak-config-cli)"
-if [ -z "$IMG_KC" ] || [ -z "$IMG_CLI" ]; then
-  echo "image keycloak/keycloak-config-cli (tag@digest) tidak terbaca dari $COMPOSE_FILE" >&2
+# Mode ephemeral: OpenBao dev untuk kunci SES relay; image postgres (Debian, glibc >= 2.38) hanya sebagai
+# lingkungan jalan biner relay hasil `cargo build` (biner butuh glibc 2.38; image Keycloak memuat 2.34).
+IMG_BAO="$(baca_image openbao/openbao)"
+IMG_PG="$(sed -n 's|^[[:space:]]*image:[[:space:]]*\(postgres:[^[:space:]]*@sha256:[0-9a-f]*\)[[:space:]]*$|\1|p' "$COMPOSE_FILE" | sed -n '1p')"
+if [ -z "$IMG_KC" ] || [ -z "$IMG_CLI" ] || [ -z "$IMG_BAO" ] || [ -z "$IMG_PG" ]; then
+  echo "image keycloak/keycloak-config-cli/openbao/postgres (tag@digest) tidak terbaca dari $COMPOSE_FILE" >&2
   exit 1
 fi
 
@@ -142,12 +157,55 @@ else
   RS_KC_EVENT_READER_PASIEN_SECRET="$(acak)"
   RS_KC_EVENT_READER_ADMIN_SECRET="$(acak)"
   export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET
+  for alat in cargo openssl; do
+    if ! command -v "$alat" >/dev/null 2>&1; then
+      echo "$alat tidak ditemukan di PATH (mode ephemeral: relay email F1-T36)" >&2
+      exit 1
+    fi
+  done
+  echo "==> membangun relay (cargo build -p rs-backend)"
+  if ! cargo build --quiet --locked -p rs-backend --bin rs-backend; then
+    echo "GAGAL: build rs-backend gagal" >&2
+    exit 1
+  fi
+  RELAY_BIN="${CARGO_TARGET_DIR:-$ROOT/target}/debug/rs-backend"
+  case "$RELAY_BIN" in /*) ;; *) RELAY_BIN="$ROOT/$RELAY_BIN" ;; esac
+  echo "==> CA uji dan sertifikat relay/tiruan SES (openssl, berlaku 1 hari)"
+  PKI="$KERJA/pki"
+  mkdir -p "$PKI"
+  SES_P12_PASSWORD="$(acak)"
+  export SES_P12_PASSWORD
+  if ! (
+    cd "$PKI"
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout ca.key -out ca.pem -days 1 \
+      -subj /CN=rs-uji-ca -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
+    for nama in relay:DNS:email-relay ses:IP:127.0.0.1; do
+      berkas="${nama%%:*}"
+      printf 'subjectAltName=%s\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\n' \
+        "${nama#*:}" >"$berkas.ext"
+      openssl req -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout "$berkas.key" -out "$berkas.csr" \
+        -subj "/CN=$berkas-uji"
+      openssl x509 -req -in "$berkas.csr" -CA ca.pem -CAkey ca.key -CAcreateserial -out "$berkas.pem" -days 1 \
+        -extfile "$berkas.ext"
+    done
+    openssl pkcs12 -export -in ses.pem -inkey ses.key -out ses.p12 -passout env:SES_P12_PASSWORD
+    rm -f ca.key ./*.csr
+    chmod 644 ca.pem
+  ) >"$KERJA/pki.log" 2>&1; then
+    echo "GAGAL: pembuatan CA uji gagal; log:" >&2
+    cat "$KERJA/pki.log" >&2
+    exit 1
+  fi
   echo "==> Keycloak ephemeral ($IMG_KC)"
   # Nilai rahasia diteruskan lewat `-e NAMA` (diambil dari lingkungan), tidak muncul di argumen proses.
+  # `email-relay` diarahkan ke 127.0.0.1 namespace Keycloak (relay di kontainer yang berbagi namespace itu);
+  # CA uji dipercaya lewat conf/truststores, tls-hostname-verifier tetap DEFAULT (KEPUTUSAN-231, SRC-301).
   KC_BOOTSTRAP_ADMIN_USERNAME="$KC_CHECK_ADMIN_USER" KC_BOOTSTRAP_ADMIN_PASSWORD="$KC_CHECK_ADMIN_PASSWORD" \
-    docker run -d --name "$KC" -p 127.0.0.1::8080 \
+    docker run -d --name "$KC" -p 127.0.0.1::8080 --add-host email-relay:127.0.0.1 \
     -e KC_BOOTSTRAP_ADMIN_USERNAME -e KC_BOOTSTRAP_ADMIN_PASSWORD \
+    -e KC_TRUSTSTORE_PATHS=/opt/keycloak/conf/truststores \
     -v "$ROOT/infra/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro" \
+    -v "$PKI/ca.pem:/opt/keycloak/conf/truststores/rs-uji-ca.pem:ro" \
     "$IMG_KC" start-dev >/dev/null
   PORT="$(docker port "$KC" 8080/tcp | sed -n 's/^127\.0\.0\.1:\([0-9]*\)$/\1/p' | sed -n '1p')"
   if [ -z "$PORT" ]; then
@@ -188,23 +246,92 @@ PY
   fi
 fi
 
-echo "==> penangkap SMTP uji (namespace jaringan Keycloak, 127.0.0.1:$SINK_PORT)"
-SINK="rs-kc-smtp-sink-$$-$RANDOM"
-docker run -d --name "$SINK" --network "container:$KC" \
-  -v "$ROOT/infra/keycloak/test/SmtpSink.java:/sink/SmtpSink.java:ro" \
-  --entrypoint java "$IMG_KC" /sink/SmtpSink.java "$SINK_PORT" /tmp/mail >/dev/null
-siap=""
-for _ in $(seq 1 60); do
-  if docker logs "$SINK" 2>/dev/null | grep -q "smtp-sink siap"; then
-    siap=1
-    break
+tunggu_log() { # tunggu_log <kontainer> <teks> <detik>
+  local i
+  for i in $(seq 1 "$3"); do
+    if docker logs "$1" 2>&1 | grep -q "$2"; then
+      return 0
+    fi
+    if [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null || true)" != "true" ]; then
+      return 1
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+if [ "$MODE" = "compose" ]; then
+  # Keycloak compose tidak memuat CA uji relay; email diuji lewat penangkap SMTP tanpa TLS (fixture realm
+  # sementara di keycloak_check.py). Jalur relay end-to-end hanya di mode ephemeral.
+  echo "==> penangkap SMTP uji (namespace jaringan Keycloak, 127.0.0.1:$SINK_PORT)"
+  SINK="rs-kc-smtp-sink-$$-$RANDOM"
+  docker run -d --name "$SINK" --network "container:$KC" \
+    -v "$ROOT/infra/keycloak/test/SmtpSink.java:/sink/SmtpSink.java:ro" \
+    --entrypoint java "$IMG_KC" /sink/SmtpSink.java "$SINK_PORT" /tmp/mail >/dev/null
+  if ! tunggu_log "$SINK" "smtp-sink siap" 60; then
+    echo "GAGAL: penangkap SMTP uji tidak siap" >&2
+    docker logs --tail 20 "$SINK" >&2 || true
+    exit 1
   fi
-  sleep 1
-done
-if [ -z "$siap" ]; then
-  echo "GAGAL: penangkap SMTP uji tidak siap" >&2
-  docker logs --tail 20 "$SINK" >&2 || true
-  exit 1
+  export KC_CHECK_EMAIL_MODE=sink
+else
+  UJI_UID="$(id -u):$(id -g)"
+  # Kunci akses contoh fiktif dari dokumentasi AWS (bukan rahasia); tidak pernah dikirim ke AWS.
+  export SES_TIRUAN_KEY_ID="AKIAIOSFODNN7EXAMPLE" SES_TIRUAN_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  echo "==> OpenBao dev sekali pakai (kunci SES relay di KV, namespace jaringan Keycloak)"
+  BAO="rs-kc-openbao-$$-$RANDOM"
+  BAO_TOKEN="$(acak)"
+  export BAO_TOKEN
+  BAO_DEV_ROOT_TOKEN_ID="$BAO_TOKEN" docker run -d --name "$BAO" --network "container:$KC" --cap-add IPC_LOCK \
+    -e BAO_DEV_ROOT_TOKEN_ID -e BAO_DEV_LISTEN_ADDRESS=127.0.0.1:8200 "$IMG_BAO" server -dev >/dev/null
+  siap=""
+  for _ in $(seq 1 60); do
+    if docker exec -e BAO_ADDR=http://127.0.0.1:8200 "$BAO" bao status >/dev/null 2>&1; then
+      siap=1
+      break
+    fi
+    sleep 1
+  done
+  if [ -z "$siap" ] || ! docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN -e SES_TIRUAN_KEY_ID -e SES_TIRUAN_SECRET \
+    "$BAO" sh -c 'bao kv put secret/ruang-sehat/ses/email-relay access_key_id="$SES_TIRUAN_KEY_ID" secret_access_key="$SES_TIRUAN_SECRET"' \
+    >/dev/null; then
+    echo "GAGAL: OpenBao dev tidak siap atau kunci SES tidak tertulis" >&2
+    docker logs --tail 20 "$BAO" >&2 || true
+    exit 1
+  fi
+  echo "==> tiruan SES HTTPS (namespace jaringan Keycloak, 127.0.0.1:$SES_PORT)"
+  SINK="rs-kc-ses-tiruan-$$-$RANDOM"
+  SES_TIRUAN_P12_PASSWORD="$SES_P12_PASSWORD" docker run -d --name "$SINK" --network "container:$KC" --user "$UJI_UID" \
+    -e SES_TIRUAN_P12_PASSWORD -e SES_TIRUAN_KEY_ID -e SES_TIRUAN_SECRET \
+    -v "$ROOT/infra/keycloak/test/SesTiruan.java:/t/SesTiruan.java:ro" -v "$PKI:/pki:ro" \
+    --entrypoint java "$IMG_KC" /t/SesTiruan.java "$SES_PORT" /pki/ses.p12 /tmp/mail /tmp/ses-json >/dev/null
+  if ! tunggu_log "$SINK" "ses-tiruan siap" 60; then
+    echo "GAGAL: tiruan SES tidak siap" >&2
+    docker logs --tail 20 "$SINK" >&2 || true
+    exit 1
+  fi
+  # Batas per penerima dinaikkan untuk harness: satu user uji menerima banyak email, dan pesan di atas batas
+  # dibalas 250 lalu dibuang (ADR-026 butir 4) sehingga kegagalan SES tidak lagi terlihat. Perilaku batas laju
+  # diuji di crates/email-relay/tests/relay_smtp.rs.
+  echo "==> relay email (rs-backend email-relay, namespace jaringan Keycloak, 127.0.0.1:$RS_KC_SMTP_PORT)"
+  RELAY="rs-kc-email-relay-$$-$RANDOM"
+  OPENBAO_TOKEN="$BAO_TOKEN" docker run -d --name "$RELAY" --network "container:$KC" --user "$UJI_UID" \
+    -v "$RELAY_BIN:/relay/rs-backend:ro" -v "$PKI:/pki:ro" \
+    -e LOG_LEVEL=info -e DEPLOY_ENV=local -e EMAIL_RELAY_BIND="127.0.0.1:$RS_KC_SMTP_PORT" \
+    -e EMAIL_RELAY_TLS_CERT_FILE=/pki/relay.pem -e EMAIL_RELAY_TLS_KEY_FILE=/pki/relay.key \
+    -e EMAIL_RELAY_ALLOWED_FROM="$RS_KC_SMTP_FROM" -e SES_CONFIGURATION_SET=rs-keycloak-uji \
+    -e EMAIL_RELAY_PER_RECIPIENT_PER_HOUR=1000 \
+    -e SES_LOCAL_ENDPOINT="https://127.0.0.1:$SES_PORT" -e SES_CA_FILE=/pki/ca.pem \
+    -e OPENBAO_ADDR=http://127.0.0.1:8200 -e OPENBAO_TOKEN \
+    -e SES_CREDENTIALS_KV_PATH=ruang-sehat/ses/email-relay \
+    --entrypoint /relay/rs-backend "$IMG_PG" email-relay >/dev/null
+  if ! tunggu_log "$RELAY" "relay_listening" 60; then
+    echo "GAGAL: relay email tidak siap; log:" >&2
+    docker logs --tail 20 "$RELAY" >&2 || true
+    exit 1
+  fi
+  export KC_CHECK_EMAIL_MODE=relay KC_CHECK_RELAY_CONTAINER="$RELAY" KC_CHECK_KC_CONTAINER="$KC" \
+    KC_CHECK_SES_CONFIG_SET=rs-keycloak-uji
 fi
 
 export KC_CHECK_SINK_CONTAINER="$SINK" KC_CHECK_SINK_PORT="$SINK_PORT"

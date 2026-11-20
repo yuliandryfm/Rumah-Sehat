@@ -3,5 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Kerangka workspace situs publik Ruang Sehat (ADR-027). Aplikasi Next.js penuh dibuat di task fitur."
+  "description": "Situs publik Ruang Sehat (ADR-027): Next.js tanpa sesi, tanpa identitas OpenBao, tanpa Valkey.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/periksa-build.mjs"
+  },
+  "dependencies": {
+    "@rs/api-client": "workspace:*",
+    "@rs/ui": "workspace:*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
 }
