@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.job (id, job_type, payload, run_at, status, attempt_count, max_attempts, dedupe_key) VALUES ($1, $2, $3, $4, 'queued', 0, $5, $6) ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Timestamptz",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb1967a3e76bae9b8f5e73bdeb7995da758d0faba059c872afa265048947ac4c"
+}

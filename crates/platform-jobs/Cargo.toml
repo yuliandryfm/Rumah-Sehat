@@ -1,0 +1,26 @@
+[package]
+name = "platform-jobs"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Antrean job di PostgreSQL dan kunci job tunggal (F1-T20; ADR-007 butir 3, KEPUTUSAN-74, KEPUTUSAN-103,
+# KEPUTUSAN-108; docs/05-physical-schema.md §6.4, §9.1; docs/04-data-dictionary.md A19.4).
+# Versi: docs/05-stack.md §1.1 (serde_json 1.0.154 [SRC-335]; time 0.3.55 [SRC-177]; tracing 0.1.44 [SRC-174]).
+# sqlx 0.9.1 [SRC-165][SRC-510]: fitur sama dengan crate audit (F1-T23), tanpa fitur TLS (pilihan TLS koneksi
+# milik biner aplikasi). API yang dipakai diverifikasi ke kode sumber 0.9.1 [SRC-511].
+[dependencies]
+foundation = { path = "../foundation" }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
+time = { version = "=0.3.55", default-features = false, features = ["std"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+observability = { path = "../observability" }
+time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "time"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true

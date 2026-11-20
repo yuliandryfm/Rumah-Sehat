@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM pg_locks\n                           WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted) AS \"held!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "held!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ade135d42e71eb79ec6450d89831b2d5088d95696dc59c462bc87ed157749911"
+}
