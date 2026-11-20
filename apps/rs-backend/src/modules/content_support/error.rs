@@ -17,6 +17,8 @@ pub enum ContentError {
     UnsupportedMediaType,
     /// Validasi gagal dengan galat per isian (422, KU-01).
     Validation(Vec<FieldError>),
+    /// Batas laju jalur publik terlampaui (429).
+    RateLimited,
     /// Galat tak terduga (500); sumbernya hanya untuk log, tidak pernah ke respons.
     Internal(&'static str),
 }
@@ -29,6 +31,7 @@ impl fmt::Display for ContentError {
             Self::StatusConflict => f.write_str("konflik status konten"),
             Self::UnsupportedMediaType => f.write_str("jenis media tidak didukung"),
             Self::Validation(_) => f.write_str("data tidak valid"),
+            Self::RateLimited => f.write_str("batas laju"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
         }
     }
@@ -44,6 +47,7 @@ impl ApiError for ContentError {
             Self::StatusConflict => codes::STATUS_CONFLICT,
             Self::UnsupportedMediaType => codes::UNSUPPORTED_MEDIA_TYPE,
             Self::Validation(_) => codes::INVALID,
+            Self::RateLimited => codes::RATE_LIMITED,
             Self::Internal(_) => codes::INTERNAL,
         }
     }
@@ -84,6 +88,7 @@ mod tests {
             (ContentError::StatusConflict, "4090001"),
             (ContentError::UnsupportedMediaType, "4150001"),
             (ContentError::Validation(vec![]), "4220001"),
+            (ContentError::RateLimited, "4290001"),
             (ContentError::Internal("x"), "5000001"),
         ];
         for (e, code) in cases {

@@ -4,7 +4,8 @@
 use super::domain::{
     Channel, ContentFields, ContentType, DisplayStatus, EditorialStatus, LinkTargetType, SitePage,
 };
-use super::service::ContentView;
+use super::markdown::PUBLIC_IMAGE_PATH;
+use super::service::{ContentView, PublicContent};
 use crate::openapi::MetaSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -96,7 +97,10 @@ pub(super) struct ListParams {
     pub(super) channel: Option<Channel>,
     /// Halaman situs.
     pub(super) site_page: Option<SitePage>,
-    /// Cursor dari `meta.next_cursor` halaman sebelumnya.
+    /// Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).
+    #[param(
+        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )]
     pub(super) cursor: Option<String>,
     /// Jumlah item (1-100, bawaan 20).
     #[param(minimum = 1, maximum = 100)]
@@ -217,6 +221,103 @@ pub(super) struct DeletedEnvelope {
     #[schema(example = "Berhasil")]
     response_description: String,
     data: DeletedDto,
+    #[schema(nullable = false)]
+    correlation_id: Option<String>,
+}
+
+// ---------------------------------------------------------------- jalur publik (F1-T94)
+
+/// Saringan daftar konten situs yang sedang tayang.
+#[derive(Debug, Deserialize, IntoParams)]
+#[serde(deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+pub(super) struct PublicListParams {
+    /// Halaman situs.
+    pub(super) site_page: Option<SitePage>,
+    /// Jenis konten.
+    pub(super) content_type: Option<ContentType>,
+    /// Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).
+    #[param(
+        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )]
+    pub(super) cursor: Option<String>,
+    /// Jumlah item (1-100, bawaan 20).
+    #[param(minimum = 1, maximum = 100)]
+    pub(super) limit: Option<i64>,
+}
+
+/// Gambar konten tayang; disajikan endpoint gambar publik backend (bukan bucket publik, ADR-027 butir 5).
+#[derive(Debug, Serialize, ToSchema)]
+pub(super) struct PublicImageDto {
+    /// Jalur relatif endpoint gambar publik.
+    #[schema(example = "/v1/public/content/images/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
+    pub(super) url: String,
+    /// Teks alternatif (wajib untuk konten tayang, US-1802 AC5).
+    pub(super) alt_text: String,
+}
+
+/// Konten situs yang sedang tayang (tanpa status editorial, pelaku, atau data pribadi; US-1801 AC5).
+#[derive(Debug, Serialize, ToSchema)]
+pub(super) struct PublicContentDto {
+    #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
+    pub(super) content_id: String,
+    pub(super) content_type: ContentType,
+    pub(super) title: String,
+    /// Markdown yang lolos aturan render aman (F1-T111); dirender tanpa HTML mentah.
+    pub(super) body: Option<String>,
+    pub(super) category: Option<String>,
+    pub(super) site_page: Option<SitePage>,
+    pub(super) image: Option<PublicImageDto>,
+    pub(super) link_target_type: Option<LinkTargetType>,
+    pub(super) link_target_ref: Option<String>,
+    /// Mulai tayang (urutan tampil).
+    #[schema(format = DateTime)]
+    pub(super) published_at: String,
+}
+
+impl PublicContentDto {
+    pub(super) fn from_public(p: PublicContent) -> Result<Self, time::error::Format> {
+        Ok(Self {
+            content_id: p.id.hyphenated().to_string(),
+            content_type: p.content_type,
+            title: p.title,
+            body: p.body,
+            category: p.category,
+            site_page: p.site_page,
+            image: p.image.map(|(id, alt)| PublicImageDto {
+                url: format!("{PUBLIC_IMAGE_PATH}{}", id.hyphenated()),
+                alt_text: alt,
+            }),
+            link_target_type: p.link_target_type,
+            link_target_ref: p.link_target_ref,
+            published_at: ts(p.publish_start_at)?,
+        })
+    }
+}
+
+/// Bentuk dokumentasi respons satu konten publik.
+#[derive(ToSchema)]
+#[allow(dead_code)] // hanya untuk pembangkitan skema
+pub(super) struct PublicContentEnvelope {
+    #[schema(example = "2000000")]
+    response_code: String,
+    #[schema(example = "Berhasil")]
+    response_description: String,
+    data: PublicContentDto,
+    #[schema(nullable = false)]
+    correlation_id: Option<String>,
+}
+
+/// Bentuk dokumentasi respons daftar konten publik.
+#[derive(ToSchema)]
+#[allow(dead_code)] // hanya untuk pembangkitan skema
+pub(super) struct PublicContentListEnvelope {
+    #[schema(example = "2000000")]
+    response_code: String,
+    #[schema(example = "Berhasil")]
+    response_description: String,
+    data: Vec<PublicContentDto>,
+    meta: MetaSchema,
     #[schema(nullable = false)]
     correlation_id: Option<String>,
 }

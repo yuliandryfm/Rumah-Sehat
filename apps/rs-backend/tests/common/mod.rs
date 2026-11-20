@@ -13,6 +13,7 @@ use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState, build_router};
 use rs_backend::http_support::EnvelopeRenderer;
 use rs_backend::modules::platform::api::{FileStorage, FileStorageConfig, ReadinessCheck};
+use rs_backend::rate_limit::{RateBudget, RateLimiter};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -50,6 +51,14 @@ pub fn unused_file_storage() -> FileStorage {
         ("OBJECT_STORAGE_BUCKET_PREFIX", "rs-uji-"),
     ]);
     FileStorage::new(&FileStorageConfig::load(&env).unwrap()).unwrap()
+}
+
+/// Pembatas laju longgar untuk test yang tidak menguji batas laju.
+pub fn roomy_limiter() -> Arc<RateLimiter> {
+    Arc::new(RateLimiter::new(RateBudget {
+        per_source: 10_000,
+        global: 10_000,
+    }))
 }
 
 /// Pool yang tidak pernah tersambung (untuk test tanpa database).
@@ -146,6 +155,8 @@ pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
             pool: unreachable_pool(),
             clock: Arc::clone(&clock),
             files: Arc::new(unused_file_storage()),
+            public_content_limit: roomy_limiter(),
+            public_image_limit: roomy_limiter(),
         },
     );
     spawn_app(state, auth_state(&keys, clock), Arc::new(NoAccounts)).await

@@ -6,7 +6,7 @@
 //! (test `tests/openapi_sync.rs`, langkah `openapi-sinkron` di `scripts/verify.sh`).
 //!
 //! Berkas yang dihasilkan: `ops.json` (endpoint operasional tanpa audiens: kesehatan) dan `backoffice.json`
-//! (F1-T92, `/backoffice/v1`). Berkas audiens lain (`pasien`, `nakes`, `portal`, `partner-v1`, `webhook`,
+//! (F1-T92, `/backoffice/v1`), `public.json` (F1-T94, `/v1/public/content`). Berkas audiens lain (`pasien`, `nakes`, `portal`, `partner-v1`, `webhook`,
 //! `rme`; docs/05-stack.md §7) ditambahkan task yang memperkenalkan endpoint audiens itu.
 
 use serde::Serialize;
@@ -106,6 +106,18 @@ pub struct OpsApiDoc;
 )]
 pub struct BackofficeApiDoc;
 
+/// Dasar spesifikasi konten publik tanpa login (situs, ADR-027 butir 2 dan 5).
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Ruang Sehat: API konten publik",
+        description = "Konten situs yang sedang tayang tanpa login (ADR-012 butir 3, ADR-027 butir 5), dengan batas laju. Format respons: ADR-023.",
+        version = env!("CARGO_PKG_VERSION")
+    ),
+    tags((name = "public-content", description = "Konten situs yang sedang tayang"))
+)]
+pub struct PublicApiDoc;
+
 /// Seluruh spesifikasi yang dihasilkan sebagai pasangan (nama berkas, isi JSON). Isi diakhiri satu
 /// baris baru; urutan kunci deterministik (utoipa memakai BTreeMap tanpa fitur `preserve_order`).
 /// `ops.json` selalu pertama (dipakai test `openapi_schema_drift`).
@@ -116,6 +128,7 @@ pub fn generate() -> Result<Vec<(&'static str, String)>, serde_json::Error> {
             "backoffice.json",
             crate::app::backoffice_router().into_openapi(),
         ),
+        ("public.json", crate::app::public_router().into_openapi()),
     ];
     let mut out = Vec::with_capacity(specs.len());
     for (name, mut spec) in specs {

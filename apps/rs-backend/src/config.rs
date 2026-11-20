@@ -1,6 +1,7 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
 use crate::modules::platform::api::FileStorageConfig;
+use crate::rate_limit::RateBudget;
 use foundation::Sensitive;
 use observability::{BaseConfig, ConfigError, EnvSource};
 use std::path::PathBuf;
@@ -19,12 +20,16 @@ pub struct ApiConfig {
     pub problem_type_base: String,
     /// `API_DATABASE_URL`: login `rs_api` (anggota `rs_app`) ke `ruang_sehat` (rahasia, F1-T92).
     pub database_url: Sensitive<String>,
-    /// `API_DATABASE_MAX_CONNECTIONS` (bawaan 10, 1..=100).
+    /// `API_DATABASE_MAX_CONNECTIONS` (bawaan 20 = skema fisik §10.3, 1..=100).
     pub database_max_connections: PoolSize,
     /// Validasi token realm `admin` untuk endpoint backoffice (ADR-011 butir 3 dan 8).
     pub admin_realm: RealmAuthConfig,
     /// Object storage untuk berkas (F1-T29; gambar konten F1-T93).
     pub files: FileStorageConfig,
+    /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
+    /// (bawaan 300) dan `PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE` (bawaan 3000). Angka bawaan adalah usulan
+    /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten dan gambar.
+    pub public_rate: RateBudget,
 }
 
 /// Konfigurasi validasi token satu realm. Alamat JWKS dikonfigurasi terpisah dari issuer dan tidak
@@ -71,13 +76,17 @@ impl ApiConfig {
                 .optional_or("PROBLEM_TYPE_BASE", DEFAULT_PROBLEM_TYPE_BASE.to_string())?,
             database_url: env.required_secret("API_DATABASE_URL")?,
             database_max_connections: env
-                .optional_or("API_DATABASE_MAX_CONNECTIONS", PoolSize(10))?,
+                .optional_or("API_DATABASE_MAX_CONNECTIONS", PoolSize(20))?,
             admin_realm: RealmAuthConfig {
                 issuer: env.required("AUTH_ADMIN_ISSUER")?,
                 jwks_url: env.required("AUTH_ADMIN_JWKS_URL")?,
                 audience: env.required("AUTH_ADMIN_AUDIENCE")?,
             },
             files: FileStorageConfig::load(env)?,
+            public_rate: RateBudget {
+                per_source: env.optional_or("PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE", 300)?,
+                global: env.optional_or("PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE", 3_000)?,
+            },
         })
     }
 }
@@ -338,8 +347,15 @@ mod tests {
         let c = ApiConfig::load(&api_env(&[])).unwrap();
         assert_eq!(c.problem_type_base, DEFAULT_PROBLEM_TYPE_BASE);
         assert_eq!(c.base.http_bind.port(), 8080);
-        assert_eq!(c.database_max_connections.get(), 10);
+        assert_eq!(c.database_max_connections.get(), 20);
         assert_eq!(c.admin_realm.audience, "rs-backoffice-api");
+        assert_eq!(
+            c.public_rate,
+            RateBudget {
+                per_source: 300,
+                global: 3_000
+            }
+        );
         // Rahasia tidak muncul di Debug (KEPUTUSAN-132).
         let dbg = format!("{c:?}");
         assert!(!dbg.contains("postgres://"), "{dbg}");

@@ -184,7 +184,9 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
   # (login rs_api, hak runtime sungguhan, skema migrasi terbaru). Validasi token realm admin menunjuk JWKS di
   # alamat loopback yang tidak melayani, sehingga tidak ada token sah dan endpoint terautentikasi selalu
   # dijawab 401; object storage lokal dikonfigurasi tetapi tidak dijangkau. Data sintetis, tanpa data pribadi
-  # (ADR-019); rahasia object storage acak sekali pakai.
+  # (ADR-019); rahasia object storage acak sekali pakai. Sejak F1-T94 anggaran batas laju endpoint publik
+  # dinaikkan untuk backend efemeral ini saja, supaya ribuan kasus Schemathesis menjangkau handler publik
+  # (respons 429 tetap terdokumentasi dan diuji test integrasi); pemeriksaan Schemathesis tidak berubah.
   if [ -z "${RS_TEST_DB_APP_URL:-}" ]; then
     echo "RS_TEST_DB_APP_URL tidak ada: schemathesis_run wajib dijalankan lewat scripts/db-ephemeral.sh" >&2
     schemathesis_bersih
@@ -199,6 +201,7 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
     OBJECT_STORAGE_ADDRESSING=path OBJECT_STORAGE_ACCESS_KEY_ID=schemathesis-sintetis \
     OBJECT_STORAGE_SECRET_ACCESS_KEY="st-$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')" \
     OBJECT_STORAGE_BUCKET_PREFIX=rs-st- \
+    PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE=1000000 PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE=1000000 \
     HTTP_BIND=127.0.0.1:0 LOG_LEVEL=info "$bin" api >"$ST_TMP/backend.log" 2>&1 &
   ST_PID=$!
   bind=""

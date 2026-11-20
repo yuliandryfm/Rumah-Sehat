@@ -44,10 +44,11 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya.",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             }
           },
           {

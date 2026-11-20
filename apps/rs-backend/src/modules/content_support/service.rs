@@ -37,6 +37,19 @@ pub(super) static CMS_CONTENT_OBJECT: ObjectPolicy = ObjectPolicy::non_clinical(
 pub(super) const DEFAULT_PAGE_SIZE: i64 = 20;
 pub(super) const MAX_PAGE_SIZE: i64 = 100;
 
+/// Jumlah item per halaman: bawaan 20, di luar 1..=100 ditolak (422), tidak dipotong diam-diam.
+fn page_size(limit: Option<i64>) -> Result<i64, ContentError> {
+    match limit {
+        None => Ok(DEFAULT_PAGE_SIZE),
+        Some(n) if (1..=MAX_PAGE_SIZE).contains(&n) => Ok(n),
+        Some(_) => Err(ContentError::Validation(vec![envelope::FieldError::new(
+            "limit",
+            "out_of_range",
+            "Jumlah item harus 1 sampai 100",
+        )])),
+    }
+}
+
 /// Konten untuk backoffice (termasuk isi, untuk pratinjau).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ContentView {
@@ -184,7 +197,7 @@ pub(super) async fn list(
     clock: &dyn Clock,
     q: ListQuery,
 ) -> Result<(Vec<ContentView>, Meta), ContentError> {
-    let limit = q.limit.unwrap_or(DEFAULT_PAGE_SIZE).clamp(1, MAX_PAGE_SIZE);
+    let limit = page_size(q.limit)?;
     let now = clock.now();
     let mut rows = repo::list(
         pool,
@@ -450,6 +463,129 @@ pub(super) async fn restore(
     )?;
     tracing::info!(cms_content_id = %id, "cms_content_restored");
     get(pool, clock, id).await
+}
+
+// ---------------------------------------------------------------- jalur publik (F1-T94)
+
+/// Konten situs yang sedang tayang untuk pengunjung tanpa login: tanpa status editorial, pelaku, atau data
+/// hapus (US-1801 AC5: tanpa data pribadi).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct PublicContent {
+    pub(super) id: Uuid,
+    pub(super) content_type: ContentType,
+    pub(super) title: String,
+    pub(super) body: Option<String>,
+    pub(super) category: Option<String>,
+    pub(super) site_page: Option<SitePage>,
+    pub(super) image: Option<(Uuid, String)>,
+    pub(super) link_target_type: Option<LinkTargetType>,
+    pub(super) link_target_ref: Option<String>,
+    pub(super) publish_start_at: OffsetDateTime,
+}
+
+/// Pertahanan kedua di atas query: hanya baris yang menurut aturan domain sedang tayang di situs yang keluar.
+fn public_view(
+    row: ContentRow,
+    now: OffsetDateTime,
+) -> Result<Option<PublicContent>, ContentError> {
+    let v = ContentView::from_row(row, now)?;
+    if v.display_status != DisplayStatus::Live || !v.channel.includes_site() {
+        return Ok(None);
+    }
+    let image = match (v.image_file_id, v.image_alt_text) {
+        (Some(id), Some(alt)) => Some((id, alt)),
+        // Dicegah ck_cms_content_image_alt_text untuk konten terjadwal.
+        (Some(_), None) => return Err(ContentError::Internal("image_alt_text")),
+        (None, _) => None,
+    };
+    Ok(Some(PublicContent {
+        id: v.id,
+        content_type: v.content_type,
+        title: v.title,
+        body: v.body,
+        category: v.category,
+        site_page: v.site_page,
+        image,
+        link_target_type: v.link_target_type,
+        link_target_ref: v.link_target_ref,
+        publish_start_at: parse(v.publish_start_at, "publish_start_at")?,
+    }))
+}
+
+/// Halaman tetap situs yang sedang tayang (US-1801 AC1); tidak ada = 404 tanpa membedakan draf (AC3).
+pub(super) async fn public_page(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    page: SitePage,
+) -> Result<PublicContent, ContentError> {
+    let now = clock.now();
+    let row = repo::live_site_page(pool, page.as_str(), now)
+        .await?
+        .ok_or(ContentError::NotFound)?;
+    public_view(row, now)?.ok_or(ContentError::NotFound)
+}
+
+/// Satu konten situs yang sedang tayang (misalnya artikel); selain itu 404 (US-1801 AC3).
+pub(super) async fn public_item(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    id: Uuid,
+) -> Result<PublicContent, ContentError> {
+    let now = clock.now();
+    let row = repo::live_site_item(pool, id, now)
+        .await?
+        .ok_or(ContentError::NotFound)?;
+    public_view(row, now)?.ok_or(ContentError::NotFound)
+}
+
+/// Saringan daftar publik.
+#[derive(Debug, Clone, Default)]
+pub(super) struct PublicQuery {
+    pub(super) site_page: Option<SitePage>,
+    pub(super) content_type: Option<ContentType>,
+    pub(super) cursor: Option<Uuid>,
+    pub(super) limit: Option<i64>,
+}
+
+/// Daftar konten situs yang sedang tayang, urut jadwal tayang terbaru.
+pub(super) async fn public_items(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    q: PublicQuery,
+) -> Result<(Vec<PublicContent>, Meta), ContentError> {
+    let limit = page_size(q.limit)?;
+    let now = clock.now();
+    let mut rows = repo::live_site_items(
+        pool,
+        &repo::PublicFilter {
+            site_page: q.site_page.map(SitePage::as_str),
+            content_type: q.content_type.map(ContentType::as_str),
+            after_id: q.cursor,
+            limit: limit.saturating_add(1),
+            now,
+        },
+    )
+    .await?;
+    let has_more = i64::try_from(rows.len()).map_or(true, |n| n > limit);
+    rows.truncate(usize::try_from(limit).map_err(|_| ContentError::Internal("limit"))?);
+    let next_cursor = if has_more {
+        rows.last().map(|r| r.id.hyphenated().to_string())
+    } else {
+        None
+    };
+    let mut items = Vec::with_capacity(rows.len());
+    for r in rows {
+        if let Some(p) = public_view(r, now)? {
+            items.push(p);
+        }
+    }
+    Ok((
+        items,
+        Meta {
+            next_cursor,
+            has_more,
+        },
+    ))
 }
 
 #[cfg(test)]

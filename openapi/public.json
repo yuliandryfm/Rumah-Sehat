@@ -1,0 +1,513 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ruang Sehat: API konten publik",
+    "description": "Konten situs yang sedang tayang tanpa login (ADR-012 butir 3, ADR-027 butir 5), dengan batas laju. Format respons: ADR-023.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/public/content/items": {
+      "get": {
+        "tags": [
+          "public-content"
+        ],
+        "summary": "Daftar konten situs yang sedang tayang (misalnya artikel atau banner per halaman), urut terbaru.",
+        "operationId": "public_content_list",
+        "parameters": [
+          {
+            "name": "site_page",
+            "in": "query",
+            "description": "Halaman situs.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SitePage"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "description": "Jenis konten.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ContentType"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah item (1-100, bawaan 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar konten tayang.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicContentListEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Saringan tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/content/items/{content_id}": {
+      "get": {
+        "tags": [
+          "public-content"
+        ],
+        "summary": "Satu konten situs yang sedang tayang (misalnya artikel). Selain tayang = 404 (US-1801 AC3).",
+        "operationId": "public_content_get",
+        "parameters": [
+          {
+            "name": "content_id",
+            "in": "path",
+            "description": "ID konten (UUID)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Konten yang sedang tayang.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicContentEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tidak ada atau tidak sedang tayang (tidak dibedakan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/content/pages/{site_page}": {
+      "get": {
+        "tags": [
+          "public-content"
+        ],
+        "summary": "Halaman tetap situs yang sedang tayang (US-1801 AC1, AC2, AC4). Tidak ada versi tayang = 404.",
+        "operationId": "public_content_page",
+        "parameters": [
+          {
+            "name": "site_page",
+            "in": "path",
+            "description": "Halaman situs (BR-130)",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SitePage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Halaman yang sedang tayang.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicContentEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tidak ada versi tayang (draf, terjadwal, berakhir, diarsipkan, atau terhapus tidak dibedakan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ContentType": {
+        "type": "string",
+        "description": "Jenis konten (`ck_cms_content_content_type`).",
+        "enum": [
+          "banner",
+          "info_page",
+          "article",
+          "promo"
+        ]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
+        "required": [
+          "type",
+          "response_code",
+          "response_description",
+          "correlation_id"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan; selalu ada pada galat.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorSchema"
+            },
+            "description": "Galat per isian; hanya pada galat validasi."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Pola rute (bukan URL dengan ID)."
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "4040001"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Data tidak ditemukan"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI jenis masalah: `<awalan>/<response_code>`.",
+            "example": "https://problems.ruang-sehat.invalid/4040001"
+          }
+        }
+      },
+      "FieldErrorSchema": {
+        "type": "object",
+        "description": "Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kode galat isian, snake_case Inggris.",
+            "example": "invalid_format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path isian.",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan Bahasa Indonesia untuk pengguna.",
+            "example": "Format email tidak valid"
+          }
+        }
+      },
+      "LinkTargetType": {
+        "type": "string",
+        "description": "Tujuan tautan banner (`ck_cms_content_link_target_type`).",
+        "enum": [
+          "article",
+          "service",
+          "partner",
+          "product"
+        ]
+      },
+      "MetaSchema": {
+        "type": "object",
+        "description": "Pagination cursor `meta` (ADR-023 butir 1), sama dengan `envelope::Meta`.",
+        "required": [
+          "has_more"
+        ],
+        "properties": {
+          "has_more": {
+            "type": "boolean",
+            "description": "Apakah masih ada data setelah halaman ini."
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cursor halaman berikutnya; `null` bila tidak ada."
+          }
+        }
+      },
+      "PublicContentDto": {
+        "type": "object",
+        "description": "Konten situs yang sedang tayang (tanpa status editorial, pelaku, atau data pribadi; US-1801 AC5).",
+        "required": [
+          "content_id",
+          "content_type",
+          "title",
+          "published_at"
+        ],
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Markdown yang lolos aturan render aman (F1-T111); dirender tanpa HTML mentah."
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "image": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicImageDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "link_target_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "link_target_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LinkTargetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Mulai tayang (urutan tampil)."
+          },
+          "site_page": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SitePage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicContentEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons satu konten publik.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicContentDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "PublicContentListEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar konten publik.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicContentDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MetaSchema"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "PublicImageDto": {
+        "type": "object",
+        "description": "Gambar konten tayang; disajikan endpoint gambar publik backend (bukan bucket publik, ADR-027 butir 5).",
+        "required": [
+          "url",
+          "alt_text"
+        ],
+        "properties": {
+          "alt_text": {
+            "type": "string",
+            "description": "Teks alternatif (wajib untuk konten tayang, US-1802 AC5)."
+          },
+          "url": {
+            "type": "string",
+            "description": "Jalur relatif endpoint gambar publik.",
+            "example": "/v1/public/content/images/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          }
+        }
+      },
+      "SitePage": {
+        "type": "string",
+        "description": "Halaman situs tujuan (BR-130, `ck_cms_content_site_page`).",
+        "enum": [
+          "home",
+          "about",
+          "services",
+          "for_business",
+          "partners",
+          "articles",
+          "contact",
+          "download_app",
+          "privacy_terms"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "public-content",
+      "description": "Konten situs yang sedang tayang"
+    }
+  ]
+}

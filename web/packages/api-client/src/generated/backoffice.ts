@@ -331,7 +331,7 @@ export interface operations {
                 channel?: components["schemas"]["Channel"];
                 /** @description Halaman situs. */
                 site_page?: components["schemas"]["SitePage"];
-                /** @description Cursor dari `meta.next_cursor` halaman sebelumnya. */
+                /** @description Cursor dari `meta.next_cursor` halaman sebelumnya (UUID). */
                 cursor?: string;
                 /** @description Jumlah item (1-100, bawaan 20). */
                 limit?: number;

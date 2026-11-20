@@ -312,3 +312,102 @@ pub(super) async fn list(
     .fetch_all(pool)
     .await
 }
+
+// ---------------------------------------------------------------- jalur publik (F1-T94)
+//
+// Satu definisi "Tayang di situs" dipakai semua query publik (ADR-027 butir 5, US-1801 AC3): kanal memuat
+// situs, status `scheduled`, tidak terhapus, dan `$now` di dalam [publish_start_at, publish_end_at).
+// Draf, terjadwal yang belum mulai, selesai, diarsipkan, dan terhapus tidak pernah terbaca lewat sini.
+
+/// Halaman tetap yang sedang tayang untuk `site_page` (versi dengan waktu mulai terbaru).
+pub(super) async fn live_site_page(
+    pool: &PgPool,
+    site_page: &str,
+    now: OffsetDateTime,
+) -> Result<Option<ContentRow>, sqlx::Error> {
+    sqlx::query_as!(
+        ContentRow,
+        "SELECT id, created_at, updated_at, deleted_at, delete_reason, content_type, title, body, category, \
+                image_file_id, image_alt_text, link_target_type, link_target_ref, publish_start_at, \
+                publish_end_at, editorial_status, channel, site_page \
+         FROM app.cms_content \
+         WHERE site_page = $1 AND content_type = 'info_page' \
+           AND channel IN ('site', 'app_and_site') AND editorial_status = 'scheduled' \
+           AND deleted_at IS NULL AND publish_start_at <= $2 \
+           AND (publish_end_at IS NULL OR publish_end_at > $2) \
+         ORDER BY publish_start_at DESC, id DESC \
+         LIMIT 1",
+        site_page,
+        now,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Satu konten situs yang sedang tayang.
+pub(super) async fn live_site_item(
+    pool: &PgPool,
+    id: Uuid,
+    now: OffsetDateTime,
+) -> Result<Option<ContentRow>, sqlx::Error> {
+    sqlx::query_as!(
+        ContentRow,
+        "SELECT id, created_at, updated_at, deleted_at, delete_reason, content_type, title, body, category, \
+                image_file_id, image_alt_text, link_target_type, link_target_ref, publish_start_at, \
+                publish_end_at, editorial_status, channel, site_page \
+         FROM app.cms_content \
+         WHERE id = $1 AND channel IN ('site', 'app_and_site') AND editorial_status = 'scheduled' \
+           AND deleted_at IS NULL AND publish_start_at <= $2 \
+           AND (publish_end_at IS NULL OR publish_end_at > $2)",
+        id,
+        now,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Saringan daftar publik.
+pub(super) struct PublicFilter<'a> {
+    pub(super) site_page: Option<&'a str>,
+    pub(super) content_type: Option<&'a str>,
+    pub(super) after_id: Option<Uuid>,
+    pub(super) limit: i64,
+    pub(super) now: OffsetDateTime,
+}
+
+/// Konten situs yang sedang tayang, urut jadwal tayang terbaru, cursor = ID konten terakhir halaman
+/// sebelumnya. Cursor dinilai dengan syarat tayang yang sama, sehingga ID draf/terjadwal/terhapus sebagai
+/// cursor menghasilkan daftar kosong yang sama dengan cursor basi (tidak membocorkan jadwal, US-1801 AC3).
+pub(super) async fn live_site_items(
+    pool: &PgPool,
+    f: &PublicFilter<'_>,
+) -> Result<Vec<ContentRow>, sqlx::Error> {
+    sqlx::query_as!(
+        ContentRow,
+        "SELECT c.id, c.created_at, c.updated_at, c.deleted_at, c.delete_reason, c.content_type, c.title, \
+                c.body, c.category, c.image_file_id, c.image_alt_text, c.link_target_type, \
+                c.link_target_ref, c.publish_start_at, c.publish_end_at, c.editorial_status, c.channel, \
+                c.site_page \
+         FROM app.cms_content c \
+         WHERE c.channel IN ('site', 'app_and_site') AND c.editorial_status = 'scheduled' \
+           AND c.deleted_at IS NULL AND c.publish_start_at <= $1 \
+           AND (c.publish_end_at IS NULL OR c.publish_end_at > $1) \
+           AND ($2::text IS NULL OR c.site_page = $2) \
+           AND ($3::text IS NULL OR c.content_type = $3) \
+           AND ($4::uuid IS NULL OR (c.publish_start_at, c.id) < \
+                (SELECT p.publish_start_at, p.id FROM app.cms_content p \
+                  WHERE p.id = $4 AND p.channel IN ('site', 'app_and_site') \
+                    AND p.editorial_status = 'scheduled' AND p.deleted_at IS NULL \
+                    AND p.publish_start_at <= $1 \
+                    AND (p.publish_end_at IS NULL OR p.publish_end_at > $1))) \
+         ORDER BY c.publish_start_at DESC, c.id DESC \
+         LIMIT $5",
+        f.now,
+        f.site_page,
+        f.content_type,
+        f.after_id,
+        f.limit,
+    )
+    .fetch_all(pool)
+    .await
+}

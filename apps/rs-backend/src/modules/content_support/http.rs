@@ -2,27 +2,30 @@
 //! (`policy.rs`); penegakan token, status akun, dan peran oleh middleware crate `authz` sebelum handler.
 //! Handler hanya mengurai DTO, memanggil satu fungsi service, dan memetakan hasil ke envelope ADR-023.
 
-use super::domain::DisplayStatus;
+use super::domain::{DisplayStatus, SitePage};
 use super::dto::{
     ContentDto, ContentEnvelope, ContentListEnvelope, ContentRequest, DeleteRequest, DeletedDto,
-    DeletedEnvelope, ListParams, ScheduleRequest,
+    DeletedEnvelope, ListParams, PublicContentDto, PublicContentEnvelope,
+    PublicContentListEnvelope, PublicListParams, ScheduleRequest,
 };
 use super::error::ContentError;
 use super::policy;
-use super::service::{self, ContentView, ListQuery};
+use super::service::{self, ContentView, ListQuery, PublicContent, PublicQuery};
 use crate::app::AppState;
 use crate::http_support::{ApiFailure, ApiSuccess, ClientAddr};
 use crate::openapi::ErrorEnvelope;
+use crate::rate_limit::Verdict;
 use audit::{AuditContext, Source, SourceComponent};
 use authz::{PolicyRouter, Principal};
 use axum::Extension;
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{Json, Path, Query, State};
-use axum::http::HeaderMap;
-use axum::http::header::USER_AGENT;
+use axum::http::header::{CACHE_CONTROL, USER_AGENT};
+use axum::http::{HeaderMap, HeaderValue};
 use axum::response::{IntoResponse, Response};
 use envelope::{FieldError, Success};
 use foundation::{CorrelationId, Uuid};
+use observability::security;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use utoipa_axum::routes;
@@ -453,4 +456,180 @@ async fn restore(
         Err(e) => Err(e),
     };
     respond(&state, cid, r, false)
+}
+
+// ---------------------------------------------------------------- jalur publik (F1-T94)
+//
+// Tanpa login (ADR-012 butir 3, `PublicReason::PublicContent`), hanya konten Tayang kanal situs, batas laju
+// per sumber dan global sebelum database disentuh (ADR-027 butir 5, M-47), `Cache-Control: no-store`
+// (cache Caddy belum diputuskan, ADR-027 butir 5; tanpa cache basi setelah konten diturunkan, SIT-02),
+// tanpa cookie (US-1801 AC5).
+
+pub(super) fn public_router() -> PolicyRouter<AppState> {
+    PolicyRouter::new()
+        .routes(policy::public_content(), routes!(public_page))
+        .routes(policy::public_content(), routes!(public_items))
+        .routes(policy::public_content(), routes!(public_item))
+}
+
+fn no_store(r: Response) -> Response {
+    let mut r = r;
+    r.headers_mut()
+        .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    r
+}
+
+/// Batas laju jalur publik: penolakan pertama per jendela dicatat di security log (tanpa data pribadi).
+fn public_limit(
+    state: &AppState,
+    addr: ClientAddr,
+    route: &'static str,
+) -> Result<(), ContentError> {
+    match state.public_content_limit().check(addr.0) {
+        Verdict::Allowed => Ok(()),
+        Verdict::Limited { first } => {
+            if first {
+                security::rate_limited(None, route);
+            }
+            Err(ContentError::RateLimited)
+        }
+    }
+}
+
+fn public_respond(
+    state: &AppState,
+    cid: CorrelationId,
+    result: Result<PublicContent, ContentError>,
+) -> Response {
+    let dto = result.and_then(|p| {
+        PublicContentDto::from_public(p).map_err(|_| ContentError::Internal("timestamp_format"))
+    });
+    no_store(match dto {
+        Ok(d) => ApiSuccess(Success::ok(d).with_correlation_id(cid)).into_response(),
+        Err(e) => fail(state, cid, e),
+    })
+}
+
+/// Halaman tetap situs yang sedang tayang (US-1801 AC1, AC2, AC4). Tidak ada versi tayang = 404.
+#[utoipa::path(
+    get,
+    path = "/v1/public/content/pages/{site_page}",
+    tag = "public-content",
+    operation_id = "public_content_page",
+    params(("site_page" = SitePage, Path, description = "Halaman situs (BR-130)")),
+    responses(
+        (status = 200, description = "Halaman yang sedang tayang.", body = PublicContentEnvelope, content_type = "application/json"),
+        (status = 404, description = "Tidak ada versi tayang (draf, terjadwal, berakhir, diarsipkan, atau terhapus tidak dibedakan).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "Batas laju terlampaui.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat tak terduga.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn public_page(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    addr: ClientAddr,
+    Path(raw): Path<String>,
+) -> Response {
+    if let Err(e) = public_limit(&state, addr, "/v1/public/content/pages/{site_page}") {
+        return no_store(fail(&state, cid, e));
+    }
+    let r = match SitePage::parse(&raw) {
+        Some(page) => service::public_page(state.pool(), state.clock(), page).await,
+        None => Err(ContentError::NotFound),
+    };
+    public_respond(&state, cid, r)
+}
+
+/// Daftar konten situs yang sedang tayang (misalnya artikel atau banner per halaman), urut terbaru.
+#[utoipa::path(
+    get,
+    path = "/v1/public/content/items",
+    tag = "public-content",
+    operation_id = "public_content_list",
+    params(PublicListParams),
+    responses(
+        (status = 200, description = "Daftar konten tayang.", body = PublicContentListEnvelope, content_type = "application/json"),
+        (status = 422, description = "Saringan tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "Batas laju terlampaui.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat tak terduga.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn public_items(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    addr: ClientAddr,
+    params: Result<Query<PublicListParams>, QueryRejection>,
+) -> Response {
+    if let Err(e) = public_limit(&state, addr, "/v1/public/content/items") {
+        return no_store(fail(&state, cid, e));
+    }
+    let Query(p) = match params {
+        Ok(p) => p,
+        Err(e) => return no_store(fail(&state, cid, query_error(&e))),
+    };
+    let cursor = match p.cursor.as_deref().map(Uuid::parse_str).transpose() {
+        Ok(c) => c,
+        Err(_) => {
+            return no_store(fail(
+                &state,
+                cid,
+                ContentError::Validation(vec![FieldError::new(
+                    "cursor",
+                    "invalid_format",
+                    "Cursor tidak valid",
+                )]),
+            ));
+        }
+    };
+    let q = PublicQuery {
+        site_page: p.site_page,
+        content_type: p.content_type,
+        cursor,
+        limit: p.limit,
+    };
+    let r = service::public_items(state.pool(), state.clock(), q).await;
+    no_store(match r {
+        Ok((items, meta)) => {
+            match items
+                .into_iter()
+                .map(PublicContentDto::from_public)
+                .collect::<Result<Vec<_>, _>>()
+            {
+                Ok(d) => ApiSuccess(Success::ok(d).with_meta(meta).with_correlation_id(cid))
+                    .into_response(),
+                Err(_) => fail(&state, cid, ContentError::Internal("timestamp_format")),
+            }
+        }
+        Err(e) => fail(&state, cid, e),
+    })
+}
+
+/// Satu konten situs yang sedang tayang (misalnya artikel). Selain tayang = 404 (US-1801 AC3).
+#[utoipa::path(
+    get,
+    path = "/v1/public/content/items/{content_id}",
+    tag = "public-content",
+    operation_id = "public_content_get",
+    params(("content_id" = String, Path, description = "ID konten (UUID)")),
+    responses(
+        (status = 200, description = "Konten yang sedang tayang.", body = PublicContentEnvelope, content_type = "application/json"),
+        (status = 404, description = "Tidak ada atau tidak sedang tayang (tidak dibedakan).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "Batas laju terlampaui.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat tak terduga.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn public_item(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    addr: ClientAddr,
+    Path(raw): Path<String>,
+) -> Response {
+    if let Err(e) = public_limit(&state, addr, "/v1/public/content/items/{content_id}") {
+        return no_store(fail(&state, cid, e));
+    }
+    let r = match content_id(&raw) {
+        Ok(id) => service::public_item(state.pool(), state.clock(), id).await,
+        Err(e) => Err(e),
+    };
+    public_respond(&state, cid, r)
 }

@@ -5,7 +5,8 @@
 //!
 //! Lapisan: [`cli`] (pemilihan subcommand dan siklus hidup proses), [`config`] (konfigurasi bertipe),
 //! [`app`] (perakitan router, middleware, fallback), [`http_support`] (adaptor envelope ADR-023 ke
-//! axum), [`modules`] (modul bisnis dan platform), [`openapi`] (pembangkitan spesifikasi, ADR-022).
+//! axum), [`modules`] (modul bisnis dan platform), [`openapi`] (pembangkitan spesifikasi, ADR-022),
+//! [`rate_limit`] (batas laju endpoint publik, F1-T94).
 
 pub mod app;
 pub mod cli;
@@ -13,3 +14,4 @@ pub mod config;
 pub mod http_support;
 pub mod modules;
 pub mod openapi;
+pub mod rate_limit;

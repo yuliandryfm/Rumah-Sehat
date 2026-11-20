@@ -9,6 +9,7 @@ use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig};
 use crate::http_support::EnvelopeRenderer;
 use crate::modules::identity::api::DbPrincipalResolver;
 use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
+use crate::rate_limit::RateLimiter;
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
 use authn::{
@@ -269,8 +270,11 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
     };
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let pool = PgPoolOptions::new()
+        // Skema fisik §10.3 (KEPUTUSAN-139): acquire 3 dtk untuk api, idle 10 mnt, umur 30 mnt.
         .max_connections(config.database_max_connections.get())
-        .acquire_timeout(Duration::from_secs(5))
+        .acquire_timeout(Duration::from_secs(3))
+        .idle_timeout(Duration::from_secs(600))
+        .max_lifetime(Duration::from_secs(1800))
         .connect_lazy(config.database_url.expose())
         .map_err(|_| setup_failed("api_database_url"))?;
     let files = FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
@@ -305,6 +309,8 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             pool,
             clock,
             files: Arc::new(files),
+            public_content_limit: Arc::new(RateLimiter::new(config.public_rate)),
+            public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
     );
     let router = build_router(state, auth, resolver).map_err(|e| {

@@ -4,7 +4,8 @@
 use crate::modules::content_support;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
-use crate::openapi::{BackofficeApiDoc, OpsApiDoc};
+use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PublicApiDoc};
+use crate::rate_limit::RateLimiter;
 use authn::AuthState;
 use authz::{Enforcement, PolicyRouter, PolicySetupError, PrincipalResolver};
 use axum::Router;
@@ -22,6 +23,10 @@ pub struct AppServices {
     pub clock: Arc<dyn Clock>,
     /// Layanan berkas (modul platform, F1-T29).
     pub files: Arc<FileStorage>,
+    /// Batas laju endpoint konten publik (F1-T94), terpisah dari API lain (M-47).
+    pub public_content_limit: Arc<RateLimiter>,
+    /// Batas laju endpoint gambar konten publik (F1-T93).
+    pub public_image_limit: Arc<RateLimiter>,
 }
 
 /// Keadaan bersama handler. Murah di-clone.
@@ -66,6 +71,15 @@ impl AppState {
     pub(crate) fn files(&self) -> &FileStorage {
         &self.services.files
     }
+
+    pub(crate) fn public_content_limit(&self) -> &RateLimiter {
+        &self.services.public_content_limit
+    }
+
+    #[allow(dead_code)] // dipakai endpoint gambar konten (F1-T93)
+    pub(crate) fn public_image_limit(&self) -> &RateLimiter {
+        &self.services.public_image_limit
+    }
 }
 
 /// Router endpoint operasional beserta spesifikasinya (`openapi/ops.json`); setiap rute berkebijakan.
@@ -77,6 +91,12 @@ pub(crate) fn ops_router() -> PolicyRouter<AppState> {
 pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(BackofficeApiDoc::openapi())
         .merge(content_support::backoffice_router())
+}
+
+/// Router API publik tanpa login (`openapi/public.json`, awalan `/v1/public/content`, ADR-027 butir 2 dan 5,
+/// ADR-012 butir 3). Jaringan `web/situs` hanya menjangkau `/v1/public/*` (ADR-027 butir 6).
+pub(crate) fn public_router() -> PolicyRouter<AppState> {
+    PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
 }
 
 /// Router lengkap siap `axum::serve`.
@@ -97,6 +117,7 @@ pub fn build_router(
 ) -> Result<Router, PolicySetupError> {
     let (router, _spec) = ops_router()
         .merge(backoffice_router())
+        .merge(public_router())
         .finish(Enforcement::new(auth, resolver))?;
     Ok(router
         .with_state(state)
@@ -131,6 +152,23 @@ mod tests {
             assert_eq!(
                 policy,
                 &Policy::rs_admin(&[authz::AdminSubRole::Content]),
+                "{path}"
+            );
+        }
+    }
+
+    // trace: ADR-012 butir 3
+    #[test]
+    fn every_public_route_is_public_content_under_v1_public() {
+        let router = public_router();
+        let entries: Vec<_> = router.registry().iter().collect();
+        assert_eq!(entries.len(), 3);
+        for ((method, path), policy) in entries {
+            assert_eq!(method, "GET", "{path}");
+            assert!(path.starts_with("/v1/public/content/"), "{path}");
+            assert_eq!(
+                policy,
+                &Policy::Public(PublicReason::PublicContent),
                 "{path}"
             );
         }
