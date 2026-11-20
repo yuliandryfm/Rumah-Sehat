@@ -566,8 +566,8 @@ Diajukan: 2026-11-20, `[USER]` Telegram: "jenis layanan di ruang sehat lebih bai
 Deskripsi: katalog jenis layanan (konsultasi, pemeriksaan lab, paket MCU, vaksinasi korporat, dsb.) dikelola sebagai data master Ruang Sehat; rekanan saat onboarding memilih jenis layanan yang mereka sediakan dari master itu, alih-alih jenis layanan dikirim rekanan lewat Partner Integration API.
 **Mengubah keputusan lama** (perlu analisis dampak): ADR-014 (kontrak integrasi rekanan) dan EP-04/EP-06/EP-09 bila jenis layanan bersumber dari rekanan; K-04 CR-021 (harga katalog korporat lewat integrasi rekanan, opsi a); peran portal rekanan (AB-62 read-only).
 `[TIDAK DIKETAHUI]`: apakah **harga** juga ditetapkan di master atau tetap dari rekanan (per rekanan per layanan); apakah rekanan boleh mengusulkan jenis layanan baru; granularitas master (jenis vs item pemeriksaan per lab); siapa pengelola master (sub-peran admin).
-Keputusan: menunggu analisis + konfirmasi butir terbuka ke user
-Status: diajukan 2026-11-20
+Keputusan `[USER]` 2026-11-20 (Telegram "R"): **jenis layanan dari master Ruang Sehat; harga ditetapkan masing-masing rekanan per layanan yang dipilih (lewat portal/onboarding), lalu markup Ruang Sehat ditambahkan (ADR-015)**. Akibat: portal rekanan tidak lagi hanya-baca untuk pemilihan layanan dan harga (AB-62 direvisi); Partner Integration API tidak lagi menjadi sumber jenis layanan/harga katalog (ADR-014 direvisi); K-04 CR-021 berubah dari (a) integrasi ke portal. Butir terbuka lain (rekanan mengusulkan jenis baru, granularitas master, sub-peran pengelola master) dijawab saat analisis.
+Status: disetujui; analisis dampak dokumen (BRD/PRD/ADR-014/AB-62/phase plan) dijadwalkan sebelum task katalog/onboarding rekanan (Fase 2–3)
 
 ## Tech Debt
 
