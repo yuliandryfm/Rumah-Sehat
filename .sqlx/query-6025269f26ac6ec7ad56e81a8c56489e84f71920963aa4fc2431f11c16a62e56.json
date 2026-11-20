@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.upload_slot SET sanitized_object_key = $3 WHERE id = $1 AND owner_account_id = $2 AND consumed_at IS NULL AND sanitized_object_key IS NULL AND expires_at > $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6025269f26ac6ec7ad56e81a8c56489e84f71920963aa4fc2431f11c16a62e56"
+}

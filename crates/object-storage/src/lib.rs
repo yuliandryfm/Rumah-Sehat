@@ -23,7 +23,7 @@ mod presign;
 mod sigv4;
 mod xml;
 
-pub use client::{GetOutcome, ObjectStore};
+pub use client::{GetOutcome, ObjectStore, VersionKeysPage, VersionListCursor};
 pub use config::{
     AddressingStyle, Deployment, ObjectStorageConfig, SECRET_MIN_LEN, valid_bucket_name,
     valid_object_key,

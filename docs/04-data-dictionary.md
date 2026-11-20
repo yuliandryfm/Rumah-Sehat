@@ -2254,9 +2254,13 @@ Slot unggah yang belum dikonfirmasi. Berkas yang gagal validasi atau tidak perna
 | owner_account_id | uuid | ya | FK→account | — | `NULL` untuk unggahan rekanan (PDF hasil lab) |
 | owner_partner_id | uuid | ya | FK→partner | — | Belum dibuat di migrasi F1-T17 karena tabel `partner` (A5) belum ada di Fase 1. Kolom dibuat bersama migrasi A5 (expand §11.3 skema fisik: kolom `NULL`, FK ditambah `NOT VALID` lalu `VALIDATE`) (review DBA F1-T17 butir 3) |
 | bucket | text | tidak | | — | Sama dengan `stored_file.bucket` |
-| object_key | text | tidak | UQ | — | UUID buatan aplikasi |
+| object_key | text | tidak | UQ | — | UUID buatan aplikasi; berprefiks `incoming/` sejak TD-17 |
 | allowed_mime_type | text | tidak | | — | |
 | max_size_bytes | integer | tidak | | — | 5 MB foto, 10 MB PDF (KEPUTUSAN-08) |
+| consumed_at | timestamptz | ya | | — | TD-17: slot sudah dipakai (`stored_file` dicatat) atau berkasnya ditolak. Baris tetap ada sebagai tombstone sampai pembersih menghapusnya setelah `expires_at` + jeda, karena URL unggah masih dapat dipakai sampai kedaluwarsa |
+| sanitized_object_key | text | ya | UQ | — | TD-17: kunci objek hasil kode ulang (prefiks `files/`) yang diklaim slot sebelum objeknya ditulis; CHECK `<> object_key` |
+
+Pembersihan (TD-17, migrasi `20261120131700_platform_upload_slot_tombstone.sql`): job pembersih menghapus semua versi objek `object_key` dan objek `sanitized_object_key` yang tidak tercatat di `stored_file`, lalu barisnya, setelah `expires_at` + jeda 15 menit (usulan teknis); rekonsiliasi berkala menghapus objek di prefiks `incoming/` dan `files/` yang tidak tercatat.
 
 #### A19.6 `stored_file` (M)
 

@@ -7,7 +7,8 @@ use std::fmt;
 /// Galat use case berkas.
 #[derive(Debug)]
 pub enum FileError {
-    /// Slot tidak ada, milik akun lain, sudah dipakai, atau kedaluwarsa (404, KU-03: tidak membedakan).
+    /// Slot atau berkas tidak ada, milik akun lain, sudah dipakai, kedaluwarsa, atau tidak boleh diakses
+    /// (404, KU-03 dan ADR-012 butir 4: tidak membedakan).
     NotFound,
     /// Berkas melebihi batas ukuran (413, NFR-SEC-08, US-106 AC3).
     TooLarge,
@@ -17,6 +18,8 @@ pub enum FileError {
     Validation(Vec<FieldError>),
     /// Object storage tidak tersedia atau habis waktu (503).
     StorageUnavailable,
+    /// Antrean validasi penuh melewati batas tunggu (503, TD-17).
+    Busy,
     /// Galat tak terduga (500); sumbernya hanya untuk log, tidak pernah ke respons.
     Internal(&'static str),
 }
@@ -24,11 +27,12 @@ pub enum FileError {
 impl fmt::Display for FileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotFound => f.write_str("slot unggah tidak ditemukan"),
+            Self::NotFound => f.write_str("slot unggah atau berkas tidak ditemukan"),
             Self::TooLarge => f.write_str("berkas terlalu besar"),
             Self::UnsupportedType => f.write_str("jenis berkas tidak didukung"),
             Self::Validation(_) => f.write_str("data tidak valid"),
             Self::StorageUnavailable => f.write_str("object storage tidak tersedia"),
+            Self::Busy => f.write_str("antrean validasi berkas penuh"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
         }
     }
@@ -43,7 +47,7 @@ impl ApiError for FileError {
             Self::TooLarge => codes::PAYLOAD_TOO_LARGE,
             Self::UnsupportedType => codes::UNSUPPORTED_MEDIA_TYPE,
             Self::Validation(_) => codes::INVALID,
-            Self::StorageUnavailable => codes::UNAVAILABLE,
+            Self::StorageUnavailable | Self::Busy => codes::UNAVAILABLE,
             Self::Internal(_) => codes::INTERNAL,
         }
     }
@@ -68,6 +72,7 @@ mod tests {
             (FileError::UnsupportedType, "4150001"),
             (FileError::Validation(vec![]), "4220001"),
             (FileError::StorageUnavailable, "5030001"),
+            (FileError::Busy, "5030001"),
             (FileError::Internal("x"), "5000001"),
         ];
         for (e, code) in cases {

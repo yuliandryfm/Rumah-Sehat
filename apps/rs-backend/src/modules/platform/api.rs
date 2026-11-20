@@ -10,6 +10,15 @@
 //! `audit::in_audited_tx` bersama event E-10 pengajuan identitas, US-106), sekaligus memakai slot sekali.
 //! Bila transaksi pemanggil gagal, pemanggil memanggil [`discard_validated`]. Berkas baru dapat dirujuk
 //! setelah langkah 3 (ADR-018 butir 2).
+//!
+//! Pembersihan (TD-17): slot yang dipakai atau ditolak tetap ada sebagai tombstone (`consumed_at`) sampai
+//! `expires_at` + [`UPLOAD_SLOT_TOMBSTONE_GRACE`], karena URL unggah masih dapat dipakai ulang sampai
+//! kedaluwarsa. Job pembersih ([`purge_expired_upload_slots`], jenis job [`UPLOAD_SLOT_PURGE_JOB`]) lalu
+//! menghapus semua versi objek mentah (prefiks `incoming/`) dan hasil kode ulang yang tidak pernah dicatat,
+//! baru barisnya. Rekonsiliasi berkala ([`reconcile_bucket`], [`FILE_RECONCILE_JOB`]) menghapus objek yatim
+//! di `incoming/` dan `files/` dan melaporkan baris `stored_file` yang objeknya hilang. Keduanya pengaman
+//! untuk proses yang mati di tengah alur dan untuk [`ValidatedUpload`] yang dibuang tanpa
+//! [`discard_validated`].
 
 use super::service;
 use foundation::{Clock, Uuid};
@@ -17,16 +26,20 @@ use object_storage::{
     AddressingStyle, Deployment, ObjectStorageConfig, ObjectStore, valid_bucket_name,
 };
 use observability::{ConfigError, EnvSource};
+use platform_jobs::{ClaimedJob, JobOutcome};
 use sqlx::{PgConnection, PgPool};
 use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::sync::Semaphore;
 
-pub use super::domain::{LogicalBucket, MAX_PHOTO_BYTES, PhotoFormat, UploadPurpose};
+pub use super::domain::{
+    LogicalBucket, MAX_PHOTO_BYTES, PEAK_VALIDATION_MEMORY_BYTES, PhotoFormat, UploadPurpose,
+};
 pub use super::error::FileError;
 pub use crypto::ContainerType;
 
@@ -50,6 +63,23 @@ pub const UPLOAD_SLOT_TTL_RANGE: std::ops::RangeInclusive<u64> = 60..=3600;
 pub const DEFAULT_OBJECT_STORAGE_TIMEOUT_SECONDS: u64 = 10;
 /// Bawaan jumlah validasi foto yang berjalan bersamaan (dekode memakan memori, lihat `domain`).
 pub const DEFAULT_FILE_VALIDATION_CONCURRENCY: usize = 2;
+/// Batas atas konkurensi validasi (TD-17, usulan teknis): 4 × [`PEAK_VALIDATION_MEMORY_BYTES`] = 2 GiB per
+/// proses `api`. Diturunkan dari 16 (review F1-T29: ±0,9 GB per validasi).
+pub const MAX_FILE_VALIDATION_CONCURRENCY: usize = 4;
+/// Bawaan batas tunggu antrean validasi (detik); lewat batas → 503 (TD-17, usulan teknis).
+pub const DEFAULT_FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS: u64 = 10;
+/// Rentang batas tunggu antrean validasi yang diterima konfigurasi (detik).
+pub const FILE_VALIDATION_QUEUE_TIMEOUT_RANGE: std::ops::RangeInclusive<u64> = 1..=60;
+/// Jeda setelah `expires_at` sebelum slot dan objek mentahnya dibersihkan (TD-17, usulan teknis): menutup
+/// selisih jam aplikasi dan penyedia serta validasi yang masih berjalan saat slot kedaluwarsa.
+pub const UPLOAD_SLOT_TOMBSTONE_GRACE: Duration = Duration::from_secs(15 * 60);
+/// Jenis job pembersih slot kedaluwarsa (platform-jobs).
+pub const UPLOAD_SLOT_PURGE_JOB: &str = "platform_upload_slot_purge";
+/// Jenis job rekonsiliasi bucket terhadap `stored_file` (platform-jobs); payload `bucket` = nilai kolom
+/// `bucket`.
+pub const FILE_RECONCILE_JOB: &str = "platform_file_reconcile";
+/// Jumlah slot per putaran pembersih.
+pub const UPLOAD_SLOT_PURGE_BATCH: u16 = 100;
 
 /// Jalur unggah (KEPUTUSAN-234): POST dengan policy diutamakan; PUT bertanda tangan sebagai alternatif bila
 /// penyedia tidak mendukung POST (dukungan NEO `[TIDAK DIKETAHUI]`, spike F1-T03 §5).
@@ -84,8 +114,10 @@ pub struct FileStorageConfig {
     pub slot_ttl: Duration,
     /// Jalur unggah.
     pub upload_method: UploadMethod,
-    /// Jumlah validasi foto bersamaan.
+    /// Jumlah validasi foto bersamaan (1..=[`MAX_FILE_VALIDATION_CONCURRENCY`]).
     pub validation_concurrency: usize,
+    /// Batas tunggu antrean validasi sebelum menjawab 503.
+    pub validation_queue_timeout: Duration,
 }
 
 impl FileStorageConfig {
@@ -95,7 +127,7 @@ impl FileStorageConfig {
     /// `OBJECT_STORAGE_ADDRESSING` (`path`|`virtual_host`), `OBJECT_STORAGE_ACCESS_KEY_ID`,
     /// `OBJECT_STORAGE_SECRET_ACCESS_KEY` (rahasia), `OBJECT_STORAGE_BUCKET_PREFIX`; opsional
     /// `OBJECT_STORAGE_TIMEOUT_SECONDS`, `UPLOAD_SLOT_TTL_SECONDS`, `UPLOAD_METHOD` (`post`|`put`),
-    /// `FILE_VALIDATION_CONCURRENCY`.
+    /// `FILE_VALIDATION_CONCURRENCY`, `FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS`.
     pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
         let deployment: Deployment = env.required("DEPLOY_ENV")?;
         let timeout: u64 = env.optional_or(
@@ -107,6 +139,10 @@ impl FileStorageConfig {
         let concurrency: usize = env.optional_or(
             "FILE_VALIDATION_CONCURRENCY",
             DEFAULT_FILE_VALIDATION_CONCURRENCY,
+        )?;
+        let queue_timeout: u64 = env.optional_or(
+            "FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS",
+            DEFAULT_FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS,
         )?;
         let config = Self {
             object_storage: ObjectStorageConfig {
@@ -122,6 +158,7 @@ impl FileStorageConfig {
             slot_ttl: Duration::from_secs(ttl),
             upload_method: env.optional_or("UPLOAD_METHOD", UploadMethod::Post)?,
             validation_concurrency: concurrency,
+            validation_queue_timeout: Duration::from_secs(queue_timeout),
         };
         Ok(config)
     }
@@ -146,6 +183,7 @@ pub struct FileStorage {
     pub(super) slot_ttl: Duration,
     pub(super) upload_method: UploadMethod,
     pub(super) permits: Arc<Semaphore>,
+    pub(super) queue_timeout: Duration,
 }
 
 impl fmt::Debug for FileStorage {
@@ -160,7 +198,7 @@ impl fmt::Debug for FileStorage {
 
 impl FileStorage {
     /// Memvalidasi konfigurasi: endpoint (`http://` hanya lokal; `https://` belum didukung klien server),
-    /// nama bucket fisik ketujuh bucket logis, umur slot, dan konkurensi.
+    /// nama bucket fisik ketujuh bucket logis, umur slot, konkurensi, dan batas tunggu antrean.
     pub fn new(config: &FileStorageConfig) -> Result<Self, FileStorageSetupError> {
         let store = ObjectStore::new(&config.object_storage).map_err(|e| {
             FileStorageSetupError(match e {
@@ -183,8 +221,15 @@ impl FileStorage {
         {
             return Err(FileStorageSetupError("UPLOAD_SLOT_TTL_SECONDS"));
         }
-        if !(1..=16).contains(&config.validation_concurrency) {
+        if !(1..=MAX_FILE_VALIDATION_CONCURRENCY).contains(&config.validation_concurrency) {
             return Err(FileStorageSetupError("FILE_VALIDATION_CONCURRENCY"));
+        }
+        if !FILE_VALIDATION_QUEUE_TIMEOUT_RANGE.contains(&config.validation_queue_timeout.as_secs())
+            || config.validation_queue_timeout.subsec_nanos() != 0
+        {
+            return Err(FileStorageSetupError(
+                "FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS",
+            ));
         }
         Ok(Self {
             store,
@@ -192,6 +237,7 @@ impl FileStorage {
             slot_ttl: config.slot_ttl,
             upload_method: config.upload_method,
             permits: Arc::new(Semaphore::new(config.validation_concurrency)),
+            queue_timeout: config.validation_queue_timeout,
         })
     }
 
@@ -273,6 +319,11 @@ pub struct FileContainer {
 
 /// Berkas yang lolos validasi dan sudah dikode ulang di object storage, tetapi belum dicatat. Hanya dapat
 /// dibuat oleh [`validate_upload`]; dipakai sekali oleh [`record_stored_file`] atau [`discard_validated`].
+///
+/// Penjaga (TD-17): nilai yang dibuang sebelum dicatat atau dibuang lewat [`discard_validated`] menulis
+/// peringatan `validated_upload_dropped` di log aplikasi. Objeknya tidak bocor permanen: slot masih
+/// mengklaimnya, sehingga job pembersih menghapusnya setelah slot lewat `expires_at` + jeda.
+#[must_use = "catat dengan record_stored_file atau buang dengan discard_validated"]
 pub struct ValidatedUpload {
     pub(super) upload_slot_id: Uuid,
     pub(super) owner_account_id: Uuid,
@@ -282,6 +333,22 @@ pub struct ValidatedUpload {
     pub(super) size_bytes: i32,
     pub(super) sha256: [u8; crypto::SHA256_LEN],
     pub(super) validated_at: OffsetDateTime,
+    /// Sudah diserahkan ke [`record_stored_file`] atau [`discard_validated`].
+    pub(super) settled: AtomicBool,
+}
+
+impl ValidatedUpload {
+    pub(super) fn mark_settled(&self) {
+        self.settled.store(true, Ordering::Release);
+    }
+}
+
+impl Drop for ValidatedUpload {
+    fn drop(&mut self) {
+        if !self.settled.load(Ordering::Acquire) {
+            tracing::warn!(upload_slot_id = %self.upload_slot_id, "validated_upload_dropped");
+        }
+    }
 }
 
 impl fmt::Debug for ValidatedUpload {
@@ -351,14 +418,16 @@ pub async fn validate_upload(
     .await
 }
 
-/// Langkah 3: di transaksi milik pemanggil, memakai slot sekali dan menulis `stored_file`. Mengembalikan ID
-/// `stored_file`. Slot yang sudah dipakai menghasilkan [`FileError::NotFound`].
+/// Langkah 3: di transaksi milik pemanggil, memakai slot sekali (tombstone `consumed_at`) dan menulis
+/// `stored_file`. Mengembalikan ID `stored_file`. Slot yang sudah dipakai atau sudah kedaluwarsa pada
+/// `clock.now()` menghasilkan [`FileError::NotFound`]; pemanggil lalu memanggil [`discard_validated`].
 pub async fn record_stored_file(
     conn: &mut PgConnection,
+    clock: &dyn Clock,
     upload: &ValidatedUpload,
     container: Option<FileContainer>,
 ) -> Result<Uuid, FileError> {
-    service::record_stored_file(conn, upload, container).await
+    service::record_stored_file(conn, clock, upload, container).await
 }
 
 /// Membuang berkas tervalidasi yang tidak jadi dicatat (transaksi pemanggil gagal).
@@ -368,6 +437,68 @@ pub async fn discard_validated(
     upload: ValidatedUpload,
 ) -> Result<(), FileError> {
     service::discard_validated(clock, storage, upload).await
+}
+
+/// Hasil satu putaran [`purge_expired_upload_slots`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SlotPurgeReport {
+    /// Slot yang objeknya dan barisnya terhapus.
+    pub purged: usize,
+    /// Slot yang gagal dibersihkan (dicoba lagi putaran berikutnya).
+    pub failed: usize,
+}
+
+/// Pembersih (TD-17): sampai `limit` slot yang `expires_at`-nya lewat lebih dari
+/// [`UPLOAD_SLOT_TOMBSTONE_GRACE`] dihapus beserta semua versi objek mentahnya dan hasil kode ulang yang
+/// tidak pernah dicatat di `stored_file`. Idempoten; slot yang gagal dibiarkan untuk putaran berikutnya.
+pub async fn purge_expired_upload_slots(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    limit: u16,
+) -> Result<SlotPurgeReport, FileError> {
+    service::purge_expired_upload_slots(pool, clock, storage, limit).await
+}
+
+/// Hasil [`reconcile_bucket`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ReconcileReport {
+    /// Objek yatim (tanpa slot atau `stored_file`) yang dihapus beserta semua versinya.
+    pub orphans_deleted: usize,
+    /// Objek yatim yang gagal dihapus (dicoba lagi pada rekonsiliasi berikutnya).
+    pub orphans_failed: usize,
+    /// Baris `stored_file` belum dimusnahkan yang objeknya tidak ada (dicatat `stored_file_object_missing`).
+    pub missing_objects: usize,
+}
+
+/// Rekonsiliasi berkala satu bucket (TD-17): objek di `incoming/` tanpa slot dan objek di `files/` tanpa
+/// `stored_file` maupun klaim slot dihapus semua versinya; baris `stored_file` yang objeknya hilang
+/// dilaporkan di log aplikasi (tanpa mengubah data). Objek di luar kedua prefiks tidak disentuh.
+pub async fn reconcile_bucket(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    bucket: LogicalBucket,
+) -> Result<ReconcileReport, FileError> {
+    service::reconcile_bucket(pool, clock, storage, bucket).await
+}
+
+/// Mengantrekan job pemeliharaan berkas (pembersih slot dan rekonsiliasi setiap bucket) yang jatuh tempo
+/// sekarang, dengan kunci deduplikasi sehingga pemanggilan berulang tidak menggandakan job yang masih
+/// antre. Dipanggil penjadwal pekerja secara berkala.
+pub async fn enqueue_file_maintenance(pool: &PgPool, clock: &dyn Clock) -> Result<(), FileError> {
+    service::enqueue_file_maintenance(pool, clock).await
+}
+
+/// Handler job pemeliharaan berkas untuk `platform_jobs::run_batch` (jenis [`UPLOAD_SLOT_PURGE_JOB`] dan
+/// [`FILE_RECONCILE_JOB`]). Galat object storage atau database → dicoba ulang dengan backoff.
+pub async fn run_file_maintenance_job(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    job: &ClaimedJob,
+) -> JobOutcome {
+    service::run_file_maintenance_job(pool, clock, storage, job).await
 }
 
 #[cfg(test)]
@@ -399,6 +530,8 @@ mod tests {
         let c = FileStorageConfig::load(&env(&[])).unwrap();
         assert_eq!(c.slot_ttl, Duration::from_secs(600));
         assert_eq!(c.upload_method, UploadMethod::Post);
+        assert_eq!(c.validation_concurrency, 2);
+        assert_eq!(c.validation_queue_timeout, Duration::from_secs(10));
         assert!(!format!("{c:?}").contains(SECRET));
         let s = FileStorage::new(&c).unwrap();
         assert_eq!(
@@ -466,9 +599,54 @@ mod tests {
             bad(&[("FILE_VALIDATION_CONCURRENCY", "0")]),
             Some(FileStorageSetupError("FILE_VALIDATION_CONCURRENCY"))
         );
+        // TD-17: batas atas konkurensi diturunkan (16 tidak lagi diterima).
+        assert_eq!(
+            bad(&[("FILE_VALIDATION_CONCURRENCY", "5")]),
+            Some(FileStorageSetupError("FILE_VALIDATION_CONCURRENCY"))
+        );
+        assert_eq!(
+            bad(&[("FILE_VALIDATION_CONCURRENCY", "16")]),
+            Some(FileStorageSetupError("FILE_VALIDATION_CONCURRENCY"))
+        );
+        assert!(bad(&[("FILE_VALIDATION_CONCURRENCY", "4")]).is_none());
+        for t in ["0", "61"] {
+            assert_eq!(
+                bad(&[("FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS", t)]),
+                Some(FileStorageSetupError(
+                    "FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS"
+                ))
+            );
+        }
         assert_eq!(
             bad(&[("OBJECT_STORAGE_SECRET_ACCESS_KEY", "pendek")]),
             Some(FileStorageSetupError("OBJECT_STORAGE_*"))
         );
+    }
+
+    // trace: TD-17 (anggaran memori: konkurensi x puncak per validasi)
+    #[test]
+    fn validation_memory_budget_is_bounded() {
+        let max = u64::try_from(MAX_FILE_VALIDATION_CONCURRENCY).unwrap();
+        assert!(max * PEAK_VALIDATION_MEMORY_BYTES <= 2 * 1024 * 1024 * 1024);
+    }
+
+    // trace: TD-17 (permit diambil dengan batas tunggu; antrean penuh -> 503 Busy)
+    #[tokio::test]
+    async fn validation_queue_times_out_when_permits_are_exhausted() {
+        let c = FileStorageConfig::load(&env(&[
+            ("FILE_VALIDATION_CONCURRENCY", "1"),
+            ("FILE_VALIDATION_QUEUE_TIMEOUT_SECONDS", "1"),
+        ]))
+        .unwrap();
+        let s = FileStorage::new(&c).unwrap();
+        let held = service::acquire_validation_permit(&s).await.unwrap();
+        let started = std::time::Instant::now();
+        assert!(matches!(
+            service::acquire_validation_permit(&s).await,
+            Err(FileError::Busy)
+        ));
+        assert!(started.elapsed() >= Duration::from_secs(1));
+        drop(held);
+        assert!(service::acquire_validation_permit(&s).await.is_ok());
     }
 }
