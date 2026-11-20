@@ -1,14 +1,16 @@
 //! Pemilihan subcommand dan siklus hidup proses. Satu biner, satu argumen: nama subcommand.
 //!
-//! Yang berfungsi: `api`, `audit-relay` (F1-T24), `audit-verify` (F1-T25), dan `email-relay` (F1-T36,
-//! ADR-026). `worker` adalah kerangka:
-//! proses mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
-//! penyebaran yang mengira proses itu berjalan.
+//! Semua subcommand berfungsi: `api`, `worker` (F1-T34: pengambil event Keycloak, kunci 7001002; antrean job
+//! menyusul di task pemakainya), `audit-relay` (F1-T24), `audit-verify` (F1-T25), dan `email-relay` (F1-T36,
+//! ADR-026).
 
+use crate::access_audit::AuditDenialRecorder;
 use crate::app::{AppServices, AppState, build_router};
-use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig, EmailRelayConfig};
+use crate::config::{
+    ApiConfig, AuditRelayConfig, AuditVerifyConfig, EmailRelayConfig, WorkerConfig,
+};
 use crate::http_support::EnvelopeRenderer;
-use crate::modules::identity::api::DbPrincipalResolver;
+use crate::modules::identity::api::AccountDirectory;
 use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
 use crate::rate_limit::RateLimiter;
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
@@ -16,14 +18,16 @@ use audit_store::verify::{VerifierSettings, VerifyOutcome};
 use authn::{
     Algorithm, AuthState, Authenticator, AuthnConfig, Backend, HttpJwksSource, Realm, RealmConfig,
 };
+use authz::{DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DenialSink};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
+use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
 use sqlx::postgres::PgPoolOptions;
-use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use valkey::{Valkey, ValkeyConfig};
 
 /// Teks bantuan.
 pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-verify|email-relay>";
@@ -33,7 +37,7 @@ pub const USAGE: &str = "pemakaian: rs-backend <api|worker|audit-relay|audit-ver
 pub enum Command {
     /// Server HTTP API.
     Api,
-    /// Pekerja job (kerangka).
+    /// Pekerja latar: pengambil event Keycloak (F1-T34).
     Worker,
     /// Relay audit (F1-T24).
     AuditRelay,
@@ -98,30 +102,30 @@ impl Command {
 /// Konfigurasi bertipe per subcommand (KEPUTUSAN-132): setiap proses hanya memuat yang dibutuhkannya.
 enum Loaded {
     Api(Box<ApiConfig>),
+    Worker(WorkerConfig),
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
     EmailRelay(Box<EmailRelayConfig>),
-    Skeleton(Command, BaseConfig),
 }
 
 impl Loaded {
     fn load(command: Command, env: &EnvSource) -> Result<Self, ConfigError> {
         Ok(match command {
             Command::Api => Self::Api(Box::new(ApiConfig::load(env)?)),
+            Command::Worker => Self::Worker(WorkerConfig::load(env)?),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
             Command::EmailRelay => Self::EmailRelay(Box::new(EmailRelayConfig::load(env)?)),
-            other => Self::Skeleton(other, BaseConfig::load(env)?),
         })
     }
 
     fn base(&self) -> &BaseConfig {
         match self {
             Self::Api(c) => &c.base,
+            Self::Worker(c) => &c.base,
             Self::AuditRelay(c) => &c.base,
             Self::AuditVerify(c) => &c.base,
             Self::EmailRelay(c) => &c.base,
-            Self::Skeleton(_, b) => b,
         }
     }
 }
@@ -154,10 +158,10 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     }
     match loaded {
         Loaded::Api(config) => run_api(*config),
+        Loaded::Worker(config) => run_worker(config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
         Loaded::EmailRelay(config) => run_email_relay(*config),
-        Loaded::Skeleton(other, base) => not_implemented(other, &base),
     }
 }
 
@@ -281,12 +285,41 @@ fn run_email_relay(config: EmailRelayConfig) -> ExitCode {
     })
 }
 
-fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
-    tracing::error!(
-        subcommand = command.name(),
-        "subcommand_not_implemented: kerangka F1-T11, belum berfungsi"
+/// `worker`: pengambil event Keycloak E-01–E-04 ke `audit_outbox`, satu aktif (kunci 7001002), instans lain
+/// siaga; berhenti pada SIGINT/SIGTERM (ADR-011 butir 10, F1-T34).
+fn run_worker(config: WorkerConfig) -> ExitCode {
+    use crate::modules::identity::api::{PullerSettings, run_puller};
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
+    };
+    let events = config.keycloak_events;
+    let client = match events.client() {
+        Ok(c) => Arc::new(c),
+        Err(_) => {
+            tracing::error!("keycloak_event_client_invalid");
+            return ExitCode::FAILURE;
+        }
+    };
+    let settings = PullerSettings {
+        options: events.options(),
+        database_url: config.database_url,
+        poll_interval: events.poll_interval(),
+        retry_interval: events.retry_interval(),
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    tracing::info!(
+        lock_key = RS_KEYCLOAK_EVENT_PULLER.key(),
+        realms = settings.options.realms.len(),
+        "worker_starting"
     );
-    ExitCode::FAILURE
+    runtime.block_on(async move {
+        tokio::select! {
+            () = run_puller(settings, client, clock) => {}
+            () = shutdown_signal() => {}
+        }
+    });
+    tracing::info!("worker_stopped");
+    ExitCode::SUCCESS
 }
 
 /// `audit-verify`: verifikasi rantai harian (kunci 7001003) atau sekali (`AUDIT_VERIFY_ONCE`).
@@ -382,7 +415,28 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         Arc::new(authenticator),
         Arc::new(EnvelopeRenderer::new(&config.problem_type_base)),
     );
-    let resolver = Arc::new(DbPrincipalResolver::new(pool.clone()));
+    let valkey = Valkey::connect_lazy(&ValkeyConfig {
+        url: config.valkey_url.clone(),
+        op_timeout: Duration::from_millis(config.valkey_op_timeout_ms),
+    })
+    .map_err(|_| setup_failed("api_valkey_url"))?;
+    // Resolver akun + penjaga sesi yang dicabut (F1-T33): Valkey dengan cadangan PostgreSQL (RT-18).
+    let directory = Arc::new(AccountDirectory::new(
+        pool.clone(),
+        valkey,
+        Arc::clone(&clock),
+        Duration::from_secs(crate::modules::identity::api::DEFAULT_ACCOUNT_CACHE_TTL_SECONDS),
+    ));
+    // Penolakan objek data sensitif dicatat E-05 hasil gagal (F1-T38).
+    let denials = DenialSink::start(
+        DEFAULT_DENIAL_QUEUE_CAPACITY,
+        DEFAULT_DENIAL_AUDIT_CONCURRENCY,
+        Some(Arc::new(AuditDenialRecorder::new(
+            pool.clone(),
+            Arc::clone(&clock),
+        ))),
+    )
+    .map_err(|_| setup_failed("denial_sink"))?;
     let readiness: Vec<Arc<dyn ReadinessCheck>> =
         vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
     let state = AppState::new(
@@ -396,20 +450,17 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
     );
-    let router = build_router(state, auth, resolver).map_err(|e| {
+    let router = build_router(state, auth, directory.clone(), directory, denials).map_err(|e| {
         // Rute tanpa kebijakan atau kebijakan tidak valid: start gagal (KEPUTUSAN-127).
         tracing::error!("policy_setup_failed: {e}");
         std::io::Error::other("policy_setup_failed")
     })?;
     tracing::info!(bind = %listener.local_addr()?, "api_listening");
-    // ConnectInfo: alamat peer TCP untuk sumber audit dan batas laju per sumber. Di balik reverse proxy,
-    // alamat ini adalah proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md, PT-39).
-    axum::serve(
-        listener,
-        router.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .with_graceful_shutdown(shutdown_signal())
-    .await
+    // Alamat peer TCP (ConnectInfo -> authz::ClientIp) untuk sumber audit dan batas laju per sumber. Di balik
+    // reverse proxy alamat ini milik proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md, PT-39).
+    router
+        .serve_with_peer_addr(listener, shutdown_signal())
+        .await
 }
 
 /// Selesai pada SIGINT atau SIGTERM (Docker Compose mengirim SIGTERM).

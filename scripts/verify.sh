@@ -193,7 +193,9 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
     trap - EXIT INT TERM
     return 1
   fi
+  # API_VALKEY_URL menunjuk loopback yang tidak melayani: resolver akun memakai cadangan PostgreSQL (RT-18).
   API_DATABASE_URL="$RS_TEST_DB_APP_URL" \
+    API_VALKEY_URL="redis://127.0.0.1:9" API_VALKEY_OP_TIMEOUT_MS=50 \
     AUTH_ADMIN_ISSUER="https://auth.ruang-sehat.invalid/realms/admin" \
     AUTH_ADMIN_JWKS_URL="http://127.0.0.1:9/realms/admin/protocol/openid-connect/certs" \
     AUTH_ADMIN_AUDIENCE="rs-backoffice-api" \

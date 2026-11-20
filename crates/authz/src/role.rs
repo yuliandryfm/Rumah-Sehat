@@ -69,6 +69,15 @@ pub enum AccountStatus {
 }
 
 impl AccountStatus {
+    /// Kode di database.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::PendingActivation => "pending_activation",
+            Self::Active => "active",
+            Self::Inactive => "inactive",
+        }
+    }
+
     /// Mengurai kode database; kode tidak dikenal = `None` (ditolak).
     pub fn parse(code: &str) -> Option<Self> {
         match code {
@@ -173,6 +182,13 @@ mod tests {
         }
         assert_eq!(AccountType::parse("admin"), None);
         assert_eq!(AccountStatus::parse("active"), Some(AccountStatus::Active));
+        for s in [
+            AccountStatus::PendingActivation,
+            AccountStatus::Active,
+            AccountStatus::Inactive,
+        ] {
+            assert_eq!(AccountStatus::parse(s.as_str()), Some(s));
+        }
         assert_eq!(AccountStatus::parse("ACTIVE"), None);
     }
 

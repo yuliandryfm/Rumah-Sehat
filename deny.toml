@@ -25,7 +25,9 @@ ignore = []
 # unicode-properties dan foldhash, SRC-493). Pengecualian sempit unicode-ident (KEPUTUSAN-245) kini tercakup
 # sehingga dihapus. Lisensi lain, termasuk ekspresi gabungan yang memuat lisensi di luar daftar ini, dibawa
 # ke user sebelum ditambahkan.
-allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib"]
+# BSL-1.0 (Boost Software License 1.0) diizinkan global oleh user (KEPUTUSAN-287, 2026-11-20; pemicu:
+# redis 1.8.2 menarik xxhash-rust 0.8.21 berlisensi BSL-1.0 sebagai dependensi wajib, SRC-571).
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "BSL-1.0"]
 confidence-threshold = 0.8
 # Dependensi pengembangan ikut diperiksa (lebih ketat dari default).
 include-dev = true

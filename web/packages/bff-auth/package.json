@@ -1,0 +1,19 @@
+{
+  "name": "@rs/bff-auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BFF autentikasi server Next.js (ADR-011 butir 7, ADR-024 butir 3): OIDC Authorization Code + PKCE klien rahasia, sesi Valkey, token JWE terikat ID sesi, CSRF, Route Handler. Modul kritis T1.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./session-dialog.css": "./src/client/session-dialog.css"
+  },
+  "dependencies": {
+    "@rs/ui": "workspace:*",
+    "ioredis": "6.0.0",
+    "jose": "6.2.17",
+    "openid-client": "6.9.0",
+    "react": "19.3.1"
+  }
+}

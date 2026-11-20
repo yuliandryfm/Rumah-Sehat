@@ -231,3 +231,77 @@ async fn app_role_has_insert_only_on_outbox() {
         assert_eq!(code.as_deref(), Some("42501"), "{sql}: {err}");
     }
 }
+
+#[tokio::test]
+async fn failed_access_insert_is_idempotent_for_retries() {
+    // F1-T38 review butir 5: event penolakan dibentuk sekali; percobaan ulang menulis event yang sama
+    // tanpa menggandakan baris (balasan commit yang hilang tidak menghasilkan dua event).
+    let app = app_pool().await;
+    let relay = relay_pool().await;
+    let subject = new_id();
+    let record = failed_access_event(subject)
+        .finish_failed_access(&clock())
+        .unwrap();
+    audit::insert_failed_access(&app, &record).await.unwrap();
+    audit::insert_failed_access(&app, &record).await.unwrap();
+    let n = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.audit_outbox WHERE id = $1"#,
+        record.event_id()
+    )
+    .fetch_one(&relay)
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+    // ON CONFLICT DO NOTHING tanpa target hanya aman selama PK id satu-satunya constraint unik.
+    let unique = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM pg_indexes
+           WHERE schemaname = 'app' AND tablename = 'audit_outbox' AND indexdef LIKE 'CREATE UNIQUE INDEX%'"#
+    )
+    .fetch_one(&relay)
+    .await
+    .unwrap();
+    assert_eq!(
+        unique, 1,
+        "audit_outbox wajib hanya punya PK sebagai constraint unik"
+    );
+}
+
+#[test]
+fn only_failed_e05_without_changes_can_be_written_outside_business_transaction() {
+    // Review keamanan F1-T33 blokir 1: jalur di luar in_audited_tx tidak boleh dipakai event aksi bisnis
+    // (KEPUTUSAN-283). Event E-07 bernilai, E-05 berhasil, dan E-05 gagal dengan perubahan field ditolak.
+    let subject = new_id();
+    let reject = |e: AuditEvent| {
+        assert_eq!(
+            e.finish_failed_access(&clock()).unwrap_err().kind(),
+            AuditErrorKind::InvalidCombination
+        );
+    };
+    reject(valid_event(subject));
+    reject(failed_access_event(subject).outcome(audit::Outcome::success()));
+    reject(failed_access_event(subject).change(audit::FieldChange::new(
+        "status",
+        Some(audit::Value::code("a").unwrap()),
+        Some(audit::Value::code("b").unwrap()),
+    )));
+    assert!(
+        failed_access_event(subject)
+            .finish_failed_access(&clock())
+            .is_ok()
+    );
+}
+
+/// E-05 hasil gagal (penolakan akses) atas penerima layanan `subject`.
+fn failed_access_event(subject: foundation::Uuid) -> AuditEvent {
+    AuditEvent::new(
+        audit::EventCode::E05,
+        audit::Code::new("access").unwrap(),
+        audit::Actor::account(new_id(), audit::Code::new("patient").unwrap(), vec![]),
+        audit::ObjectRef::with_uuid(&CARE_RECIPIENT, subject),
+    )
+    .subject(audit::Subject::care_recipient(subject))
+    .outcome(audit::Outcome::failure(
+        audit::Code::new("access_denied").unwrap(),
+    ))
+    .context(&ctx())
+}

@@ -5,9 +5,10 @@ edition = "2024"
 publish = false
 default-run = "rs-backend"
 
-# Satu biner dengan subcommand api | worker | audit-relay | audit-verify | email-relay (KEPUTUSAN-89; realtime dan
-# privacy-worker menyusul di task masing-masing). Versi: docs/05-stack.md §1.1 (axum 0.8.9 [SRC-163];
-# tokio 1.54.1 [SRC-162]; utoipa 6.0.0 [SRC-168]; serde 1.0.229 [SRC-167]; serde_json 1.0.154 [SRC-335];
+# Satu biner dengan subcommand api | worker | audit-relay | audit-verify | email-relay (KEPUTUSAN-89; `worker` =
+# pengambil event Keycloak sejak F1-T34; realtime dan privacy-worker menyusul di task masing-masing). Versi:
+# docs/05-stack.md §1.1 (axum 0.8.9 [SRC-163]; tokio 1.54.1 [SRC-162]; utoipa 6.0.0 [SRC-168]; serde 1.0.229
+# [SRC-167]; serde_json 1.0.154 [SRC-335];
 # utoipa-axum 0.3.0 dan pengecekan lain: docs/sources.md SRC-377 dst).
 [dependencies]
 foundation = { path = "../../crates/foundation" }
@@ -44,12 +45,24 @@ image = { version = "=0.25.10", default-features = false, features = ["jpeg", "p
 # pulldown-cmark 0.13.6 [SRC-600]: pengurai CommonMark untuk validasi render aman isi CMS saat simpan (F1-T111,
 # M-40). Fitur bawaan (`html` renderer, `getopts` CLI) dimatikan: backend hanya mengurai, tidak merender.
 pulldown-cmark = { version = "=0.13.6", default-features = false }
+# Modul identity (F1-T33): cache status akun dan pencabutan sesi di Valkey (crate valkey, satu-satunya
+# pemakai crate redis).
+valkey = { path = "../../crates/valkey" }
+# Klien Admin REST Keycloak untuk pengambil event (F1-T34, ADR-011 butir 10): hyper langsung seperti klien JWKS
+# crates/authn dan klien OpenBao crates/crypto (reqwest ditolak lisensi, [SRC-489]). Versi sama dengan yang
+# sudah ada di Cargo.lock: hyper 1.12.0, hyper-util 0.1.21, http-body-util 0.1.5, bytes 1.12.2 [SRC-484];
+# http 1.5.0 [SRC-334]. Fitur `time` tokio di atas untuk jeda putaran dan batas waktu permintaan.
+bytes = { version = "=1.12.2", default-features = false, features = ["std"] }
+http = "=1.5.0"
+http-body-util = { version = "=0.1.5", default-features = false }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
 
 [dev-dependencies]
-# F1-T30: kunci realm uji dan token bertanda tangan untuk test unduh lewat PolicyRouter (fitur testing hanya
-# di dev-dependencies, tidak ikut biner produksi; pola sama dengan crate authz).
+# Token uji dari kunci uji (coding-standards §7.2; F1-T30, F1-T33); fitur `testing` hanya lewat
+# dev-dependencies, tidak ikut biner produksi (TD-15).
 authn = { path = "../../crates/authn", features = ["testing"] }
-tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time"] }
 time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
 
 # Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).

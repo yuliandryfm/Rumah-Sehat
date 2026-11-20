@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT position_ms FROM app.idp_event_cursor WHERE idp_realm = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "position_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "idp_event_cursor",
+            "name": "position_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0f3bb81cb12e2867d2196b0ba5faec690416f6fac484a0dd3a10a71395fbb600"
+}

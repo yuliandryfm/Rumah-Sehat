@@ -74,11 +74,14 @@ services:
       - postgres-rme-data:/var/lib/postgresql
 
   # Dua Valkey terpisah (Ruang Sehat dan RME), tanpa persistensi: isi dibangun ulang (ADR-007).
+  # maxmemory-policy noeviction (bawaan Valkey, ditulis eksplisit; F1-T33): entri pencabutan sesi dan
+  # penandanya tidak boleh dibuang diam-diam saat memori penuh (penulisan gagal lebih aman: jalur cadangan
+  # PostgreSQL). Wajib sama di Compose staging/production.
   valkey-app:
     <<: *valkey
     environment:
       VALKEY_PASSWORD: ${VALKEY_APP_PASSWORD:?isi di infra/local/.env}
-    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no"]
+    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no --maxmemory-policy noeviction"]
     ports:
       - "127.0.0.1:${VALKEY_APP_PORT:-16379}:6379"
 
@@ -86,7 +89,7 @@ services:
     <<: *valkey
     environment:
       VALKEY_PASSWORD: ${VALKEY_RME_PASSWORD:?isi di infra/local/.env}
-    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no"]
+    command: ["sh", "-c", "exec valkey-server --requirepass \"$$VALKEY_PASSWORD\" --save '' --appendonly no --maxmemory-policy noeviction"]
     ports:
       - "127.0.0.1:${VALKEY_RME_PORT:-16380}:6379"
 
@@ -98,6 +101,7 @@ services:
     command: ["start-dev"]
     volumes:
       - ../keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
+      - ../keycloak/themes/ruang-sehat:/opt/keycloak/themes/ruang-sehat:ro
     depends_on:
       postgres-app:
         condition: service_healthy
@@ -129,7 +133,7 @@ services:
   # dibuktikan scripts/keycloak-check.sh). Bukan layanan tetap (profil `alat`); jalankan:
   #   docker compose -f infra/local/compose.yaml --profile alat run --rm keycloak-config
   # Berbagi namespace jaringan dengan `keycloak`, sehingga memakai http://127.0.0.1:8080 tanpa port baru.
-  # Nilai $(env:...) di berkas realm (SMTP relay ADR-026, redirect URI, secret klien BFF) diisi dari
+  # Nilai $(env:...) di berkas realm (SMTP relay ADR-026, redirect URI, secret klien BFF dan pengambil event) diisi dari
   # variabel RS_KC_* di infra/local/.env; staging/production dari OpenBao lewat skrip deploy.
   keycloak-config:
     image: adorsys/keycloak-config-cli:6.5.1-26.5.5@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274
@@ -158,6 +162,9 @@ services:
       RS_KC_BACKOFFICE_BFF_SECRET: ${RS_KC_BACKOFFICE_BFF_SECRET:?isi di infra/local/.env}
       RS_KC_PORTAL_BFF_REDIRECT_URI: ${RS_KC_PORTAL_BFF_REDIRECT_URI:?isi di infra/local/.env}
       RS_KC_PORTAL_BFF_SECRET: ${RS_KC_PORTAL_BFF_SECRET:?isi di infra/local/.env}
+      # Klien layanan pengambil event rs-backend worker (F1-T34, ADR-011 butir 10), satu rahasia per realm.
+      RS_KC_EVENT_READER_PASIEN_SECRET: ${RS_KC_EVENT_READER_PASIEN_SECRET:?isi di infra/local/.env}
+      RS_KC_EVENT_READER_ADMIN_SECRET: ${RS_KC_EVENT_READER_ADMIN_SECRET:?isi di infra/local/.env}
     volumes:
       - ../keycloak/realms:/config:ro
 

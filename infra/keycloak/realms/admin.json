@@ -3,6 +3,10 @@
   "enabled": true,
   "displayName": "Ruang Sehat Admin",
   "sslRequired": "external",
+  "loginTheme": "ruang-sehat",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["id"],
+  "defaultLocale": "id",
   "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "loginWithEmailAllowed": true,
@@ -48,12 +52,11 @@
     "auth": "false"
   },
   "messageBundles": {
-    "en": {
+    "id": {
       "invalidUserMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountTemporarilyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
-      "accountPermanentlyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
-      "invalidEmailMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan."
+      "accountPermanentlyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan."
     }
   },
   "attributes": {
@@ -550,12 +553,61 @@
       "optionalClientScopes": []
     },
     {
+      "clientId": "rs-backend-event-reader",
+      "name": "Pengambil event Keycloak (rs-backend worker)",
+      "description": "Klien layanan rs-backend worker: client credentials saja, hanya realm-management/view-events dan cakupan kc-admin-api untuk membaca event login (ADR-011 butir 10, F1-T34)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "$(env:RS_KC_EVENT_READER_ADMIN_SECRET)",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "consentRequired": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "kc-admin-api"
+      ],
+      "optionalClientScopes": []
+    },
+    {
       "clientId": "admin-cli",
       "directAccessGrantsEnabled": false
     },
     {
       "clientId": "account-console",
       "enabled": false
+    }
+  ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "rs-backend-event-reader",
+        "roles": [
+          "view-events"
+        ]
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "service-account-rs-backend-event-reader",
+      "enabled": true,
+      "serviceAccountClientId": "rs-backend-event-reader",
+      "clientRoles": {
+        "realm-management": [
+          "view-events"
+        ]
+      }
     }
   ]
 }

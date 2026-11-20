@@ -1,5 +1,6 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
+use crate::modules::identity::api::KeycloakEventConfig;
 use crate::modules::platform::api::FileStorageConfig;
 use crate::rate_limit::RateBudget;
 use foundation::Sensitive;
@@ -22,6 +23,11 @@ pub struct ApiConfig {
     pub database_url: Sensitive<String>,
     /// `API_DATABASE_MAX_CONNECTIONS` (bawaan 20 = skema fisik §10.3, 1..=100).
     pub database_max_connections: PoolSize,
+    /// `API_VALKEY_URL`: Valkey aplikasi untuk cache akun dan pencabutan sesi (F1-T33; rahasia). Bila Valkey
+    /// tidak tersedia, resolver memakai PostgreSQL (RT-18).
+    pub valkey_url: Sensitive<String>,
+    /// `API_VALKEY_OP_TIMEOUT_MS` (bawaan `valkey::DEFAULT_OP_TIMEOUT_MS`).
+    pub valkey_op_timeout_ms: u64,
     /// Validasi token realm `admin` untuk endpoint backoffice (ADR-011 butir 3 dan 8).
     pub admin_realm: RealmAuthConfig,
     /// Object storage untuk berkas (F1-T29; gambar konten F1-T93).
@@ -77,6 +83,9 @@ impl ApiConfig {
             database_url: env.required_secret("API_DATABASE_URL")?,
             database_max_connections: env
                 .optional_or("API_DATABASE_MAX_CONNECTIONS", PoolSize(20))?,
+            valkey_url: env.required_secret("API_VALKEY_URL")?,
+            valkey_op_timeout_ms: env
+                .optional_or("API_VALKEY_OP_TIMEOUT_MS", valkey::DEFAULT_OP_TIMEOUT_MS)?,
             admin_realm: RealmAuthConfig {
                 issuer: env.required("AUTH_ADMIN_ISSUER")?,
                 jwks_url: env.required("AUTH_ADMIN_JWKS_URL")?,
@@ -358,6 +367,29 @@ impl EmailRelayConfig {
     }
 }
 
+/// Konfigurasi `rs-backend worker` (F1-T34): login `rs_worker` ke `ruang_sehat` dan pengambil event Keycloak
+/// (ADR-011 butir 10). Proses ini tidak memegang kredensial relay/penulis audit (ADR-009 butir 3).
+#[derive(Debug, Clone)]
+pub struct WorkerConfig {
+    /// `LOG_LEVEL` (dan `HTTP_BIND`, tidak dipakai proses ini).
+    pub base: BaseConfig,
+    /// `WORKER_DATABASE_URL`: login `rs_worker` (anggota `rs_app`) ke `ruang_sehat` (rahasia).
+    pub database_url: Sensitive<String>,
+    /// Pengambil event Keycloak (`KEYCLOAK_ADMIN_URL`, `KEYCLOAK_EVENT_*`).
+    pub keycloak_events: KeycloakEventConfig,
+}
+
+impl WorkerConfig {
+    /// Memuat dari sumber; gagal cepat tanpa mencetak nilai.
+    pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
+        Ok(Self {
+            base: BaseConfig::load(env)?,
+            database_url: env.required_secret("WORKER_DATABASE_URL")?,
+            keycloak_events: KeycloakEventConfig::load(env)?,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,6 +496,7 @@ mod tests {
     fn api_env(extra: &[(&'static str, &'static str)]) -> EnvSource {
         let mut all = vec![
             ("API_DATABASE_URL", "postgres://127.0.0.1:15432/ruang_sehat"),
+            ("API_VALKEY_URL", "redis://127.0.0.1:16379"),
             (
                 "AUTH_ADMIN_ISSUER",
                 "https://auth.ruang-sehat.invalid/realms/admin",
@@ -601,6 +634,7 @@ mod tests {
     fn api_requires_database_auth_and_storage_and_bounds_pool() {
         for missing in [
             "API_DATABASE_URL",
+            "API_VALKEY_URL",
             "AUTH_ADMIN_ISSUER",
             "AUTH_ADMIN_JWKS_URL",
             "AUTH_ADMIN_AUDIENCE",
@@ -608,6 +642,7 @@ mod tests {
         ] {
             let pairs: Vec<(&str, &str)> = [
                 ("API_DATABASE_URL", "postgres://x"),
+                ("API_VALKEY_URL", "redis://127.0.0.1:1"),
                 ("AUTH_ADMIN_ISSUER", "https://i"),
                 ("AUTH_ADMIN_JWKS_URL", "http://127.0.0.1:1/j"),
                 ("AUTH_ADMIN_AUDIENCE", "a"),
@@ -637,5 +672,36 @@ mod tests {
                 ApiConfig::load(&api_env(&[("API_DATABASE_MAX_CONNECTIONS", bad)])).unwrap_err();
             assert_eq!(e.name(), "API_DATABASE_MAX_CONNECTIONS", "{bad}");
         }
+    }
+
+    #[test]
+    fn worker_needs_database_and_keycloak_event_credentials() {
+        let ok = EnvSource::from_pairs([
+            (
+                "WORKER_DATABASE_URL",
+                "postgres://rs_worker@localhost/ruang_sehat",
+            ),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
+            ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+        ]);
+        let c = WorkerConfig::load(&ok).unwrap();
+        assert_eq!(c.keycloak_events.options().realms.len(), 2);
+        let dbg = format!("{c:?}");
+        assert!(!dbg.contains("postgres://") && !dbg.contains("rahasia"));
+        let no_db = EnvSource::from_pairs([("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081")]);
+        assert_eq!(
+            WorkerConfig::load(&no_db).unwrap_err().name(),
+            "WORKER_DATABASE_URL"
+        );
+        let no_secret = EnvSource::from_pairs([
+            ("WORKER_DATABASE_URL", "postgres://x"),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "x"),
+        ]);
+        assert_eq!(
+            WorkerConfig::load(&no_secret).unwrap_err().name(),
+            "KEYCLOAK_EVENT_SECRET_ADMIN"
+        );
     }
 }

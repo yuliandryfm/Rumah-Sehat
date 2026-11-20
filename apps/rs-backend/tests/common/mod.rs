@@ -7,11 +7,12 @@ use authn::testing::{StaticJwks, TestRealmKey, jwks_document};
 use authn::{
     Algorithm, AuthContext, AuthState, Authenticator, AuthnConfig, Backend, Realm, RealmConfig,
 };
-use authz::{PrincipalResolver, ResolveFuture};
+use authz::{DenialSink, PrincipalResolver, ResolveFuture, RevocationFuture, SessionGuard};
 use foundation::{Clock, SystemClock};
 use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState, build_router};
 use rs_backend::http_support::EnvelopeRenderer;
+use rs_backend::modules::identity::api::AccountDirectory;
 use rs_backend::modules::platform::api::{FileStorage, FileStorageConfig, ReadinessCheck};
 use rs_backend::rate_limit::{RateBudget, RateLimiter};
 use serde_json::{Value, json};
@@ -22,6 +23,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use valkey::{Valkey, ValkeyConfig};
 
 pub const TYPE_BASE: &str = "https://d.example/problems";
 pub const ADMIN_ISS: &str = "https://auth.ruang-sehat.invalid/realms/admin";
@@ -124,22 +126,43 @@ impl PrincipalResolver for NoAccounts {
     }
 }
 
+impl SessionGuard for NoAccounts {
+    fn is_revoked<'a>(&'a self, _ctx: &'a AuthContext) -> RevocationFuture<'a> {
+        Box::pin(async { Ok(true) })
+    }
+}
+
+/// Resolver akun dan penjaga sesi sungguhan (modul identity, F1-T33) di atas `pool`, dengan Valkey yang
+/// tidak terjangkau sehingga jalur cadangan PostgreSQL (RT-18) yang diuji.
+pub fn account_directory(pool: PgPool) -> Arc<AccountDirectory> {
+    let valkey = Valkey::connect_lazy(&ValkeyConfig {
+        url: foundation::Sensitive::new("redis://127.0.0.1:9".to_string()),
+        op_timeout: std::time::Duration::from_millis(50),
+    })
+    .unwrap();
+    Arc::new(AccountDirectory::new(
+        pool,
+        valkey,
+        Arc::new(SystemClock),
+        std::time::Duration::from_secs(30),
+    ))
+}
+
 /// Menjalankan router lengkap di localhost dengan `ConnectInfo` (alamat klien untuk audit dan batas laju).
 pub async fn spawn_app(
     state: AppState,
     auth: AuthState,
     resolver: Arc<dyn PrincipalResolver>,
+    sessions: Arc<dyn SessionGuard>,
 ) -> SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let app = build_router(state, auth, resolver).unwrap();
+    let denials = DenialSink::start(64, 1, None).unwrap();
+    let app = build_router(state, auth, resolver, sessions, denials).unwrap();
     tokio::spawn(async move {
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .await
-        .unwrap();
+        app.serve_with_peer_addr(listener, std::future::pending())
+            .await
+            .unwrap();
     });
     addr
 }
@@ -159,7 +182,13 @@ pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
             public_image_limit: roomy_limiter(),
         },
     );
-    spawn_app(state, auth_state(&keys, clock), Arc::new(NoAccounts)).await
+    spawn_app(
+        state,
+        auth_state(&keys, clock),
+        Arc::new(NoAccounts),
+        Arc::new(NoAccounts),
+    )
+    .await
 }
 
 pub struct Resp {

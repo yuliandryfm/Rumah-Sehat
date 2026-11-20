@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.rs_admin_role (id, account_id, sub_role) VALUES ($1, $2, 'verifier')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6cbd2be616cf5bc7ae8a248a8bb3562b313e5179b79981708087d16a203bedce"
+}

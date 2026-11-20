@@ -17,7 +17,6 @@ use common::{ADMIN_AUD, ADMIN_ISS, PASIEN_ISS, Resp, TestKeys, request, request_
 use foundation::{FixedClock, SystemClock, Uuid, new_id};
 use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState};
-use rs_backend::modules::identity::api::DbPrincipalResolver;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -99,8 +98,8 @@ impl Fixture {
         );
         // Masa berlaku token dinilai dengan jam sistem; aturan tayang dengan jam aplikasi yang diatur test.
         let auth = common::auth_state(&keys, Arc::new(SystemClock));
-        let resolver = Arc::new(DbPrincipalResolver::new(pool.clone()));
-        let addr = common::spawn_app(state, auth, resolver).await;
+        let directory = common::account_directory(pool.clone());
+        let addr = common::spawn_app(state, auth, directory.clone(), directory).await;
         let content = admin(&pool, "active", &["content"]).await;
         Self {
             addr,

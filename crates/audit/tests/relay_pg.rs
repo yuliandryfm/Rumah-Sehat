@@ -469,9 +469,16 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
                 .seq,
         );
     }
-    // Urutan seq mengikuti urutan outbox (created_at, id), tanpa celah dan tanpa ganda.
-    for pair in seqs.windows(2) {
-        assert_eq!(pair[1], pair[0] + 1, "seq tidak berurutan");
+    // Urutan relatif event milik test ini mengikuti urutan outbox (occurred_at sama → urutan id), tanpa
+    // ganda. Kerapatan seq tidak diperiksa di sini (event lain dapat terselip di antaranya); rantai tanpa
+    // celah diperiksa assert_chain_intact di bawah.
+    let mut by_id: Vec<(Uuid, i64)> = ids.iter().copied().zip(seqs.iter().copied()).collect();
+    by_id.sort_by_key(|(id, _)| *id);
+    for pair in by_id.windows(2) {
+        assert!(
+            pair[1].1 > pair[0].1,
+            "seq tidak mengikuti urutan outbox: {pair:?}"
+        );
     }
     assert_chain_intact(&verifier).await;
 

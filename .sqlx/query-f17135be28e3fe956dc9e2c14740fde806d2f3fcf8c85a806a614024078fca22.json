@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM app.audit_outbox",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f17135be28e3fe956dc9e2c14740fde806d2f3fcf8c85a806a614024078fca22"
+}

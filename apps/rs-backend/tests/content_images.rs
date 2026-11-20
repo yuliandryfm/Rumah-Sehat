@@ -16,7 +16,6 @@ use common::{ADMIN_AUD, ADMIN_ISS, TestKeys, request, request_json, request_raw,
 use files::{METADATA_MARKER, SeaweedFs, app_pool, contains, png, png_with_metadata, upload};
 use foundation::{Clock, SystemClock, Uuid, new_id};
 use rs_backend::app::{AppServices, AppState};
-use rs_backend::modules::identity::api::DbPrincipalResolver;
 use rs_backend::modules::platform::api::{
     FileStorage, LogicalBucket, UploadInstruction, UploadMethod,
 };
@@ -107,7 +106,8 @@ impl Fixture {
         let addr = common::spawn_app(
             state,
             auth,
-            Arc::new(DbPrincipalResolver::new(pool.clone())),
+            common::account_directory(pool.clone()),
+            common::account_directory(pool.clone()),
         )
         .await;
         let admin = content_admin(&pool).await;

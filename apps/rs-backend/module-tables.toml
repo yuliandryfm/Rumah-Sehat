@@ -6,8 +6,9 @@
 # oleh task migrasinya (F1-T16 dan seterusnya) pada commit yang sama dengan migrasinya.
 database = "app"
 
+# idp_event_cursor, idp_event_receipt (F1-T34): posisi baca dan tanda terima pengambil event Keycloak.
 [modules.identity]
-tables = ["account", "rs_admin_role", "session_revocation"]
+tables = ["account", "rs_admin_role", "session_revocation", "idp_event_cursor", "idp_event_receipt"]
 
 [modules.profile]
 tables = [

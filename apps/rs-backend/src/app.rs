@@ -7,11 +7,17 @@ use crate::modules::platform::api::{FileStorage, ReadinessCheck};
 use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PublicApiDoc};
 use crate::rate_limit::RateLimiter;
 use authn::AuthState;
-use authz::{Enforcement, PolicyRouter, PolicySetupError, PrincipalResolver};
-use axum::Router;
+use authz::{
+    ClientIp, DenialSink, EnforcedRouter, Enforcement, PolicyRouter, PolicySetupError,
+    PrincipalResolver, SessionGuard,
+};
+use axum::extract::{ConnectInfo, Request};
+use axum::middleware::Next;
+use axum::response::Response;
 use foundation::Clock;
 use observability::correlation_middleware;
 use sqlx::PgPool;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use utoipa::OpenApi;
 
@@ -97,28 +103,51 @@ pub(crate) fn public_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
 }
 
-/// Router lengkap siap `axum::serve`.
+/// Semua rute proses `api` (ops, backoffice, publik), masing-masing dengan kebijakannya.
+pub(crate) fn all_routes() -> PolicyRouter<AppState> {
+    PolicyRouter::new()
+        .merge(ops_router())
+        .merge(backoffice_router())
+        .merge(public_router())
+}
+
+/// Memasang [`ClientIp`] dari alamat peer TCP (`ConnectInfo`, tersedia lewat
+/// `EnforcedRouter::serve_with_peer_addr`) untuk field "Sumber" audit (PRD §7.2) dan batas laju per sumber.
+/// Tidak ada header klien yang dipercaya (IP asli di balik proxy `[TIDAK DIKETAHUI]`, PT-39).
+async fn client_ip_middleware(mut req: Request, next: Next) -> Response {
+    if let Some(ip) = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|c| c.0.ip())
+    {
+        req.extensions_mut().insert(ClientIp(ip));
+    }
+    next.run(req).await
+}
+
+/// Router lengkap siap dilayani (`EnforcedRouter::serve_with_peer_addr`).
 ///
 /// - `PolicyRouter::finish` memeriksa saat start bahwa setiap rute punya kebijakan, kebijakan dapat
 ///   dipenuhi, dan realm yang dibutuhkan diterima validator token (galat = start gagal); lalu memasang
 ///   middleware penegak: rute tidak dikenal, metode tidak diizinkan, atau rute tanpa kebijakan dijawab
 ///   `404` envelope (`4040001`). Registry `docs/05-response-codes.md` tidak memuat kode 405, dan 404 tidak
 ///   membedakan "tidak ada" dari "tidak boleh" (KU-03).
-/// - Endpoint terautentikasi (backoffice) memakai `auth` (validasi token realm `admin`) dan `resolver`
-///   (akun dan sub-peran dari database aplikasi).
-/// - Middleware korelasi dipasang terakhir dengan `Router::layer`, sehingga membungkus penegak dan
-///   `MatchedPath` tersedia.
+/// - Endpoint terautentikasi (backoffice) memakai `auth` (validasi token realm `admin`), `resolver` dan
+///   `sessions` (modul identity `AccountDirectory`, F1-T33), dan `denials` (E-05 hasil gagal, F1-T38).
+/// - Middleware korelasi dan IP klien dipasang terakhir dengan `EnforcedRouter::layer`, sehingga membungkus
+///   penegak dan `MatchedPath` tersedia. Router hasil `finish` tertutup untuk penambahan rute (TD-15).
 pub fn build_router(
     state: AppState,
     auth: AuthState,
     resolver: Arc<dyn PrincipalResolver>,
-) -> Result<Router, PolicySetupError> {
-    let (router, _spec) = ops_router()
-        .merge(backoffice_router())
-        .merge(public_router())
-        .finish(Enforcement::new(auth, resolver))?;
+    sessions: Arc<dyn SessionGuard>,
+    denials: DenialSink,
+) -> Result<EnforcedRouter, PolicySetupError> {
+    let (router, _spec) =
+        all_routes().finish(Enforcement::new(auth, resolver, sessions, denials))?;
     Ok(router
         .with_state(state)
+        .layer(axum::middleware::from_fn(client_ip_middleware))
         .layer(axum::middleware::from_fn(correlation_middleware)))
 }
 
@@ -177,8 +206,7 @@ mod tests {
         let renderer = Arc::new(crate::http_support::EnvelopeRenderer::new(
             "https://d.example/problems",
         ));
-        let e = ops_router()
-            .merge(backoffice_router())
+        let e = all_routes()
             .finish(Enforcement::public_only(renderer))
             .err();
         assert_eq!(e, Some(PolicySetupError::MissingAuthentication));

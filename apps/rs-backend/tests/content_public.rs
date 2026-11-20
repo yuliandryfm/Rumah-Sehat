@@ -16,7 +16,6 @@ use common::{ADMIN_AUD, ADMIN_ISS, Resp, TestKeys, request, request_json, token}
 use foundation::{FixedClock, SystemClock, Uuid, new_id};
 use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState};
-use rs_backend::modules::identity::api::DbPrincipalResolver;
 use rs_backend::rate_limit::{RateBudget, RateLimiter};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -97,7 +96,8 @@ impl Fixture {
         let addr = common::spawn_app(
             state,
             auth,
-            Arc::new(DbPrincipalResolver::new(pool.clone())),
+            common::account_directory(pool.clone()),
+            common::account_directory(pool.clone()),
         )
         .await;
         let sub = content_admin(&pool).await;

@@ -6,10 +6,11 @@
 //! - ADR-011 butir 11: backend Ruang Sehat menolak realm `rme`, backend RME hanya menerima `rme`
 //!   ([`Backend`], ditegakkan saat konfigurasi).
 //! - JWKS per realm di-cache dengan TTL, gagal-tertutup ([`jwks`]); alamat JWKS dari konfigurasi.
-//! - [`AuthContext`] hanya dibangun oleh [`Authenticator`]; ekstraktor axum di [`extract`].
+//! - [`AuthContext`] hanya dibangun oleh [`Authenticator`]; ekstraktor axum di [`extract`] hanya
+//!   menerima konteks yang dipasang middleware penegak crate `authz` (TD-15).
 //!
-//! Status akun dan daftar sesi yang dicabut (ADR-011 butir 8 bagian kedua, KU-10) diperiksa F1-T33;
-//! peran dan kebijakan endpoint di crate `authz` (F1-T37).
+//! Status akun dan daftar sesi yang dicabut (ADR-011 butir 8 bagian kedua, KU-10), peran, dan kebijakan
+//! endpoint diperiksa middleware penegak crate `authz` (F1-T33, F1-T37).
 
 mod context;
 mod error;
@@ -22,7 +23,7 @@ mod verify;
 
 pub use context::AuthContext;
 pub use error::{AuthError, AuthnConfigError};
-pub use extract::{AuthState, ErrorRenderer};
+pub use extract::{AuthState, ErrorRenderer, RequestRenderer, missing_context_response};
 pub use jsonwebtoken::Algorithm;
 pub use jwks::{HttpJwksSource, JwksFetchError, JwksFuture, JwksSource, MAX_JWKS_BYTES};
 pub use realm::{Backend, Realm};

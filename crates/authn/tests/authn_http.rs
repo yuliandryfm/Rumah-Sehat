@@ -1,16 +1,18 @@
 //! Test lewat HTTP sungguhan di localhost (F1-T32, T1): klien JWKS [`HttpJwksSource`] terhadap server
-//! JWKS uji, dan ekstraktor axum [`AuthContext`] dengan respons envelope.
+//! JWKS uji, dan ekstraktor axum [`AuthContext`] (hanya konteks dari middleware, TD-15) dengan respons
+//! envelope.
 
 #![allow(clippy::unwrap_used, clippy::expect_used)] // berkas test
 
-use authn::testing::{TestRealmKey, jwks_document};
+use authn::testing::{StaticJwks, TestRealmKey, jwks_document};
 use authn::{
     Algorithm, AuthContext, AuthError, AuthState, Authenticator, AuthnConfig, Backend,
-    ErrorRenderer, HttpJwksSource, MAX_JWKS_BYTES, Realm, RealmConfig,
+    ErrorRenderer, HttpJwksSource, MAX_JWKS_BYTES, Realm, RealmConfig, RequestRenderer,
 };
 use axum::Router;
-use axum::extract::FromRef;
+use axum::extract::{Request, State};
 use axum::http::header::CONTENT_TYPE;
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use envelope::{ApiError, CommonError};
@@ -159,6 +161,10 @@ async fn unreachable_jwks_endpoint_fails_closed() {
 }
 
 // ----- ekstraktor axum -----
+//
+// TD-15: ekstraktor hanya menerima konteks yang dipasang middleware. Middleware uji di bawah meniru
+// bagian autentikasi middleware penegak crate `authz` (validasi token lewat `AuthState`, penolakan
+// envelope, pemasangan konteks dan `RequestRenderer`); test penegakan lengkap ada di crate `authz`.
 
 struct EnvelopeRenderer;
 
@@ -174,31 +180,34 @@ impl ErrorRenderer for EnvelopeRenderer {
     }
 }
 
-#[derive(Clone)]
-struct AppState {
-    auth: AuthState,
-}
-
-impl FromRef<AppState> for AuthState {
-    fn from_ref(s: &AppState) -> AuthState {
-        s.auth.clone()
-    }
-}
-
 async fn whoami(ctx: AuthContext) -> String {
     format!("{}:{}", ctx.realm(), ctx.subject())
 }
 
-async fn spawn_app(auth: Authenticator) -> SocketAddr {
-    let state = AppState {
-        auth: AuthState::new(Arc::new(auth), Arc::new(EnvelopeRenderer)),
-    };
-    let app = Router::new()
-        .route("/whoami", get(whoami))
-        .with_state(state)
-        .layer(axum::middleware::from_fn(
-            observability::correlation_middleware,
-        ));
+async fn validate(State(auth): State<AuthState>, req: Request, next: Next) -> Response {
+    let (mut parts, body) = req.into_parts();
+    parts
+        .extensions
+        .insert(RequestRenderer::new(Arc::clone(auth.renderer())));
+    match auth.authenticate_parts(&parts).await {
+        Ok(ctx) => {
+            parts.extensions.insert(ctx);
+            next.run(Request::from_parts(parts, body)).await
+        }
+        Err(e) => auth.reject(&parts, e),
+    }
+}
+
+/// `with_middleware = false`: ekstraktor tanpa middleware (endpoint yang lupa dipasangi penegak).
+async fn spawn_app(auth: Authenticator, with_middleware: bool) -> SocketAddr {
+    let state = AuthState::new(Arc::new(auth), Arc::new(EnvelopeRenderer));
+    let mut app: Router = Router::new().route("/whoami", get(whoami));
+    if with_middleware {
+        app = app.layer(axum::middleware::from_fn_with_state(state, validate));
+    }
+    let app = app.layer(axum::middleware::from_fn(
+        observability::correlation_middleware,
+    ));
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
@@ -228,10 +237,10 @@ async fn get_raw(addr: SocketAddr, headers: &[String]) -> (u16, Value, String) {
 }
 
 #[tokio::test]
-async fn extractor_accepts_valid_token_and_rejects_others_uniformly() {
+async fn extractor_uses_middleware_context_and_rejects_others_uniformly() {
     let key = TestRealmKey::generate("k1").unwrap();
     let (_server, addr) = JwksServer::spawn(200, jwks_document(&[key.jwk()])).await;
-    let app = spawn_app(authenticator(addr, Arc::new(FixedClock::new(NOW)))).await;
+    let app = spawn_app(authenticator(addr, Arc::new(FixedClock::new(NOW))), true).await;
 
     let token = key.sign(&claims()).unwrap();
     let (status, _, body) = get_raw(app, &[format!("Authorization: Bearer {token}")]).await;
@@ -271,12 +280,43 @@ async fn extractor_accepts_valid_token_and_rejects_others_uniformly() {
 }
 
 #[tokio::test]
-async fn extractor_returns_503_when_jwks_unavailable() {
+async fn extractor_without_middleware_never_validates_token_and_returns_500() {
+    // TD-15 (Medium): ekstraktor tidak lagi memvalidasi token sendiri (jalur itu melewati resolver akun
+    // dan sesi yang dicabut, KU-10). Token sah pun tidak menghasilkan konteks; JWKS tidak pernah diambil.
+    let key = TestRealmKey::generate("k1").unwrap();
+    let jwks = Arc::new(StaticJwks::new(jwks_document(&[key.jwk()])));
+    let auth = Authenticator::new(
+        AuthnConfig::with_defaults(
+            Backend::RuangSehat,
+            vec![RealmConfig {
+                realm: Realm::Pasien,
+                issuer: ISS.into(),
+                audiences: vec![AUD.into()],
+                algorithms: vec![Algorithm::RS256],
+                authorized_parties: vec![],
+                jwks: jwks.clone(),
+            }],
+        ),
+        Arc::new(FixedClock::new(NOW)),
+    )
+    .unwrap();
+    let app = spawn_app(auth, false).await;
+    let token = key.sign(&claims()).unwrap();
+    for headers in [vec![format!("Authorization: Bearer {token}")], vec![]] {
+        let (status, _, body) = get_raw(app, &headers).await;
+        assert_eq!(status, 500, "{headers:?}");
+        assert!(!body.contains("pasien:"), "{body}");
+    }
+    assert_eq!(jwks.fetches(), 0);
+}
+
+#[tokio::test]
+async fn middleware_returns_503_when_jwks_unavailable() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let dead = listener.local_addr().unwrap();
     drop(listener);
     let key = TestRealmKey::generate("k1").unwrap();
-    let app = spawn_app(authenticator(dead, Arc::new(FixedClock::new(NOW)))).await;
+    let app = spawn_app(authenticator(dead, Arc::new(FixedClock::new(NOW))), true).await;
     let token = key.sign(&claims()).unwrap();
     let (status, json, _) = get_raw(app, &[format!("Authorization: Bearer {token}")]).await;
     assert_eq!(status, 503);

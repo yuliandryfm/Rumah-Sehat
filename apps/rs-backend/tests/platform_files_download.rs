@@ -27,8 +27,9 @@ use authn::{
     RealmConfig,
 };
 use authz::{
-    AccountRecord, AccountStatus, AccountType, AdminSubRole, Enforcement, Policy, PolicyRouter,
-    Principal, PrincipalResolver, ResolveError, ResolveFuture,
+    AccountRecord, AccountStatus, AccountType, AdminSubRole, DenialSink, Enforcement, Policy,
+    PolicyRouter, Principal, PrincipalResolver, ResolveError, ResolveFuture, RevocationFuture,
+    SessionGuard,
 };
 use axum::extract::{Path, State};
 use axum::http::header::CONTENT_TYPE;
@@ -211,6 +212,13 @@ impl MemResolver {
     }
 }
 
+/// Sesi uji tidak pernah dicabut (penolakan sesi diuji di identity_session.rs).
+impl SessionGuard for MemResolver {
+    fn is_revoked<'a>(&'a self, _ctx: &'a AuthContext) -> RevocationFuture<'a> {
+        Box::pin(async move { Ok(false) })
+    }
+}
+
 impl PrincipalResolver for MemResolver {
     fn resolve<'a>(&'a self, ctx: &'a AuthContext) -> ResolveFuture<'a> {
         let rec = self
@@ -271,14 +279,19 @@ async fn spawn(keys: &Keys, resolver: Arc<MemResolver>, harness: Shared) -> Sock
             Policy::rs_admin(&AdminSubRole::ALL),
             routes!(any_admin_download),
         )
-        .finish(Enforcement::new(auth, resolver))
+        .finish(Enforcement::new(
+            auth,
+            resolver.clone(),
+            resolver,
+            DenialSink::start(64, 1, None).unwrap(),
+        ))
         .unwrap();
     let app = router.with_state(harness).layer(axum::middleware::from_fn(
         observability::correlation_middleware,
     ));
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move { app.serve(listener, std::future::pending()).await.unwrap() });
     addr
 }
 
@@ -690,6 +703,13 @@ async fn unauthorised_requests_get_no_url_and_are_logged() {
         random.json()["response_code"]
     );
     assert!(foreign.json().get("url").is_none());
+    // Penolakan objek dicatat di latar belakang oleh authz::DenialSink (F1-T38): tunggu sampai tertulis.
+    for _ in 0..300 {
+        if sec.text().contains("foreign_resource_id") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     let log = sec.text();
     assert!(log.contains("access_denied"), "{log}");
     assert!(log.contains("foreign_resource_id"), "{log}");

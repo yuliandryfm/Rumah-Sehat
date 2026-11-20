@@ -11,6 +11,14 @@
 //! - `audit-outbox`: penyebutan `audit_outbox`/`rme_audit_outbox` di luar crate `audit` (ADR-009 butir 2).
 //! - `tx-control`: literal SQL kendali transaksi (`COMMIT`, `ROLLBACK`, `BEGIN`, `SAVEPOINT`, ...);
 //!   transaksi lewat API sqlx dan transaksi teraudit lewat `audit::in_audited_tx` (F1-T23).
+//! - `audit-failed-access`: `audit::insert_failed_access`/`finish_failed_access`/`FailedAccessRecord`
+//!   hanya di crate `audit` dan `apps/rs-backend/src/access_audit.rs` (KEPUTUSAN-283).
+//! - `router-bypass` (TD-15): di `apps/*/src`, rute hanya lewat `authz::PolicyRouter` dan penyajian hanya
+//!   lewat `authz::EnforcedRouter::serve`. Ditolak: router axum/utoipa sendiri (`Router`, `OpenApiRouter`,
+//!   `MethodRouter`, `axum::routing`), pemanggilan `.route/.route_service/.nest/.nest_service/.merge`
+//!   selain atas `PolicyRouter`, `.fallback/.fallback_service/.method_not_allowed_fallback/.route_layer`,
+//!   `axum::serve`/`into_make_service`, serta validasi token di luar middleware penegak
+//!   (`authenticate_parts`, `authenticate_headers`, `Authenticator::verify`/`.verify(`).
 
 use crate::lexer::{Scanned, enclosing_fn, find_tokens, is_ident, line_of, matching_close, scan};
 use crate::{Finding, fs};
@@ -157,12 +165,275 @@ pub fn check_source_text(file: &str, src: &str) -> Vec<Finding> {
             }
         }
     }
+    if !test && is_app_source(file) {
+        out.extend(router_bypass_findings(file, &sc));
+    }
+    if !test && !file.starts_with("crates/audit/") && file != "apps/rs-backend/src/access_audit.rs"
+    {
+        for tok in [
+            "insert_failed_access",
+            "finish_failed_access",
+            "FailedAccessRecord",
+        ] {
+            for off in find_tokens(code, tok) {
+                out.push(Finding::new(
+                    "audit-failed-access",
+                    file,
+                    line_of(code, off),
+                    tok,
+                    "penulisan audit di luar in_audited_tx hanya untuk penolakan akses, dari \
+                     apps/rs-backend/src/access_audit.rs (KEPUTUSAN-283, review keamanan F1-T33)",
+                ));
+            }
+        }
+    }
     if !test {
         out.extend(attribute_findings(file, &sc));
         out.extend(macro_findings(file, &sc));
         if !file.starts_with("crates/arch-check/") {
             out.extend(audit_outbox_findings(file, &sc));
             out.extend(tx_control_findings(file, &sc));
+        }
+    }
+    out
+}
+
+/// `apps/<app>/src/...`: kode aplikasi (bukan test, bukan crate pustaka).
+fn is_app_source(file: &str) -> bool {
+    let parts: Vec<&str> = file.split('/').collect();
+    matches!(parts.as_slice(), ["apps", _, "src", ..])
+}
+
+/// Token yang tidak boleh muncul di `apps/*/src` (TD-15).
+const ROUTER_BYPASS_TOKENS: &[&str] = &[
+    "Router",
+    "OpenApiRouter",
+    "MethodRouter",
+    "axum::Router",
+    "axum::serve",
+    "axum::routing",
+    "into_make_service",
+    "into_make_service_with_connect_info",
+    "authenticate_parts",
+    "authenticate_headers",
+    "Authenticator::verify",
+];
+
+/// Metode yang tidak boleh dipanggil (`.nama(` atau `.nama::<`) di `apps/*/src` (TD-15). `merge`
+/// diperiksa terpisah karena `PolicyRouter::merge` sah.
+const ROUTER_BYPASS_METHODS: &[&str] = &[
+    "route",
+    "route_service",
+    "nest",
+    "nest_service",
+    "fallback",
+    "fallback_service",
+    "method_not_allowed_fallback",
+    "route_layer",
+    "verify",
+];
+
+fn prev_non_ws(b: &[u8], off: usize) -> Option<u8> {
+    b.get(..off)?
+        .iter()
+        .rev()
+        .find(|c| !c.is_ascii_whitespace())
+        .copied()
+}
+
+fn next_non_ws(b: &[u8], off: usize) -> Option<u8> {
+    b.get(off..)?
+        .iter()
+        .find(|c| !c.is_ascii_whitespace())
+        .copied()
+}
+
+/// Offset pemanggilan metode `.name(` / `.name::<` di `code`.
+fn method_calls(code: &str, name: &str) -> Vec<usize> {
+    let b = code.as_bytes();
+    find_tokens(code, name)
+        .into_iter()
+        .filter(|&off| {
+            prev_non_ws(b, off) == Some(b'.')
+                && matches!(next_non_ws(b, off + name.len()), Some(b'(' | b':'))
+        })
+        .collect()
+}
+
+/// Benar bila rantai pemanggilan yang berakhir di offset `dot_end` (posisi metode) berawal dari
+/// `PolicyRouter` atau `router()` modul (fungsi yang mengembalikan `PolicyRouter`). Pemeriksaan teks:
+/// mundur melewati rantai `.x(...)` sampai awal ekspresi.
+fn chain_starts_with_policy_router(code: &str, method_off: usize) -> bool {
+    let start = code
+        .get(..method_off)
+        .and_then(|h| h.rfind([';', '{', '}', '=']))
+        .map_or(0, |p| p + 1);
+    let head = code.get(start..method_off).unwrap_or("");
+    !find_tokens(head, "PolicyRouter").is_empty() || !find_tokens(head, "router").is_empty()
+}
+
+/// `router-bypass` (TD-15): rute yang ditambahkan di luar `PolicyRouter`, atau router yang dilayani tanpa
+/// `EnforcedRouter`, tidak dibungkus middleware penegak (default deny ADR-012 butir 1, KEPUTUSAN-127).
+fn router_bypass_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
+    let code = sc.code.as_str();
+    let mut out = Vec::new();
+    let msg = "rute hanya lewat authz::PolicyRouter dan penyajian lewat EnforcedRouter::serve; \
+               validasi token hanya di middleware penegak (TD-15, KEPUTUSAN-127)";
+    for tok in ROUTER_BYPASS_TOKENS {
+        for off in find_tokens(code, tok) {
+            out.push(Finding::new(
+                "router-bypass",
+                file,
+                line_of(code, off),
+                tok,
+                msg,
+            ));
+        }
+    }
+    for name in ROUTER_BYPASS_METHODS {
+        for off in method_calls(code, name) {
+            out.push(Finding::new(
+                "router-bypass",
+                file,
+                line_of(code, off),
+                name,
+                msg,
+            ));
+        }
+    }
+    for off in method_calls(code, "merge") {
+        if !chain_starts_with_policy_router(code, off) {
+            out.push(Finding::new(
+                "router-bypass",
+                file,
+                line_of(code, off),
+                "merge",
+                msg,
+            ));
+        }
+    }
+    // Impor dari crate axum dalam bentuk apa pun (review keamanan F1-T33 blokir 2): pohon `use`
+    // dinormalisasi (spasi dan baris baru, `::` di depan, grup `{}` bertingkat, `pub use`,
+    // `extern crate`). Impor `serve`, `routing`, `Router`, glob `*`, dan alias crate ditolak, sehingga
+    // pemanggilan tanpa prefiks (`serve(..)`, `get(..)`) tidak mungkin.
+    for (off, stmt) in import_statements(code) {
+        if find_tokens(&stmt, "axum").is_empty() {
+            continue;
+        }
+        let line = line_of(code, off);
+        let mut push = |detail: &str| {
+            out.push(Finding::new("router-bypass", file, line, detail, msg));
+        };
+        for tok in [
+            "serve",
+            "routing",
+            "Router",
+            "MethodRouter",
+            "into_make_service",
+        ] {
+            if !find_tokens(&stmt, tok).is_empty() {
+                push(tok);
+            }
+        }
+        if stmt.contains('*') {
+            push("axum-glob");
+        }
+        for alias in aliases(&stmt) {
+            push("axum-alias");
+            for item in ["serve", "routing", "Router"] {
+                let tok = format!("{alias}::{item}");
+                if !find_tokens(&compact(code).0, &tok).is_empty() {
+                    push(item);
+                }
+            }
+        }
+    }
+    // Path lengkap yang dipisah spasi atau baris baru (`axum :: serve`, `::axum::routing`).
+    let (packed, map) = compact(code);
+    for pat in ["axum::serve", "axum::routing", "axum::Router"] {
+        for at in find_tokens(&packed, pat) {
+            let orig = map.get(at).copied().unwrap_or(0);
+            out.push(Finding::new(
+                "router-bypass",
+                file,
+                line_of(code, orig),
+                pat,
+                msg,
+            ));
+        }
+    }
+    out
+}
+
+/// Kode tanpa whitespace beserta peta offset ke kode asli.
+fn compact(code: &str) -> (String, Vec<usize>) {
+    let mut packed = String::with_capacity(code.len());
+    let mut map = Vec::with_capacity(code.len());
+    for (i, c) in code.char_indices() {
+        if !c.is_whitespace() {
+            packed.push(c);
+            for _ in 0..c.len_utf8() {
+                map.push(i);
+            }
+        }
+    }
+    (packed, map)
+}
+
+/// Pernyataan `use ...;` dan `extern crate ...;`: (offset, teks dinormalisasi). Whitespace dirapatkan
+/// menjadi satu spasi lalu dihapus di sekitar `::`, `{`, `}`, dan `,`; `::` di awal path dibuang.
+fn import_statements(code: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    let mut starts: Vec<usize> = find_tokens(code, "use");
+    for off in find_tokens(code, "extern") {
+        let rest = code.get(off + "extern".len()..).unwrap_or("");
+        if rest.trim_start().starts_with("crate") {
+            starts.push(off);
+        }
+    }
+    for off in starts {
+        let end = code
+            .get(off..)
+            .and_then(|s| s.find(';'))
+            .map_or(code.len(), |p| off + p);
+        let raw = code.get(off..end).unwrap_or("");
+        let mut norm = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+        for sep in ["::", "{", "}", ","] {
+            norm = norm
+                .replace(&format!(" {sep}"), sep)
+                .replace(&format!("{sep} "), sep);
+        }
+        // `use ::axum` / `{::axum` → path tanpa `::` depan.
+        norm = norm
+            .replace("use::", "use ")
+            .replace("{::", "{")
+            .replace(",::", ",");
+        out.push((off, norm));
+    }
+    out
+}
+
+/// Nama alias yang mengganti nama crate axum di satu pernyataan impor (`axum as x`, `self as x`).
+fn aliases(stmt: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for marker in ["axum as ", "self as "] {
+        for (pos, _) in stmt.match_indices(marker) {
+            let before_ok = stmt
+                .get(..pos)
+                .and_then(|h| h.chars().last())
+                .is_none_or(|c| !(c.is_ascii_alphanumeric() || c == '_'));
+            if !before_ok {
+                continue;
+            }
+            let name: String = stmt
+                .get(pos + marker.len()..)
+                .unwrap_or("")
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !name.is_empty() {
+                out.push(name);
+            }
         }
     }
     out

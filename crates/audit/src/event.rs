@@ -402,6 +402,25 @@ impl AuditEvent {
         self.code
     }
 
+    /// Seperti [`AuditEvent::finish`] untuk penolakan akses ke data sensitif: hanya E-05 dengan hasil
+    /// gagal, tanpa perubahan field dan tanpa pengungkapan. Selain itu ditolak
+    /// (`InvalidCombination`/`failed_access_only`), sehingga event aksi bisnis atau akses berhasil tidak
+    /// dapat ditulis di luar transaksi aksinya (KEPUTUSAN-283).
+    pub fn finish_failed_access(self, clock: &dyn Clock) -> Result<FailedAccessRecord, AuditError> {
+        let failed = matches!(self.outcome, Some(Outcome::Failure(_)));
+        if self.code != EventCode::E05
+            || !failed
+            || !self.changes.is_empty()
+            || self.disclosure.is_some()
+        {
+            return Err(AuditError::new(
+                AuditErrorKind::InvalidCombination,
+                "failed_access_only",
+            ));
+        }
+        Ok(FailedAccessRecord(self.finish(clock)?))
+    }
+
     /// Memvalidasi, memasking, dan membentuk record siap tulis. `clock` = jam server aplikasi
     /// (`occurred_at`, ADR-009 butir 6).
     pub fn finish(self, clock: &dyn Clock) -> Result<AuditRecord, AuditError> {
@@ -689,5 +708,24 @@ impl AuditRecord {
     /// Payload JSON yang sudah dimasking (kolom `audit_outbox.payload`).
     pub fn payload(&self) -> &Json {
         &self.payload
+    }
+}
+
+/// Event penolakan akses ke data sensitif (E-05 dengan hasil gagal, tanpa perubahan field dan tanpa
+/// pengungkapan) yang sudah divalidasi dan dimasking. Satu-satunya jenis event yang boleh ditulis di luar
+/// transaksi aksi bisnis ([`crate::insert_failed_access`]): event ini tidak menyertai perubahan data,
+/// sehingga atomisitas aksi dan event (KEPUTUSAN-283, ADR-009 butir 2) tidak dapat dilewati lewatnya.
+/// Hanya dibangun [`AuditEvent::finish_failed_access`].
+#[derive(Clone, Debug)]
+pub struct FailedAccessRecord(AuditRecord);
+
+impl FailedAccessRecord {
+    /// ID event (UUIDv7) = `audit_outbox.id`.
+    pub fn event_id(&self) -> Uuid {
+        self.0.event_id
+    }
+
+    pub(crate) fn record(&self) -> &AuditRecord {
+        &self.0
     }
 }

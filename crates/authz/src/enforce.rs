@@ -6,22 +6,28 @@
 //! 2. Kebijakan publik → diteruskan.
 //! 3. Token divalidasi `authn` (gagal → `401`, JWKS tidak tersedia → `503`).
 //! 4. Realm token harus realm salah satu jenis akun kebijakan (realm lain → `401`).
-//! 5. Akun dicari resolver: tidak ada, tidak aktif, atau realm akun berbeda → `401` (KU-10); resolver
-//!    gagal → `503`.
-//! 6. Jenis akun dan sub-peran admin dievaluasi: tidak diizinkan → `403` + security log
+//! 5. Akun dicari resolver: tidak ada, belum aktif, atau realm akun berbeda → `401` `4010001`; akun
+//!    nonaktif → `401` `4010002` (KU-10 bagian sesi, layar "Akun nonaktif"); resolver gagal → `503`.
+//! 6. Sesi diperiksa penjaga sesi: dicabut (keluar, dicabut admin, penonaktifan, perubahan peran) →
+//!    `401` `4010001` (US-103 AC5, ADR-011 butir 8); penjaga gagal → `503`. Status akun diperiksa lebih
+//!    dulu supaya sesi akun yang dinonaktifkan (sesinya juga dicabut) tetap menampilkan layar "Akun
+//!    nonaktif".
+//! 7. Jenis akun dan sub-peran admin dievaluasi: tidak diizinkan → `403` + security log
 //!    `access_denied` (`role_not_allowed`).
-//! 7. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
+//! 8. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
 
+use crate::denial::ClientIp;
 use crate::policy::Policy;
-use crate::principal::{Principal, PrincipalResolver};
+use crate::principal::Principal;
 use crate::registry::PolicyRegistry;
 use crate::role::AccountStatus;
-use authn::{AuthError, AuthState, ErrorRenderer};
+use crate::router::Authentication;
+use authn::{AuthError, ErrorRenderer, RequestRenderer, missing_context_response};
 use axum::extract::{FromRequestParts, MatchedPath, Request, State};
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use envelope::CommonError;
 use foundation::CorrelationId;
 use observability::security::{self, AccessDenial};
@@ -30,14 +36,14 @@ use std::sync::Arc;
 /// Keadaan middleware penegak.
 pub(crate) struct EnforcerState {
     registry: PolicyRegistry,
-    authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+    authentication: Option<Authentication>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
 impl EnforcerState {
     pub(crate) fn new(
         registry: PolicyRegistry,
-        authentication: Option<(AuthState, Arc<dyn PrincipalResolver>)>,
+        authentication: Option<Authentication>,
         renderer: Arc<dyn ErrorRenderer>,
     ) -> Self {
         Self {
@@ -47,10 +53,6 @@ impl EnforcerState {
         }
     }
 }
-
-/// Pembentuk respons galat yang dipasang middleware di extensions untuk ekstraktor.
-#[derive(Clone)]
-struct RendererHandle(Arc<dyn ErrorRenderer>);
 
 fn correlation(parts_ext: &axum::http::Extensions) -> CorrelationId {
     parts_ext
@@ -84,13 +86,13 @@ pub(crate) async fn enforce(
         return state.renderer.render(CommonError::NotFound, cid);
     };
     req.extensions_mut()
-        .insert(RendererHandle(Arc::clone(&state.renderer)));
+        .insert(RequestRenderer::new(Arc::clone(&state.renderer)));
 
     let requirement = match policy {
         Policy::Public(_) => return next.run(req).await,
         Policy::Require(r) => r,
     };
-    let Some((auth, resolver)) = &state.authentication else {
+    let Some((auth, resolver, sessions, denials)) = &state.authentication else {
         // Dicegah pemeriksaan saat start; bila tetap terjadi, tolak.
         tracing::error!(route = route.as_str(), "authentication_not_configured");
         return state.renderer.render(CommonError::Internal, cid);
@@ -119,16 +121,38 @@ pub(crate) async fn enforce(
             return state.renderer.render(CommonError::Unavailable, cid);
         }
     };
-    if record.status != AccountStatus::Active || record.account_type.realm() != ctx.realm() {
-        let reason = if record.status != AccountStatus::Active {
-            "account_not_active"
-        } else {
-            "account_realm_mismatch"
-        };
+    let rejection = if record.account_type.realm() != ctx.realm() {
+        Some(("account_realm_mismatch", CommonError::Unauthenticated))
+    } else {
+        match record.status {
+            AccountStatus::Active => None,
+            AccountStatus::Inactive => Some(("account_inactive", CommonError::AccountInactive)),
+            AccountStatus::PendingActivation => {
+                Some(("account_pending_activation", CommonError::Unauthenticated))
+            }
+        }
+    };
+    if let Some((reason, error)) = rejection {
         tracing::info!(route = route.as_str(), reason = reason, "account_rejected");
-        return state.renderer.render(CommonError::Unauthenticated, cid);
+        return state.renderer.render(error, cid);
     }
-    let principal = Principal::new(record, ctx.clone());
+    match sessions.is_revoked(&ctx).await {
+        Ok(false) => {}
+        Ok(true) => {
+            tracing::info!(
+                route = route.as_str(),
+                reason = "session_revoked",
+                "account_rejected"
+            );
+            return state.renderer.render(CommonError::Unauthenticated, cid);
+        }
+        Err(_) => {
+            tracing::warn!(route = route.as_str(), "session_guard_unavailable");
+            return state.renderer.render(CommonError::Unavailable, cid);
+        }
+    }
+    let client_ip = parts.extensions.get::<ClientIp>().map(|c| c.0);
+    let principal = Principal::new(record, ctx.clone(), cid, client_ip, denials.clone());
     if !requirement.allows(&principal) {
         security::access_denied(
             Some(principal.account_id()),
@@ -155,11 +179,6 @@ where
             return Ok(p.clone());
         }
         tracing::error!("principal_missing");
-        match parts.extensions.get::<RendererHandle>() {
-            Some(h) => Err(h
-                .0
-                .render(CommonError::Internal, correlation(&parts.extensions))),
-            None => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
-        }
+        Err(missing_context_response(parts))
     }
 }

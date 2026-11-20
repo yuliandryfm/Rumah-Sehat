@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/keycloak-check.sh: menerapkan realm Keycloak sebagai kode (infra/keycloak/realms/*.json) dengan
-# keycloak-config-cli, lalu menjalankan test konfigurasi dan perilaku ke Keycloak sungguhan (F1-T31).
+# keycloak-config-cli, lalu menjalankan test konfigurasi dan perilaku ke Keycloak sungguhan (F1-T31; klien
+# layanan pengambil event berhak minimum: F1-T34).
 #
 # Modul kritis T1 (ADR-011, CLAUDE.md). Dasar: docs/05-stack.md §7, KEPUTUSAN-85, KEPUTUSAN-190,
 # KEPUTUSAN-199, KEPUTUSAN-201, KEPUTUSAN-203, KEPUTUSAN-231, ADR-026.
@@ -72,7 +73,8 @@ for alat in docker python3; do
 done
 for f in "$COMPOSE_FILE" infra/keycloak/keycloak.conf infra/keycloak/realms/pasien.json infra/keycloak/realms/admin.json \
   infra/keycloak/test/keycloak_check.py infra/keycloak/test/kc_http.py infra/keycloak/test/SmtpSink.java \
-  infra/keycloak/test/SesTiruan.java; do
+  infra/keycloak/test/SesTiruan.java \
+  infra/keycloak/themes/ruang-sehat/login/theme.properties infra/keycloak/themes/ruang-sehat/login/login.ftl; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -104,7 +106,8 @@ baca_env() { # baca_env <NAMA> [bawaan]
 }
 
 VAR_REALM="RS_KC_SMTP_HOST RS_KC_SMTP_PORT RS_KC_SMTP_FROM RS_KC_PASIEN_MOBILE_REDIRECT_URI \
-RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET"
+RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET \
+RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET"
 
 acak() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
 
@@ -151,7 +154,10 @@ else
   export RS_KC_PORTAL_BFF_REDIRECT_URI="http://127.0.0.1:3001/auth/callback"
   RS_KC_BACKOFFICE_BFF_SECRET="$(acak)"
   RS_KC_PORTAL_BFF_SECRET="$(acak)"
-  export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET
+  # Klien layanan pengambil event rs-backend worker (F1-T34), satu rahasia per realm.
+  RS_KC_EVENT_READER_PASIEN_SECRET="$(acak)"
+  RS_KC_EVENT_READER_ADMIN_SECRET="$(acak)"
+  export RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_SECRET RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET
   for alat in cargo openssl; do
     if ! command -v "$alat" >/dev/null 2>&1; then
       echo "$alat tidak ditemukan di PATH (mode ephemeral: relay email F1-T36)" >&2
@@ -200,6 +206,7 @@ else
     -e KC_BOOTSTRAP_ADMIN_USERNAME -e KC_BOOTSTRAP_ADMIN_PASSWORD \
     -e KC_TRUSTSTORE_PATHS=/opt/keycloak/conf/truststores \
     -v "$ROOT/infra/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro" \
+    -v "$ROOT/infra/keycloak/themes/ruang-sehat:/opt/keycloak/themes/ruang-sehat:ro" \
     -v "$PKI/ca.pem:/opt/keycloak/conf/truststores/rs-uji-ca.pem:ro" \
     "$IMG_KC" start-dev >/dev/null
   PORT="$(docker port "$KC" 8080/tcp | sed -n 's/^127\.0\.0\.1:\([0-9]*\)$/\1/p' | sed -n '1p')"
