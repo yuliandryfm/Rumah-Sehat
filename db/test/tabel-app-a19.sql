@@ -81,7 +81,10 @@ SELECT pg_temp.uji_nol('A19 trigger non-util di skema app hanya yang terdaftar d
   ARRAY(SELECT format('%s.%s -> %s', g.tgrelid::regclass, g.tgname, g.tgfoid::regproc)
           FROM pg_trigger g JOIN pg_class c ON c.oid = g.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE n.nspname = 'app' AND NOT g.tgisinternal AND g.tgfoid::regproc::text NOT LIKE 'util.%'
-           AND (c.relname, g.tgname) NOT IN (('data_key_retention_anchor', 'tg_data_key_retention_anchor_single_source'))));
+           AND (c.relname, g.tgname) NOT IN (('data_key_retention_anchor', 'tg_data_key_retention_anchor_single_source'),
+                                             ('consent_text_version', 'tg_consent_text_version_published_lock'),   -- F1-T19, §4.2 (3c)
+                                             ('consent_item', 'tg_consent_item_published_lock'),                   -- F1-T19, §4.2 (3d)
+                                             ('consent_record', 'tg_consent_record_server_time'))));               -- F1-T19, jam server
 
 -- 2. Negatif atas pemeriksa struktur, lalu perilaku. Semua di-ROLLBACK.
 BEGIN;

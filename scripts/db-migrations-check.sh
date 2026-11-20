@@ -26,6 +26,8 @@
 #      openbao_*_admin, password acak sekali pakai lewat TCP lokal); dijalankan DUA KALI
 #      (idempoten: putaran kedua tanpa migrasi baru dan katalog identik); berkas yang diubah
 #      setelah diterapkan wajib ditolak checksum sqlx.
+#   4b. (F1-T21) Berkas audit lanjutan dijalankan ulang setelah migrasi dengan role salah: penjaga
+#      (util.fn_audit_role) menolak sebelum pernyataan lain; katalog tidak berubah.
 #   5. Test katalog db/test/*.sql per database; role/keanggotaan tidak berubah oleh migrasi;
 #      revocation_statements (DROP ROLE) berhasil = role dinamis tidak memiliki objek (T-04).
 # Kontainer dan direktori kerja selalu dihapus (trap). Portabel bash 3.2, tanpa `head`.
@@ -100,10 +102,12 @@ if [ "$VERSI_AKTIF" != "$SQLX_VERSI" ]; then
 fi
 # Test per tabel database ruang_sehat (struktur khusus + perilaku role sungguhan), satu berkas per
 # task migrasi (F1-T16 dst.). Daftar eksplisit: berkas yang hilang GAGAL, tidak dilewati diam-diam.
-TEST_TABEL_APP="db/test/tabel-app-a1.sql db/test/tabel-app-a19.sql db/test/tabel-app-a2.sql"
+TEST_TABEL_APP="db/test/tabel-app-a1.sql db/test/tabel-app-a19.sql db/test/tabel-app-a2.sql db/test/tabel-app-a3.sql"
+# Test per tabel database audit (F1-T21 dst.), dijalankan ke ruang_sehat_audit dan rme_audit.
+TEST_TABEL_AUDIT="db/test/tabel-audit-b.sql"
 for f in db/test/lib.sql db/test/katalog.sql db/test/util-app.sql db/test/kelas-app.sql \
   db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql \
-  $TEST_TABEL_APP; do
+  $TEST_TABEL_APP $TEST_TABEL_AUDIT; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -755,14 +759,14 @@ EOF
   fi
 }
 
-# tolak_berkas <label> <pola galat> <role> <database> <berkas> [opsi psql tambahan sebelum -f...]
+# tolak_berkas <label> <pola galat (ERE)> <role> <database> <berkas> [opsi psql tambahan sebelum -f...]
 # Berkas migrasi dijalankan psql dalam satu transaksi sebagai role; WAJIB gagal dengan pola.
 tolak_berkas() {
   local label="$1" pola="$2" role="$3" db="$4" file="$5" out
   shift 5
   if out="$(psql_as "$role" "$db" -1 "$@" -f - <"$file" 2>&1)"; then
     tandai gagal "NEG penjaga $label: berkas $(basename "$file") BERHASIL dijalankan, seharusnya ditolak"
-  elif cocok "$out" -q -- "$pola"; then
+  elif cocok "$out" -Eq -- "$pola"; then
     tandai lulus "NEG penjaga $label: $(basename "$file") ditolak ($pola)"
   else
     tandai gagal "NEG penjaga $label: $(basename "$file") ditolak dengan galat tak terduga: $out"
@@ -923,7 +927,7 @@ fi
 potret >"$KERJA/potret-awal"
 ROLE_TANPA_SET=""
 negatif_penjaga() {
-  local baris sistem db pemilik admin sp nama f app_role
+  local baris sistem db pemilik admin sp nama f app_role pertama_dir pola
   while IFS=: read -r sistem db pemilik admin sp; do
     nama="v-uji-tanpa-set-$db"
     buat_dinamis "$admin" "$db" "$nama" "$pemilik" "$sp" "$(acak)" tidak
@@ -934,11 +938,19 @@ negatif_penjaga() {
       rme_audit) app_role=rme_audit_writer_login ;;
       rme) app_role=rme_api ;;
     esac
+    pertama_dir="$(find "db/migrations/$sistem" -maxdepth 1 -name '*.sql' | sort | sed -n '1p')"
     for f in db/migrations/"$sistem"/*.sql; do
       [ -e "$f" ] || continue
-      tolak_berkas "$db superuser" "migration must run as" postgres "$db" "$f"
-      tolak_berkas "$db role aplikasi $app_role" "migration must run as" "$app_role" "$db" "$f"
-      tolak_berkas "$db role dinamis tanpa SET role (mewarisi hak pemilik)" "migration must run as" "$nama" "$db" "$f"
+      # Berkas audit lanjutan (F1-T21): penjaganya memanggil util.fn_audit_role, yang belum ada
+      # sebelum berkas util audit diterapkan; penjaga gagal-tertutup dengan galat fungsi/skema util.
+      # Penolakan "migration must run as" setelah util ada diuji di negatif_penjaga_lanjutan_audit.
+      pola="migration must run as"
+      if [ "$sistem" = audit ] && [ "$f" != "$pertama_dir" ]; then
+        pola="migration must run as|function util\.fn_audit_role\(unknown\) does not exist|permission denied for schema util"
+      fi
+      tolak_berkas "$db superuser" "$pola" postgres "$db" "$f"
+      tolak_berkas "$db role aplikasi $app_role" "$pola" "$app_role" "$db" "$f"
+      tolak_berkas "$db role dinamis tanpa SET role (mewarisi hak pemilik)" "$pola" "$nama" "$db" "$f"
     done
   done <<EOF
 $TARGET
@@ -1052,6 +1064,37 @@ checksum_negatif() {
 }
 checksum_negatif
 
+# Penjaga berkas audit lanjutan setelah util audit ada (F1-T21): role salah ditolak penjaga
+# sebelum pernyataan lain; katalog tidak berubah. Superuser dan role dinamis tanpa "SET role"
+# (mewarisi USAGE util dari pemilik) ditolak "migration must run as"; role login writer tidak punya
+# USAGE skema util sehingga ditolak "permission denied for schema util" (gagal-tertutup).
+negatif_penjaga_lanjutan_audit() {
+  local p db pemilik admin pertama_dir f nama writer
+  pertama_dir="$(find db/migrations/audit -maxdepth 1 -name '*.sql' | sort | sed -n '1p')"
+  for p in ruang_sehat_audit:rs_audit_migration:openbao_rs_audit_admin:rs_audit_writer_login \
+    rme_audit:rme_audit_migration:openbao_rme_audit_admin:rme_audit_writer_login; do
+    IFS=: read -r db pemilik admin writer <<R
+$p
+R
+    nama="v-uji-lanjutan-$db"
+    buat_dinamis "$admin" "$db" "$nama" "$pemilik" audit "$(acak)" tidak
+    for f in db/migrations/audit/*.sql; do
+      [ "$f" = "$pertama_dir" ] && continue
+      tolak_berkas "$db lanjutan setelah util: superuser" "migration must run as $pemilik, got postgres" postgres "$db" "$f"
+      tolak_berkas "$db lanjutan setelah util: role dinamis tanpa SET role" "migration must run as $pemilik, got $nama" "$nama" "$db" "$f"
+      tolak_berkas "$db lanjutan setelah util: $writer" "permission denied for schema util" "$writer" "$db" "$f"
+    done
+    hapus_dinamis "$admin" "$db" "$nama"
+  done
+}
+negatif_penjaga_lanjutan_audit
+potret >"$KERJA/potret-sesudah-lanjutan"
+if diff -u "$KERJA/potret-migrasi-2" "$KERJA/potret-sesudah-lanjutan" >/dev/null; then
+  tandai lulus "NEG penjaga lanjutan audit: katalog tidak berubah oleh percobaan yang ditolak setelah migrasi"
+else
+  tandai gagal "NEG penjaga lanjutan audit: katalog berubah: $(diff -u "$KERJA/potret-migrasi-2" "$KERJA/potret-sesudah-lanjutan" || true)"
+fi
+
 # ---------------------------------------------------------------------------------------------
 # 5. Test katalog per database
 # ---------------------------------------------------------------------------------------------
@@ -1067,6 +1110,9 @@ if [ "$GAGAL" -eq 0 ]; then
       -v skema_proyek='{audit,util,audit_detached}' -v skema_mig=audit -v prefiks="${p%%:*}"
     jalankan_test "${p#*:}" db/test/util-audit.sql -v prefiks="${p%%:*}"
     jalankan_test "${p#*:}" db/test/kelas-audit.sql -v prefiks="${p%%:*}"
+    for f in $TEST_TABEL_AUDIT; do
+      jalankan_test "${p#*:}" "$f" -v prefiks="${p%%:*}"
+    done
   done
   jalankan_test rme db/test/katalog.sql -v skema_harap='{app,util,ext}' -v skema_proyek='{app,util}' -v skema_mig=app -v prefiks=rme_
 fi
