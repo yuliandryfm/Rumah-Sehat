@@ -2,7 +2,7 @@
 # Diperiksa test arsitektur (crates/arch-check): SQL di kode suatu modul hanya boleh menyentuh tabel
 # milik modul itu; tabel yang dibuat migrasi di db/migrations/<database>/ wajib punya pemilik di sini.
 # Nama tabel tanpa awalan skema. Pemetaan modul mengikuti docs/04-arsitektur.md §3 dan area
-# docs/04-data-dictionary.md (A1 identitas, A2 profil, A19 platform). Tabel area lain ditambahkan
+# docs/04-data-dictionary.md (A1 identitas, A2 profil, A3 privasi, A19 platform). Tabel area lain ditambahkan
 # oleh task migrasinya (F1-T16 dan seterusnya) pada commit yang sama dengan migrasinya.
 database = "app"
 
@@ -20,6 +20,10 @@ tables = [
   "identity_verification_request_state",
   "account_owner_nik_registry",
 ]
+
+# A3 persetujuan (F1-T19): modul Privasi menurut docs/04-arsitektur.md §3.
+[modules.privacy]
+tables = ["consent_text_version", "consent_item", "consent_record"]
 
 # reason_code (A6.7): data rujukan lintas modul tanpa pemetaan eksplisit di docs/04-arsitektur.md §3;
 # dimiliki platform (F1-T18), modul lain membacanya lewat api platform.

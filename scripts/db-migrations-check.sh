@@ -100,7 +100,7 @@ if [ "$VERSI_AKTIF" != "$SQLX_VERSI" ]; then
 fi
 # Test per tabel database ruang_sehat (struktur khusus + perilaku role sungguhan), satu berkas per
 # task migrasi (F1-T16 dst.). Daftar eksplisit: berkas yang hilang GAGAL, tidak dilewati diam-diam.
-TEST_TABEL_APP="db/test/tabel-app-a1.sql db/test/tabel-app-a19.sql db/test/tabel-app-a2.sql"
+TEST_TABEL_APP="db/test/tabel-app-a1.sql db/test/tabel-app-a19.sql db/test/tabel-app-a2.sql db/test/tabel-app-a3.sql"
 for f in db/test/lib.sql db/test/katalog.sql db/test/util-app.sql db/test/kelas-app.sql \
   db/test/util-audit.sql db/test/kelas-audit.sql db/roles/app.sql db/roles/audit.sql db/roles/rme.sql \
   $TEST_TABEL_APP; do
