@@ -56,8 +56,7 @@
       "invalidUserMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
       "accountTemporarilyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
-      "accountPermanentlyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan.",
-      "invalidEmailMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan."
+      "accountPermanentlyDisabledMessage": "Email, password, atau kode tidak sesuai. Bila tidak dapat masuk, gunakan Lupa password atau hubungi Layanan Pelanggan."
     }
   },
   "attributes": {

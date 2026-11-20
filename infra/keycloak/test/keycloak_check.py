@@ -9,9 +9,17 @@ Dua kelompok pemeriksaan:
   pendaftaran mati, PKCE wajib, rotasi token penyegar, Argon2, kebijakan password, atur ulang password
   tidak melewati OTP (US-103 AC4e), grant password ditolak.
 
+Jalur email (KC_CHECK_EMAIL_MODE):
+- `relay` (mode ephemeral, F1-T36/ADR-026): email realm dikirim apa adanya lewat SMTP realm (STARTTLS) ke relay
+  sungguhan, lalu ke tiruan SES yang memvalidasi SigV4; ditambah skenario kegagalan SES (Admin REST 500,
+  "lupa password" mencatat EMAIL_SEND_FAILED), STARTTLS dimatikan dan pengirim di luar daftar izin ditolak, serta
+  log relay/Keycloak tanpa alamat dan token.
+- `sink` (mode compose): SMTP realm sementara diarahkan ke penangkap uji tanpa TLS (fixture), lalu dipulihkan.
+
 Variabel lingkungan wajib: KC_CHECK_BASE_URL, KC_CHECK_ADMIN_USER, KC_CHECK_ADMIN_PASSWORD,
-KC_CHECK_SINK_CONTAINER, KC_CHECK_SINK_PORT, dan nilai RS_KC_* yang sama dengan yang dipakai saat
-konfigurasi diterapkan. Nilai rahasia tidak pernah dicetak.
+KC_CHECK_SINK_CONTAINER, KC_CHECK_SINK_PORT, KC_CHECK_EMAIL_MODE, dan nilai RS_KC_* yang sama dengan yang dipakai
+saat konfigurasi diterapkan; mode relay juga KC_CHECK_RELAY_CONTAINER, KC_CHECK_KC_CONTAINER,
+KC_CHECK_SES_CONFIG_SET. Nilai rahasia tidak pernah dicetak.
 """
 
 import difflib
@@ -49,6 +57,13 @@ ADMIN_USER = env("KC_CHECK_ADMIN_USER")
 ADMIN_PASSWORD = env("KC_CHECK_ADMIN_PASSWORD")
 SINK = env("KC_CHECK_SINK_CONTAINER")
 SINK_PORT = env("KC_CHECK_SINK_PORT")
+EMAIL_MODE = env("KC_CHECK_EMAIL_MODE")
+if EMAIL_MODE not in ("relay", "sink"):
+    print("KC_CHECK_EMAIL_MODE harus relay atau sink", file=sys.stderr)
+    sys.exit(2)
+RELAY = env("KC_CHECK_RELAY_CONTAINER") if EMAIL_MODE == "relay" else None
+KC_CONTAINER = env("KC_CHECK_KC_CONTAINER") if EMAIL_MODE == "relay" else None
+SES_CONFIG_SET = env("KC_CHECK_SES_CONFIG_SET") if EMAIL_MODE == "relay" else None
 RINCI = os.environ.get("KC_CHECK_RINCI") == "1"
 
 KLIEN = {
@@ -148,8 +163,10 @@ class UserUji:
     def otp(self):
         """Kode TOTP yang belum dipakai di jendela ±1 (otpPolicyCodeReusable=false, look-ahead 1)."""
         now = int(time.time() // 30)
-        for off in (0, 1, -1):
-            if now + off not in self._dipakai:
+        # Menaik saja (-1, 0, +1): Keycloak menolak kode berjendela lebih lama dari kode yang terakhir dipakai
+        # sehingga pola 0, +1, lalu -1 membuat uji tidak stabil (terlihat setelah F1-T35 menggeser waktu).
+        for off in (-1, 0, 1):
+            if now + off > max(self._dipakai, default=-1):
                 self._dipakai.add(now + off)
                 return k.totp(self.otp_key, offset=off)
         time.sleep(31)
@@ -744,14 +761,19 @@ def cek_grant_password(realm, user):
 
 
 def smtp_ke_penangkap(realm):
-    """Fixture: SMTP realm sementara ke penangkap uji (tanpa TLS, 127.0.0.1 namespace Keycloak).
-    Mengembalikan konfigurasi asli untuk dipulihkan dengan pulihkan_smtp()."""
+    """Mode sink: SMTP realm sementara ke penangkap uji (tanpa TLS, 127.0.0.1 namespace Keycloak); mengembalikan
+    konfigurasi asli untuk dipulihkan dengan pulihkan_smtp(). Mode relay: konfigurasi realm tidak diubah (email
+    lewat relay ADR-026 sungguhan); mengembalikan None."""
+    if EMAIL_MODE == "relay":
+        return None
     asli = ADMIN.get(realm).get("smtpServer") or {}
     ADMIN.call("PUT", realm, {"smtpServer": dict(asli, host="127.0.0.1", port=SINK_PORT, starttls="false")})
     return asli
 
 
 def pulihkan_smtp(realm, asli):
+    if asli is None:
+        return
     ADMIN.call("PUT", realm, {"smtpServer": asli})
     periksa((ADMIN.get(realm).get("smtpServer") or {}) == asli, f"[{realm}] SMTP realm dikembalikan ke konfigurasi relay setelah fixture")
 
@@ -780,6 +802,180 @@ def cek_verifikasi_email_dulu(realm):
         periksa("otp" not in creds, f"[{realm}] user dengan email belum terverifikasi tidak memiliki kredensial OTP", str(creds))
     finally:
         pulihkan_smtp(realm, asli)
+
+
+# ------------------------------------------------------------------------------- relay email (F1-T36)
+
+
+def docker_out(*args):
+    return subprocess.run(["docker", *args], capture_output=True, text=True)
+
+
+def ses_mode(status):
+    """Jawaban tiruan SES berikutnya: 200 (sukses) atau kode galat HTTP."""
+    r = docker_out("exec", SINK, "sh", "-c", f"echo {int(status)} > /tmp/ses-mode")
+    if r.returncode != 0:
+        raise RuntimeError("mode tiruan SES tidak dapat diubah")
+
+
+def ses_json(nama_eml):
+    """Isi JSON permintaan SendEmail yang menghasilkan <n>.eml."""
+    n = nama_eml.split(".")[0]
+    r = docker_out("exec", SINK, "cat", f"/tmp/ses-json/{n}.json")
+    return json.loads(r.stdout) if r.returncode == 0 and r.stdout else None
+
+
+def ses_tanda_tangan_buruk():
+    r = docker_out("exec", SINK, "sh", "-c", "cat /tmp/ses-json/bad-signature 2>/dev/null | wc -l")
+    return int((r.stdout or "0").strip() or 0)
+
+
+def tunggu_tanpa_email_baru(sebelum, detik=3):
+    batas = time.time() + detik
+    while time.time() < batas:
+        if [f for f in daftar_email() if f not in sebelum]:
+            return False
+        time.sleep(0.5)
+    return True
+
+
+def kirim_verifikasi(realm, user):
+    return ADMIN.call("PUT", f"{realm}/users/{user.id}/send-verify-email")
+
+
+def smtp_sementara(realm, **ubah):
+    asli = ADMIN.get(realm).get("smtpServer") or {}
+    ADMIN.call("PUT", realm, {"smtpServer": dict(asli, **ubah)})
+    return asli
+
+
+def pulihkan_smtp_relay(realm, asli):
+    ADMIN.call("PUT", realm, {"smtpServer": asli})
+    periksa((ADMIN.get(realm).get("smtpServer") or {}) == asli, f"[{realm}] SMTP realm dikembalikan ke relay setelah uji negatif")
+
+
+def kirim_lupa_password(realm, email_):
+    """Alur "lupa password" di halaman login; mengembalikan respons sesudah formulir dikirim."""
+    b, _, r = mulai(realm)
+    tautan = [h for _, h in k.Page(r.body).links if "reset-credentials" in (h or "")]
+    if not tautan:
+        raise RuntimeError("tautan lupa password tidak ditemukan")
+    r = ikuti(b, b.open(tautan[0]))
+    f = k.Page(r.body).form("kc-reset-password-form")
+    return ikuti(b, b.open(f["action"], dict(f["inputs"], username=email_)))
+
+
+def teks_halaman(r):
+    """Teks halaman tanpa tag dan tanpa nilai yang berubah per permintaan (untuk membandingkan dua halaman)."""
+    body = re.sub(r"<script.*?</script>", "", r.body or "", flags=re.S)
+    body = re.sub(r"<[^>]+>", " ", body)
+    body = re.sub(r"(session_code|execution|tab_id|client_data)=[^&\s\"']+", "", body)
+    return " ".join(body.split())
+
+
+def cek_relay_email(realm):
+    """F1-T36 (ADR-026): email Keycloak lewat relay sungguhan ke tiruan SES, termasuk skenario negatif."""
+    print(f"== [{realm}] email lewat relay ADR-026 (STARTTLS, SigV4, kegagalan SES, EMAIL_SEND_FAILED)")
+    user = UserUji(realm, "relay", email_terverifikasi=False)
+    dari = os.environ.get("RS_KC_SMTP_FROM")
+    try:
+        ses_mode(200)
+        sebelum = daftar_email()
+        r = kirim_verifikasi(realm, user)
+        periksa(r.status == 204, f"[{realm}] Admin REST send-verify-email sukses lewat relay", f"HTTP {r.status}")
+        nama, raw = baca_email(sebelum)
+        periksa(raw is not None, f"[{realm}] email verifikasi sampai ke tiruan SES lewat relay (STARTTLS, CA uji)")
+        if raw:
+            m = email.message_from_string(raw)
+            periksa(user.email in (m.get("To") or "") and dari in (m.get("From") or "")
+                    and "login-actions/action-token" in raw,
+                    f"[{realm}] MIME diteruskan apa adanya: To penerima, From pengirim realm, tautan token aksi di badan")
+            j = ses_json(nama) or {}
+            periksa(j.get("FromEmailAddress") == dari and j.get("Destination") == {"ToAddresses": [user.email]}
+                    and j.get("ConfigurationSetName") == SES_CONFIG_SET and "EndpointId" not in j,
+                    f"[{realm}] permintaan SES disusun relay: FromEmailAddress dari daftar izin, Destination dari RCPT, "
+                    "ConfigurationSetName eksplisit, tanpa EndpointId (C-01)",
+                    str({x: j.get(x) for x in ("FromEmailAddress", "ConfigurationSetName")}))
+            periksa((j.get("ConfigurationOverrides") or {}).get("Tracking")
+                    == {"ClickTrackingEnabled": "DISABLED", "OpenTrackingEnabled": "DISABLED"},
+                    f"[{realm}] pelacakan klik/buka SES dimatikan per pesan (ADR-026 butir 5)")
+        periksa(ses_tanda_tangan_buruk() == 0, f"[{realm}] tiruan SES memvalidasi SigV4 relay tanpa penolakan")
+
+        # Jalur Admin REST: SES gagal -> relay 4xx/5xx -> Keycloak HTTP 500, tanpa email (ADR-026 butir 3).
+        for status in (503, 429, 400):
+            ses_mode(status)
+            sebelum = daftar_email()
+            r = kirim_verifikasi(realm, user)
+            periksa(r.status == 500 and tunggu_tanpa_email_baru(sebelum, 1),
+                    f"[{realm}] SES {status}: Admin REST send-verify-email gagal (HTTP 500), tanpa email", f"HTTP {r.status}")
+            periksa(user.email not in (r.body or "") and "ref=" not in (r.body or ""),
+                    f"[{realm}] galat Admin REST tidak menggemakan alamat atau balasan relay (SES {status})")
+
+        # Alur "lupa password": halaman sama dengan saat sukses; kegagalan hanya di event (ADR-026 butir 8).
+        ses_mode(200)
+        halaman_sukses = teks_halaman(kirim_lupa_password(realm, user.email))
+        ses_mode(503)
+        mulai_t = int(time.time() * 1000) - 1000
+        r = kirim_lupa_password(realm, user.email)
+        periksa(teks_halaman(r) == halaman_sukses and halaman_sukses != "",
+                f"[{realm}] lupa password saat SES gagal menampilkan halaman yang sama dengan saat sukses (SRC-364)")
+        ev = []
+        for _ in range(10):
+            ev = [e for e in ADMIN.get(f"{realm}/events?type=SEND_RESET_PASSWORD_ERROR&user={user.id}&max=20")
+                  if e.get("time", 0) >= mulai_t]
+            if ev:
+                break
+            time.sleep(0.5)
+        periksa(any(e.get("error") == "email_send_failed" for e in ev),
+                f"[{realm}] event SEND_RESET_PASSWORD_ERROR dengan galat email_send_failed tercatat (ADR-026 butir 8)",
+                str([e.get("error") for e in ev]))
+        detail = json.dumps([e.get("details") or {} for e in ev])
+        alasan = json.dumps([(e.get("details") or {}).get("reason", "") for e in ev])
+        periksa(user.email not in alasan and "action-token" not in detail and "key=" not in detail and "ref=" not in alasan,
+                f"[{realm}] detail alasan EMAIL_SEND_FAILED tanpa alamat, token aksi, atau balasan relay (M-35)", alasan)
+        print(f"  OBSERVASI [{realm}] kunci detail event EMAIL_SEND_FAILED: "
+              f"{sorted({x for e in ev for x in (e.get('details') or {})})}; alasan: {alasan}")
+
+        # Required action Verify Email saat login ketika SES gagal (ADR-026 butir 3, sebelumnya [TIDAK DIKETAHUI]).
+        user2 = UserUji(realm, "relaylogin", email_terverifikasi=False)
+        sebelum = daftar_email()
+        b, _, r = mulai(realm)
+        r = kirim_password(b, r, user2.email, user2.password)
+        verif = "template: login-verify-email.ftl" in (r.body or "")
+        periksa(kode_dari(r, realm) is None and tunggu_tanpa_email_baru(sebelum, 1),
+                f"[{realm}] login dengan email belum terverifikasi saat SES gagal: tanpa kode otorisasi dan tanpa email")
+        galat = re.findall(r'(?:alert-error|kc-feedback-text|pf-m-danger)[^>]*>\s*([^<]{0,160})', r.body or "")
+        print(f"  OBSERVASI [{realm}] Verify Email saat login dan SES gagal: HTTP {r.status}, halaman verifikasi email={verif}, "
+              f"teks galat={galat[:2]}")
+
+        # Relay menolak koneksi tanpa STARTTLS dan pengirim di luar daftar izin (Keycloak menerima galat).
+        ses_mode(200)
+        for ubah, nama_uji in (({"starttls": "false"}, "STARTTLS dimatikan di realm"),
+                               ({"from": "penyusup@uji.invalid"}, "pengirim realm di luar daftar izin relay")):
+            asli = smtp_sementara(realm, **ubah)
+            try:
+                sebelum = daftar_email()
+                r = kirim_verifikasi(realm, user)
+                periksa(r.status == 500 and tunggu_tanpa_email_baru(sebelum, 1),
+                        f"[{realm}] {nama_uji}: relay menolak, Admin REST HTTP 500, tanpa email", f"HTTP {r.status}")
+            finally:
+                pulihkan_smtp_relay(realm, asli)
+
+        # Log relay dan Keycloak: tanpa alamat, subjek, atau token (ADR-005, ADR-010, ADR-026 butir 4).
+        log_relay = docker_out("logs", RELAY)
+        teks_relay = (log_relay.stdout or "") + (log_relay.stderr or "")
+        periksa('"outcome":"sent"' in teks_relay and '"outcome":"failed_temporary"' in teks_relay
+                and "from_not_allowed" in teks_relay and "starttls_required" in teks_relay,
+                f"[{realm}] log relay mencatat hasil (sent, failed_temporary) dan kelas penolakan")
+        bocor = [x for x in (user.email, user2.email, dari, "penyusup", "action-token", "key=eyJ", "Subject")
+                 if x and x in teks_relay]
+        periksa(not bocor, f"[{realm}] log relay tanpa alamat, subjek, atau token aksi", str(bocor))
+        log_kc = docker_out("logs", KC_CONTAINER)
+        teks_kc = (log_kc.stdout or "") + (log_kc.stderr or "")
+        periksa("action-token" not in teks_kc and "key=eyJ" not in teks_kc,
+                f"[{realm}] log Keycloak tanpa token aksi saat pengiriman gagal")
+    finally:
+        ses_mode(200)
 
 
 def cek_konsol_akun(realm, user):
@@ -898,6 +1094,10 @@ def main():
                 periksa(False, f"[{realm}] skenario kode pemulihan dan atur ulang password dijalankan",
                         "butuh user MFA dari skenario sebelumnya")
             jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
+            if EMAIL_MODE == "relay":
+                jalankan(f"[{realm}] relay email", cek_relay_email, realm)
+            else:
+                print(f"== [{realm}] relay email end-to-end: hanya mode ephemeral (mode ini memakai penangkap SMTP)")
             jalankan(f"[{realm}] Argon2 dan kebijakan password", cek_argon2_dan_kebijakan, realm)
             jalankan(f"[{realm}] tema login", cek_tema, realm)
             jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)

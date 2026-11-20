@@ -8,7 +8,8 @@ Modul kritis T1 (`CLAUDE.md`, ADR-011). Perubahan manual lewat konsol admin dila
 | `realms/pasien.json`, `realms/admin.json` | Realm `pasien` dan `admin` untuk keycloak-config-cli 6.5.1 `[SRC-520]` |
 | `test/keycloak_check.py`, `test/kc_http.py` | Test konfigurasi (Admin REST) dan perilaku (OIDC, halaman login), pustaka standar Python 3 |
 | `themes/ruang-sehat/login/` | Tema login Ruang Sehat (F1-T35): lihat bagian "Tema login" |
-| `test/SmtpSink.java` | Penangkap SMTP khusus test (bukan relay ADR-026) |
+| `test/SmtpSink.java` | Penangkap SMTP khusus test tanpa TLS, dipakai mode `compose` (bukan relay ADR-026) |
+| `test/SesTiruan.java` | Tiruan SES API v2 HTTPS khusus test (mode `ephemeral`): memvalidasi SigV4, menyimpan MIME yang diterima, jawaban galat dapat diatur (F1-T36) |
 
 Menerapkan dan menguji:
 
@@ -18,6 +19,8 @@ docker compose -f infra/local/compose.yaml --profile alat run --rm keycloak-conf
 bash scripts/keycloak-check.sh compose     # terapkan + test ke Keycloak compose (gagal bila tidak sehat)
 bash scripts/keycloak-check.sh ephemeral   # Keycloak sekali pakai, untuk CI/verify
 ```
+
+Mode `ephemeral` menguji jalur email ADR-026 end-to-end tanpa AWS: Keycloak (realm apa adanya, STARTTLS ke `email-relay:2525`) → `rs-backend email-relay` (dibangun `cargo build`, sertifikat dari CA uji yang dibangkitkan `openssl` saat test) → `SesTiruan.java` (HTTPS, memvalidasi SigV4). Kunci akses contoh fiktif AWS dibaca relay dari OpenBao dev sekali pakai. Semua kontainer bantu berbagi namespace jaringan Keycloak (hanya 127.0.0.1). Mode `compose` tetap memakai penangkap SMTP tanpa TLS lewat fixture realm sementara, karena Keycloak compose tidak memuat CA uji.
 
 ## Isi kedua realm
 
@@ -31,8 +34,8 @@ Sama di `pasien` dan `admin`, kecuali batas sesi dan klien:
 - **Verifikasi email lebih dulu**: required action Verify Email berprioritas 5, sebelum Configure OTP (10), sehingga TOTP tidak dapat didaftarkan pada akun yang emailnya belum terverifikasi (review keamanan F1-T31, cegah pre-account hijack).
 - **Konsol akun Keycloak tertutup**: klien `account-console` nonaktif dan default role tanpa `account/manage-account`, supaya ubah password/TOTP tidak lewat konsol akun di luar alur aplikasi.
 - **Direct grant**: tidak ada klien dengan grant password (termasuk `admin-cli` realm), dan alur `rs-direct-grant-mfa` tetap mewajibkan OTP bila kelak diaktifkan tanpa sengaja.
-- **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage`, `invalidEmailMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); struktur halaman disamakan oleh tema `ruang-sehat` (F1-T35, bagian "Tema login").
-- **SMTP** ke relay internal ADR-026: STARTTLS wajib, tanpa AUTH, tanpa `debug`, host/port/pengirim dari variabel lingkungan (KEPUTUSAN-231). Sampai relay F1-T36 ada, pengiriman email gagal (aman).
+- **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); struktur halaman disamakan oleh tema `ruang-sehat` (F1-T35, bagian "Tema login").
+- **SMTP** ke relay internal ADR-026: STARTTLS wajib, tanpa AUTH, tanpa `debug`, host/port/pengirim dari variabel lingkungan (KEPUTUSAN-231). Relay: `rs-backend email-relay` (F1-T36, crate `crates/email-relay` + adaptor `crates/ses`). Sertifikat relay dari CA internal dipercaya Keycloak lewat `conf/truststores`/`KC_TRUSTSTORE_PATHS` dengan `tls-hostname-verifier` `DEFAULT` `[SRC-583]`.
 - **Event** login dan admin disimpan 7 hari, tanpa detail representasi admin (ADR-011 butir 10).
 
 Klien:

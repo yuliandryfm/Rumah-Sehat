@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes FROM app.upload_slot WHERE id = $1",
+  "query": "SELECT id, bucket, object_key, category, owner_account_id, mime_type, size_bytes FROM app.stored_file WHERE id = $1 AND deleted_at IS NULL AND purged_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -9,74 +9,74 @@
         "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "upload_slot",
+            "table": "stored_file",
             "name": "id"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "expires_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "upload_slot",
-            "name": "expires_at"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
-        "name": "owner_account_id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "upload_slot",
-            "name": "owner_account_id"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "bucket",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "upload_slot",
+            "table": "stored_file",
             "name": "bucket"
           }
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 2,
         "name": "object_key",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "upload_slot",
+            "table": "stored_file",
             "name": "object_key"
           }
         }
       },
       {
-        "ordinal": 5,
-        "name": "allowed_mime_type",
+        "ordinal": 3,
+        "name": "category",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "upload_slot",
-            "name": "allowed_mime_type"
+            "table": "stored_file",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "owner_account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "stored_file",
+            "name": "owner_account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "mime_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stored_file",
+            "name": "mime_type"
           }
         }
       },
       {
         "ordinal": 6,
-        "name": "max_size_bytes",
+        "name": "size_bytes",
         "type_info": "Int4",
         "origin": {
           "Table": {
-            "table": "upload_slot",
-            "name": "max_size_bytes"
+            "table": "stored_file",
+            "name": "size_bytes"
           }
         }
       }
@@ -89,12 +89,12 @@
     "nullable": [
       false,
       false,
+      false,
+      false,
       true,
-      false,
-      false,
       false,
       false
     ]
   },
-  "hash": "5e9707ae4a6f909c2fe1750b3a4cc2cfd388ab1e6de4ae176b9c9fdb9a2bd09f"
+  "hash": "4ca38238b91f894f76a0d65c46b445631350e645ab6ded06d7e7d57077d766a4"
 }

@@ -31,11 +31,18 @@ SELECT pg_temp.uji_nol('A19.4 job: index persis pk, ix run_at queued, ix status/
     'CREATE INDEX ix_job_status_finished_at ON app.job USING btree (status, finished_at) WHERE (status = ANY (ARRAY[''succeeded''::text, ''failed''::text, ''cancelled''::text]))',
     'CREATE UNIQUE INDEX uqp_job_dedupe_key ON app.job USING btree (dedupe_key) WHERE (status = ANY (ARRAY[''queued''::text, ''running''::text]))',
     'CREATE INDEX ix_job_locked_until_running ON app.job USING btree (locked_until) WHERE (status = ''running''::text)'])));
-SELECT pg_temp.uji_nol('A19.5 upload_slot: index persis pk, uq object_key, ix expires_at §9.3',
+SELECT pg_temp.uji_nol('A19.5 upload_slot: index persis pk, uq object_key, ix expires_at §9.3, uq sanitized_object_key (TD-17)',
   ARRAY(SELECT pg_temp.uji_indeks('app.upload_slot', ARRAY[
     'CREATE UNIQUE INDEX pk_upload_slot ON app.upload_slot USING btree (id)',
     'CREATE UNIQUE INDEX uq_upload_slot_object_key ON app.upload_slot USING btree (object_key)',
-    'CREATE INDEX ix_upload_slot_expires_at ON app.upload_slot USING btree (expires_at)'])));
+    'CREATE INDEX ix_upload_slot_expires_at ON app.upload_slot USING btree (expires_at)',
+    'CREATE UNIQUE INDEX uq_upload_slot_sanitized_object_key ON app.upload_slot USING btree (sanitized_object_key)'])));
+SELECT pg_temp.uji_nol('A19.5 upload_slot TD-17: consumed_at timestamptz NULL dan sanitized_object_key text NULL, tanpa nilai bawaan',
+  ARRAY(SELECT format('%s: %s null=%s default=%s', v.k, coalesce(format_type(a.atttypid, a.atttypmod), '<tidak ada>'),
+                      NOT coalesce(a.attnotnull, true), a.atthasdef)
+          FROM (VALUES ('consumed_at', 'timestamp with time zone'), ('sanitized_object_key', 'text')) v(k, t)
+          LEFT JOIN pg_attribute a ON a.attrelid = 'app.upload_slot'::regclass AND a.attname = v.k AND NOT a.attisdropped
+         WHERE a.attname IS NULL OR format_type(a.atttypid, a.atttypmod) <> v.t OR a.attnotnull OR a.atthasdef));
 SELECT pg_temp.uji_nol('A19.6 stored_file: index persis pk, uq object_key, ix (container_type, container_id)',
   ARRAY(SELECT pg_temp.uji_indeks('app.stored_file', ARRAY[
     'CREATE UNIQUE INDEX pk_stored_file ON app.stored_file USING btree (id)',
@@ -175,6 +182,19 @@ SELECT pg_temp.uji_tolak('A19.5 NEG slot tanpa expires_at', 'rs_api',
 SELECT pg_temp.uji_tolak('A19.5 NEG pemilik akun yang tidak ada', 'rs_api',
   'INSERT INTO app.upload_slot (id, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES (''00000000-0000-7000-8000-00000000f002'', now(), ''00000000-0000-7000-8000-00000000ffff'', ''identity_document'', ''k2'', ''image/png'', 1)',
   '23503', 'fk_upload_slot_owner_account_id');
+-- TD-17: klaim hasil kode ulang dan tombstone.
+SELECT pg_temp.uji_boleh('A19.5 TD-17 rs_api mengklaim kunci hasil kode ulang', 'rs_api',
+  'UPDATE app.upload_slot SET sanitized_object_key = ''files/00000000-0000-7000-8000-0000000000f9'' WHERE id = ''00000000-0000-7000-8000-00000000f001'' AND sanitized_object_key IS NULL', 1);
+SELECT pg_temp.uji_tolak('A19.5 TD-17 NEG kunci hasil kode ulang sama dengan kunci mentah', 'rs_api',
+  'UPDATE app.upload_slot SET sanitized_object_key = object_key WHERE id = ''00000000-0000-7000-8000-00000000f001''',
+  '23514', 'ck_upload_slot_sanitized_object_key');
+SELECT pg_temp.uji_tolak('A19.5 TD-17 NEG kunci hasil kode ulang ganda', 'rs_api',
+  'INSERT INTO app.upload_slot (id, expires_at, bucket, object_key, allowed_mime_type, max_size_bytes, sanitized_object_key) VALUES (''00000000-0000-7000-8000-00000000f003'', now(), ''identity_document'', ''k3'', ''image/png'', 1, ''files/00000000-0000-7000-8000-0000000000f9'')',
+  '23505', 'uq_upload_slot_sanitized_object_key');
+SELECT pg_temp.uji_boleh('A19.5 TD-17 rs_api menandai slot dipakai (tombstone, bukan DELETE)', 'rs_api',
+  'UPDATE app.upload_slot SET consumed_at = now() WHERE id = ''00000000-0000-7000-8000-00000000f001'' AND consumed_at IS NULL', 1);
+SELECT pg_temp.uji_boleh('A19.5 TD-17 tombstone tidak dapat dipakai dua kali', 'rs_api',
+  'UPDATE app.upload_slot SET consumed_at = now() WHERE id = ''00000000-0000-7000-8000-00000000f001'' AND consumed_at IS NULL', 0);
 SELECT pg_temp.uji_boleh('A19.5 rs_worker menghapus slot kedaluwarsa', 'rs_worker',
   'DELETE FROM app.upload_slot WHERE expires_at < now() + interval ''1 hour''', 1);
 SELECT pg_temp.uji_tolak('A19.5 NEG pekerja privasi membaca upload_slot', 'rs_privacy_worker_login', 'SELECT * FROM app.upload_slot', '42501', 'permission denied for table upload_slot');
