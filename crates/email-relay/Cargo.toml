@@ -19,11 +19,12 @@ tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws
 time = { version = "=0.3.55", default-features = false, features = ["std"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "net", "time", "io-util", "sync", "macros"] }
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+# Security log pembuangan batas per penerima (review keamanan F1-T36).
+observability = { path = "../observability" }
 
 [dev-dependencies]
 # Test integrasi: tiruan SES (JSON, base64) dan penangkap log (observability MemorySink).
 base64 = { version = "=0.23.1", default-features = false, features = ["alloc"] }
-observability = { path = "../observability" }
 serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
 time = { version = "=0.3.55", default-features = false, features = ["std", "macros"] }
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "rt-multi-thread", "macros", "net", "time", "io-util", "sync", "test-util"] }

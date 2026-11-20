@@ -4,7 +4,8 @@
 //! - mewajibkan STARTTLS sebelum MAIL/RCPT/DATA dan menolak data yang dikirim berbarengan dengan STARTTLS;
 //! - menerima satu penerima per pesan dan pengirim dari daftar izin saja;
 //! - membatasi panjang baris, ukuran pesan, waktu menganggur, jumlah koneksi, dan laju (global serta per
-//!   penerima; saat batas per penerima tercapai relay membalas 250 dan membuang pesan);
+//!   penerima; kuota per penerima hanya terpakai oleh pesan yang diterima SES, dan saat batasnya tercapai relay
+//!   membalas 250, membuang pesan, serta mencatatnya di security log);
 //! - menolak header `X-SES-*`, `From` yang bukan pengirim amplop, dan `To`/`Cc`/`Bcc` selain penerima amplop;
 //! - meneruskan MIME mentah ke SES secara sinkron dan membalas 250 hanya setelah SES menerima; 429/5xx → 4xx,
 //!   400 → 5xx; teks balasan tetap ditambah ID korelasi;

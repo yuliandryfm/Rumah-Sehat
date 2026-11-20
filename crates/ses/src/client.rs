@@ -236,7 +236,9 @@ impl SesClient {
         let (mut sender, conn) = hyper::client::conn::http1::handshake(TokioIo::new(tls))
             .await
             .map_err(|_| SesError::Unavailable)?;
-        let driver = tokio::spawn(conn);
+        // Task koneksi dihentikan saat future ini dibuang, termasuk saat batas waktu `send_raw` habis atau
+        // galat `?` di bawah (review keamanan F1-T36): koneksi ke SES tidak tertinggal di latar belakang.
+        let _driver = AbortOnDrop(tokio::spawn(conn));
         let mut authorization =
             http::HeaderValue::from_str(&auth).map_err(|_| SesError::Signing)?;
         authorization.set_sensitive(true);
@@ -251,26 +253,30 @@ impl SesClient {
             .header(header::CONNECTION, "close")
             .body(Full::new(Bytes::from(body)))
             .map_err(|_| SesError::InvalidInput("request"))?;
-        let result = async {
-            let response = sender
-                .send_request(request)
-                .await
-                .map_err(|_| SesError::Unavailable)?;
-            let status = response.status();
-            if status != StatusCode::OK {
-                return Err(map_status(status));
-            }
-            let collected = Limited::new(response.into_body(), MAX_RESPONSE_BYTES)
-                .collect()
-                .await
-                .map_err(|_| SesError::InvalidResponse)?;
-            let parsed: SendEmailResponse = serde_json::from_slice(&collected.to_bytes())
-                .map_err(|_| SesError::InvalidResponse)?;
-            MessageId::parse(&parsed.message_id).ok_or(SesError::InvalidResponse)
+        let response = sender
+            .send_request(request)
+            .await
+            .map_err(|_| SesError::Unavailable)?;
+        let status = response.status();
+        if status != StatusCode::OK {
+            return Err(map_status(status));
         }
-        .await;
-        driver.abort();
-        result
+        let collected = Limited::new(response.into_body(), MAX_RESPONSE_BYTES)
+            .collect()
+            .await
+            .map_err(|_| SesError::InvalidResponse)?;
+        let parsed: SendEmailResponse =
+            serde_json::from_slice(&collected.to_bytes()).map_err(|_| SesError::InvalidResponse)?;
+        MessageId::parse(&parsed.message_id).ok_or(SesError::InvalidResponse)
+    }
+}
+
+/// Menghentikan task saat dibuang (`JoinHandle` yang dibuang hanya melepas task, tidak menghentikannya).
+struct AbortOnDrop<T>(tokio::task::JoinHandle<T>);
+
+impl<T> Drop for AbortOnDrop<T> {
+    fn drop(&mut self) {
+        self.0.abort();
     }
 }
 

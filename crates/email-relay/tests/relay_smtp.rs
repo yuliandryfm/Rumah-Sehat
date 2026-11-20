@@ -326,6 +326,64 @@ async fn per_recipient_limit_answers_250_but_drops() {
 }
 
 #[tokio::test]
+async fn ses_failures_do_not_consume_recipient_quota() {
+    // Review keamanan F1-T36 (Medium): kegagalan berulang (misalnya "lupa password" saat SES menolak) tidak
+    // boleh menghabiskan kuota per penerima sehingga email sah korban tertahan.
+    let mut s = settings();
+    s.per_recipient_per_hour = 5;
+    let h = start_with(s, SECRET, Duration::from_millis(500)).await;
+    for status in [503, 429, 400, 500, 503] {
+        h.ses.set(status, Duration::ZERO);
+        let (mut c, _) = Client::connect(h.port).await;
+        c.starttls(&h.pki).await;
+        let r = c
+            .send_message(FROM, RCPT, &keycloak_like_message(SUBJECT))
+            .await;
+        assert!(
+            r.starts_with("451") || r.starts_with("554"),
+            "SES {status}: {r}"
+        );
+    }
+    // Batas waktu SES juga mengembalikan kuota.
+    h.ses.set(200, Duration::from_secs(2));
+    let (mut c, _) = Client::connect(h.port).await;
+    c.starttls(&h.pki).await;
+    assert_code(
+        &c.send_message(FROM, RCPT, &keycloak_like_message(SUBJECT))
+            .await,
+        "451",
+    );
+    let before = h.ses.requests().len();
+    h.ses.set(200, Duration::ZERO);
+    for _ in 0..5 {
+        let (mut c, _) = Client::connect(h.port).await;
+        c.starttls(&h.pki).await;
+        assert_code(
+            &c.send_message(FROM, RCPT, &keycloak_like_message(SUBJECT))
+                .await,
+            "250",
+        );
+    }
+    assert_eq!(
+        h.ses.requests().len(),
+        before + 5,
+        "lima kiriman sah sesudah kegagalan tetap sampai ke SES"
+    );
+    let (mut c, _) = Client::connect(h.port).await;
+    c.starttls(&h.pki).await;
+    assert_code(
+        &c.send_message(FROM, RCPT, &keycloak_like_message(SUBJECT))
+            .await,
+        "250",
+    );
+    assert_eq!(
+        h.ses.requests().len(),
+        before + 5,
+        "kiriman ke-6 sesudah 5 diterima dibuang"
+    );
+}
+
+#[tokio::test]
 async fn global_limit_defers_with_4xx() {
     let mut s = settings();
     s.global_per_minute = 1;

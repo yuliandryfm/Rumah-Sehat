@@ -9,7 +9,7 @@
 
 use crate::address::Mailbox;
 use crate::io::{LineError, SmtpStream};
-use crate::limits::{Decision, RateLimiter};
+use crate::limits::{Decision, RateLimiter, Reservation};
 use crate::message::check_headers;
 use crate::sender::{MailSender, OutboundMessage, SendOutcome};
 use crate::settings::{MAX_COMMAND_LINE, MAX_TEXT_LINE, RelaySettings};
@@ -609,6 +609,27 @@ async fn read_body<S: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 
+/// Pesanan kuota per penerima yang dikembalikan saat dibuang, kecuali [`QuotaGuard::keep`] dipanggil (SES
+/// menerima pesan). Pengembalian juga terjadi bila sesi dibatalkan di tengah pengiriman (batas waktu sesi).
+struct QuotaGuard<'a> {
+    limiter: &'a RateLimiter,
+    reservation: Option<Reservation>,
+}
+
+impl QuotaGuard<'_> {
+    fn keep(&mut self) {
+        self.reservation = None;
+    }
+}
+
+impl Drop for QuotaGuard<'_> {
+    fn drop(&mut self) {
+        if let Some(r) = self.reservation.take() {
+            self.limiter.refund(r);
+        }
+    }
+}
+
 /// DATA sampai balasan akhir.
 async fn data<S: AsyncRead + AsyncWrite + Unpin, M: MailSender>(
     stream: &mut SmtpStream<S>,
@@ -641,11 +662,16 @@ async fn data<S: AsyncRead + AsyncWrite + Unpin, M: MailSender>(
             .write_all(&reply_ref("554", "5.6.0 Message content rejected", &corr))
             .await;
     }
-    match shared.limiter.check(&rcpt) {
-        Decision::Allow => {}
+    let mut quota = match shared.limiter.check(&rcpt) {
+        Decision::Allow(r) => QuotaGuard {
+            limiter: &shared.limiter,
+            reservation: Some(r),
+        },
         Decision::DropRecipient => {
-            // ADR-026 butir 4: 250 dan buang, supaya tidak ada sinyal berbeda bagi pemanggil.
+            // ADR-026 butir 4: 250 dan buang, supaya tidak ada sinyal berbeda bagi pemanggil. Setiap pembuangan
+            // juga masuk security log (dasar peringatan; review keamanan F1-T36).
             tracing::warn!(correlation_id = %corr, outcome = "dropped", class = "recipient_rate", size = size, "relay_message");
+            observability::security::email_recipient_rate_dropped(corr.as_uuid());
             return stream.write_all(&reply_ref("250", "2.0.0 OK", &corr)).await;
         }
         Decision::Defer => {
@@ -658,7 +684,7 @@ async fn data<S: AsyncRead + AsyncWrite + Unpin, M: MailSender>(
                 ))
                 .await;
         }
-    }
+    };
     let msg = OutboundMessage {
         from: from.as_str().to_string(),
         to: rcpt.as_str().to_string(),
@@ -666,6 +692,8 @@ async fn data<S: AsyncRead + AsyncWrite + Unpin, M: MailSender>(
     };
     match shared.sender.send(&msg).await {
         SendOutcome::Accepted(id) => {
+            // Hanya pesan yang diterima SES memakai kuota per penerima; hasil lain mengembalikannya (QuotaGuard).
+            quota.keep();
             tracing::info!(correlation_id = %corr, outcome = "sent", size = size, ses_message_id = id.as_str(), "relay_message");
             stream.write_all(&reply_ref("250", "2.0.0 OK", &corr)).await
         }

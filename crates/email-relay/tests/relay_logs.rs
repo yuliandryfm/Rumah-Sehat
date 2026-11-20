@@ -73,4 +73,40 @@ async fn logs_contain_outcome_and_ids_but_no_addresses_or_subject() {
     ] {
         assert!(!text.contains(s), "log memuat {s:?}");
     }
+    assert!(
+        !sec.text().contains("email_recipient_rate_dropped"),
+        "belum ada pembuangan"
+    );
+
+    // Batas per penerima 5/jam: 5 pesan diterima SES, pesan ke-6 dibalas 250 tetapi dibuang dan dicatat di
+    // security log (review keamanan F1-T36).
+    let mut s = settings();
+    s.per_recipient_per_hour = 5;
+    let h2 = start_with(s, SECRET, Duration::from_secs(5)).await;
+    for i in 0..6 {
+        let (mut c, _) = Client::connect(h2.port).await;
+        c.starttls(&h2.pki).await;
+        let r = c
+            .send_message(FROM, RCPT, &keycloak_like_message(SUBJECT))
+            .await;
+        assert!(r.starts_with("250 2.0.0"), "pesan {i}: {r}");
+    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert_eq!(h2.ses.requests().len(), 5, "pesan ke-6 tidak sampai ke SES");
+    let sec_text = sec.text();
+    assert_eq!(
+        sec_text
+            .matches("\"event_type\":\"email_recipient_rate_dropped\"")
+            .count(),
+        1,
+        "{sec_text}"
+    );
+    assert!(
+        sec_text.contains("\"log_stream\":\"security\""),
+        "{sec_text}"
+    );
+    assert!(app.text().contains("\"outcome\":\"dropped\""));
+    for s in [RCPT, FROM, "subjek-rahasia"] {
+        assert!(!sec_text.contains(s), "security log memuat {s:?}");
+    }
 }

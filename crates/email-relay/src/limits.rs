@@ -3,6 +3,11 @@
 //! Kunci per penerima adalah HMAC-SHA256 alamat (huruf kecil) dengan kunci acak per proses, sehingga peta di
 //! memori tidak memuat alamat dan tidak dapat dicocokkan dengan tabel hash yang dihitung di muka.
 //! Waktu memakai `tokio::time::Instant` (monoton; dapat dihentikan di test).
+//!
+//! Kuota per penerima hanya terpakai oleh pesan yang diterima SES (review keamanan F1-T36, Medium): pesan
+//! yang ditunda batas global atau gagal di SES (4xx/5xx/batas waktu) mengembalikan kuotanya lewat
+//! [`RateLimiter::refund`], sehingga penyerang yang memicu kegagalan berulang (misalnya "lupa password" saat SES
+//! menolak) tidak dapat menghabiskan kuota korban. Selama pesan sedang dikirim, kuotanya dipesan.
 
 use crate::address::Mailbox;
 use crypto::{CryptoError, HmacSha256Key, SHA256_LEN, fill_random};
@@ -18,11 +23,18 @@ pub const RECIPIENT_WINDOW: Duration = Duration::from_secs(3600);
 /// Jumlah maksimum kunci penerima di memori; di atas ini pesan ditunda (sementara), tidak dibuang.
 pub const MAX_TRACKED_RECIPIENTS: usize = 50_000;
 
+/// Pesanan kuota per penerima untuk satu pesan yang diteruskan; dikembalikan bila SES tidak menerima.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Reservation {
+    key: [u8; SHA256_LEN],
+    window_start: Instant,
+}
+
 /// Keputusan batas laju untuk satu pesan.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Decision {
-    /// Teruskan ke SES.
-    Allow,
+    /// Teruskan ke SES; panggil [`RateLimiter::refund`] bila SES tidak menerima pesan.
+    Allow(Reservation),
     /// Batas per penerima tercapai: balas 250 dan buang (tanpa sinyal berbeda bagi pemanggil).
     DropRecipient,
     /// Batas global tercapai atau pelacak penuh: balasan sementara 4xx.
@@ -116,11 +128,32 @@ impl RateLimiter {
         if !w.hit(now, RECIPIENT_WINDOW, self.per_recipient_per_hour) {
             return Decision::DropRecipient;
         }
+        let reservation = Reservation {
+            key: k,
+            window_start: w.start,
+        };
         let max = self.global_per_minute;
         if !st.global.hit(now, GLOBAL_WINDOW, max) {
+            Self::release(&mut st, &reservation);
             return Decision::Defer;
         }
-        Decision::Allow
+        Decision::Allow(reservation)
+    }
+
+    /// Mengembalikan kuota per penerima untuk pesan yang tidak diterima SES. Tidak berpengaruh bila jendela
+    /// penerima sudah berganti sejak pesanan dibuat. Kuota global tidak dikembalikan (panggilan SES terjadi).
+    pub fn refund(&self, reservation: Reservation) {
+        if let Ok(mut st) = self.state.lock() {
+            Self::release(&mut st, &reservation);
+        }
+    }
+
+    fn release(st: &mut State, r: &Reservation) {
+        if let Some(w) = st.recipients.get_mut(&r.key)
+            && w.start == r.window_start
+        {
+            w.count = w.count.saturating_sub(1);
+        }
     }
 }
 
@@ -136,22 +169,56 @@ mod tests {
     async fn per_recipient_limit_drops_and_resets_after_window() {
         let l = RateLimiter::new(100, 2).unwrap();
         let a = mb("a@uji.invalid");
-        assert_eq!(l.check(&a), Decision::Allow);
-        assert_eq!(l.check(&mb("A@UJI.INVALID")), Decision::Allow);
+        assert!(matches!(l.check(&a), Decision::Allow(_)));
+        assert!(matches!(l.check(&mb("A@UJI.INVALID")), Decision::Allow(_)));
         assert_eq!(l.check(&a), Decision::DropRecipient);
-        assert_eq!(l.check(&mb("b@uji.invalid")), Decision::Allow);
+        assert!(matches!(l.check(&mb("b@uji.invalid")), Decision::Allow(_)));
         tokio::time::advance(RECIPIENT_WINDOW).await;
-        assert_eq!(l.check(&a), Decision::Allow);
+        assert!(matches!(l.check(&a), Decision::Allow(_)));
     }
 
     #[tokio::test(start_paused = true)]
     async fn global_limit_defers_and_resets_after_window() {
         let l = RateLimiter::new(2, 100).unwrap();
-        assert_eq!(l.check(&mb("a@uji.invalid")), Decision::Allow);
-        assert_eq!(l.check(&mb("b@uji.invalid")), Decision::Allow);
+        assert!(matches!(l.check(&mb("a@uji.invalid")), Decision::Allow(_)));
+        assert!(matches!(l.check(&mb("b@uji.invalid")), Decision::Allow(_)));
         assert_eq!(l.check(&mb("c@uji.invalid")), Decision::Defer);
         tokio::time::advance(GLOBAL_WINDOW).await;
-        assert_eq!(l.check(&mb("c@uji.invalid")), Decision::Allow);
+        assert!(matches!(l.check(&mb("c@uji.invalid")), Decision::Allow(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn refunded_reservations_do_not_consume_recipient_quota() {
+        let l = RateLimiter::new(100, 2).unwrap();
+        let a = mb("korban@uji.invalid");
+        // Kegagalan SES berulang (pesanan dikembalikan) tidak menghabiskan kuota.
+        for _ in 0..10 {
+            let Decision::Allow(r) = l.check(&a) else {
+                panic!("harus diizinkan")
+            };
+            l.refund(r);
+        }
+        assert!(matches!(l.check(&a), Decision::Allow(_)));
+        assert!(matches!(l.check(&a), Decision::Allow(_)));
+        assert_eq!(l.check(&a), Decision::DropRecipient);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn global_defer_returns_recipient_quota_and_stale_refund_is_ignored() {
+        let l = RateLimiter::new(1, 1).unwrap();
+        let a = mb("a@uji.invalid");
+        assert!(matches!(l.check(&mb("b@uji.invalid")), Decision::Allow(_)));
+        assert_eq!(l.check(&a), Decision::Defer);
+        tokio::time::advance(GLOBAL_WINDOW).await;
+        let Decision::Allow(old) = l.check(&a) else {
+            panic!("kuota a harus utuh setelah ditunda global")
+        };
+        tokio::time::advance(RECIPIENT_WINDOW).await;
+        assert!(matches!(l.check(&a), Decision::Allow(_)));
+        // Pesanan dari jendela lama tidak mengurangi hitungan jendela baru.
+        l.refund(old);
+        tokio::time::advance(GLOBAL_WINDOW).await;
+        assert_eq!(l.check(&a), Decision::DropRecipient);
     }
 
     #[test]
