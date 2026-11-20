@@ -8,6 +8,9 @@
 //! - `response-code`: pembuatan `ResponseCode` di luar `envelope` dan `error.rs` modul.
 //! - `print`: `println!`/`eprintln!`/`dbg!` di kode non-test (log lewat tracing, §4.1).
 //! - `log-debug`, `log-field`, `instrument`: pola log terlarang (§4.1, ADR-010 butir 1).
+//! - `audit-outbox`: penyebutan `audit_outbox`/`rme_audit_outbox` di luar crate `audit` (ADR-009 butir 2).
+//! - `tx-control`: literal SQL kendali transaksi (`COMMIT`, `ROLLBACK`, `BEGIN`, `SAVEPOINT`, ...);
+//!   transaksi lewat API sqlx dan transaksi teraudit lewat `audit::in_audited_tx` (F1-T23).
 
 use crate::lexer::{Scanned, enclosing_fn, find_tokens, is_ident, line_of, matching_close, scan};
 use crate::{Finding, fs};
@@ -157,6 +160,112 @@ pub fn check_source_text(file: &str, src: &str) -> Vec<Finding> {
     if !test {
         out.extend(attribute_findings(file, &sc));
         out.extend(macro_findings(file, &sc));
+        if !file.starts_with("crates/arch-check/") {
+            out.extend(audit_outbox_findings(file, &sc));
+            out.extend(tx_control_findings(file, &sc));
+        }
+    }
+    out
+}
+
+/// Nama tabel outbox audit, dirakit saat runtime supaya berkas pemeriksa ini tidak memuat literalnya.
+fn outbox_table_names() -> [String; 2] {
+    let base = ["audit", "outbox"].join("_");
+    [base.clone(), format!("rme_{base}")]
+}
+
+/// `audit-outbox` (ADR-009 butir 2, review keamanan F1-T23 BLOKIR-2): tabel `audit_outbox` dan
+/// `rme_audit_outbox` hanya boleh disebut di crate `audit`. Melengkapi aturan kepemilikan tabel
+/// (`table-owner`, hanya literal berbentuk SQL) dengan menolak penyebutan apa pun: literal yang dirakit
+/// menjadi SQL dinamis, konstanta nama tabel, atau identifier.
+fn audit_outbox_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
+    if file.starts_with("crates/audit/") {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    let names = outbox_table_names();
+    for (off, lit) in &sc.literals {
+        let lower = lit.to_ascii_lowercase();
+        if let Some(name) = names.iter().find(|n| lower.contains(n.as_str())) {
+            out.push(Finding::new(
+                "audit-outbox",
+                file,
+                line_of(&sc.code, *off),
+                name,
+                "tabel outbox audit hanya ditulis lewat crate audit (audit::in_audited_tx, ADR-009 butir 2)",
+            ));
+        }
+    }
+    for name in &names {
+        for off in find_tokens(&sc.code, name) {
+            out.push(Finding::new(
+                "audit-outbox",
+                file,
+                line_of(&sc.code, off),
+                name,
+                "tabel outbox audit hanya ditulis lewat crate audit (audit::in_audited_tx, ADR-009 butir 2)",
+            ));
+        }
+    }
+    out
+}
+
+/// Benar bila `stmt` berbentuk pernyataan SQL kendali transaksi PostgreSQL. Bentuk prosa
+/// (`commit message`, `release notes`) tidak dianggap pernyataan.
+fn is_tx_control_statement(stmt: &str) -> bool {
+    let words: Vec<String> = stmt
+        .split_whitespace()
+        .map(|w| w.to_ascii_lowercase())
+        .collect();
+    let first = words.first().map(String::as_str);
+    let second = words.get(1).map(String::as_str);
+    let alone = words.len() == 1;
+    match first {
+        Some("commit") | Some("rollback") | Some("abort") | Some("end") => {
+            alone
+                || matches!(
+                    second,
+                    Some("transaction" | "work" | "and" | "to" | "prepared")
+                )
+        }
+        Some("begin") => {
+            alone
+                || matches!(
+                    second,
+                    Some("transaction" | "work" | "isolation" | "read" | "deferrable" | "not")
+                )
+        }
+        Some("savepoint") => words.len() == 2,
+        Some("release") => second == Some("savepoint"),
+        Some("start" | "set" | "prepare") => second == Some("transaction"),
+        _ => false,
+    }
+}
+
+/// `tx-control` (review keamanan F1-T23 BLOKIR-2): literal SQL kendali transaksi (`COMMIT`, `ROLLBACK`,
+/// `BEGIN`, `SAVEPOINT`, `RELEASE`, `START TRANSACTION`, ...) ditolak di kode non-test. Transaksi hanya
+/// lewat API sqlx (`begin`/`commit`), dan transaksi yang mencatat audit hanya lewat
+/// `audit::in_audited_tx`; SQL mentah dapat mengakhiri transaksi teraudit dari dalam aksi bisnis.
+fn tx_control_findings(file: &str, sc: &Scanned) -> Vec<Finding> {
+    let mut out = Vec::new();
+    for (off, lit) in &sc.literals {
+        for stmt in lit.split(";") {
+            if is_tx_control_statement(stmt) {
+                let word = stmt
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or_default()
+                    .to_ascii_lowercase();
+                out.push(Finding::new(
+                    "tx-control",
+                    file,
+                    line_of(&sc.code, *off),
+                    &word,
+                    "SQL kendali transaksi mentah dilarang; pakai API transaksi sqlx atau audit::in_audited_tx",
+                ));
+                break;
+            }
+        }
     }
     out
 }

@@ -1,0 +1,26 @@
+[package]
+name = "audit"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Pustaka audit trail tunggal Ruang Sehat dan RME (ADR-009 butir 1), modul kritis T1.
+# Versi: docs/05-stack.md §1.1 (serde 1.0.229 [SRC-167]; time 0.3.55 [SRC-177]); serde_json 1.0.154 [SRC-335].
+[dependencies]
+foundation = { path = "../foundation" }
+observability = { path = "../observability" }
+serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
+time = { version = "=0.3.55", default-features = false, features = ["std", "formatting"] }
+# sqlx 0.9.1 [SRC-165][SRC-166]; fitur diverifikasi dari Cargo.toml sqlx 0.9.1 [SRC-490]. Tanpa fitur TLS:
+# pilihan TLS koneksi milik biner aplikasi, bukan pustaka ini.
+sqlx = { version = "=0.9.1", default-features = false, features = ["postgres", "macros", "runtime-tokio", "uuid", "time", "json"] }
+
+[dev-dependencies]
+time = { version = "=0.3.55", default-features = false, features = ["std", "formatting", "macros"] }
+tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["std"] }
+
+# Lint larangan ada di [workspace.lints] dan clippy.toml root (F1-T12, coding-standards §3.4).
+[lints]
+workspace = true
