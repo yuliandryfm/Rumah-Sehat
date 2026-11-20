@@ -72,7 +72,8 @@ for alat in docker python3; do
 done
 for f in "$COMPOSE_FILE" infra/keycloak/keycloak.conf infra/keycloak/realms/pasien.json infra/keycloak/realms/admin.json \
   infra/keycloak/test/keycloak_check.py infra/keycloak/test/kc_http.py infra/keycloak/test/SmtpSink.java \
-  infra/keycloak/test/SesTiruan.java; do
+  infra/keycloak/test/SesTiruan.java \
+  infra/keycloak/themes/ruang-sehat/login/theme.properties infra/keycloak/themes/ruang-sehat/login/login.ftl; do
   if [ ! -f "$f" ]; then
     echo "berkas tidak ada: $f" >&2
     exit 1
@@ -200,6 +201,7 @@ else
     -e KC_BOOTSTRAP_ADMIN_USERNAME -e KC_BOOTSTRAP_ADMIN_PASSWORD \
     -e KC_TRUSTSTORE_PATHS=/opt/keycloak/conf/truststores \
     -v "$ROOT/infra/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro" \
+    -v "$ROOT/infra/keycloak/themes/ruang-sehat:/opt/keycloak/themes/ruang-sehat:ro" \
     -v "$PKI/ca.pem:/opt/keycloak/conf/truststores/rs-uji-ca.pem:ro" \
     "$IMG_KC" start-dev >/dev/null
   PORT="$(docker port "$KC" 8080/tcp | sed -n 's/^127\.0\.0\.1:\([0-9]*\)$/\1/p' | sed -n '1p')"

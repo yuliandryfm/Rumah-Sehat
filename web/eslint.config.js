@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/dist-gallery/**", "**/coverage/**", "packages/api-client/src/generated/**"],
+    ignores: ["**/node_modules/**", "**/.next/**", "**/next-env.d.ts", "**/dist/**", "**/dist-gallery/**", "**/coverage/**", "packages/api-client/src/generated/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -30,7 +30,7 @@ export default tseslint.config(
     // Skrip Node (.mjs) dan konfigurasi: tanpa tipe, boleh console.
     files: ["**/*.mjs", "eslint.config.js"],
     extends: [tseslint.configs.disableTypeChecked],
-    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+    languageOptions: { globals: { process: "readonly", console: "readonly", fetch: "readonly", setTimeout: "readonly" } },
     rules: { "no-console": "off" },
   },
 );
