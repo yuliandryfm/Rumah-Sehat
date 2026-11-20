@@ -575,6 +575,14 @@ Diajukan dan diputuskan: 2026-11-20, `[USER]` Telegram: "ubah semua istilah mark
 Dampak: penggantian istilah di BRD, PRD, ADR-015 dan ADR lain, data dictionary (nama kolom yang memuat "markup" — bila sudah ada di migrasi, perubahan nama kolom lewat migrasi expand/contract; bila belum dimigrasi, ganti di dokumen saja), phase plan, backlog, test plan, design guideline/wireframe, CLAUDE.md. Setiap dokumen menyertakan definisi: "margin = persentase dari harga rekanan (bukan dari harga jual)" agar tidak disalahartikan.
 Status: diterapkan di dokumen 2026-11-20. Cakupan: dokumen gate dan acuan hidup (BRD, PRD, ADR-015, ADR-029, DD, ERD, arsitektur, threat model, stack, skema fisik, kode respons, design guideline, wireframe, phase plan, coding standards, test plan, traceability, STATUS, CLAUDE.md). Sengaja tidak diubah (rekaman sejarah dan kutipan): `docs/sources.md`, catatan wawancara (`docs/*catatan*`, `docs/cr/CR-021-*`), laporan `docs/fact-check/`, `docs/qa/`, `docs/compliance/`, `docs/review/`, `docs/checkpoint-2.md`, kutipan `[USER]` di entri backlog ini dan CR-013. Kode (`crates/`, `apps/`, `web/`) dan `db/test/kelas-app.sql` (memuat nama tabel `markup_rule`) diubah task developer; belum ada migrasi yang membuat tabel/kolom bernama markup.
 
+### CR-025: Hasil yang bisa dipresentasikan lebih awal (hibrida per aplikasi)
+
+Diajukan dan diputuskan: 2026-11-20, `[USER]` Telegram: "bagaimana bila. pembagaiannya per aplikasi, sehingga wujudnya ada dan bisa kita present ke CEO, bahkan tim marketing bisa mulai menjajaki pasar" lalu memilih **H** (hibrida).
+Isi: (1) prototipe klik HTML statis dari wireframe yang ada (pasien, nakes, backoffice, situs, member area) untuk presentasi CEO, segera; (2) situs publik company profile + CMS (task CR-021 F1-T89–F1-T97 terkait situs/CMS) dimajukan menjadi hasil pertama yang berjalan di staging untuk marketing, paralel dengan fondasi; (3) fondasi backend tetap berjalan; setiap fase berikutnya menghasilkan satu aplikasi/alur yang bisa didemokan.
+**Mengubah keputusan lama:** urutan CR-022 (Fase 1 asli dulu, baru CR-021) — khusus situs publik + CMS kini paralel/dimajukan; sisa CR-021 (realm korporat, pendaftaran perusahaan) tetap setelah baseline.
+Ketergantungan: domain dan merek (PT-46), konten situs (Tentang Kami, layanan, rekanan; `[TIDAK DIKETAHUI]`), staging (EN-15, PT-39 Biznet Gio) — tanpa staging, situs hanya bisa didemokan di server pengembangan.
+Status: disetujui; prototipe klik dikerjakan 2026-11-20; task situs/CMS dijadwalkan di pemanggilan /runbook auto berikutnya (batas 45 task sesi ini tercapai)
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
