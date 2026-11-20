@@ -375,6 +375,15 @@
   ],
   "requiredActions": [
     {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 5,
+      "config": {}
+    },
+    {
       "alias": "CONFIGURE_TOTP",
       "name": "Configure OTP",
       "providerId": "CONFIGURE_TOTP",
@@ -392,15 +401,6 @@
       "enabled": true,
       "defaultAction": false,
       "priority": 20,
-      "config": {}
-    },
-    {
-      "alias": "VERIFY_EMAIL",
-      "name": "Verify Email",
-      "providerId": "VERIFY_EMAIL",
-      "enabled": true,
-      "defaultAction": false,
-      "priority": 30,
       "config": {}
     },
     {
@@ -458,6 +458,26 @@
       "config": {}
     }
   ],
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-admin",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization"
+          ],
+          "client": {
+            "account": [
+              "view-profile"
+            ]
+          }
+        }
+      }
+    ]
+  },
   "clients": [
     {
       "clientId": "rs-backoffice-bff",
@@ -532,6 +552,10 @@
     {
       "clientId": "admin-cli",
       "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "account-console",
+      "enabled": false
     }
   ]
 }

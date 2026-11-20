@@ -121,7 +121,7 @@ USER_UJI = []  # (realm, id)
 
 
 class UserUji:
-    def __init__(self, realm, tag):
+    def __init__(self, realm, tag, email_terverifikasi=True):
         self.realm = realm
         self.email = f"t31-{tag}-{secrets.token_hex(4)}@uji.invalid"
         self.password = "Uji-" + secrets.token_urlsafe(12)
@@ -134,7 +134,7 @@ class UserUji:
             {
                 "username": self.email,
                 "email": self.email,
-                "emailVerified": True,
+                "emailVerified": email_terverifikasi,
                 "enabled": True,
                 "credentials": [{"type": "password", "value": self.password, "temporary": False}],
             },
@@ -331,6 +331,9 @@ def cek_konfigurasi(realm):
             f"[{realm}] Configure OTP aktif dengan 'Add Recovery Codes' (KEPUTUSAN-203)")
     periksa(ra.get("CONFIGURE_RECOVERY_AUTHN_CODES", {}).get("enabled") is True, f"[{realm}] required action kode pemulihan aktif")
     periksa(ra.get("UPDATE_EMAIL", {}).get("enabled") is False, f"[{realm}] Update Email lewat Keycloak mati (ADR-011 butir 6)")
+    periksa(ra.get("VERIFY_EMAIL", {}).get("enabled") is True
+            and ra.get("VERIFY_EMAIL", {}).get("priority", 999) < totp.get("priority", -1),
+            f"[{realm}] Verify Email berjalan sebelum Configure OTP (prioritas lebih kecil; cegah pre-account hijack)")
 
     up = ADMIN.get(f"{realm}/users/profile")
     attrs = {a["name"]: a for a in up.get("attributes", [])}
@@ -543,10 +546,8 @@ def tautan_atur_ulang(raw):
 
 def cek_atur_ulang_tidak_melewati_otp(realm, user):
     print(f"== [{realm}] atur ulang password tidak melewati OTP (US-103 AC4e)")
-    asli = ADMIN.get(realm).get("smtpServer") or {}
-    # Fixture test: SMTP realm diarahkan sementara ke penangkap tanpa TLS di 127.0.0.1 namespace Keycloak,
-    # lalu dikembalikan persis. Konfigurasi relay produksi tetap diperiksa di cek_konfigurasi.
-    ADMIN.call("PUT", realm, {"smtpServer": dict(asli, host="127.0.0.1", port=SINK_PORT, starttls="false")})
+    # Konfigurasi relay produksi tetap diperiksa di cek_konfigurasi.
+    asli = smtp_ke_penangkap(realm)
     try:
         sebelum = daftar_email()
         b, _, r = mulai(realm)
@@ -588,14 +589,133 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
         periksa(k.Page(r.body).form("kc-passwd-update-form") is None and k.Page(r.body).form("kc-otp-login-form") is None,
                 f"[{realm}] tautan atur ulang yang sudah dipakai ditolak")
     finally:
-        ADMIN.call("PUT", realm, {"smtpServer": asli})
-        periksa((ADMIN.get(realm).get("smtpServer") or {}) == asli, f"[{realm}] SMTP realm dikembalikan ke konfigurasi relay setelah fixture")
+        pulihkan_smtp(realm, asli)
 
 
 def cek_grant_password(realm, user):
     r = k.request("POST", f"{BASE}/realms/{realm}/protocol/openid-connect/token",
                   form={"grant_type": "password", "client_id": "admin-cli", "username": user.email, "password": user.password})
     periksa(r.status in (400, 401) and "access_token" not in (r.json() or {}), f"[{realm}] grant password lewat admin-cli ditolak", f"HTTP {r.status}")
+
+
+def smtp_ke_penangkap(realm):
+    """Fixture: SMTP realm sementara ke penangkap uji (tanpa TLS, 127.0.0.1 namespace Keycloak).
+    Mengembalikan konfigurasi asli untuk dipulihkan dengan pulihkan_smtp()."""
+    asli = ADMIN.get(realm).get("smtpServer") or {}
+    ADMIN.call("PUT", realm, {"smtpServer": dict(asli, host="127.0.0.1", port=SINK_PORT, starttls="false")})
+    return asli
+
+
+def pulihkan_smtp(realm, asli):
+    ADMIN.call("PUT", realm, {"smtpServer": asli})
+    periksa((ADMIN.get(realm).get("smtpServer") or {}) == asli, f"[{realm}] SMTP realm dikembalikan ke konfigurasi relay setelah fixture")
+
+
+def cek_verifikasi_email_dulu(realm):
+    print(f"== [{realm}] verifikasi email sebelum pendaftaran TOTP (pre-account hijack)")
+    user = UserUji(realm, "belumverif", email_terverifikasi=False)
+    asli = smtp_ke_penangkap(realm)
+    try:
+        b, _, r = mulai(realm)
+        p = k.Page(r.body)
+        time.sleep(JEDA)
+        r = b.open(p.form("kc-form-login")["action"], {"username": user.email, "password": user.password, "credentialId": ""})
+        pertama = r.location or ""
+        periksa("execution=VERIFY_EMAIL" in pertama, f"[{realm}] email belum terverifikasi: required action pertama Verify Email",
+                pertama.split("?")[0] if pertama else f"HTTP {r.status}")
+        r = ikuti(b, r)
+        p = k.Page(r.body)
+        periksa("template: login-verify-email.ftl" in r.body and p.form("kc-totp-settings-form") is None and kode_dari(r, realm) is None,
+                f"[{realm}] halaman pertama setelah password adalah verifikasi email, tanpa formulir TOTP dan tanpa kode otorisasi")
+        if "execution=VERIFY_EMAIL" in pertama:
+            r = ikuti(b, b.open(pertama.replace("execution=VERIFY_EMAIL", "execution=CONFIGURE_TOTP")))
+            periksa(k.Page(r.body).form("kc-totp-settings-form") is None and kode_dari(r, realm) is None,
+                    f"[{realm}] membuka langsung Configure OTP sebelum email terverifikasi tidak menampilkan formulir TOTP")
+        creds = [c["type"] for c in ADMIN.get(f"{realm}/users/{user.id}/credentials")]
+        periksa("otp" not in creds, f"[{realm}] user dengan email belum terverifikasi tidak memiliki kredensial OTP", str(creds))
+    finally:
+        pulihkan_smtp(realm, asli)
+
+
+def cek_konsol_akun(realm, user):
+    print(f"== [{realm}] konsol akun Keycloak tertutup")
+    klien = {c["clientId"]: c for c in ADMIN.get(f"{realm}/clients")}
+    periksa(klien.get("account-console", {}).get("enabled") is False, f"[{realm}] klien account-console dinonaktifkan")
+    _, _, r = mulai(realm, pkce=True, klien={"client_id": "account-console", "redirect": f"{BASE}/realms/{realm}/account/"})
+    periksa(k.Page(r.body).form("kc-form-login") is None and kode_dari(r, realm) is None,
+            f"[{realm}] permintaan login ke account-console ditolak (tidak ada formulir login)", f"HTTP {r.status}")
+    default = [c["name"] for c in ADMIN.get(f"{realm}/roles/default-roles-{realm}/composites")]
+    periksa("manage-account" not in default and "manage-account-links" not in default,
+            f"[{realm}] default role tanpa account/manage-account", str(default))
+    akun = klien.get("account", {}).get("id")
+    efektif = [x["name"] for x in ADMIN.get(f"{realm}/users/{user.id}/role-mappings/clients/{akun}/composite")] if akun else []
+    periksa("manage-account" not in efektif, f"[{realm}] user baru tidak memiliki peran manage-account", str(efektif))
+
+
+BUILTIN_CLIENTS = {"account", "account-console", "admin-cli", "broker", "realm-management", "security-admin-console"}
+
+
+def cek_drift(realm):
+    """Impor keycloak-config-cli hanya menimpa yang ada di JSON; klien/IdP tambahan buatan manual tidak
+    terhapus, sehingga keberadaannya dideteksi di sini."""
+    print(f"== [{realm}] deteksi drift (klien dan IdP di luar konfigurasi)")
+    berkas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "realms", f"{realm}.json")
+    with open(berkas, encoding="utf-8") as fh:
+        dikelola = {c["clientId"] for c in json.load(fh).get("clients", [])} | BUILTIN_CLIENTS
+    ada = {c["clientId"] for c in ADMIN.get(f"{realm}/clients")}
+    periksa(ada <= dikelola, f"[{realm}] tidak ada klien di luar konfigurasi", str(sorted(ada - dikelola)))
+    idp = ADMIN.get(f"{realm}/identity-provider/instances")
+    periksa(idp == [], f"[{realm}] tidak ada identity provider", str([i.get("alias") for i in idp]))
+
+
+def cek_pasca_kunci():
+    """Mendokumentasikan perilaku penguncian Keycloak 26.8.2 SETELAH masa kunci berakhir (SRC-525), di realm
+    uji sementara dengan Wait Increment/Max Wait pendek dan parameter lain disalin dari realm `pasien`.
+    Bukan penetapan AC3: keputusan user atas temuan ini masih ditunggu; ubah harapan test bila diputuskan lain."""
+    print("== [uji] perilaku pasca-kunci (dokumentasi, realm uji sementara)")
+    nama = f"t31-kunci-{secrets.token_hex(3)}"
+    sumber = ADMIN.get("pasien")
+    tunggu = 4
+    rep = {x: sumber[x] for x in ("bruteForceProtected", "permanentLockout", "maxTemporaryLockouts", "bruteForceStrategy",
+                                  "failureFactor", "maxDeltaTimeSeconds", "quickLoginCheckMilliSeconds", "minimumQuickLoginWaitSeconds")}
+    rep.update({"realm": nama, "enabled": True, "waitIncrementSeconds": tunggu, "maxFailureWaitSeconds": tunggu})
+    r = ADMIN.call("POST", "", rep)
+    if not periksa(r.status == 201, "[uji] realm uji pasca-kunci dibuat", f"HTTP {r.status}"):
+        return
+    try:
+        redirect = "http://127.0.0.1/uji-callback"
+        ADMIN.call("POST", f"{nama}/clients", {"clientId": "uji", "publicClient": True, "standardFlowEnabled": True,
+                                                "directAccessGrantsEnabled": False, "redirectUris": [redirect]})
+        # Profil bawaan realm baru mewajibkan nama depan/belakang (Verify Profile); tidak relevan di sini.
+        vp = ADMIN.get(f"{nama}/authentication/required-actions/VERIFY_PROFILE")
+        ADMIN.call("PUT", f"{nama}/authentication/required-actions/VERIFY_PROFILE", dict(vp, enabled=False))
+        kl = {"client_id": "uji", "redirect": redirect}
+        user = UserUji(nama, "pascakunci")
+
+        def coba(password):
+            b, _, r = mulai(nama, klien=kl)
+            r = kirim_password(b, r, user.email, password)
+            return r.status in (302, 303) and (r.location or "").startswith(redirect) and "code=" in r.location
+
+        def status():
+            return ADMIN.get(f"{nama}/attack-detection/brute-force/users/{user.id}")
+
+        for _ in range(5):
+            coba("Salah-" + secrets.token_hex(4))
+        periksa(status().get("disabled") is True, "[uji] 5 gagal mengunci akun")
+        time.sleep(tunggu + 1.5)
+        periksa(status().get("disabled") is False, "[uji] kunci berakhir setelah Max Wait")
+        coba("Salah-" + secrets.token_hex(4))
+        st = status()
+        periksa(st.get("disabled") is True and st.get("numFailures") == 6,
+                "[uji] PERILAKU SEKARANG: satu gagal setelah kunci berakhir langsung mengunci lagi (hitungan tidak direset)", str(st))
+        time.sleep(tunggu + 1.5)
+        periksa(coba(user.password) and status().get("numFailures") == 0,
+                "[uji] login berhasil setelah kunci berakhir mereset hitungan ke 0")
+        coba("Salah-" + secrets.token_hex(4))
+        periksa(status().get("disabled") is False, "[uji] setelah hitungan direset, satu gagal tidak mengunci")
+    finally:
+        ADMIN.call("DELETE", nama)
 
 
 def jalankan(nama, fungsi, *args):
@@ -618,19 +738,23 @@ def main():
             if not periksa(r.status == 200, f"[{realm}] realm ada"):
                 continue
             jalankan(f"[{realm}] konfigurasi", cek_konfigurasi, realm)
+            jalankan(f"[{realm}] drift", cek_drift, realm)
             print(f"== [{realm}] pendaftaran, PKCE")
             jalankan(f"[{realm}] pendaftaran mati", cek_pendaftaran_mati, realm)
             jalankan(f"[{realm}] PKCE wajib", cek_pkce_wajib, realm)
             user = jalankan(f"[{realm}] MFA dan token", cek_mfa_dan_token, realm)
             if user is not None:
                 jalankan(f"[{realm}] grant password", cek_grant_password, realm, user)
+                jalankan(f"[{realm}] konsol akun", cek_konsol_akun, realm, user)
                 jalankan(f"[{realm}] kode pemulihan", cek_kode_pemulihan, realm, user)
                 jalankan(f"[{realm}] atur ulang password", cek_atur_ulang_tidak_melewati_otp, realm, user)
             else:
                 periksa(False, f"[{realm}] skenario kode pemulihan dan atur ulang password dijalankan",
                         "butuh user MFA dari skenario sebelumnya")
+            jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
             jalankan(f"[{realm}] Argon2 dan kebijakan password", cek_argon2_dan_kebijakan, realm)
             jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
+        jalankan("[uji] pasca-kunci", cek_pasca_kunci)
     finally:
         for realm, uid in USER_UJI:
             ADMIN.call("DELETE", f"{realm}/users/{uid}")

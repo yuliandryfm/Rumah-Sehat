@@ -146,7 +146,9 @@ services:
       KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
       IMPORT_FILES_LOCATIONS: /config/*.json
       IMPORT_VARSUBSTITUTION_ENABLED: "true"
-      # Selalu impor ulang walau berkas tidak berubah, supaya perubahan manual di konsol admin ditimpa.
+      # Selalu impor ulang walau berkas tidak berubah. Impor hanya menimpa atribut yang ADA di JSON;
+      # klien/IdP tambahan buatan manual TIDAK terhapus. Drift seperti itu dideteksi (GAGAL) oleh
+      # scripts/keycloak-check.sh.
       IMPORT_CACHE_ENABLED: "false"
       RS_KC_SMTP_HOST: ${RS_KC_SMTP_HOST:?isi di infra/local/.env}
       RS_KC_SMTP_PORT: ${RS_KC_SMTP_PORT:?isi di infra/local/.env}

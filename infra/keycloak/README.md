@@ -27,6 +27,8 @@ Sama di `pasien` dan `admin`, kecuali batas sesi dan klien:
 - **Token**: Revoke Refresh Token aktif dengan `refreshTokenMaxReuse` 0, token akses 300 detik. Sesi `pasien` 30 hari/90 hari, `admin` 30 menit/12 jam (ADR-011 butir 7).
 - **MFA wajib**: alur `rs-browser-mfa` mengikuti pola dokumentasi "Conditional 2FA sub-flow with OTP default" `[SRC-523]`. User yang punya OTP atau kode pemulihan wajib memasukkan salah satunya; user tanpa faktor kedua dipaksa Configure OTP sebelum kode otorisasi terbit `[SRC-524]`. Configure OTP memakai `add-recovery-codes`, sehingga kode pemulihan wajib dibuat setelah TOTP dan tersimpan sebagai required action user (KEPUTUSAN-203) `[SRC-522]`. Kebijakan OTP TOTP SHA1 6 digit 30 detik, kode tidak dapat dipakai ulang (KEPUTUSAN-85).
 - **Atur ulang password tidak melewati MFA**: alur `rs-reset-credentials-mfa` meminta OTP atau kode pemulihan setelah tautan email dibuka dan sebelum Reset Password. Langkah bawaan `reset-otp` (yang mengatur ulang OTP) tidak dipakai (KEPUTUSAN-199, US-103 AC4e) `[SRC-521]`. Tautan berlaku 60 menit.
+- **Verifikasi email lebih dulu**: required action Verify Email berprioritas 5, sebelum Configure OTP (10), sehingga TOTP tidak dapat didaftarkan pada akun yang emailnya belum terverifikasi (review keamanan F1-T31, cegah pre-account hijack).
+- **Konsol akun Keycloak tertutup**: klien `account-console` nonaktif dan default role tanpa `account/manage-account`, supaya ubah password/TOTP tidak lewat konsol akun di luar alur aplikasi.
 - **Direct grant**: tidak ada klien dengan grant password (termasuk `admin-cli` realm), dan alur `rs-direct-grant-mfa` tetap mewajibkan OTP bila kelak diaktifkan tanpa sengaja.
 - **Pesan login seragam** (US-103 AC2): realm override pesan `invalidUserMessage`, `accountDisabledMessage`, `accountTemporarilyDisabledMessage`, `accountPermanentlyDisabledMessage`, `invalidEmailMessage` ke satu teks `[DOK: wireframes/k01-korporat-hr.html]`. Tema bawaan menampilkan teks itu di posisi berbeda untuk akun nonaktif (banner) dibanding password salah (galat isian); penyamaan struktur halaman menjadi bagian tema (F1-T35).
 - **SMTP** ke relay internal ADR-026: STARTTLS wajib, tanpa AUTH, tanpa `debug`, host/port/pengirim dari variabel lingkungan (KEPUTUSAN-231). Sampai relay F1-T36 ada, pengiriman email gagal (aman).
@@ -41,7 +43,13 @@ Klien:
 
 Audience API backend dan pemeta klaim belum diatur; ditetapkan bersama validasi token F1-T32.
 
-## Belum diketahui
+Impor keycloak-config-cli dijalankan tanpa cache, tetapi hanya menimpa atribut yang ada di JSON: klien atau IdP tambahan buatan manual tidak terhapus. `scripts/keycloak-check.sh` GAGAL bila ada klien di luar konfigurasi (ditambah klien bawaan Keycloak) atau IdP apa pun.
+
+## Belum diketahui dan temuan terbuka
+
+- Penguncian setelah masa kunci berakhir: satu kegagalan berikutnya langsung mengunci lagi karena hitungan hanya direset oleh login berhasil atau Failure Reset Time `[SRC-525]`. Berbeda dengan rumusan "5 kegagalan baru" di US-103 AC3; menunggu keputusan user. Perilaku sekarang didokumentasikan test `cek_pasca_kunci` (realm uji sementara).
+- Struktur halaman akun nonaktif (banner) berbeda dari password salah (galat isian) walau teksnya identik: tema F1-T35.
+- Alur atur ulang password langsung menerbitkan kode otorisasi setelah password baru, berbeda dengan US-103 AC4d ("tidak otomatis masuk"): F1-T74.
 
 - Daftar kata sandi umum/bocor dan lisensinya untuk kebijakan "Password blacklist" (KEPUTUSAN-188) `[TIDAK DIKETAHUI]`; kebijakan `passwordBlacklist` belum dipasang.
 - Dukungan resmi keycloak-config-cli 6.5.1 (build klien 26.5.5) untuk Keycloak 26.8.2 `[TIDAK DIKETAHUI]`; kecocokan dibuktikan `scripts/keycloak-check.sh`.
