@@ -341,6 +341,10 @@ def cek_konfigurasi(realm):
     periksa("reset-otp" not in rprov and "auth-otp-form" in rprov and "reset-password" in rprov
             and rprov.index("auth-otp-form") < rprov.index("reset-password"),
             f"[{realm}] alur atur ulang: OTP diminta sebelum password baru, tanpa langkah Reset OTP (KEPUTUSAN-199)", str(rprov))
+    em = next((e for e in rx if e.get("providerId") == "reset-credential-email"), {})
+    cfg = ADMIN.get(f"{realm}/authentication/config/{em['authenticationConfig']}") if em.get("authenticationConfig") else {}
+    periksa((cfg.get("config") or {}).get("force-login") == "true",
+            f"[{realm}] atur ulang password: 'Force login after reset' aktif, pengguna tidak otomatis masuk (US-103 AC4d)", str(cfg.get("config")))
     dx = flow_exec(realm, "rs-direct-grant-mfa")
     periksa(any(e.get("providerId") == "direct-grant-validate-otp" and e.get("requirement") == "REQUIRED" for e in dx),
             f"[{realm}] alur direct grant mewajibkan OTP tanpa syarat")
@@ -861,10 +865,14 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
         p = k.Page(r.body)
         periksa(p.form("kc-otp-login-form") is not None and p.form("kc-passwd-update-form") is None,
                 f"[{realm}] tautan atur ulang membuka formulir OTP, bukan formulir password baru")
+        sebelum_gagal = percobaan_gagal(realm, user.id).get("numSecondaryAuthFailures", 0)
         r = kirim_otp(b2, r, user.kode_salah())
         p = k.Page(r.body)
         periksa(p.form("kc-passwd-update-form") is None and kode_dari(r, realm) is None,
                 f"[{realm}] OTP salah di alur atur ulang tidak membuka formulir password baru")
+        sesudah = percobaan_gagal(realm, user.id)
+        periksa(sesudah.get("numSecondaryAuthFailures", 0) == sebelum_gagal + 1 and sesudah.get("numFailures", 0) >= 1,
+                f"[{realm}] OTP salah di alur atur ulang dihitung penguncian (F1-T74)", str(sesudah))
         r = kirim_otp(b2, r, user.otp())
         p = k.Page(r.body)
         f = p.form("kc-passwd-update-form")
@@ -874,6 +882,12 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
             time.sleep(JEDA)
             r = ikuti(b2, b2.open(f["action"], dict(f["inputs"], **{"password-new": baru, "password-confirm": baru})))
             user.password = baru
+            periksa(kode_dari(r, realm) is None,
+                    f"[{realm}] setelah password baru tersimpan, atur ulang TIDAK menerbitkan kode otorisasi (US-103 AC4d, TD-16)",
+                    (r.location or "")[:80])
+            _, _, rs = mulai(realm, browser=b2)
+            periksa(kode_dari(rs, realm) is None and k.Page(rs.body).form("kc-form-login") is not None,
+                    f"[{realm}] sesi peramban atur ulang tidak menjadi sesi login: permintaan otorisasi baru meminta login dari awal")
             b3, _, r3 = mulai(realm)
             r3 = kirim_password(b3, r3, user.email, baru)
             periksa(k.Page(r3.body).form("kc-otp-login-form") is not None and kode_dari(r3, realm) is None,
