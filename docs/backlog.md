@@ -569,6 +569,12 @@ Deskripsi: katalog jenis layanan (konsultasi, pemeriksaan lab, paket MCU, vaksin
 Keputusan `[USER]` 2026-11-20 (Telegram "R"): **jenis layanan dari master Ruang Sehat; harga ditetapkan masing-masing rekanan per layanan yang dipilih (lewat portal/onboarding), lalu markup Ruang Sehat ditambahkan (ADR-015)**. Akibat: portal rekanan tidak lagi hanya-baca untuk pemilihan layanan dan harga (AB-62 direvisi); Partner Integration API tidak lagi menjadi sumber jenis layanan/harga katalog (ADR-014 direvisi); K-04 CR-021 berubah dari (a) integrasi ke portal. Butir terbuka lain (rekanan mengusulkan jenis baru, granularitas master, sub-peran pengelola master) dijawab saat analisis.
 Status: disetujui; analisis dampak dokumen (BRD/PRD/ADR-014/AB-62/phase plan) dijadwalkan sebelum task katalog/onboarding rekanan (Fase 2–3)
 
+### CR-024: Istilah "markup" diganti "margin" (rumus tetap)
+
+Diajukan dan diputuskan: 2026-11-20, `[USER]` Telegram: "ubah semua istilah markup menjadi margin." lalu, atas klarifikasi, "I": **hanya istilah** yang berubah di semua dokumen, UI, dan kode; **rumus tetap** persentase dari harga rekanan (harga ke pasien = harga rekanan + persentase × harga rekanan, ADR-015), bukan margin akuntansi atas harga jual.
+Dampak: penggantian istilah di BRD, PRD, ADR-015 dan ADR lain, data dictionary (nama kolom yang memuat "markup" — bila sudah ada di migrasi, perubahan nama kolom lewat migrasi expand/contract; bila belum dimigrasi, ganti di dokumen saja), phase plan, backlog, test plan, design guideline/wireframe, CLAUDE.md. Setiap dokumen menyertakan definisi: "margin = persentase dari harga rekanan (bukan dari harga jual)" agar tidak disalahartikan.
+Status: disetujui; penggantian dokumen dikerjakan task dokumen orkestrator 2026-11-20
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
