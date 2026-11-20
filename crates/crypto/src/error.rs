@@ -42,6 +42,8 @@ pub enum CryptoError {
     ContainerMismatch,
     /// DEK sudah dimusnahkan (crypto-shredding); data wadahnya tidak dapat dibuka lagi.
     KeyShredded,
+    /// Versi kunci (misalnya `nik_bidx_key_version`) tidak dikenal di keyring.
+    UnknownKeyVersion,
 }
 
 impl fmt::Display for CryptoError {
@@ -63,6 +65,7 @@ impl fmt::Display for CryptoError {
             Self::MalformedWrappedKey => "DEK terbungkus rusak",
             Self::ContainerMismatch => "wadah DEK tidak cocok",
             Self::KeyShredded => "DEK sudah dimusnahkan",
+            Self::UnknownKeyVersion => "versi kunci tidak dikenal",
         };
         f.write_str(msg)
     }

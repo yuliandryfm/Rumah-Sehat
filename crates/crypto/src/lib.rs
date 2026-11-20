@@ -6,9 +6,11 @@
 //!   DEK (KEPUTUSAN-104, KEPUTUSAN-130, skema fisik §7.1).
 //! - Wadah DEK (`data_key`) dengan KEK di OpenBao Transit dan cache DEK berbatas waktu
 //!   (KEPUTUSAN-79, KEPUTUSAN-106, skema fisik §7.3). Bahan kunci DEK tidak keluar dari crate ini.
+//! - Blind index NIK HMAC-SHA256 dengan kunci berversi dari OpenBao KV (skema fisik §7.2).
 //! - Kunci, DEK, dan plaintext tidak pernah muncul di `Debug`/`Display` maupun galat; crate ini tidak
 //!   menulis log.
 
+mod blind_index;
 mod context;
 mod envelope;
 mod error;
@@ -17,6 +19,10 @@ mod openbao;
 mod primitives;
 mod transit;
 
+pub use blind_index::{
+    BLIND_INDEX_KEY_LEN, BLIND_INDEX_LEN, BlindIndex, InvalidNik, NIK_BIDX_LABEL_V1, NIK_DIGITS,
+    Nik, NikBlindIndexKeyring, load_nik_blind_index_keyring,
+};
 pub use context::{ContainerType, EncryptionContext, System};
 pub use envelope::{
     AAD_LABEL_V1, AadV1, DEK_LEN, ENVELOPE_OVERHEAD, ENVELOPE_V1, SecretBytes, TAG_LEN,
