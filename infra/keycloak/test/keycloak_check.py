@@ -341,6 +341,10 @@ def cek_konfigurasi(realm):
     periksa("reset-otp" not in rprov and "auth-otp-form" in rprov and "reset-password" in rprov
             and rprov.index("auth-otp-form") < rprov.index("reset-password"),
             f"[{realm}] alur atur ulang: OTP diminta sebelum password baru, tanpa langkah Reset OTP (KEPUTUSAN-199)", str(rprov))
+    em = next((e for e in rx if e.get("providerId") == "reset-credential-email"), {})
+    cfg = ADMIN.get(f"{realm}/authentication/config/{em['authenticationConfig']}") if em.get("authenticationConfig") else {}
+    periksa((cfg.get("config") or {}).get("force-login") == "true",
+            f"[{realm}] atur ulang password: 'Force login after reset' aktif, pengguna tidak otomatis masuk (US-103 AC4d)", str(cfg.get("config")))
     dx = flow_exec(realm, "rs-direct-grant-mfa")
     periksa(any(e.get("providerId") == "direct-grant-validate-otp" and e.get("requirement") == "REQUIRED" for e in dx),
             f"[{realm}] alur direct grant mewajibkan OTP tanpa syarat")
@@ -411,6 +415,7 @@ def cek_mfa_dan_token(realm):
     tok = login_mfa_lengkap(realm, user)
     if tok is None:
         return None
+    cek_klaim_token(realm, tok)
     # Rotasi token penyegar: token lama ditolak setelah dipakai sekali.
     r1 = segarkan(realm, tok["refresh_token"])
     r2 = segarkan(realm, tok["refresh_token"])
@@ -437,23 +442,27 @@ def cek_mfa_dan_token(realm):
     return user
 
 
-def cek_kode_pemulihan(realm, user):
-    print(f"== [{realm}] masuk dengan kode pemulihan")
+def buka_kode_pemulihan(realm, user):
+    """Login password lalu 'pakai cara lain' sampai formulir kode pemulihan. Mengembalikan (browser, respons)
+    atau (browser, None) bila jalur itu tidak ditawarkan."""
     flows = flow_exec(realm, "rs-browser-mfa")
     rc_exec = next(e["id"] for e in flows if e.get("providerId") == "auth-recovery-authn-code-form")
+    b, verifier, r = mulai(realm)
+    r = kirim_password(b, r, user.email, user.password)
+    f = k.Page(r.body).form("kc-select-try-another-way-form")
+    if not f:
+        return b, None
+    r = ikuti(b, b.open(f["action"], f["inputs"]))
+    sel = [f_ for f_ in k.Page(r.body).forms if f_["id"] == "kc-select-credential-form" and f_["inputs"].get("authenticationExecution") == rc_exec]
+    if not sel:
+        return b, None
+    r = ikuti(b, b.open(sel[0]["action"], sel[0]["inputs"]))
+    return b, r
 
-    def pilih_kode_pemulihan():
-        b, verifier, r = mulai(realm)
-        r = kirim_password(b, r, user.email, user.password)
-        f = k.Page(r.body).form("kc-select-try-another-way-form")
-        if not f:
-            return b, None
-        r = ikuti(b, b.open(f["action"], f["inputs"]))
-        sel = [f_ for f_ in k.Page(r.body).forms if f_["id"] == "kc-select-credential-form" and f_["inputs"].get("authenticationExecution") == rc_exec]
-        if not sel:
-            return b, None
-        r = ikuti(b, b.open(sel[0]["action"], sel[0]["inputs"]))
-        return b, r
+
+def cek_kode_pemulihan(realm, user):
+    print(f"== [{realm}] masuk dengan kode pemulihan")
+    pilih_kode_pemulihan = lambda: buka_kode_pemulihan(realm, user)  # noqa: E731
 
     b, r = pilih_kode_pemulihan()
     f = k.Page(r.body).form("kc-recovery-code-login-form") if r is not None else None
@@ -470,6 +479,105 @@ def cek_kode_pemulihan(realm, user):
         time.sleep(JEDA)
         r = ikuti(b, b.open(f["action"], dict(f["inputs"], recoveryCodeInput=pertama)))
     periksa(f is not None and kode_dari(r, realm) is None, f"[{realm}] kode pemulihan yang sudah dipakai ditolak")
+
+
+# ------------------------------------------------------------------------- MFA pasien (F1-T72, F1-T55)
+
+
+def user_mfa(realm, tag):
+    """User baru yang sudah menyelesaikan pendaftaran TOTP dan menyimpan kode pemulihan."""
+    user = UserUji(realm, tag)
+    return user if login_mfa_lengkap(realm, user) is not None else None
+
+
+def percobaan_gagal(realm, user_id):
+    return ADMIN.get(f"{realm}/attack-detection/brute-force/users/{user_id}")
+
+
+def galat_event(realm, user_id):
+    """Daftar `error` event LOGIN_ERROR milik user (Admin REST)."""
+    ev = ADMIN.get(f"{realm}/events?type=LOGIN_ERROR&user={user_id}&max=100") or []
+    return [e.get("error") for e in ev]
+
+
+def cek_otp_dan_kode_pemulihan_salah_dikunci(realm):
+    """US-103 AC3 untuk faktor kedua (F1-T72, `[SRC-273]`) dan E-02 (F1-T55): OTP salah dan kode pemulihan salah
+    dihitung penguncian; saat terkunci OTP benar pun tidak menerbitkan kode otorisasi."""
+    print(f"== [{realm}] OTP dan kode pemulihan salah dihitung penguncian, E-02")
+    u = user_mfa(realm, "otpkunci")
+    if u is None:
+        return
+    for _ in range(5):
+        b, _, r = mulai(realm)
+        r = kirim_password(b, r, u.email, u.password)
+        r = kirim_otp(b, r, u.kode_salah())
+    bf = percobaan_gagal(realm, u.id)
+    periksa(bf.get("disabled") is True and bf.get("numFailures") == 5, f"[{realm}] 5 OTP salah (password benar) mengunci akun", str(bf))
+    b, verifier, r = mulai(realm)
+    r = kirim_password(b, r, u.email, u.password)
+    teks = pesan_galat(r)
+    periksa(kode_dari(r, realm) is None and k.Page(r.body).form("kc-otp-login-form") is None and teks == PESAN_SERAGAM,
+            f"[{realm}] akun terkunci karena OTP: password benar tidak menuju formulir OTP, pesan seragam", repr(teks))
+    errs = galat_event(realm, u.id)
+    periksa("user_temporarily_disabled" in errs and errs.count("invalid_user_credentials") >= 5,
+            f"[{realm}] E-02 tercatat: LOGIN_ERROR invalid_user_credentials dari OTP salah dan user_temporarily_disabled saat terkunci", str(errs[:8]))
+
+    v = user_mfa(realm, "rckunci")
+    if v is None:
+        return
+    for _ in range(5):
+        b, r = buka_kode_pemulihan(realm, v)
+        f = k.Page(r.body).form("kc-recovery-code-login-form") if r is not None else None
+        if not f:
+            periksa(False, f"[{realm}] formulir kode pemulihan tersedia untuk uji penguncian")
+            return
+        time.sleep(JEDA)
+        ikuti(b, b.open(f["action"], dict(f["inputs"], recoveryCodeInput="ZZZZZZZZZZZZ")))
+    bf = percobaan_gagal(realm, v.id)
+    periksa(bf.get("disabled") is True and bf.get("numFailures") == 5, f"[{realm}] 5 kode pemulihan salah mengunci akun", str(bf))
+    b, r = buka_kode_pemulihan(realm, v)
+    periksa(r is None or k.Page(r.body).form("kc-recovery-code-login-form") is None,
+            f"[{realm}] akun terkunci karena kode pemulihan: formulir kode pemulihan tidak tersedia walau password benar")
+
+
+def cek_batal_pendaftaran_totp(realm):
+    """US-101 AC5, US-103 AC1b (F1-T72): akun yang meninggalkan pendaftaran TOTP atau kode pemulihan tidak masuk."""
+    print(f"== [{realm}] membatalkan pendaftaran TOTP atau kode pemulihan tidak memberi akses")
+    u = UserUji(realm, "batal")
+    b, _, r = mulai(realm)
+    r = kirim_password(b, r, u.email, u.password)
+    periksa(k.Page(r.body).form("kc-totp-settings-form") is not None, f"[{realm}] login pertama berhenti di pendaftaran TOTP")
+    f = k.Page(r.body).form("kc-totp-settings-form")
+    time.sleep(JEDA)
+    r2 = ikuti(b, b.open(f["action"], dict(f["inputs"], totp="000000", userLabel="uji")))
+    periksa(kode_dari(r2, realm) is None and k.Page(r2.body).form("kc-totp-settings-form") is not None,
+            f"[{realm}] kode TOTP salah saat pendaftaran tidak menyelesaikan login")
+    _, _, r3 = mulai(realm, browser=b)
+    periksa(kode_dari(r3, realm) is None, f"[{realm}] permintaan otorisasi baru di peramban yang sama tidak langsung menerbitkan kode")
+    b2, _, r4 = mulai(realm)
+    r4 = kirim_password(b2, r4, u.email, u.password)
+    periksa(kode_dari(r4, realm) is None and k.Page(r4.body).form("kc-totp-settings-form") is not None,
+            f"[{realm}] login ulang setelah meninggalkan pendaftaran TOTP kembali ke pendaftaran TOTP, tanpa kode otorisasi")
+    ada_otp = [c for c in ADMIN.get(f"{realm}/users/{u.id}/credentials") if c["type"] == "otp"]
+    periksa(not ada_otp, f"[{realm}] tidak ada kredensial OTP tersimpan setelah pendaftaran ditinggalkan")
+
+    # TOTP terdaftar, kode pemulihan ditinggalkan: login berikutnya OTP lalu kode pemulihan wajib lagi.
+    r5 = daftar_mfa(b2, r4, u)
+    periksa(k.Page(r5.body).form("kc-recovery-codes-settings-form") is not None, f"[{realm}] setelah TOTP, halaman kode pemulihan muncul")
+    b3, _, r6 = mulai(realm)
+    r6 = kirim_password(b3, r6, u.email, u.password)
+    r6 = kirim_otp(b3, r6, u.otp())
+    periksa(kode_dari(r6, realm) is None and k.Page(r6.body).form("kc-recovery-codes-settings-form") is not None,
+            f"[{realm}] kode pemulihan ditinggalkan: setelah OTP benar, kode pemulihan masih wajib dan tidak ada kode otorisasi (KEPUTUSAN-203)")
+
+
+def cek_klaim_token(realm, token):
+    """F1-T72: klaim tingkat autentikasi pada token akses (hasil dicetak untuk reviewer keamanan)."""
+    import base64
+    bagian = token["access_token"].split(".")[1]
+    klaim = json.loads(base64.urlsafe_b64decode(bagian + "=" * (-len(bagian) % 4)))
+    print(f"  INFO [{realm}] klaim token akses setelah password+OTP: acr={klaim.get('acr')!r}, amr={klaim.get('amr')!r}, "
+          f"auth_time={'ada' if 'auth_time' in klaim else 'tidak ada'}; kunci klaim={sorted(klaim)}")
 
 
 def cek_argon2_dan_kebijakan(realm):
@@ -666,15 +774,40 @@ def cek_halaman_mfa_tema(realm):
     periksa(k.Page(r.body).form("kc-totp-settings-form") is not None and "Siapkan aplikasi autentikator" in r.body and 'lang="id"' in r.body,
             f"[{realm}] halaman pendaftaran TOTP bertema dan berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman pendaftaran TOTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    # F1-T73: kode QR (gambar data: dari Keycloak sendiri) dan kunci teks pada mode manual.
+    periksa(re.search(r'<img id="kc-totp-secret-qr-code" src="data:image/png;base64,[^"]{200,}"', r.body) is not None
+            and "kc-totp-secret-key" not in r.body and "mode-manual" in r.body and "Tidak bisa memindai?" in r.body,
+            f"[{realm}] pendaftaran TOTP menampilkan kode QR dan tautan 'Tidak bisa memindai?' berbahasa Indonesia")
+    tautan = next((h for i, h in k.Page(r.body).links if i == "mode-manual"), None)
+    if tautan:
+        rm = ikuti(b, b.open(urllib.parse.urljoin(BASE, tautan)))
+        kunci = k.Page(rm.body).text("kc-totp-secret-key") or ""
+        periksa(re.fullmatch(r"[A-Z2-7]{4}( [A-Z2-7]{4}){3,}", kunci) is not None and "Algoritma" in rm.body and "Pindai kode QR" in rm.body
+                and k.Page(rm.body).form("kc-totp-settings-form") is not None,
+                f"[{realm}] mode manual menampilkan kunci teks (basis 32, berkelompok) dan tautan kembali ke kode QR", kunci)
+        periksa(user.otp_key is None and k.Page(rm.body).form("kc-totp-settings-form")["inputs"].get("totpSecret", "").replace(" ", "")
+                == k.Page(r.body).form("kc-totp-settings-form")["inputs"].get("totpSecret", "").replace(" ", ""),
+                f"[{realm}] kunci teks dan kode QR memakai rahasia yang sama (formulir tersembunyi identik)")
     r = daftar_mfa(b, r, user)
     periksa(k.Page(r.body).form("kc-recovery-codes-settings-form") is not None and "Kode pemulihan hanya ditampilkan sekali" in r.body,
             f"[{realm}] halaman kode pemulihan bertema dan berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman kode pemulihan tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
+    kode_tampil = re.findall(r"<li>([A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})</li>", r.body)
+    kode_form = k.Page(r.body).form("kc-recovery-codes-settings-form")["inputs"].get("generatedRecoveryAuthnCodes", "").split(",")
+    periksa(len(kode_tampil) == 12 and [c.replace("-", "") for c in kode_tampil] == kode_form and len(set(kode_tampil)) == 12,
+            f"[{realm}] halaman kode pemulihan menampilkan 12 kode berbeda yang sama dengan yang disimpan", str(len(kode_tampil)))
+    periksa("Warning alert" not in r.body and "en-US" not in r.body and "Peringatan" in r.body and "kcRecoveryCodesConfirmationCheck" in r.body,
+            f"[{realm}] halaman kode pemulihan: teks pembaca layar dan tanggal unduhan berbahasa Indonesia, ada kotak konfirmasi simpan")
     simpan_kode_pemulihan(b, r, user)
     b, _, r = mulai(realm)
     r = kirim_password(b, r, user.email, user.password)
+    periksa("kc-cs-hint" in r.body and "Layanan Pelanggan" in r.body and "Kehilangan perangkat autentikator dan kode pemulihan" in r.body,
+            f"[{realm}] layar kode OTP memuat petunjuk menghubungi Layanan Pelanggan (US-103 AC8)")
     periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode OTP" in r.body and "Pakai cara lain" in r.body and 'lang="id"' in r.body,
             f"[{realm}] halaman OTP berbahasa Indonesia dengan tautan kode pemulihan")
+    br, rr = buka_kode_pemulihan(realm, user)
+    periksa(rr is not None and "kc-cs-hint" in rr.body and "Layanan Pelanggan" in rr.body and "Kode pemulihan #" in rr.body,
+            f"[{realm}] layar kode pemulihan memuat petunjuk Layanan Pelanggan dan label berbahasa Indonesia")
     periksa(not url_luar(r.body), f"[{realm}] halaman OTP tanpa URL ke domain luar", "; ".join(url_luar(r.body)[:5]))
     r = kirim_otp(b, r, user.kode_salah())
     periksa(k.Page(r.body).form("kc-otp-login-form") is not None and "Kode tidak sesuai." in r.body,
@@ -732,10 +865,14 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
         p = k.Page(r.body)
         periksa(p.form("kc-otp-login-form") is not None and p.form("kc-passwd-update-form") is None,
                 f"[{realm}] tautan atur ulang membuka formulir OTP, bukan formulir password baru")
+        sebelum_gagal = percobaan_gagal(realm, user.id).get("numSecondaryAuthFailures", 0)
         r = kirim_otp(b2, r, user.kode_salah())
         p = k.Page(r.body)
         periksa(p.form("kc-passwd-update-form") is None and kode_dari(r, realm) is None,
                 f"[{realm}] OTP salah di alur atur ulang tidak membuka formulir password baru")
+        sesudah = percobaan_gagal(realm, user.id)
+        periksa(sesudah.get("numSecondaryAuthFailures", 0) == sebelum_gagal + 1 and sesudah.get("numFailures", 0) >= 1,
+                f"[{realm}] OTP salah di alur atur ulang dihitung penguncian (F1-T74)", str(sesudah))
         r = kirim_otp(b2, r, user.otp())
         p = k.Page(r.body)
         f = p.form("kc-passwd-update-form")
@@ -745,6 +882,12 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
             time.sleep(JEDA)
             r = ikuti(b2, b2.open(f["action"], dict(f["inputs"], **{"password-new": baru, "password-confirm": baru})))
             user.password = baru
+            periksa(kode_dari(r, realm) is None,
+                    f"[{realm}] setelah password baru tersimpan, atur ulang TIDAK menerbitkan kode otorisasi (US-103 AC4d, TD-16)",
+                    (r.location or "")[:80])
+            _, _, rs = mulai(realm, browser=b2)
+            periksa(kode_dari(rs, realm) is None and k.Page(rs.body).form("kc-form-login") is not None,
+                    f"[{realm}] sesi peramban atur ulang tidak menjadi sesi login: permintaan otorisasi baru meminta login dari awal")
             b3, _, r3 = mulai(realm)
             r3 = kirim_password(b3, r3, user.email, baru)
             periksa(k.Page(r3.body).form("kc-otp-login-form") is not None and kode_dari(r3, realm) is None,
@@ -1167,6 +1310,8 @@ def main():
             jalankan(f"[{realm}] tema login", cek_tema, realm)
             jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
             jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
+            jalankan(f"[{realm}] OTP salah dikunci", cek_otp_dan_kode_pemulihan_salah_dikunci, realm)
+            jalankan(f"[{realm}] batal pendaftaran TOTP", cek_batal_pendaftaran_totp, realm)
         jalankan("[uji] pasca-kunci", cek_pasca_kunci)
     finally:
         for realm, uid in USER_UJI:

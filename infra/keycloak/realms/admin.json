@@ -125,6 +125,12 @@
   "directGrantFlow": "rs-direct-grant-mfa",
   "authenticatorConfig": [
     {
+      "alias": "rs-reset-email-force-login",
+      "config": {
+        "force-login": "true"
+      }
+    },
+    {
       "alias": "rs-browser-otp-default-condition",
       "config": {
         "flow_to_check": "rs-browser-2fa",
@@ -265,6 +271,7 @@
           "authenticator": "reset-credential-email",
           "requirement": "REQUIRED",
           "priority": 20,
+          "authenticatorConfig": "rs-reset-email-force-login",
           "authenticatorFlow": false,
           "userSetupAllowed": false
         },
