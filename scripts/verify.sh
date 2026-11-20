@@ -513,10 +513,18 @@ if [ -f web/package.json ] && [ -f web/pnpm-workspace.yaml ]; then
   jalankan "web-lint" di_web pnpm run lint
   jalankan "web-test" di_web pnpm run test
   jalankan "web-api-client-sinkron" di_web pnpm run generate:check
+  # F1-T40: skrip kontras token tanpa dependensi (K1–K13, N1–N4; design guideline §7.4), lalu build
+  # setiap paket/aplikasi yang punya skrip build (saat ini galeri state web/packages/ui; aplikasi Next.js
+  # menambah `next build` pada task fiturnya). Hilangnya semua skrip build GAGAL, bukan dilewati.
+  if [ -f web/packages/ui/scripts/kontras.mjs ]; then
+    jalankan "web-kontras" di_web pnpm run kontras
+  else
+    gagal "web-kontras" "web/packages/ui/scripts/kontras.mjs (F1-T40) tidak ada"
+  fi
   if grep -l '"build"[[:space:]]*:' web/*/package.json web/packages/*/package.json >/dev/null 2>&1; then
     jalankan "web-build" web_build
   else
-    belum "web-build" "F1-T40 (paket ui) dan aplikasi Next.js pada task fitur"
+    gagal "web-build" "tidak ada paket web dengan skrip build (web/packages/ui, F1-T40)"
   fi
 elif [ -e web/package.json ] || [ -e web/pnpm-workspace.yaml ]; then
   gagal "web" "web/package.json dan web/pnpm-workspace.yaml harus ada bersamaan"

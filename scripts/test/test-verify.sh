@@ -371,6 +371,14 @@ commit_semua "$r" "fixture: package.json web tidak sinkron dengan pnpm-lock.yaml
 k="$(verify_di "$r" "$KERJA/web-lock-basi.log")"
 merah "web-lockfile-tidak-sinkron" "$k" "$KERJA/web-lock-basi.log" "web-install"
 
+# Token warna di bawah syarat kontras (F1-T40): skrip kontras harus MERAH.
+r="$(fixture_baru web-kontras)"
+sed 's/--c-text-secondary: #5c6b6f;/--c-text-secondary: #aaaaaa;/' "$r/web/packages/ui/src/tokens.css" >"$r/web/packages/ui/src/tokens.css.baru"
+mv "$r/web/packages/ui/src/tokens.css.baru" "$r/web/packages/ui/src/tokens.css"
+commit_semua "$r" "fixture: text.secondary di bawah kontras"
+k="$(verify_di "$r" "$KERJA/web-kontras.log")"
+merah "web-kontras-di-bawah-syarat" "$k" "$KERJA/web-kontras.log" "web-kontras"
+
 # --- Berkas migrasi baru tanpa penjaga (langkah migrasi-db, F1-T15) ---
 r="$(fixture_baru migrasi)"
 mkdir -p "$r/db/migrations/app"
