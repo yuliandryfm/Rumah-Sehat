@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT split_part(pg_get_expr(c.relpartbound, c.oid), '''', 2)::timestamptz AS \"range_from!\",\n                  split_part(pg_get_expr(c.relpartbound, c.oid), '''', 4)::timestamptz AS \"range_to!\"\n             FROM pg_catalog.pg_inherits i\n             JOIN pg_catalog.pg_class c ON c.oid = i.inhrelid\n            WHERE i.inhparent = 'audit.audit_event'::regclass\n              AND pg_get_expr(c.relpartbound, c.oid) <> 'DEFAULT'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "range_from!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "range_to!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "ca3e441c7ba3dbfd83226cb4eceb0adb4e7a1d5b582533167ccf02cd3354009d"
+}

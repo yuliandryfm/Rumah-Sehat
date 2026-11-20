@@ -11,11 +11,18 @@
 //! constraint, KEPUTUSAN-284) → setelah commit, hapus baris outbox yang terkirim (§6.4 butir 4). Bila
 //! penghapusan gagal, baris yang sama dikirim ulang di batch berikutnya dan dilewati sebagai kiriman ulang.
 //!
+//! F1-T25: kepala rantai dijangkarkan saat sesi dimulai, lalu paling cepat setiap `anchor_interval` bila
+//! kepala maju (`audit_store::anchor::anchor_head`: penyimpanan WORM, tabel `audit_chain_anchor`, security
+//! log; ADR-009 butir 5).
+//!
 //! Galat apa pun membatalkan batch: event tetap di outbox, entri security log ditulis, dan putaran
 //! [`run_relay`] menyambung ulang setelah jeda. Umur baris outbox tertua dipantau; di atas 5 menit
 //! security log `audit_relay_delayed` (ADR-009 butir 3).
 
-use audit_store::{AppendReport, EventBody, EventSubject, StoreErrorKind, append_batch};
+use audit_store::anchor::{AnchorStore, anchor_head};
+use audit_store::{
+    AppendReport, ChainHead, EventBody, EventSubject, StoreErrorKind, append_batch, chain_head,
+};
 use foundation::{Clock, Sensitive, Uuid};
 use observability::security::{self, AuditRelayFailure};
 use platform_jobs::{LockAttempt, LockKey, SingletonLock};
@@ -50,6 +57,8 @@ pub enum RelayError {
     },
     /// Penulisan ke database audit gagal; batch dibatalkan.
     Store(audit_store::StoreError),
+    /// Jangkar kepala rantai tidak dapat ditulis (F1-T25).
+    Anchor(audit_store::StoreError),
     /// Koneksi ke salah satu database gagal.
     Connect {
         /// `app` atau `audit`.
@@ -69,6 +78,7 @@ impl fmt::Display for RelayError {
                 write!(f, "payload event {event_id} tidak valid: {field}")
             }
             Self::Store(e) => write!(f, "{e}"),
+            Self::Anchor(e) => write!(f, "jangkar: {e}"),
             Self::Connect { database } => write!(f, "koneksi database {database} gagal"),
         }
     }
@@ -85,6 +95,7 @@ impl RelayError {
                 AuditRelayFailure::SeqConflict
             }
             Self::Store(_) => AuditRelayFailure::AuditStore,
+            Self::Anchor(_) => AuditRelayFailure::Anchor,
             Self::Connect { .. } => AuditRelayFailure::Connection,
         }
     }
@@ -291,7 +302,7 @@ fn parse_uuid(s: &str) -> Option<Uuid> {
 }
 
 /// Pengaturan [`run_relay`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RelaySettings {
     /// Kunci relay dari registri (`platform_jobs::lock::RS_AUDIT_RELAY` / `RME_AUDIT_RELAY`).
     pub lock_key: LockKey,
@@ -305,6 +316,55 @@ pub struct RelaySettings {
     pub poll_interval: Duration,
     /// Jeda sebelum mencoba ulang setelah galat atau saat kunci dipegang instans lain.
     pub retry_interval: Duration,
+    /// Penyimpanan jangkar kepala rantai (WORM; lokal: berkas). F1-T25, ADR-009 butir 5.
+    pub anchors: Arc<dyn AnchorStore>,
+    /// Jeda minimum antar-jangkar (ADR-009 butir 5: setiap jam). Jangkar hanya ditulis bila kepala maju.
+    pub anchor_interval: Duration,
+}
+
+// Debug tanpa URL berkredensial dan tanpa isi penyimpanan jangkar.
+impl fmt::Debug for RelaySettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RelaySettings")
+            .field("lock_key", &self.lock_key)
+            .field("batch_size", &self.batch_size)
+            .field("poll_interval", &self.poll_interval)
+            .field("anchor_interval", &self.anchor_interval)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Menjangkarkan kepala rantai bila belum pernah di sesi ini, atau bila kepala maju dan jeda sejak jangkar
+/// terakhir sudah lewat. Mengembalikan jangkar terakhir (`seq`, waktu) yang berlaku.
+async fn maybe_anchor(
+    audit: &mut PgConnection,
+    settings: &RelaySettings,
+    head: Option<ChainHead>,
+    last: Option<(i64, OffsetDateTime)>,
+    clock: &dyn Clock,
+) -> Result<Option<(i64, OffsetDateTime)>, RelayError> {
+    let Some(head) = head else {
+        return Ok(last);
+    };
+    let now = clock.now();
+    let interval =
+        time::Duration::try_from(settings.anchor_interval).unwrap_or(time::Duration::HOUR);
+    let due = match last {
+        None => true,
+        Some((seq, at)) => head.seq > seq && now - at >= interval,
+    };
+    if !due {
+        return Ok(last);
+    }
+    let written = anchor_head(audit, settings.anchors.as_ref(), head, clock)
+        .await
+        .map_err(RelayError::Anchor)?;
+    tracing::info!(
+        seq = written.anchor.seq,
+        new_row = written.row_id.is_some(),
+        "audit_chain_anchor_written"
+    );
+    Ok(Some((head.seq, now)))
 }
 
 /// Putaran relay: ambil kunci (instans siaga mencoba ulang berkala), lalu proses batch terus-menerus.
@@ -338,8 +398,14 @@ async fn relay_session(settings: &RelaySettings, clock: &dyn Clock) -> Result<()
         .await
         .map_err(|_| RelayError::Connect { database: "audit" })?;
     let mut last_lag_alert: Option<OffsetDateTime> = None;
+    let mut head = chain_head(&mut audit).await.map_err(RelayError::Store)?;
+    let mut last_anchor = None;
     loop {
         let batch = relay_batch(&mut lock, &mut audit, settings.batch_size).await?;
+        if batch.append.head.is_some() {
+            head = batch.append.head;
+        }
+        last_anchor = maybe_anchor(&mut audit, settings, head, last_anchor, clock).await?;
         if batch.fetched > 0 {
             tracing::info!(
                 fetched = batch.fetched,

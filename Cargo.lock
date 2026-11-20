@@ -53,6 +53,8 @@ version = "0.1.0"
 dependencies = [
  "crypto",
  "foundation",
+ "observability",
+ "platform-jobs",
  "serde_json",
  "sqlx",
  "time",

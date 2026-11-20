@@ -5,12 +5,12 @@
 //! yang sama dengan application log. Layer ([`crate::log`]) merutekan target [`SECURITY_TARGET`] ke
 //! sink security dengan `log_stream = "security"`; field `log_stream` dari kode lain dibuang.
 //!
-//! Jenis yang belum punya fungsi (hasil verifikasi hash berantai audit, percobaan ubah/hapus audit,
-//! penguncian akun, kegagalan MFA, log audit penyedia cloud) ditambahkan oleh task pemilik fiturnya
-//! dengan pola yang sama.
+//! Jenis yang belum punya fungsi (percobaan ubah/hapus audit, penguncian akun, kegagalan MFA, log audit
+//! penyedia cloud) ditambahkan oleh task pemilik fiturnya dengan pola yang sama. Relay dan verifikasi
+//! rantai audit: F1-T24/F1-T25.
 
 use foundation::Uuid;
-use tracing::warn;
+use tracing::{info, warn};
 
 /// Target tracing khusus security log. Dipakai layer untuk memilih aliran.
 pub const SECURITY_TARGET: &str = "ruang_sehat::security";
@@ -101,6 +101,8 @@ pub enum AuditRelayFailure {
     AuditStore,
     /// Koneksi atau kunci relay hilang.
     Connection,
+    /// Jangkar kepala rantai tidak dapat ditulis (F1-T25).
+    Anchor,
 }
 
 impl AuditRelayFailure {
@@ -111,6 +113,7 @@ impl AuditRelayFailure {
             Self::SeqConflict => "seq_conflict",
             Self::AuditStore => "audit_store",
             Self::Connection => "connection",
+            Self::Anchor => "anchor",
         }
     }
 }
@@ -119,6 +122,88 @@ impl AuditRelayFailure {
 /// `event_id` hanya untuk payload tidak valid (ID event, bukan data pribadi).
 pub fn audit_relay_failed(stage: AuditRelayFailure, event_id: Option<Uuid>) {
     warn!(target: SECURITY_TARGET, event_type = "audit_relay_failed", stage = stage.as_str(), event_id = %opt(event_id), "security_event");
+}
+
+/// Kepala rantai audit dijangkarkan (ADR-009 butir 5: "ke WORM dan ke security log"). `event_hash_hex`
+/// = SHA-256 kepala rantai dalam heksadesimal (bukan data pribadi).
+pub fn audit_chain_anchored(seq: i64, event_hash_hex: &str) {
+    info!(target: SECURITY_TARGET, event_type = "audit_chain_anchored", seq = seq, event_hash = event_hash_hex, "security_event");
+}
+
+/// Alasan ketidakcocokan rantai audit (daftar tertutup; F1-T25, klarifikasi T-22).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditChainMismatch {
+    /// `seq` yang diharapkan tidak ada (event dihapus dari tengah rantai).
+    SeqGap,
+    /// `seq` muncul lebih dari sekali (event disisipkan).
+    SeqDuplicate,
+    /// `prev_hash` tidak sama dengan hash event sebelumnya.
+    PrevHash,
+    /// `event_hash` tidak sama dengan hasil hitung ulang (isi event diubah).
+    EventHash,
+    /// `canonical_version` tidak dikenal atau bentuk kanonis tidak dapat dibentuk.
+    CanonicalVersion,
+    /// Hasil hitung ulang di `seq` terjangkar berbeda dengan jangkar (rantai ditulis ulang).
+    AnchorHash,
+    /// Jangkar menunjuk `seq` di atas ujung rantai (ujung rantai dipotong).
+    AnchorBeyondChain,
+    /// `audit_event_key` memuat `seq` di atas ujung rantai (event ujung dihapus).
+    KeyBeyondChain,
+}
+
+impl AuditChainMismatch {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::SeqGap => "seq_gap",
+            Self::SeqDuplicate => "seq_duplicate",
+            Self::PrevHash => "prev_hash",
+            Self::EventHash => "event_hash",
+            Self::CanonicalVersion => "canonical_version",
+            Self::AnchorHash => "anchor_hash",
+            Self::AnchorBeyondChain => "anchor_beyond_chain",
+            Self::KeyBeyondChain => "key_beyond_chain",
+        }
+    }
+}
+
+/// Verifikasi rantai audit menemukan ketidakcocokan (ADR-009 butir 5, US-1504 AC3).
+pub fn audit_chain_mismatch(first_mismatch_seq: i64, reason: AuditChainMismatch) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_chain_mismatch", first_mismatch_seq = first_mismatch_seq, reason = reason.as_str(), "security_event");
+}
+
+/// Tahap kegagalan verifikasi rantai (daftar tertutup).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditVerifyFailure {
+    /// Jangkar WORM tidak dapat dibaca.
+    AnchorStore,
+    /// Database audit tidak dapat dibaca (koneksi, hak, kunci).
+    Database,
+    /// Hasil verifikasi tidak dapat ditulis ke `audit_chain_verification`.
+    RecordResult,
+    /// Katalog partisi tidak dapat dibaca.
+    PartitionCheck,
+}
+
+impl AuditVerifyFailure {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::AnchorStore => "anchor_store",
+            Self::Database => "database",
+            Self::RecordResult => "record_result",
+            Self::PartitionCheck => "partition_check",
+        }
+    }
+}
+
+/// Verifikasi rantai audit tidak dapat diselesaikan.
+pub fn audit_chain_verification_failed(stage: AuditVerifyFailure) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_chain_verification_failed", stage = stage.as_str(), "security_event");
+}
+
+/// Partisi `audit_event` masa depan kurang dari 6 bulan, atau bulan berjalan tidak tercakup (skema fisik
+/// §6.2 butir 2, TD-12). Tanpa partisi, relay berhenti dan event tertahan di outbox.
+pub fn audit_partition_runway_low(future_partitions: u32, current_covered: bool) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_partition_runway_low", future_partitions = future_partitions, current_covered = current_covered, "security_event");
 }
 
 /// Tahap kegagalan penulisan event audit (daftar tertutup).

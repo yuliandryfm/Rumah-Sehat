@@ -1,4 +1,4 @@
-//! F1-T24 (ADR-009 butir 3 dan 5, skema fisik §6.3–§6.4, KEPUTUSAN-102, KEPUTUSAN-103, KEPUTUSAN-284):
+//! F1-T24 (+ jangkar F1-T25) (ADR-009 butir 3 dan 5, skema fisik §6.3–§6.4, KEPUTUSAN-102, KEPUTUSAN-103, KEPUTUSAN-284):
 //! relay memindahkan `audit_outbox` ke database audit dengan `seq` tanpa celah dan rantai hash, satu relay
 //! aktif, kiriman ulang dilewati per constraint, konflik `seq` membatalkan batch. Hak runtime sungguhan:
 //! `rs_audit_relay_login` (database aplikasi) dan `rs_audit_writer_login` (database audit, INSERT saja).
@@ -16,6 +16,8 @@ mod common;
 
 use audit::relay::{RelayError, RelaySettings, map_payload, relay_batch, run_relay};
 use audit::{AuditEvent, Subject, in_audited_tx};
+use audit_store::anchor::{AnchorStore, FileAnchorStore};
+use audit_store::verify::{VerifyOutcome, verify_chain};
 use audit_store::{
     GENESIS_PREV_HASH, PageCursor, StoreErrorKind, append_batch, chain_head, event_hash,
     find_event, read_page,
@@ -399,6 +401,7 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
         drain(&mut lock, &mut w).await;
         lock.release().await.unwrap();
     }
+    let anchor_dir = std::env::temp_dir().join(format!("rs-relay-anchor-{}", new_id()));
     let settings = RelaySettings {
         lock_key: RS_AUDIT_RELAY,
         app_database_url: secret_url("RS_TEST_DB_RELAY_URL"),
@@ -406,6 +409,8 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
         batch_size: 7,
         poll_interval: Duration::from_millis(20),
         retry_interval: Duration::from_millis(50),
+        anchors: Arc::new(FileAnchorStore::new(&anchor_dir).unwrap()),
+        anchor_interval: Duration::ZERO,
     };
     // Event menunggu di outbox sebelum kedua relay mulai berebut kunci.
     let mut ids = Vec::new();
@@ -469,4 +474,20 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
         assert_eq!(pair[1], pair[0] + 1, "seq tidak berurutan");
     }
     assert_chain_intact(&verifier).await;
+
+    // F1-T25: relay menjangkarkan kepala rantai ke WORM (berkas) dan tabel audit_chain_anchor; verifikasi
+    // terhadap jangkar itu lulus dan merujuk baris jangkarnya.
+    let store = FileAnchorStore::new(&anchor_dir).unwrap();
+    let anchors = store.list().await.unwrap();
+    let mut w = writer().await;
+    let head = chain_head(&mut w).await.unwrap().unwrap();
+    assert_eq!(
+        anchors.last().map(|a| (a.seq, a.event_hash)),
+        Some((head.seq, head.event_hash))
+    );
+    let report = verify_chain(&mut v, &store, &SystemClock).await;
+    assert_eq!(report.outcome, VerifyOutcome::Match);
+    assert_eq!(report.to_seq, head.seq);
+    assert!(report.audit_chain_anchor_id.is_some());
+    std::fs::remove_dir_all(anchor_dir).unwrap();
 }

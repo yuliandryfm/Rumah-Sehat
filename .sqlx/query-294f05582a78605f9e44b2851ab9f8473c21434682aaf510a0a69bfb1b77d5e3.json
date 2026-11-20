@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO audit.audit_chain_verification\n             (id, started_at, finished_at, from_seq, to_seq, audit_chain_anchor_id, outcome, first_mismatch_seq)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8",
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "294f05582a78605f9e44b2851ab9f8473c21434682aaf510a0a69bfb1b77d5e3"
+}

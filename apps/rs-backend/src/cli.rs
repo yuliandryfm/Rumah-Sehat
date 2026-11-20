@@ -1,11 +1,13 @@
 //! Pemilihan subcommand dan siklus hidup proses. Satu biner, satu argumen: nama subcommand.
 //!
-//! Yang berfungsi: `api` dan `audit-relay` (F1-T24). `worker` dan `audit-verify` adalah kerangka: proses
-//! mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
+//! Yang berfungsi: `api`, `audit-relay` (F1-T24), dan `audit-verify` (F1-T25). `worker` adalah kerangka:
+//! proses mencatat galat `subcommand_not_implemented` lalu keluar dengan kode gagal, supaya tidak ada
 //! penyebaran yang mengira proses itu berjalan.
 
 use crate::app::{AppState, build_router};
-use crate::config::{ApiConfig, AuditRelayConfig};
+use crate::config::{ApiConfig, AuditRelayConfig, AuditVerifyConfig};
+use audit_store::anchor::{AnchorStore, FileAnchorStore};
+use audit_store::verify::{VerifierSettings, VerifyOutcome};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use std::process::ExitCode;
@@ -25,7 +27,7 @@ pub enum Command {
     Worker,
     /// Relay audit (F1-T24).
     AuditRelay,
-    /// Verifikasi rantai audit (kerangka).
+    /// Verifikasi rantai audit (F1-T25).
     AuditVerify,
 }
 
@@ -82,6 +84,7 @@ impl Command {
 enum Loaded {
     Api(ApiConfig),
     AuditRelay(AuditRelayConfig),
+    AuditVerify(AuditVerifyConfig),
     Skeleton(Command, BaseConfig),
 }
 
@@ -90,6 +93,7 @@ impl Loaded {
         Ok(match command {
             Command::Api => Self::Api(ApiConfig::load(env)?),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
+            Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
             other => Self::Skeleton(other, BaseConfig::load(env)?),
         })
     }
@@ -98,6 +102,7 @@ impl Loaded {
         match self {
             Self::Api(c) => &c.base,
             Self::AuditRelay(c) => &c.base,
+            Self::AuditVerify(c) => &c.base,
             Self::Skeleton(_, b) => b,
         }
     }
@@ -132,6 +137,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     match loaded {
         Loaded::Api(config) => run_api(config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
+        Loaded::AuditVerify(config) => run_audit_verify(config),
         Loaded::Skeleton(other, base) => not_implemented(other, &base),
     }
 }
@@ -154,6 +160,13 @@ fn run_audit_relay(config: AuditRelayConfig) -> ExitCode {
     let Some(runtime) = runtime() else {
         return ExitCode::FAILURE;
     };
+    let anchors: Arc<dyn AnchorStore> = match FileAnchorStore::new(&config.anchor_dir) {
+        Ok(s) => Arc::new(s),
+        Err(_) => {
+            tracing::error!("audit_anchor_dir_unusable");
+            return ExitCode::FAILURE;
+        }
+    };
     let settings = audit::relay::RelaySettings {
         lock_key: platform_jobs::lock::RS_AUDIT_RELAY,
         app_database_url: config.app_database_url,
@@ -161,6 +174,8 @@ fn run_audit_relay(config: AuditRelayConfig) -> ExitCode {
         batch_size: config.batch_size.get(),
         poll_interval: Duration::from_millis(config.poll_ms),
         retry_interval: Duration::from_millis(config.retry_ms),
+        anchors,
+        anchor_interval: Duration::from_secs(config.anchor_interval_secs),
     };
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     tracing::info!(lock_key = settings.lock_key.key(), "audit_relay_starting");
@@ -180,6 +195,48 @@ fn not_implemented(command: Command, _base: &BaseConfig) -> ExitCode {
         "subcommand_not_implemented: kerangka F1-T11, belum berfungsi"
     );
     ExitCode::FAILURE
+}
+
+/// `audit-verify`: verifikasi rantai harian (kunci 7001003) atau sekali (`AUDIT_VERIFY_ONCE`).
+fn run_audit_verify(config: AuditVerifyConfig) -> ExitCode {
+    let Some(runtime) = runtime() else {
+        return ExitCode::FAILURE;
+    };
+    let anchors: Arc<dyn AnchorStore> = match FileAnchorStore::new(&config.anchor_dir) {
+        Ok(s) => Arc::new(s),
+        Err(_) => {
+            tracing::error!("audit_anchor_dir_unusable");
+            return ExitCode::FAILURE;
+        }
+    };
+    let settings = VerifierSettings {
+        lock_key: platform_jobs::lock::RS_AUDIT_VERIFY,
+        database_url: config.database_url,
+        anchors,
+        interval: Duration::from_secs(config.interval_secs),
+        retry_interval: Duration::from_millis(config.retry_ms),
+    };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    tracing::info!(
+        lock_key = settings.lock_key.key(),
+        once = config.once,
+        "audit_verify_starting"
+    );
+    if config.once {
+        let result = runtime.block_on(audit_store::verify::verify_once(&settings, clock.as_ref()));
+        return match result {
+            Ok((report, Some(_))) if report.outcome == VerifyOutcome::Match => ExitCode::SUCCESS,
+            _ => ExitCode::FAILURE,
+        };
+    }
+    runtime.block_on(async move {
+        tokio::select! {
+            () = audit_store::verify::run_verifier(settings, clock) => {}
+            () = shutdown_signal() => {}
+        }
+    });
+    tracing::info!("audit_verify_stopped");
+    ExitCode::SUCCESS
 }
 
 fn run_api(config: ApiConfig) -> ExitCode {

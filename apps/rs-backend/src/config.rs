@@ -2,6 +2,7 @@
 
 use foundation::Sensitive;
 use observability::{BaseConfig, ConfigError, EnvSource};
+use std::path::PathBuf;
 
 /// Awalan URI `type` RFC 9457 bila `PROBLEM_TYPE_BASE` tidak diisi. Domain dokumentasi jenis masalah
 /// `[TIDAK DIKETAHUI]` (docs/05-response-codes.md §4.7); TLD `.invalid` dicadangkan RFC 2606 sehingga
@@ -67,6 +68,11 @@ pub struct AuditRelayConfig {
     pub poll_ms: u64,
     /// `AUDIT_RELAY_RETRY_MS`: jeda coba ulang setelah galat / saat siaga (bawaan 5000).
     pub retry_ms: u64,
+    /// `AUDIT_ANCHOR_DIR`: direktori jangkar kepala rantai (implementasi berkas lokal, F1-T25). Staging
+    /// memakai Object Lock NEO (implementasinya belum ada; skema fisik §3.3).
+    pub anchor_dir: PathBuf,
+    /// `AUDIT_ANCHOR_INTERVAL_SECS`: jeda minimum antar-jangkar (bawaan 3600, ADR-009 butir 5).
+    pub anchor_interval_secs: u64,
 }
 
 impl AuditRelayConfig {
@@ -82,6 +88,41 @@ impl AuditRelayConfig {
             )?,
             poll_ms: env.optional_or("AUDIT_RELAY_POLL_MS", 1_000)?,
             retry_ms: env.optional_or("AUDIT_RELAY_RETRY_MS", 5_000)?,
+            anchor_dir: env.required("AUDIT_ANCHOR_DIR")?,
+            anchor_interval_secs: env.optional_or("AUDIT_ANCHOR_INTERVAL_SECS", 3_600)?,
+        })
+    }
+}
+
+/// Konfigurasi `rs-backend audit-verify` (F1-T25; ADR-009 butir 5, KEPUTUSAN-141, skema fisik §3.3):
+/// hanya kredensial `rs_audit_verifier_login` dan akses baca jangkar WORM.
+#[derive(Debug, Clone)]
+pub struct AuditVerifyConfig {
+    /// `LOG_LEVEL` (dan `HTTP_BIND`, tidak dipakai proses ini).
+    pub base: BaseConfig,
+    /// `AUDIT_VERIFIER_DATABASE_URL`: login `rs_audit_verifier_login` ke `ruang_sehat_audit` (rahasia).
+    pub database_url: Sensitive<String>,
+    /// `AUDIT_ANCHOR_DIR`: direktori jangkar kepala rantai (berkas lokal).
+    pub anchor_dir: PathBuf,
+    /// `AUDIT_VERIFY_INTERVAL_SECS`: jeda antar-verifikasi (bawaan 86400, harian).
+    pub interval_secs: u64,
+    /// `AUDIT_VERIFY_RETRY_MS`: jeda coba ulang setelah galat / saat siaga (bawaan 60000).
+    pub retry_ms: u64,
+    /// `AUDIT_VERIFY_ONCE`: `true` = satu verifikasi lalu keluar (pemicu manual; kode keluar 0 hanya bila
+    /// `match`). Bawaan `false`.
+    pub once: bool,
+}
+
+impl AuditVerifyConfig {
+    /// Memuat dari sumber; gagal cepat tanpa mencetak nilai.
+    pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
+        Ok(Self {
+            base: BaseConfig::load(env)?,
+            database_url: env.required_secret("AUDIT_VERIFIER_DATABASE_URL")?,
+            anchor_dir: env.required("AUDIT_ANCHOR_DIR")?,
+            interval_secs: env.optional_or("AUDIT_VERIFY_INTERVAL_SECS", 86_400)?,
+            retry_ms: env.optional_or("AUDIT_VERIFY_RETRY_MS", 60_000)?,
+            once: env.optional_or("AUDIT_VERIFY_ONCE", false)?,
         })
     }
 }
@@ -102,10 +143,12 @@ mod tests {
                 "AUDIT_WRITER_DATABASE_URL",
                 "postgres://writer@localhost/ruang_sehat_audit",
             ),
+            ("AUDIT_ANCHOR_DIR", "/var/lib/ruang-sehat/anchor"),
         ]);
         let c = AuditRelayConfig::load(&ok).unwrap();
         assert_eq!(c.batch_size.get(), 50);
         assert_eq!((c.poll_ms, c.retry_ms), (1_000, 5_000));
+        assert_eq!(c.anchor_interval_secs, 3_600);
         // Debug tidak membocorkan URL berkredensial.
         assert!(!format!("{c:?}").contains("postgres://"));
 
@@ -121,10 +164,43 @@ mod tests {
                 ("AUDIT_RELAY_DATABASE_URL", "postgres://x"),
                 ("AUDIT_WRITER_DATABASE_URL", "postgres://y"),
                 ("AUDIT_RELAY_BATCH_SIZE", bad),
+                ("AUDIT_ANCHOR_DIR", "/tmp/a"),
             ]);
             let e = AuditRelayConfig::load(&env).unwrap_err();
             assert_eq!(e.kind(), ConfigErrorKind::Invalid, "batch {bad}");
         }
+    }
+
+    #[test]
+    fn audit_verify_needs_verifier_credential_and_anchor_dir() {
+        let ok = EnvSource::from_pairs([
+            (
+                "AUDIT_VERIFIER_DATABASE_URL",
+                "postgres://verifier@localhost/a",
+            ),
+            ("AUDIT_ANCHOR_DIR", "/var/lib/ruang-sehat/anchor"),
+        ]);
+        let c = AuditVerifyConfig::load(&ok).unwrap();
+        assert_eq!(
+            (c.interval_secs, c.retry_ms, c.once),
+            (86_400, 60_000, false)
+        );
+        assert!(!format!("{c:?}").contains("postgres://"));
+        let no_dir =
+            EnvSource::from_pairs([("AUDIT_VERIFIER_DATABASE_URL", "postgres://verifier@x/a")]);
+        assert_eq!(
+            AuditVerifyConfig::load(&no_dir).unwrap_err().name(),
+            "AUDIT_ANCHOR_DIR"
+        );
+        let bad_once = EnvSource::from_pairs([
+            ("AUDIT_VERIFIER_DATABASE_URL", "postgres://verifier@x/a"),
+            ("AUDIT_ANCHOR_DIR", "/tmp/a"),
+            ("AUDIT_VERIFY_ONCE", "ya"),
+        ]);
+        assert_eq!(
+            AuditVerifyConfig::load(&bad_once).unwrap_err().kind(),
+            ConfigErrorKind::Invalid
+        );
     }
 
     #[test]
