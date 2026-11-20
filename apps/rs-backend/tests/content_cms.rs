@@ -1,4 +1,5 @@
-//! CMS backoffice (F1-T92; US-1101 AC1-AC4, US-1802 AC1-AC5) lewat HTTP sungguhan terhadap PostgreSQL 18
+//! CMS backoffice (F1-T92; US-1101 AC1-AC4, US-1802 AC1-AC5; render aman F1-T111 US-1802 AC6)
+//! lewat HTTP sungguhan terhadap PostgreSQL 18
 //! (role runtime `rs_app`, `scripts/db-ephemeral.sh`): draf, pratinjau, jadwal, arsip, halaman tetap,
 //! soft delete dan pulihkan dengan E-16, serta test penolakan per endpoint (coding-standards §7.3):
 //! tanpa token, realm lain, akun nonaktif, sub-peran lain (403), objek tidak ada (404).
@@ -632,4 +633,75 @@ async fn every_endpoint_rejects_missing_token_other_realm_inactive_and_other_sub
         let r = f.send("POST", &format!("{p}/archive"), &json!({})).await;
         assert_eq!(r.status, 404, "{p}");
     }
+}
+
+// trace: US-1802 AC6, US-1802 AC7
+#[tokio::test(flavor = "multi_thread")]
+async fn xss_payloads_are_rejected_on_save_and_never_stored() {
+    let f = Fixture::new().await;
+    let id = f.draft(article("site", Some("articles"))).await;
+    let path = format!("/backoffice/v1/contents/{id}");
+    let image = "/v1/public/content/images/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b";
+    let payloads: [(&str, &str); 12] = [
+        ("<script>alert(1)</script>", "raw_html_not_allowed"),
+        (
+            "Teks <img src=x onerror=alert(1)> teks",
+            "raw_html_not_allowed",
+        ),
+        (
+            "<iframe src=\"https://example.com\"></iframe>",
+            "raw_html_not_allowed",
+        ),
+        (
+            "<a href=\"javascript:alert(1)\">x</a>",
+            "raw_html_not_allowed",
+        ),
+        ("<svg onload=alert(1)>", "raw_html_not_allowed"),
+        ("[klik](javascript:alert(1))", "link_scheme_not_allowed"),
+        (
+            "[klik](jav&#x61;script:alert(1))",
+            "link_scheme_not_allowed",
+        ),
+        (
+            "[klik](data:text/html;base64,PHNjcmlwdD4=)",
+            "link_scheme_not_allowed",
+        ),
+        ("<javascript:alert(1)>", "link_scheme_not_allowed"),
+        ("[x](//example.com/jalur)", "link_scheme_not_allowed"),
+        (
+            "![foto](https://img.example.test/x.png)",
+            "image_source_not_allowed",
+        ),
+        (
+            "![](/v1/public/content/images/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b)",
+            "image_alt_missing",
+        ),
+    ];
+    for (payload, code) in payloads {
+        let mut body = article("site", Some("articles"));
+        body["body"] = json!(format!("## Judul\n\n{payload}\n"));
+        for (method, target) in [("POST", "/backoffice/v1/contents"), ("PUT", path.as_str())] {
+            let r = f.send(method, target, &body).await;
+            assert_eq!(r.status, 422, "{method} {payload}: {}", r.body);
+            let e = &r.json()["errors"][0];
+            assert_eq!(e["field"], "body", "{payload}");
+            assert_eq!(e["code"], code, "{payload}");
+            assert!(
+                e["message"].as_str().unwrap().ends_with("(baris 3)"),
+                "{payload}"
+            );
+            // Galat tidak menggemakan isi berbahaya.
+            assert!(!r.body.contains("alert(1)"), "{payload}");
+        }
+    }
+    // Isi draf tetap yang lama (tidak ada yang tersimpan).
+    let stored = f.get(&path).await.json();
+    assert_eq!(stored["data"]["body"], "## Judul\n\nIsi **tebal**.");
+    // Markdown aman (tautan https/mailto/relatif, gambar dari endpoint publik, HTML di blok kode) diterima.
+    let mut safe = article("site", Some("articles"));
+    safe["body"] = json!(format!(
+        "## Aman\n\n[Layanan](/layanan) [Surel](mailto:halo@example.com) [Mitra](https://example.com)\n\n![Foto klinik]({image})\n\n```\n<script>sebagai teks kode</script>\n```\n"
+    ));
+    let r = f.send("PUT", &path, &safe).await;
+    assert_eq!(r.status, 200, "{}", r.body);
 }

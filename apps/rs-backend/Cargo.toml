@@ -38,6 +38,9 @@ time = { version = "=0.3.55", default-features = false, features = ["std", "form
 # image 0.25.10 [SRC-554]: hanya dekoder/enkoder JPEG (zune-jpeg) dan PNG (png); fitur bawaan (rayon, format
 # lain) dimatikan untuk memperkecil permukaan serang dekoder.
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
+# pulldown-cmark 0.13.6 [SRC-600]: pengurai CommonMark untuk validasi render aman isi CMS saat simpan (F1-T111,
+# M-40). Fitur bawaan (`html` renderer, `getopts` CLI) dimatikan: backend hanya mengurai, tidak merender.
+pulldown-cmark = { version = "=0.13.6", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "=1.54.1", default-features = false, features = ["rt", "macros", "net", "io-util", "time"] }

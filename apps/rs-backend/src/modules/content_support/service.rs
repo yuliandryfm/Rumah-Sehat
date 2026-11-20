@@ -11,6 +11,7 @@ use super::domain::{
     LinkTargetType, OtherVersion, PublishWindow, SitePage,
 };
 use super::error::ContentError;
+use super::markdown;
 use super::repo::{self, ContentRow, Fields};
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, FieldChange, FieldRule,
@@ -127,9 +128,21 @@ fn fields(f: &ContentFields) -> Fields<'_> {
     }
 }
 
-/// Validasi isian draf: bentuk dan aturan kanal (domain), lalu aturan render aman isi (F1-T111).
+/// Validasi isian draf: bentuk dan aturan kanal (domain), lalu aturan render aman isi Markdown (F1-T111,
+/// M-40, US-1802 AC6): HTML mentah, skema tautan di luar daftar izin, dan gambar di luar endpoint gambar
+/// publik ditolak saat simpan, sehingga tidak ada markup aktif yang tersimpan.
 fn validate(input: ContentFields) -> Result<ContentFields, ContentError> {
-    input.normalized().map_err(ContentError::Validation)
+    let f = input.normalized().map_err(ContentError::Validation)?;
+    let unsafe_body = f
+        .body
+        .as_deref()
+        .map(|b| markdown::field_errors("body", b))
+        .unwrap_or_default();
+    if unsafe_body.is_empty() {
+        Ok(f)
+    } else {
+        Err(ContentError::Validation(unsafe_body))
+    }
 }
 
 /// AC1 (US-1101): konten baru selalu berstatus draf.
