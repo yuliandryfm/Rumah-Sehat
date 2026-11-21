@@ -20,8 +20,8 @@ mod valkey_support;
 use crypto::{Container, ContainerType, EncryptionContext, Nik, load_data_key};
 use foundation::Uuid;
 use identity_support::{
-    CLIENT_IP, Env, PATIENT_ROUTE, Principals, audit_events, new_family_member, new_patient,
-    request_count, slot_consumed_or_gone, synthetic_nik,
+    CLIENT_IP, Env, PATIENT_ROUTE, Principals, approve_in_db, audit_events, new_family_member,
+    new_patient, request_count, slot_consumed_or_gone, synthetic_nik,
 };
 use rs_backend::modules::platform::api::{FileError, UploadPurpose, validate_upload};
 use rs_backend::modules::profile::api::{
@@ -49,58 +49,6 @@ async fn ctx() -> Ctx {
         principals,
         services,
     }
-}
-
-/// Persetujuan tiruan langsung di database lewat jalur tulis yang sama dengan Verifikator (event v2 +
-/// proyeksi + registri NIK pemilik akun dengan blind index versi `bidx_version`); keputusan Verifikator
-/// sungguhan diuji di F1-T62.
-async fn approve_in_db(
-    env: &Env,
-    care_recipient_id: Uuid,
-    request_id: Uuid,
-    nik: &str,
-    v1_key: bool,
-) {
-    let nik = Nik::parse(nik).unwrap();
-    let b = if v1_key {
-        env.blind_index_v1.compute(&nik).unwrap()
-    } else {
-        env.blind_index.compute(&nik).unwrap()
-    };
-    let mut tx = env.pool.begin().await.unwrap();
-    sqlx::query!(
-        "INSERT INTO app.identity_verification_request_status_event \
-             (id, identity_verification_request_id, version, from_status, to_status, actor_type, correlation_id) \
-         VALUES ($1, $2, 2, 'pending', 'approved', 'rs_admin', $3)",
-        foundation::new_id(),
-        request_id,
-        foundation::new_id(),
-    )
-    .execute(&mut *tx)
-    .await
-    .unwrap();
-    sqlx::query!(
-        "UPDATE app.identity_verification_request_state SET status = 'approved', version = 2 \
-         WHERE identity_verification_request_id = $1 AND version = 1",
-        request_id
-    )
-    .execute(&mut *tx)
-    .await
-    .unwrap();
-    sqlx::query!(
-        "INSERT INTO app.account_owner_nik_registry \
-             (id, nik_bidx, nik_bidx_key_version, care_recipient_id, identity_verification_request_id) \
-         VALUES ($1, $2, $3, $4, $5)",
-        foundation::new_id(),
-        &b.value[..],
-        b.key_version,
-        care_recipient_id,
-        request_id,
-    )
-    .execute(&mut *tx)
-    .await
-    .unwrap();
-    tx.commit().await.unwrap();
 }
 
 struct DocRow {

@@ -20,7 +20,7 @@ use time::OffsetDateTime;
 use valkey::Valkey;
 
 pub use super::error::ProfileError;
-use crate::modules::platform::api::FileStorage;
+use crate::modules::platform::api::{FileStorage, UploadTicket};
 
 /// Pemilik penerima layanan `care_recipient_id` (`patient.account_id`, `is_account_owner`). `None` bila
 /// penerima layanan atau pasiennya tidak ada atau terhapus (ADR-003).
@@ -141,4 +141,14 @@ pub async fn identity_status(
     care_recipient_id: Uuid,
 ) -> Result<IdentityStatusView, ProfileError> {
     service::status(services, principal, route, care_recipient_id).await
+}
+
+/// US-106 AC3 (F1-T61): slot unggah foto KTP untuk akun pemanggil (modul `platform`, ADR-018).
+pub async fn create_ktp_upload_slot(
+    services: &IdentityServices,
+    principal: &Principal,
+    content_type: String,
+    size_bytes: u64,
+) -> Result<UploadTicket, ProfileError> {
+    service::create_ktp_upload_slot(services, principal, content_type, size_bytes).await
 }

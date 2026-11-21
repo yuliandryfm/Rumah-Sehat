@@ -12,6 +12,7 @@ use crate::config::{
 use crate::http_support::EnvelopeRenderer;
 use crate::modules::identity::api::AccountDirectory;
 use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
+use crate::modules::profile::api::IdentityServices;
 use crate::rate_limit::RateLimiter;
 use audit_store::anchor::{AnchorStore, FileAnchorStore};
 use audit_store::verify::{VerifierSettings, VerifyOutcome};
@@ -19,6 +20,7 @@ use authn::{
     Algorithm, AuthState, Authenticator, AuthnConfig, Backend, HttpJwksSource, Realm, RealmConfig,
 };
 use authz::{DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DenialSink};
+use crypto::{DataKeyring, Keyring, KeyringConfig, System, TransitConfig, TransitKek};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
@@ -393,24 +395,39 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         .max_lifetime(Duration::from_secs(1800))
         .connect_lazy(config.database_url.expose())
         .map_err(|_| setup_failed("api_database_url"))?;
-    let files = FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
+    let files =
+        Arc::new(FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?);
     let jwks = HttpJwksSource::new(&config.admin_realm.jwks_url, Duration::from_secs(5))
         .map_err(|_| setup_failed("auth_admin_jwks_url"))?;
+    let patient_jwks = HttpJwksSource::new(&config.patient_realm.jwks_url, Duration::from_secs(5))
+        .map_err(|_| setup_failed("auth_patient_jwks_url"))?;
     let authenticator = Authenticator::new(
         AuthnConfig::with_defaults(
             Backend::RuangSehat,
-            vec![RealmConfig {
-                realm: Realm::Admin,
-                issuer: config.admin_realm.issuer.clone(),
-                audiences: vec![config.admin_realm.audience.clone()],
-                algorithms: vec![Algorithm::RS256],
-                authorized_parties: Vec::new(),
-                jwks: Arc::new(jwks),
-            }],
+            vec![
+                RealmConfig {
+                    realm: Realm::Admin,
+                    issuer: config.admin_realm.issuer.clone(),
+                    audiences: vec![config.admin_realm.audience.clone()],
+                    algorithms: vec![Algorithm::RS256],
+                    authorized_parties: Vec::new(),
+                    jwks: Arc::new(jwks),
+                },
+                // Realm pasien (F1-T61): endpoint /patient/v1, pola yang sama dengan realm admin.
+                RealmConfig {
+                    realm: Realm::Pasien,
+                    issuer: config.patient_realm.issuer.clone(),
+                    audiences: vec![config.patient_realm.audience.clone()],
+                    algorithms: vec![Algorithm::RS256],
+                    authorized_parties: Vec::new(),
+                    jwks: Arc::new(patient_jwks),
+                },
+            ],
         ),
         Arc::clone(&clock),
     )
-    .map_err(|_| setup_failed("auth_admin"))?;
+    .map_err(|_| setup_failed("auth_realms"))?;
+
     let auth = AuthState::new(
         Arc::new(authenticator),
         Arc::new(EnvelopeRenderer::new(&config.problem_type_base)),
@@ -420,6 +437,15 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         op_timeout: Duration::from_millis(config.valkey_op_timeout_ms),
     })
     .map_err(|_| setup_failed("api_valkey_url"))?;
+    let identity = identity_services(
+        &config,
+        pool.clone(),
+        Arc::clone(&clock),
+        &files,
+        valkey.clone(),
+    )
+    .await
+    .map_err(setup_failed)?;
     // Resolver akun + penjaga sesi yang dicabut (F1-T33): Valkey dengan cadangan PostgreSQL (RT-18).
     let directory = Arc::new(AccountDirectory::new(
         pool.clone(),
@@ -445,7 +471,8 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         AppServices {
             pool,
             clock,
-            files: Arc::new(files),
+            files,
+            identity: Arc::new(identity),
             public_content_limit: Arc::new(RateLimiter::new(config.public_rate)),
             public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
@@ -461,6 +488,57 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
     router
         .serve_with_peer_addr(listener, shutdown_signal())
         .await
+}
+
+/// F1-T61 (KEPUTUSAN-293): keyring DEK lewat OpenBao Transit dan kunci blind index NIK dari OpenBao KV,
+/// dimuat saat start (gagal cepat, pola `email-relay`). Galat dikembalikan sebagai nama bagian saja.
+async fn identity_services(
+    config: &ApiConfig,
+    pool: sqlx::PgPool,
+    clock: Arc<dyn Clock>,
+    files: &Arc<FileStorage>,
+    valkey: Valkey,
+) -> Result<IdentityServices, &'static str> {
+    let keys = &config.identity_keys;
+    let openbao = crypto::OpenBaoConfig {
+        address: keys.openbao_addr.clone(),
+        token: keys.openbao_token.clone(),
+        timeout: OPENBAO_TIMEOUT,
+    };
+    let kek = TransitKek::new(
+        &openbao,
+        TransitConfig {
+            mount: keys.transit_mount.clone(),
+            key_name: keys.transit_key.clone(),
+        },
+    )
+    .map_err(|_| "openbao_transit")?;
+    let keyring = Keyring::new(
+        kek,
+        KeyringConfig {
+            system: System::RuangSehat,
+            cache_ttl: time::Duration::seconds(i64::from(keys.dek_cache_ttl.seconds())),
+            cache_capacity: keys.dek_cache_capacity.get(),
+        },
+        Arc::clone(&clock),
+    )
+    .map_err(|_| "dek_keyring")?;
+    let blind_index = crypto::load_nik_blind_index_keyring(
+        &openbao,
+        &keys.blind_index_kv_mount,
+        &keys.blind_index_kv_path,
+    )
+    .await
+    .map_err(|_| "nik_blind_index_keys")?;
+    let keyring: Arc<dyn DataKeyring> = Arc::new(keyring);
+    Ok(IdentityServices::new(
+        pool,
+        clock,
+        Arc::clone(files),
+        keyring,
+        Arc::new(blind_index),
+        valkey,
+    ))
 }
 
 /// Selesai pada SIGINT atau SIGTERM (Docker Compose mengirim SIGTERM).

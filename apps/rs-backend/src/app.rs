@@ -4,7 +4,9 @@
 use crate::modules::content_support;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
-use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PublicApiDoc};
+use crate::modules::profile;
+use crate::modules::profile::api::IdentityServices;
+use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
 use crate::rate_limit::RateLimiter;
 use authn::AuthState;
 use authz::{
@@ -29,6 +31,9 @@ pub struct AppServices {
     pub clock: Arc<dyn Clock>,
     /// Layanan berkas (modul platform, F1-T29).
     pub files: Arc<FileStorage>,
+    /// Use case identitas pasien (modul profile, F1-T60/F1-T61): DEK lewat Transit, blind index NIK,
+    /// batas NIK berlapis di Valkey.
+    pub identity: Arc<IdentityServices>,
     /// Batas laju endpoint konten publik (F1-T94), terpisah dari API lain (M-47).
     pub public_content_limit: Arc<RateLimiter>,
     /// Batas laju endpoint gambar konten publik (F1-T93).
@@ -77,6 +82,10 @@ impl AppState {
         &self.services.files
     }
 
+    pub(crate) fn identity(&self) -> &IdentityServices {
+        &self.services.identity
+    }
+
     pub(crate) fn public_content_limit(&self) -> &RateLimiter {
         &self.services.public_content_limit
     }
@@ -97,17 +106,23 @@ pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
         .merge(content_support::backoffice_router())
 }
 
+/// Router API aplikasi pasien (`openapi/pasien.json`, awalan `/patient/v1`, KEPUTUSAN-120, realm `pasien`).
+pub(crate) fn patient_router() -> PolicyRouter<AppState> {
+    PolicyRouter::with_openapi(PatientApiDoc::openapi()).merge(profile::patient_router())
+}
+
 /// Router API publik tanpa login (`openapi/public.json`, awalan `/v1/public/content`, ADR-027 butir 2 dan 5,
 /// ADR-012 butir 3). Jaringan `web/situs` hanya menjangkau `/v1/public/*` (ADR-027 butir 6).
 pub(crate) fn public_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
 }
 
-/// Semua rute proses `api` (ops, backoffice, publik), masing-masing dengan kebijakannya.
+/// Semua rute proses `api` (ops, backoffice, pasien, publik), masing-masing dengan kebijakannya.
 pub(crate) fn all_routes() -> PolicyRouter<AppState> {
     PolicyRouter::new()
         .merge(ops_router())
         .merge(backoffice_router())
+        .merge(patient_router())
         .merge(public_router())
 }
 
@@ -132,7 +147,8 @@ async fn client_ip_middleware(mut req: Request, next: Next) -> Response {
 ///   middleware penegak: rute tidak dikenal, metode tidak diizinkan, atau rute tanpa kebijakan dijawab
 ///   `404` envelope (`4040001`). Registry `docs/05-response-codes.md` tidak memuat kode 405, dan 404 tidak
 ///   membedakan "tidak ada" dari "tidak boleh" (KU-03).
-/// - Endpoint terautentikasi (backoffice) memakai `auth` (validasi token realm `admin`), `resolver` dan
+/// - Endpoint terautentikasi memakai `auth` (validasi token realm `admin` untuk backoffice dan realm `pasien`
+///   untuk `/patient/v1`), `resolver` dan
 ///   `sessions` (modul identity `AccountDirectory`, F1-T33), dan `denials` (E-05 hasil gagal, F1-T38).
 /// - Middleware korelasi dan IP klien dipasang terakhir dengan `EnforcedRouter::layer`, sehingga membungkus
 ///   penegak dan `MatchedPath` tersedia. Router hasil `finish` tertutup untuk penambahan rute (TD-15).
@@ -181,6 +197,18 @@ mod tests {
                 &Policy::rs_admin(&[authz::AdminSubRole::Content]),
                 "{path}"
             );
+        }
+    }
+
+    // trace: ADR-012 butir 1, KEPUTUSAN-120 (endpoint pasien hanya untuk akun pasien, awalan /patient/v1)
+    #[test]
+    fn every_patient_route_requires_patient_account_only() {
+        let router = patient_router();
+        let entries: Vec<_> = router.registry().iter().collect();
+        assert_eq!(entries.len(), 4);
+        for ((_method, path), policy) in entries {
+            assert!(path.starts_with("/patient/v1/"), "{path}");
+            assert_eq!(policy, &Policy::patient(), "{path}");
         }
     }
 

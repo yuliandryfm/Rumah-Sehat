@@ -36,7 +36,9 @@ use super::domain::{
 };
 use super::error::ProfileError;
 use super::repo::{self, EventDetails, IvrStatusStore, RecipientNik, RepoError};
-use crate::modules::platform::api::{self as files, FileContainer, UploadPurpose, ValidatedUpload};
+use crate::modules::platform::api::{
+    self as files, FileContainer, UploadPurpose, UploadSlotRequest, UploadTicket, ValidatedUpload,
+};
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, FieldChange, FieldRule,
     ObjectPolicy, ObjectRef, Outcome, Source, SourceComponent, Subject, Value, in_audited_tx,
@@ -703,6 +705,30 @@ pub(super) async fn cancel(
             Err(e)
         }
     }
+}
+
+/// US-106 AC3 (F1-T61): slot unggah foto KTP milik akun pemanggil. Jenis dan ukuran yang dinyatakan
+/// diperiksa di sini (`4150001`/`4130001`); isi berkas diperiksa ulang saat pengajuan (ADR-018). Slot
+/// belum terikat ke penerima layanan mana pun; relasi diperiksa saat pengajuan.
+pub(super) async fn create_ktp_upload_slot(
+    s: &IdentityServices,
+    principal: &Principal,
+    content_type: String,
+    size_bytes: u64,
+) -> Result<UploadTicket, ProfileError> {
+    files::create_upload_slot(
+        &s.pool,
+        s.clock.as_ref(),
+        &s.files,
+        UploadSlotRequest {
+            owner_account_id: principal.account_id(),
+            purpose: UploadPurpose::KtpPhoto,
+            content_type,
+            size_bytes,
+        },
+    )
+    .await
+    .map_err(ProfileError::File)
 }
 
 /// Status identitas penerima layanan milik pemanggil (AB-05).

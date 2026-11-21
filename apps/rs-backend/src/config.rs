@@ -30,6 +30,11 @@ pub struct ApiConfig {
     pub valkey_op_timeout_ms: u64,
     /// Validasi token realm `admin` untuk endpoint backoffice (ADR-011 butir 3 dan 8).
     pub admin_realm: RealmAuthConfig,
+    /// Validasi token realm `pasien` untuk endpoint `/patient/v1` (F1-T61, ADR-011 butir 3 dan 8).
+    pub patient_realm: RealmAuthConfig,
+    /// Kunci data identitas (F1-T61, KEPUTUSAN-293): OpenBao Transit untuk DEK dan kunci blind index NIK
+    /// dari OpenBao KV yang dimuat saat start (gagal cepat).
+    pub identity_keys: IdentityKeysConfig,
     /// Object storage untuk berkas (F1-T29; gambar konten F1-T93).
     pub files: FileStorageConfig,
     /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
@@ -49,6 +54,72 @@ pub struct RealmAuthConfig {
     /// Audience API ini; token wajib memuatnya. Nilai per lingkungan `[TIDAK DIKETAHUI]` sampai klien
     /// audience backoffice ditetapkan di realm sebagai kode.
     pub audience: String,
+}
+
+/// Kunci data identitas proses `api` (F1-T61, KEPUTUSAN-293, ADR-013, KEPUTUSAN-79).
+#[derive(Debug)]
+pub struct IdentityKeysConfig {
+    /// `OPENBAO_ADDR`: alamat OpenBao.
+    pub openbao_addr: String,
+    /// `OPENBAO_TOKEN`: token OpenBao proses api (identitas proses, KEPUTUSAN-79; rahasia).
+    pub openbao_token: Sensitive<String>,
+    /// `API_DEK_TRANSIT_MOUNT` (bawaan `transit`): mount Transit.
+    pub transit_mount: String,
+    /// `API_DEK_TRANSIT_KEY` (bawaan `rs-dek-kek`, skema fisik §7.3): kunci Transit KEK Ruang Sehat.
+    pub transit_key: String,
+    /// `NIK_BLIND_INDEX_KV_MOUNT` (bawaan `secret`): mount KV v2 kunci blind index NIK.
+    pub blind_index_kv_mount: String,
+    /// `NIK_BLIND_INDEX_KV_PATH`: path KV kunci blind index NIK (wajib; tanpa nilai bawaan).
+    pub blind_index_kv_path: String,
+    /// `API_DEK_CACHE_TTL_SECONDS` (1..=3600): umur DEK di cache memori. Wajib eksplisit: nilai production
+    /// belum ditetapkan dokumen mana pun (crate `crypto`, `KeyringConfig`).
+    pub dek_cache_ttl: DekCacheTtl,
+    /// `API_DEK_CACHE_CAPACITY` (1..=100000): jumlah DEK maksimum di cache. Wajib eksplisit.
+    pub dek_cache_capacity: DekCacheCapacity,
+}
+
+/// Umur cache DEK dalam detik `1..=3600`; di luar rentang = tidak valid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DekCacheTtl(u32);
+
+impl DekCacheTtl {
+    /// Nilai dalam detik.
+    pub fn seconds(self) -> u32 {
+        self.0
+    }
+}
+
+impl std::str::FromStr for DekCacheTtl {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<u32>() {
+            Ok(n) if (1..=3_600).contains(&n) => Ok(Self(n)),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Kapasitas cache DEK `1..=100000`; di luar rentang = tidak valid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DekCacheCapacity(usize);
+
+impl DekCacheCapacity {
+    /// Nilai.
+    pub fn get(self) -> usize {
+        self.0
+    }
+}
+
+impl std::str::FromStr for DekCacheCapacity {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<usize>() {
+            Ok(n) if (1..=100_000).contains(&n) => Ok(Self(n)),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Ukuran pool koneksi `1..=100`; di luar rentang = tidak valid.
@@ -90,6 +161,22 @@ impl ApiConfig {
                 issuer: env.required("AUTH_ADMIN_ISSUER")?,
                 jwks_url: env.required("AUTH_ADMIN_JWKS_URL")?,
                 audience: env.required("AUTH_ADMIN_AUDIENCE")?,
+            },
+            patient_realm: RealmAuthConfig {
+                issuer: env.required("AUTH_PATIENT_ISSUER")?,
+                jwks_url: env.required("AUTH_PATIENT_JWKS_URL")?,
+                audience: env.required("AUTH_PATIENT_AUDIENCE")?,
+            },
+            identity_keys: IdentityKeysConfig {
+                openbao_addr: env.required("OPENBAO_ADDR")?,
+                openbao_token: env.required_secret("OPENBAO_TOKEN")?,
+                transit_mount: env.optional_or("API_DEK_TRANSIT_MOUNT", "transit".to_string())?,
+                transit_key: env.optional_or("API_DEK_TRANSIT_KEY", "rs-dek-kek".to_string())?,
+                blind_index_kv_mount: env
+                    .optional_or("NIK_BLIND_INDEX_KV_MOUNT", "secret".to_string())?,
+                blind_index_kv_path: env.required("NIK_BLIND_INDEX_KV_PATH")?,
+                dek_cache_ttl: env.required("API_DEK_CACHE_TTL_SECONDS")?,
+                dek_cache_capacity: env.required("API_DEK_CACHE_CAPACITY")?,
             },
             files: FileStorageConfig::load(env)?,
             public_rate: RateBudget {
@@ -506,6 +593,20 @@ mod tests {
                 "http://127.0.0.1:18081/realms/admin/protocol/openid-connect/certs",
             ),
             ("AUTH_ADMIN_AUDIENCE", "rs-backoffice-api"),
+            (
+                "AUTH_PATIENT_ISSUER",
+                "https://auth.ruang-sehat.invalid/realms/pasien",
+            ),
+            (
+                "AUTH_PATIENT_JWKS_URL",
+                "http://127.0.0.1:18081/realms/pasien/protocol/openid-connect/certs",
+            ),
+            ("AUTH_PATIENT_AUDIENCE", "rs-patient-api"),
+            ("OPENBAO_ADDR", "http://127.0.0.1:18200"),
+            ("OPENBAO_TOKEN", "token-uji-sintetis-api"),
+            ("NIK_BLIND_INDEX_KV_PATH", "ruang-sehat/blind-index/nik"),
+            ("API_DEK_CACHE_TTL_SECONDS", "300"),
+            ("API_DEK_CACHE_CAPACITY", "64"),
             ("DEPLOY_ENV", "local"),
             ("OBJECT_STORAGE_ENDPOINT", "http://127.0.0.1:18333"),
             ("OBJECT_STORAGE_REGION", "us-east-1"),
@@ -606,6 +707,12 @@ mod tests {
         assert_eq!(c.base.http_bind.port(), 8080);
         assert_eq!(c.database_max_connections.get(), 20);
         assert_eq!(c.admin_realm.audience, "rs-backoffice-api");
+        assert_eq!(c.patient_realm.audience, "rs-patient-api");
+        assert_eq!(c.identity_keys.transit_mount, "transit");
+        assert_eq!(c.identity_keys.transit_key, "rs-dek-kek");
+        assert_eq!(c.identity_keys.blind_index_kv_mount, "secret");
+        assert_eq!(c.identity_keys.dek_cache_ttl.seconds(), 300);
+        assert_eq!(c.identity_keys.dek_cache_capacity.get(), 64);
         assert_eq!(
             c.public_rate,
             RateBudget {
@@ -617,6 +724,7 @@ mod tests {
         let dbg = format!("{c:?}");
         assert!(!dbg.contains("postgres://"), "{dbg}");
         assert!(!dbg.contains("0123456789abcdef"), "{dbg}");
+        assert!(!dbg.contains("token-uji-sintetis-api"), "{dbg}");
     }
 
     #[test]
@@ -638,6 +746,14 @@ mod tests {
             "AUTH_ADMIN_ISSUER",
             "AUTH_ADMIN_JWKS_URL",
             "AUTH_ADMIN_AUDIENCE",
+            "AUTH_PATIENT_ISSUER",
+            "AUTH_PATIENT_JWKS_URL",
+            "AUTH_PATIENT_AUDIENCE",
+            "OPENBAO_ADDR",
+            "OPENBAO_TOKEN",
+            "NIK_BLIND_INDEX_KV_PATH",
+            "API_DEK_CACHE_TTL_SECONDS",
+            "API_DEK_CACHE_CAPACITY",
             "OBJECT_STORAGE_ENDPOINT",
         ] {
             let pairs: Vec<(&str, &str)> = [
@@ -646,6 +762,14 @@ mod tests {
                 ("AUTH_ADMIN_ISSUER", "https://i"),
                 ("AUTH_ADMIN_JWKS_URL", "http://127.0.0.1:1/j"),
                 ("AUTH_ADMIN_AUDIENCE", "a"),
+                ("AUTH_PATIENT_ISSUER", "https://p"),
+                ("AUTH_PATIENT_JWKS_URL", "http://127.0.0.1:1/p"),
+                ("AUTH_PATIENT_AUDIENCE", "p"),
+                ("OPENBAO_ADDR", "http://127.0.0.1:1"),
+                ("OPENBAO_TOKEN", "t"),
+                ("NIK_BLIND_INDEX_KV_PATH", "rs/nik"),
+                ("API_DEK_CACHE_TTL_SECONDS", "300"),
+                ("API_DEK_CACHE_CAPACITY", "64"),
                 ("DEPLOY_ENV", "local"),
                 ("OBJECT_STORAGE_ENDPOINT", "http://127.0.0.1:18333"),
                 ("OBJECT_STORAGE_REGION", "us-east-1"),
@@ -671,6 +795,15 @@ mod tests {
             let e =
                 ApiConfig::load(&api_env(&[("API_DATABASE_MAX_CONNECTIONS", bad)])).unwrap_err();
             assert_eq!(e.name(), "API_DATABASE_MAX_CONNECTIONS", "{bad}");
+        }
+        for (k, bad) in [
+            ("API_DEK_CACHE_TTL_SECONDS", "0"),
+            ("API_DEK_CACHE_TTL_SECONDS", "3601"),
+            ("API_DEK_CACHE_CAPACITY", "0"),
+            ("API_DEK_CACHE_CAPACITY", "100001"),
+        ] {
+            let e = ApiConfig::load(&api_env(&[(k, bad)])).unwrap_err();
+            assert_eq!(e.name(), k, "{k}={bad}");
         }
     }
 

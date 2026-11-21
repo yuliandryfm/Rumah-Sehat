@@ -250,3 +250,10 @@ Format tabel per modul:
 | `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
 | --- | --- | --- | --- | --- | --- |
 | `4030101` | 403 | Permintaan tidak dapat diverifikasi | BFF web (server Next.js) menolak permintaan ke Route Handler `bff/`, "Tetap masuk", atau keluar: token CSRF tidak ada atau tidak cocok dengan sesi, atau header `Origin`/`Sec-Fetch-Site` bukan asal aplikasi (ADR-011 butir 7, threat model WEB-04). Dipancarkan BFF, bukan API Rust | EN-11 (F1-T42) | Aktif |
+
+### Modul `02` Profil dan verifikasi
+
+| `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
+| --- | --- | --- | --- | --- | --- |
+| `4090201` | 409 | Foto KTP tidak dapat diganti sampai pengajuan diputuskan atau dibatalkan | Pengajuan NIK dan foto KTP baru dikirim saat pengajuan sebelumnya masih "Menunggu verifikasi" (US-106 AC5). Pasien dapat membatalkan pengiriman lebih dulu | US-106 (F1-T61) | Aktif |
+| `4090202` | 409 | NIK ini tidak dapat dipakai untuk akun Anda. Hubungi Layanan Pelanggan bila ini NIK Anda. | NIK yang dikirim sebagai pemilik akun sudah disetujui sebagai pemilik akun lain (UP-40), **atau** pengajuan NIK sedang ditahan batas berlapis per akun, per NIK, atau per IP (US-106 AC4, KEPUTUSAN-291). Isi respons sama untuk semua sebab supaya keberadaan NIK tidak terbuka | US-106 (F1-T61) | Aktif |
