@@ -1,11 +1,13 @@
--- db/test/tabel-app-a20.sql: test tabel A20 layanan korporat K1 (F1-T98) di database ruang_sehat:
--- corporate_client (M), corporate_client_document (M), corporate_verification_decision (T).
+-- db/test/tabel-app-a20.sql: test tabel A20 layanan korporat K1 (F1-T98, F1-T99) di database ruang_sehat:
+-- corporate_client (M), corporate_client_document (M), corporate_verification_decision (T), corporate_member (M),
+-- dan perluasan A1.1 account (corporate_admin, realm korporat).
 -- Didahului db/test/lib.sql; dijalankan superuser setelah migrasi. Aturan kelas generik (T-06/T-07/T-08) di
 -- db/test/kelas-app.sql bagian A, T-01/T-20 generik di db/test/katalog.sql. Berkas ini memeriksa struktur khusus
 -- (komentar kelas, kolom, hak tabel persis, index, FK, CHECK, trigger) dan perilaku dengan role sungguhan
 -- (positif dan negatif). Satu transaksi yang di-ROLLBACK. Data sintetis.
 -- Dasar: docs/04-data-dictionary.md v1.2 §0.4, §0.6 A, A20; docs/05-physical-schema.md §1, §4.1, §4.3, §4.5,
--- §4.11, §12 (T-06, T-08, T-09); ADR-003, ADR-004, ADR-008, ADR-028; PRD v1.3 US-1901 AC7, US-1902 AC3-AC4.
+-- §4.11, §11.3, §12 (T-06, T-07, T-08, T-09); ADR-003, ADR-004, ADR-008, ADR-027 butir 3, ADR-028 butir 1; PRD v1.3
+-- US-1901 AC1/AC7, US-1902 AC3-AC4, US-1904 AC2.
 
 -- 1. Struktur.
 SELECT pg_temp.uji_nol('A20 komentar kelas: corporate_client M, corporate_client_document M (alias), corporate_verification_decision T (alias), modul korporat',
@@ -113,6 +115,72 @@ SELECT pg_temp.uji_nol('A20 trigger: Master tanpa trigger; Transaksi persis dua 
         HAVING coalesce(string_agg(tgname::text, ',' ORDER BY tgname), '') <>
                'tg_corporate_verification_decision_reject_truncate,tg_corporate_verification_decision_reject_ud'));
 
+-- 1b. Struktur F1-T99: corporate_member (M) dan perluasan account.
+SELECT pg_temp.uji_nol('A20 corporate_member: komentar kelas M modul korporat; kolom anonymize persis job_title',
+  ARRAY(SELECT coalesce(obj_description('app.corporate_member'::regclass, 'pg_class'), '<tidak ada>')
+         WHERE obj_description('app.corporate_member'::regclass, 'pg_class') IS DISTINCT FROM 'class:M module:korporat'
+        UNION ALL
+        SELECT x FROM (
+          SELECT 'kolom anonymize ' || coalesce(string_agg(attname::text, ',' ORDER BY attname), '<kosong>') AS x
+            FROM pg_attribute WHERE attrelid = 'app.corporate_member'::regclass AND attnum > 0 AND NOT attisdropped
+             AND col_description(attrelid, attnum) = 'anonymize') s
+         WHERE x <> 'kolom anonymize job_title'));
+SELECT pg_temp.uji_nol('A20 corporate_member: kolom persis (STD-M + account_id, corporate_client_id, job_title, anonymized_at)',
+  ARRAY(SELECT format('kolom %s', x) FROM (
+          SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod) || ':' || CASE WHEN attnotnull THEN 'nn' ELSE 'n' END,
+                            ',' ORDER BY attnum) AS x
+            FROM pg_attribute WHERE attrelid = 'app.corporate_member'::regclass AND attnum > 0 AND NOT attisdropped) s
+         WHERE x IS DISTINCT FROM
+           'id:uuid:nn,created_at:timestamp with time zone:nn,created_by:uuid:n,updated_at:timestamp with time zone:nn,'
+           || 'updated_by:uuid:n,deleted_at:timestamp with time zone:n,deleted_by:uuid:n,delete_reason:text:n,'
+           || 'account_id:uuid:nn,corporate_client_id:uuid:nn,job_title:text:n,anonymized_at:timestamp with time zone:n'));
+SELECT pg_temp.uji_nol('A20 corporate_member: hak tabel persis (rs_app S,I,U + pekerja privasi S) dan U per kolom pekerja privasi persis',
+  ARRAY(SELECT format('corporate_member: %s', coalesce(a.k, '<kosong>'))
+          FROM (SELECT string_agg(CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END || ':' || x.privilege_type,
+                                  ',' ORDER BY 1) AS k
+                  FROM pg_class c, aclexplode(c.relacl) x
+                 WHERE c.oid = 'app.corporate_member'::regclass AND x.grantee <> c.relowner) a
+         WHERE a.k IS DISTINCT FROM 'rs_app:INSERT,rs_app:SELECT,rs_app:UPDATE,rs_privacy_worker:SELECT'
+        UNION ALL
+        SELECT format('hak per kolom %s', k) FROM (
+          SELECT string_agg(att.attname || ':' || pg_get_userbyid(x.grantee) || ':' || x.privilege_type, ',' ORDER BY att.attname) AS k
+            FROM pg_attribute att, aclexplode(att.attacl) x
+           WHERE att.attrelid = 'app.corporate_member'::regclass AND att.attnum > 0 AND att.attacl IS NOT NULL) s
+         WHERE k IS DISTINCT FROM
+           'anonymized_at:rs_privacy_worker:UPDATE,job_title:rs_privacy_worker:UPDATE,updated_at:rs_privacy_worker:UPDATE,updated_by:rs_privacy_worker:UPDATE'));
+SELECT pg_temp.uji_nol('A20 corporate_member: index persis pk, uqp satu keanggotaan aktif per akun (M-51), ix anggota aktif per perusahaan',
+  ARRAY(SELECT pg_temp.uji_indeks('app.corporate_member', ARRAY[
+    'CREATE UNIQUE INDEX pk_corporate_member ON app.corporate_member USING btree (id)',
+    'CREATE UNIQUE INDEX uqp_corporate_member_account_id ON app.corporate_member USING btree (account_id) WHERE (deleted_at IS NULL)',
+    'CREATE INDEX ix_corporate_member_corporate_client_id ON app.corporate_member USING btree (corporate_client_id) WHERE (deleted_at IS NULL)'])));
+SELECT pg_temp.uji_nol('A20 corporate_member: FK persis, tanpa CASCADE; tanpa trigger',
+  ARRAY(SELECT x FROM (VALUES
+      ('fk_corporate_member_created_by', 'FOREIGN KEY (created_by) REFERENCES app.account(id)'),
+      ('fk_corporate_member_updated_by', 'FOREIGN KEY (updated_by) REFERENCES app.account(id)'),
+      ('fk_corporate_member_deleted_by', 'FOREIGN KEY (deleted_by) REFERENCES app.account(id)'),
+      ('fk_corporate_member_account_id', 'FOREIGN KEY (account_id) REFERENCES app.account(id)'),
+      ('fk_corporate_member_corporate_client_id', 'FOREIGN KEY (corporate_client_id) REFERENCES app.corporate_client(id)')) v(n, def),
+        LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
+                   FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = 'app.corporate_member'::regclass) z
+         WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)
+        UNION ALL
+        SELECT format('jumlah FK %s', count(*)) FROM pg_constraint
+         WHERE conrelid = 'app.corporate_member'::regclass AND contype = 'f' HAVING count(*) <> 5
+        UNION ALL
+        SELECT format('trigger %s', tgname) FROM pg_trigger WHERE tgrelid = 'app.corporate_member'::regclass AND NOT tgisinternal));
+SELECT pg_temp.uji_nol('A1.1 account (expand F1-T99): CHECK jenis, realm, dan pasangan persis termasuk corporate_admin -> korporat; full_name tidak berubah',
+  ARRAY(SELECT x FROM (VALUES
+      ('ck_account_account_type', 'CHECK ((account_type = ANY (ARRAY[''patient''::text, ''health_worker''::text, ''rs_admin''::text, ''partner_admin''::text, ''corporate_admin''::text])))'),
+      ('ck_account_idp_realm', 'CHECK ((idp_realm = ANY (ARRAY[''pasien''::text, ''nakes''::text, ''admin''::text, ''korporat''::text])))'),
+      ('ck_account_account_type_idp_realm', 'CHECK ((((account_type = ''patient''::text) AND (idp_realm = ''pasien''::text)) OR ((account_type = ''health_worker''::text) AND (idp_realm = ''nakes''::text)) OR ((account_type = ANY (ARRAY[''rs_admin''::text, ''partner_admin''::text])) AND (idp_realm = ''admin''::text)) OR ((account_type = ''corporate_admin''::text) AND (idp_realm = ''korporat''::text))))'),
+      ('ck_account_full_name', 'CHECK (((account_type <> ALL (ARRAY[''rs_admin''::text, ''partner_admin''::text])) OR (full_name IS NOT NULL)))')) v(n, def),
+        LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
+                   FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = 'app.account'::regclass) z
+         WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)
+        UNION ALL
+        SELECT format('CHECK account belum tervalidasi: %s', conname) FROM pg_constraint
+         WHERE conrelid = 'app.account'::regclass AND contype = 'c' AND NOT convalidated));
+
 -- 2. Negatif atas pemeriksa, lalu perilaku. Semua di-ROLLBACK.
 BEGIN;
 DO $$
@@ -127,6 +195,8 @@ BEGIN
       ('T-06 SELECT kolom pemutus untuk pekerja privasi (melebihi ID/FK subjek)', 'GRANT SELECT (decided_by) ON app.corporate_verification_decision TO rs_privacy_worker', kelas, 'T-06 corporate_verification_decision: SELECT per kolom rs_privacy_worker'),
       ('T-08 trigger penolak keputusan dilepas', 'DROP TRIGGER tg_corporate_verification_decision_reject_ud ON app.corporate_verification_decision', kelas, 'T-08 corporate_verification_decision'),
       ('T-08 trigger penolak keputusan dinonaktifkan', 'ALTER TABLE app.corporate_verification_decision DISABLE TRIGGER tg_corporate_verification_decision_reject_truncate', kelas, 'T-08 corporate_verification_decision'),
+      ('T-07 UPDATE kolom non-anonymize keanggotaan untuk pekerja privasi', 'GRANT UPDATE (corporate_client_id) ON app.corporate_member TO rs_privacy_worker', kelas, 'T-07 corporate_member'),
+      ('T-06 DELETE keanggotaan untuk rs_app (Master, ADR-003)', 'GRANT DELETE ON app.corporate_member TO rs_app', kelas, 'T-06 corporate_member .*lebih rs_app:DELETE'),
       ('index uqp nib tanpa WHERE deleted_at terdeteksi', 'DROP INDEX app.uqp_corporate_client_nib; CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client (nib)',
        $q$SELECT pg_temp.uji_indeks('app.corporate_client', ARRAY['CREATE UNIQUE INDEX pk_corporate_client ON app.corporate_client USING btree (id)', 'CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_corporate_client_submitted_at_pending ON app.corporate_client USING btree (submitted_at) WHERE ((deleted_at IS NULL) AND (status = ''pending_verification''::text))'])$q$,
        'index app.corporate_client kurang: .*WHERE \(deleted_at IS NULL\)')
@@ -250,6 +320,67 @@ SELECT pg_temp.uji_tolak('A20 NEG pemilik TRUNCATE keputusan ditolak trigger', '
   'TRUNCATE app.corporate_verification_decision', '42501', '^immutable_violation: TRUNCATE on app\.corporate_verification_decision rejected$');
 SELECT pg_temp.uji_tolak('A20 NEG pekerja privasi membaca keputusan (tanpa FK subjek data pribadi)', 'rs_privacy_worker_login',
   'SELECT id FROM app.corporate_verification_decision', '42501', 'permission denied for table corporate_verification_decision');
+-- account (expand F1-T99) dan corporate_member (M).
+SELECT pg_temp.uji_boleh('A1.1 rs_api membuat akun HR corporate_admin di realm korporat (ADR-027 butir 3)', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at, full_name) VALUES '
+  || '(''00000000-0000-7000-8000-0000000a2051'', ''corporate_admin'', ''korporat'', ''sub-hr-1'', ''hr1@contoh.invalid'', ''pending_activation'', now(), ''HR Sintetis Satu''), '
+  || '(''00000000-0000-7000-8000-0000000a2052'', ''corporate_admin'', ''korporat'', ''sub-hr-2'', ''hr2@contoh.invalid'', ''pending_activation'', now(), NULL)', 2);
+SELECT pg_temp.uji_tolak('A1.1 NEG corporate_admin di realm admin', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_admin'', ''admin'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now())',
+  '23514', 'ck_account_account_type_idp_realm');
+SELECT pg_temp.uji_tolak('A1.1 NEG corporate_admin di realm pasien', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_admin'', ''pasien'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now())',
+  '23514', 'ck_account_account_type_idp_realm');
+SELECT pg_temp.uji_tolak('A1.1 NEG pasien di realm korporat', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''patient'', ''korporat'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now())',
+  '23514', 'ck_account_account_type_idp_realm');
+SELECT pg_temp.uji_tolak('A1.1 NEG admin Ruang Sehat di realm korporat', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at, full_name) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''rs_admin'', ''korporat'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now(), ''X'')',
+  '23514', 'ck_account_account_type_idp_realm');
+SELECT pg_temp.uji_tolak('A1.1 NEG jenis akun di luar daftar', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_owner'', ''korporat'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now())',
+  '23514', 'ck_account_(account_type_idp_realm|account_type)');
+SELECT pg_temp.uji_tolak('A1.1 NEG subjek IdP ganda di realm korporat (akun aktif)', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_admin'', ''korporat'', ''sub-hr-1'', ''lain@contoh.invalid'', ''active'', now())',
+  '23505', 'uqp_account_idp_realm_idp_subject');
+
+SELECT pg_temp.uji_boleh('A20 rs_api mencatat keanggotaan HR pertama dengan jabatan (US-1901 AC1)', 'rs_api',
+  'INSERT INTO app.corporate_member (id, account_id, corporate_client_id, job_title) VALUES (''00000000-0000-7000-8000-0000000a2061'', ''00000000-0000-7000-8000-0000000a2051'', ''00000000-0000-7000-8000-0000000a2021'', ''Manajer SDM'')', 1);
+SELECT pg_temp.uji_boleh('A20 rs_api mencatat keanggotaan HR undangan tanpa jabatan (US-1904 AC2)', 'rs_api',
+  'INSERT INTO app.corporate_member (id, created_by, account_id, corporate_client_id) VALUES (''00000000-0000-7000-8000-0000000a2062'', ''00000000-0000-7000-8000-0000000a2051'', ''00000000-0000-7000-8000-0000000a2052'', ''00000000-0000-7000-8000-0000000a2021'')', 1);
+SELECT pg_temp.uji_tolak('A20 NEG keanggotaan aktif kedua untuk akun yang sama di perusahaan lain (ADR-028 butir 1, M-51)', 'rs_api',
+  'INSERT INTO app.corporate_member (id, account_id, corporate_client_id) VALUES (''00000000-0000-7000-8000-0000000a2063'', ''00000000-0000-7000-8000-0000000a2051'', ''00000000-0000-7000-8000-0000000a2022'')',
+  '23505', 'uqp_corporate_member_account_id');
+SELECT pg_temp.uji_tolak('A20 NEG keanggotaan aktif kedua untuk akun yang sama di perusahaan yang sama', 'rs_api',
+  'INSERT INTO app.corporate_member (id, account_id, corporate_client_id) VALUES (''00000000-0000-7000-8000-0000000a2063'', ''00000000-0000-7000-8000-0000000a2051'', ''00000000-0000-7000-8000-0000000a2021'')',
+  '23505', 'uqp_corporate_member_account_id');
+SELECT pg_temp.uji_tolak('A20 NEG keanggotaan ke perusahaan yang tidak ada', 'rs_api',
+  'INSERT INTO app.corporate_member (id, account_id, corporate_client_id) VALUES (''00000000-0000-7000-8000-0000000a2063'', ''00000000-0000-7000-8000-0000000a2001'', ''00000000-0000-7000-8000-0000000affff'')',
+  '23503', 'fk_corporate_member_corporate_client_id');
+SELECT pg_temp.uji_tolak('A20 NEG keanggotaan untuk akun yang tidak ada', 'rs_api',
+  'INSERT INTO app.corporate_member (id, account_id, corporate_client_id) VALUES (''00000000-0000-7000-8000-0000000a2063'', ''00000000-0000-7000-8000-0000000affff'', ''00000000-0000-7000-8000-0000000a2021'')',
+  '23503', 'fk_corporate_member_account_id');
+SELECT pg_temp.uji_tolak('A20 NEG jabatan kosong', 'rs_api',
+  'UPDATE app.corporate_member SET job_title = '' '' WHERE id = ''00000000-0000-7000-8000-0000000a2061''', '23514', 'ck_corporate_member_job_title_length');
+SELECT pg_temp.uji_tolak('A20 NEG pencabutan keanggotaan tanpa alasan', 'rs_api',
+  'UPDATE app.corporate_member SET deleted_at = now() WHERE id = ''00000000-0000-7000-8000-0000000a2062''', '23514', 'ck_corporate_member_soft_delete');
+SELECT pg_temp.uji_boleh('A20 perpindahan keanggotaan: baris lama dihapus lunak lalu keanggotaan baru di perusahaan lain (M-51)', 'rs_api',
+  'WITH lama AS (UPDATE app.corporate_member SET deleted_at = now(), deleted_by = ''00000000-0000-7000-8000-0000000a2051'', delete_reason = ''pindah'', updated_at = now() WHERE id = ''00000000-0000-7000-8000-0000000a2062'' RETURNING account_id) '
+  || 'INSERT INTO app.corporate_member (id, account_id, corporate_client_id) SELECT ''00000000-0000-7000-8000-0000000a2063'', account_id, ''00000000-0000-7000-8000-0000000a2022'' FROM lama', 1);
+SELECT pg_temp.uji_tolak('A20 NEG rs_api DELETE keanggotaan (Master, ADR-003)', 'rs_api',
+  'DELETE FROM app.corporate_member', '42501', 'permission denied for table corporate_member');
+SELECT pg_temp.uji_tolak('A20 NEG rs_api TRUNCATE keanggotaan', 'rs_api',
+  'TRUNCATE app.corporate_member', '42501', 'permission denied for table corporate_member');
+SELECT pg_temp.uji_boleh('A20 pekerja privasi menganonimkan jabatan', 'rs_privacy_worker_login',
+  'UPDATE app.corporate_member SET job_title = NULL, anonymized_at = now(), updated_at = now(), updated_by = NULL WHERE id = ''00000000-0000-7000-8000-0000000a2061''', 1);
+SELECT pg_temp.uji_tolak('A20 NEG pekerja privasi memindahkan keanggotaan (corporate_client_id)', 'rs_privacy_worker_login',
+  'UPDATE app.corporate_member SET corporate_client_id = ''00000000-0000-7000-8000-0000000a2022'' WHERE id = ''00000000-0000-7000-8000-0000000a2061''', '42501', 'permission denied for table corporate_member');
+SELECT pg_temp.uji_tolak('A20 NEG pekerja privasi mencabut keanggotaan (deleted_at)', 'rs_privacy_worker_login',
+  'UPDATE app.corporate_member SET deleted_at = now(), delete_reason = ''x'' WHERE id = ''00000000-0000-7000-8000-0000000a2061''', '42501', 'permission denied for table corporate_member');
+SELECT pg_temp.uji_tolak('A20 NEG relay audit membaca keanggotaan', 'rs_audit_relay_login',
+  'SELECT id FROM app.corporate_member', '42501', 'permission denied for table corporate_member');
+SELECT pg_temp.uji_tolak('A20 NEG rotasi kunci membaca keanggotaan', 'rs_key_rotation',
+  'SELECT id FROM app.corporate_member', '42501', 'permission denied for table corporate_member');
 SELECT pg_temp.uji_tolak('A20 NEG perusahaan yang punya keputusan tidak dapat dihapus keras walau oleh pemilik (FK NO ACTION)', 'rs_migration',
   'DELETE FROM app.corporate_client WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23503', 'fk_');
 ROLLBACK;
@@ -257,7 +388,8 @@ ROLLBACK;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM app.corporate_client) OR EXISTS (SELECT 1 FROM app.corporate_client_document)
-     OR EXISTS (SELECT 1 FROM app.corporate_verification_decision) OR EXISTS (SELECT 1 FROM app.stored_file)
+     OR EXISTS (SELECT 1 FROM app.corporate_verification_decision) OR EXISTS (SELECT 1 FROM app.corporate_member)
+     OR EXISTS (SELECT 1 FROM app.stored_file)
      OR EXISTS (SELECT 1 FROM app.account) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a20: data uji tersisa';
   END IF;

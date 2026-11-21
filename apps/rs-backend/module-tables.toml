@@ -33,7 +33,12 @@ tables = ["cms_content"]
 # A20 layanan korporat K1 (F1-T98, F1-T99): modul Korporat (ADR-028 butir 1; belum ada baris di
 # docs/04-arsitektur.md §3, komentar kelas memakai module:korporat).
 [modules.corporate]
-tables = ["corporate_client", "corporate_client_document", "corporate_verification_decision"]
+tables = [
+  "corporate_client",
+  "corporate_client_document",
+  "corporate_verification_decision",
+  "corporate_member",
+]
 
 # reason_code (A6.7): data rujukan lintas modul tanpa pemetaan eksplisit di docs/04-arsitektur.md §3;
 # dimiliki platform (F1-T18), modul lain membacanya lewat api platform.
