@@ -20,10 +20,16 @@
 //!   `404`) dan dicatat sebagai kejadian keamanan `audit_modification_attempt` ([`is_audit_path`],
 //!   US-1504 AC2, ADR-009; F1-T68).
 //!
-//! Belum di sini (task lain): relasi penugasan dan tenant, cakupan tenant `PartnerScope`
-//! (KEPUTUSAN-128), kebijakan klien realm `integrasi` (ADR-014), realm `korporat` (F1-T86/F1-T100).
+//! - Tenant perusahaan (F1-T100, ADR-028 butir 1): akun HR realm `korporat` ([`AccountType::CorporateAdmin`])
+//!   hanya di namespace `/v1/corporate/` ([`Policy::corporate_hr`]); cakupan [`CorporateScope`] dari
+//!   keanggotaan aktif yang dibaca [`CorporateScopeResolver`] di setiap permintaan; objek perusahaan lain
+//!   `404` ([`corporate_object`]).
+//!
+//! Belum di sini (task lain): relasi penugasan, cakupan tenant `PartnerScope` (KEPUTUSAN-128), kebijakan
+//! klien realm `integrasi` (ADR-014), akses data sensitif peserta korporat (ADR-028 butir 3).
 
 mod audit_guard;
+mod corporate;
 mod denial;
 mod enforce;
 mod error;
@@ -35,6 +41,10 @@ mod role;
 mod router;
 
 pub use audit_guard::is_audit_path;
+pub use corporate::{
+    CORPORATE_PATH_PREFIX, CorporateAccess, CorporateClientStatus, CorporateMembership,
+    CorporateScope, CorporateScopeResolver, MembershipFuture, corporate_object, is_corporate_path,
+};
 pub use denial::{
     ClientIp, DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DROP_REPORT_WINDOW,
     DenialAuditError, DenialAuditFuture, DenialAuditor, DenialSink, DenialSinkError, DeniedAccess,

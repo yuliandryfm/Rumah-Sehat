@@ -12,6 +12,7 @@
 //! dalamnya tidak pernah keluar, penambahan itu menjadi galat compile. Test arsitektur (aturan
 //! `router-bypass`, crate arch-check) menolak pembuatan router axum sendiri di `apps/*/src`.
 
+use crate::corporate::{CorporateScopeResolver, is_corporate_path};
 use crate::denial::DenialSink;
 use crate::enforce::{EnforcerState, deny_fallback, enforce};
 use crate::error::PolicySetupError;
@@ -44,6 +45,7 @@ pub(crate) type Authentication = (
 #[derive(Clone)]
 pub struct Enforcement {
     authentication: Option<Authentication>,
+    corporate: Option<Arc<dyn CorporateScopeResolver>>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
@@ -53,6 +55,7 @@ impl Enforcement {
     pub fn public_only(renderer: Arc<dyn ErrorRenderer>) -> Self {
         Self {
             authentication: None,
+            corporate: None,
             renderer,
         }
     }
@@ -69,8 +72,18 @@ impl Enforcement {
         let renderer = Arc::clone(auth.renderer());
         Self {
             authentication: Some((auth, resolver, sessions, denials)),
+            corporate: None,
             renderer,
         }
+    }
+
+    /// Pembaca keanggotaan aktif HR perusahaan untuk endpoint [`Policy::corporate_hr`] dan
+    /// [`Policy::corporate_hr_any_verification_state`] (F1-T100, ADR-028 butir 1). Tanpa ini, router yang
+    /// memuat endpoint HR gagal start ([`PolicySetupError::MissingCorporateScope`]).
+    #[must_use]
+    pub fn with_corporate_scopes(mut self, resolver: Arc<dyn CorporateScopeResolver>) -> Self {
+        self.corporate = Some(resolver);
+        self
     }
 }
 
@@ -184,6 +197,14 @@ where
             let Policy::Require(req) = policy else {
                 continue;
             };
+            // Namespace korporat (ADR-027 butir 2): HR hanya di /v1/corporate/, dan endpoint terautentikasi
+            // di namespace itu hanya untuk HR. Diperiksa sebelum dapat-dipenuhi supaya galatnya jelas.
+            if req.is_corporate() != is_corporate_path(path) {
+                return Err(PolicySetupError::CorporateNamespace {
+                    method: method.clone(),
+                    path: path.clone(),
+                });
+            }
             if !req.is_satisfiable() {
                 return Err(PolicySetupError::UnsatisfiablePolicy {
                     method: method.clone(),
@@ -199,11 +220,15 @@ where
                     realm: missing.as_str(),
                 });
             }
+            if req.is_corporate() && enforcement.corporate.is_none() {
+                return Err(PolicySetupError::MissingCorporateScope);
+            }
         }
 
         let state = Arc::new(EnforcerState::new(
             self.registry,
             enforcement.authentication,
+            enforcement.corporate,
             enforcement.renderer,
         ));
         let router = router

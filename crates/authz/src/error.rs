@@ -71,6 +71,16 @@ pub enum PolicySetupError {
         /// Realm.
         realm: &'static str,
     },
+    /// Endpoint HR perusahaan di luar namespace `/v1/corporate/`, atau endpoint terautentikasi di namespace
+    /// itu untuk jenis akun lain (ADR-027 butir 2).
+    CorporateNamespace {
+        /// Metode HTTP.
+        method: String,
+        /// Pola path.
+        path: String,
+    },
+    /// Ada endpoint HR perusahaan tetapi pembaca keanggotaan perusahaan tidak dipasang (ADR-028 butir 1).
+    MissingCorporateScope,
 }
 
 impl fmt::Display for PolicySetupError {
@@ -94,6 +104,14 @@ impl fmt::Display for PolicySetupError {
             Self::RealmNotConfigured { realm } => {
                 write!(f, "kebijakan membutuhkan realm {realm} yang tidak dikonfigurasi")
             }
+            Self::CorporateNamespace { method, path } => write!(
+                f,
+                "endpoint {method} {path} melanggar namespace korporat (HR hanya di /v1/corporate/, \
+                 dan namespace itu hanya untuk HR atau publik)"
+            ),
+            Self::MissingCorporateScope => f.write_str(
+                "ada endpoint HR perusahaan tetapi pembaca keanggotaan perusahaan tidak dipasang",
+            ),
         }
     }
 }

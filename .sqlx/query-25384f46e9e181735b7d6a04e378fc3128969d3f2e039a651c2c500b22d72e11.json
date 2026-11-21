@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES ($1, 'corporate_admin', 'korporat', $2, $3, 'active', now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25384f46e9e181735b7d6a04e378fc3128969d3f2e039a651c2c500b22d72e11"
+}

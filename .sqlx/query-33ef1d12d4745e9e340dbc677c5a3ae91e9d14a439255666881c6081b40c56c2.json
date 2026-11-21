@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.id AS corporate_member_id, m.corporate_client_id, c.status AS client_status FROM app.corporate_member m JOIN app.corporate_client c ON c.id = m.corporate_client_id WHERE m.account_id = $1 AND m.deleted_at IS NULL AND c.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "corporate_member_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_member",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "corporate_client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_member",
+            "name": "corporate_client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "client_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "33ef1d12d4745e9e340dbc677c5a3ae91e9d14a439255666881c6081b40c56c2"
+}

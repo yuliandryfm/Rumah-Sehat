@@ -1,7 +1,8 @@
 //! Jenis akun dan sub-peran admin Ruang Sehat. Kode sama dengan CHECK di migrasi
 //! `db/migrations/app/20261119100000_identity_account.sql` (`ck_account_account_type`,
 //! `ck_account_idp_realm`, `ck_account_account_type_idp_realm`, `ck_account_status`,
-//! `ck_rs_admin_role_sub_role`).
+//! `ck_rs_admin_role_sub_role`), diperluas `db/migrations/app/20261123110000_corporate_member_account_korporat.sql`
+//! (`corporate_admin` di realm `korporat`, F1-T99).
 
 use authn::Realm;
 use std::fmt;
@@ -17,6 +18,9 @@ pub enum AccountType {
     RsAdmin,
     /// Admin rekanan (realm `admin`).
     PartnerAdmin,
+    /// HR perusahaan (realm `korporat`, ADR-027 butir 3). Selalu dibatasi cakupan perusahaan
+    /// ([`crate::CorporateScope`], ADR-028 butir 1).
+    CorporateAdmin,
 }
 
 impl AccountType {
@@ -27,6 +31,7 @@ impl AccountType {
             Self::HealthWorker => "health_worker",
             Self::RsAdmin => "rs_admin",
             Self::PartnerAdmin => "partner_admin",
+            Self::CorporateAdmin => "corporate_admin",
         }
     }
 
@@ -37,6 +42,7 @@ impl AccountType {
             "health_worker" => Some(Self::HealthWorker),
             "rs_admin" => Some(Self::RsAdmin),
             "partner_admin" => Some(Self::PartnerAdmin),
+            "corporate_admin" => Some(Self::CorporateAdmin),
             _ => None,
         }
     }
@@ -47,6 +53,7 @@ impl AccountType {
             Self::Patient => Realm::Pasien,
             Self::HealthWorker => Realm::Nakes,
             Self::RsAdmin | Self::PartnerAdmin => Realm::Admin,
+            Self::CorporateAdmin => Realm::Korporat,
         }
     }
 }
@@ -177,6 +184,7 @@ mod tests {
             AccountType::HealthWorker,
             AccountType::RsAdmin,
             AccountType::PartnerAdmin,
+            AccountType::CorporateAdmin,
         ] {
             assert_eq!(AccountType::parse(t.as_str()), Some(t));
         }
@@ -198,5 +206,6 @@ mod tests {
         assert_eq!(AccountType::HealthWorker.realm(), Realm::Nakes);
         assert_eq!(AccountType::RsAdmin.realm(), Realm::Admin);
         assert_eq!(AccountType::PartnerAdmin.realm(), Realm::Admin);
+        assert_eq!(AccountType::CorporateAdmin.realm(), Realm::Korporat);
     }
 }

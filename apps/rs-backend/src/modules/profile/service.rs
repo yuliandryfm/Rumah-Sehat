@@ -121,6 +121,7 @@ pub(super) fn source_component(t: AccountType) -> SourceComponent {
         AccountType::HealthWorker => SourceComponent::PractitionerApp,
         AccountType::RsAdmin => SourceComponent::Backoffice,
         AccountType::PartnerAdmin => SourceComponent::PartnerPortal,
+        AccountType::CorporateAdmin => SourceComponent::CorporatePortal,
     }
 }
 

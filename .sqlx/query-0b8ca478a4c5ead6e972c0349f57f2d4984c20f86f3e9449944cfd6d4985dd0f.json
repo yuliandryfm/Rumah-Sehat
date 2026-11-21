@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_member (id, account_id, corporate_client_id, job_title) VALUES ($1, $2, $3, 'HR Uji')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0b8ca478a4c5ead6e972c0349f57f2d4984c20f86f3e9449944cfd6d4985dd0f"
+}

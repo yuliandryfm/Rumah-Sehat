@@ -16,14 +16,19 @@
 //!    nonaktif".
 //! 7. Jenis akun dan sub-peran admin dievaluasi: tidak diizinkan → `403` + security log
 //!    `access_denied` (`role_not_allowed`).
-//! 8. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
+//! 8. HR perusahaan (F1-T100, ADR-028 butir 1): keanggotaan aktif dibaca [`CorporateScopeResolver`] langsung
+//!    dari database: tanpa keanggotaan aktif → `401` `4010001`; perusahaan nonaktif → `401` `4010002`
+//!    (US-1904 AC5, US-1916 AC2); perusahaan belum Aktif di endpoint yang mensyaratkan Aktif → `403` +
+//!    security log; pembaca gagal → `503`. Lolos → [`crate::CorporateScope`] dipasang di extensions.
+//! 9. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
 
 use crate::audit_guard;
+use crate::corporate::{CorporateScopeResolver, decide};
 use crate::denial::ClientIp;
 use crate::policy::Policy;
 use crate::principal::Principal;
 use crate::registry::PolicyRegistry;
-use crate::role::AccountStatus;
+use crate::role::{AccountStatus, AccountType};
 use crate::router::Authentication;
 use authn::{AuthError, ErrorRenderer, RequestRenderer, missing_context_response};
 use axum::extract::{FromRequestParts, MatchedPath, Request, State};
@@ -40,6 +45,7 @@ use std::sync::Arc;
 pub(crate) struct EnforcerState {
     registry: PolicyRegistry,
     authentication: Option<Authentication>,
+    corporate: Option<Arc<dyn CorporateScopeResolver>>,
     renderer: Arc<dyn ErrorRenderer>,
 }
 
@@ -47,11 +53,13 @@ impl EnforcerState {
     pub(crate) fn new(
         registry: PolicyRegistry,
         authentication: Option<Authentication>,
+        corporate: Option<Arc<dyn CorporateScopeResolver>>,
         renderer: Arc<dyn ErrorRenderer>,
     ) -> Self {
         Self {
             registry,
             authentication,
+            corporate,
             renderer,
         }
     }
@@ -205,6 +213,44 @@ pub(crate) async fn enforce(
             AccessDenial::RoleNotAllowed,
         );
         return state.renderer.render(CommonError::Forbidden, cid);
+    }
+    if principal.account_type() == AccountType::CorporateAdmin {
+        let Some(scopes) = &state.corporate else {
+            // Dicegah pemeriksaan saat start; bila tetap terjadi, tolak.
+            tracing::error!(route = route.as_str(), "corporate_scope_not_configured");
+            return state.renderer.render(CommonError::Internal, cid);
+        };
+        let membership = match scopes.active_membership(principal.account_id()).await {
+            Ok(m) => m,
+            Err(_) => {
+                tracing::warn!(route = route.as_str(), "corporate_scope_unavailable");
+                return state.renderer.render(CommonError::Unavailable, cid);
+            }
+        };
+        match decide(
+            principal.clone(),
+            membership,
+            requirement.corporate_access(),
+        ) {
+            Ok(scope) => {
+                parts.extensions.insert(scope);
+            }
+            Err(rejection) => {
+                tracing::info!(
+                    route = route.as_str(),
+                    reason = rejection.reason,
+                    "account_rejected"
+                );
+                if rejection.error == CommonError::Forbidden {
+                    security::access_denied(
+                        Some(principal.account_id()),
+                        &route,
+                        AccessDenial::RoleNotAllowed,
+                    );
+                }
+                return state.renderer.render(rejection.error, cid);
+            }
+        }
     }
     parts.extensions.insert(ctx);
     parts.extensions.insert(principal);
