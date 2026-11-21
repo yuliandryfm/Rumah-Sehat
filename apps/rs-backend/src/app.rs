@@ -104,6 +104,7 @@ pub(crate) fn ops_router() -> PolicyRouter<AppState> {
 pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(BackofficeApiDoc::openapi())
         .merge(content_support::backoffice_router())
+        .merge(profile::backoffice_router())
 }
 
 /// Router API aplikasi pasien (`openapi/pasien.json`, awalan `/patient/v1`, KEPUTUSAN-120, realm `pasien`).
@@ -184,19 +185,20 @@ mod tests {
         }
     }
 
-    // trace: US-1802 AC4
+    // trace: US-1802 AC4 (CMS hanya sub-peran Konten), US-201 AC6 (verifikasi identitas hanya Verifikator)
     #[test]
-    fn every_backoffice_route_requires_content_sub_role_only() {
+    fn every_backoffice_route_requires_exactly_one_sub_role() {
         let router = backoffice_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 10);
+        assert_eq!(entries.len(), 16);
         for ((_method, path), policy) in entries {
             assert!(path.starts_with("/backoffice/v1/"), "{path}");
-            assert_eq!(
-                policy,
-                &Policy::rs_admin(&[authz::AdminSubRole::Content]),
-                "{path}"
-            );
+            let role = if path.starts_with("/backoffice/v1/identity-verification") {
+                authz::AdminSubRole::Verifier
+            } else {
+                authz::AdminSubRole::Content
+            };
+            assert_eq!(policy, &Policy::rs_admin(&[role]), "{path}");
         }
     }
 

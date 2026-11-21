@@ -608,3 +608,21 @@ pub async fn request_count(pool: &PgPool, care_recipient_id: Uuid) -> i64 {
 pub async fn slot_consumed_or_gone(pool: &PgPool, slot: Uuid) -> bool {
     files::slot_consumed(pool, slot).await || !files::slot_exists(pool, slot).await
 }
+
+/// NIK staf akun admin sebagai blind index versi `key_version` (US-201 AC8, KEPUTUSAN-294); jalur produksi
+/// lewat `AdminAccounts` (diuji `identity_admin_accounts`).
+pub async fn set_staff_nik(env: &Env, account_id: Uuid, nik: &str, key_version: i16) {
+    let b = env
+        .blind_index
+        .compute_with_version(&crypto::Nik::parse(nik).unwrap(), key_version)
+        .unwrap();
+    sqlx::query!(
+        "UPDATE app.account SET staff_nik_bidx = $2, staff_nik_bidx_key_version = $3 WHERE id = $1",
+        account_id,
+        &b.value[..],
+        b.key_version,
+    )
+    .execute(&env.pool)
+    .await
+    .unwrap();
+}

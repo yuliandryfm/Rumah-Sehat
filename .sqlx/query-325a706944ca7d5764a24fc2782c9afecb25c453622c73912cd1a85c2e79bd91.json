@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id AS request_id, r.care_recipient_id, r.trigger_type, r.created_at AS submitted_at, d.id AS document_id, d.document_type, d.nik_enc, d.data_key_id, cr.full_name, cr.birth_date, cr.sex, cr.is_account_owner, p.account_id AS owner_account_id, s.status, e.reason_code, e.created_at AS status_changed_at FROM app.identity_verification_request r JOIN app.identity_verification_request_state s ON s.identity_verification_request_id = r.id JOIN app.identity_verification_request_status_event e ON e.identity_verification_request_id = r.id AND e.version = s.version JOIN app.identity_document d ON d.id = r.identity_document_id JOIN app.care_recipient cr ON cr.id = r.care_recipient_id JOIN app.patient p ON p.id = cr.patient_id WHERE r.id = $1 AND cr.deleted_at IS NULL AND p.deleted_at IS NULL AND d.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "care_recipient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "care_recipient_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "trigger_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "trigger_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "submitted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "document_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "document_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "document_type"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "nik_enc",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "data_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "data_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "full_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "birth_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "birth_date"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "sex",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "sex"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "is_account_owner",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "is_account_owner"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "owner_account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_state",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "reason_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_status_event",
+            "name": "reason_code"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "status_changed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_status_event",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "325a706944ca7d5764a24fc2782c9afecb25c453622c73912cd1a85c2e79bd91"
+}

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET staff_nik_bidx = $2, staff_nik_bidx_key_version = $3, updated_at = $5, updated_by = $4 WHERE id = $1 AND account_type = 'rs_admin' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Int2",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2e1d88e069a2c2b0a62052b661e233c98e063c451f26e3b0914da7798b572238"
+}

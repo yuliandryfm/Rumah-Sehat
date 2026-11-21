@@ -11,9 +11,10 @@
 
 use super::api::{
     DOWNLOAD_URL_TTL, DownloadRequest, DownloadTicket, FILE_RECONCILE_JOB, FileAccess,
-    FileContainer, FileStorage, PublicFile, ReadinessCheck, ReconcileReport, SlotPurgeReport,
-    UPLOAD_SLOT_PURGE_BATCH, UPLOAD_SLOT_PURGE_JOB, UPLOAD_SLOT_TOMBSTONE_GRACE, UploadInstruction,
-    UploadMethod, UploadSlotRequest, UploadTicket, ValidatedUpload,
+    FileContainer, FileStorage, PublicFile, ReadinessCheck, ReasonCode, ReasonCodeUnavailable,
+    ReconcileReport, SlotPurgeReport, UPLOAD_SLOT_PURGE_BATCH, UPLOAD_SLOT_PURGE_JOB,
+    UPLOAD_SLOT_TOMBSTONE_GRACE, UploadInstruction, UploadMethod, UploadSlotRequest, UploadTicket,
+    ValidatedUpload,
 };
 use super::domain::{
     ContentRejection, FILES_PREFIX, INCOMING_PREFIX, LogicalBucket, MAX_PHOTO_BYTES, PhotoFormat,
@@ -466,6 +467,15 @@ pub(super) async fn record_stored_file(
     .await
     .map_err(db_error)?;
     Ok(id)
+}
+
+pub(super) async fn active_reason_codes(
+    conn: &mut PgConnection,
+    context: &str,
+) -> Result<Vec<ReasonCode>, ReasonCodeUnavailable> {
+    repo::active_reason_codes(conn, context)
+        .await
+        .map_err(|_| ReasonCodeUnavailable)
 }
 
 pub(super) async fn discard_validated(

@@ -69,14 +69,21 @@ SELECT pg_temp.uji_nol('A2/A6.7 tanpa hak untuk rs_audit_relay, rs_key_rotation,
                                          'app.identity_verification_request_state', 'app.account_owner_nik_registry',
                                          'app.reason_code']::regclass[]::oid[])
            AND (a.grantee = 0 OR pg_get_userbyid(a.grantee) <> 'rs_privacy_worker')));
-SELECT pg_temp.uji_nol('T-20 tidak hampa: 8 kolom terenkripsi/blind index A2 diperiksa persis',
+SELECT pg_temp.uji_nol('T-20 tidak hampa: 10 kolom terenkripsi/blind index skema app diperiksa persis (A2 + NIK staf A1.1, KEPUTUSAN-294)',
   ARRAY(SELECT x FROM (
     SELECT coalesce(string_agg(relname || '.' || k, ',' ORDER BY relname, k), '<kosong>') AS x
       FROM pg_temp.uji_t20_kolom('{app}')) s
-   WHERE x <> 'account_owner_nik_registry.nik_bidx,account_owner_nik_registry.nik_bidx_key_version,'
+   WHERE x <> 'account.staff_nik_bidx,account.staff_nik_bidx_key_version,'
+            || 'account_owner_nik_registry.nik_bidx,account_owner_nik_registry.nik_bidx_key_version,'
             || 'care_recipient.nik_bidx,care_recipient.nik_bidx_key_version,'
             || 'identity_document.nik_bidx,identity_document.nik_bidx_key_version,identity_document.nik_enc,'
             || 'identity_verification_request_status_event.note_enc'));
+
+SELECT pg_temp.uji_nol('A6.7 reason_code: daftar alasan penolakan identitas awal persis tujuh kode US-201 AC3 (migrasi data F1-T62)',
+  ARRAY(SELECT x FROM (
+    SELECT coalesce(string_agg(code, ',' ORDER BY id), '<kosong>') AS x
+      FROM app.reason_code WHERE context = 'identity_rejection' AND deleted_at IS NULL) s
+   WHERE x <> 'photo_unreadable,document_invalid,nik_mismatch,profile_mismatch,guardian_not_listed,nik_unavailable,other'));
 
 SELECT pg_temp.uji_nol('A6.7 reason_code: index persis pk, uqp (context, code) aktif',
   ARRAY(SELECT pg_temp.uji_indeks('app.reason_code', ARRAY[
@@ -196,9 +203,9 @@ RESET ROLE;
 
 -- reason_code (M, A6.7).
 SELECT pg_temp.uji_boleh('A6.7 rs_api INSERT alasan penolakan identitas', 'rs_api',
-  'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2901'', ''identity_rejection'', ''nik_unavailable'', ''Label sintetis'')', 1);
+  'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2901'', ''identity_rejection'', ''uji_alasan_sintetis'', ''Label sintetis'')', 1);
 SELECT pg_temp.uji_tolak('A6.7 NEG kode ganda dalam konteks yang sama (aktif)', 'rs_api',
-  'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2902'', ''identity_rejection'', ''nik_unavailable'', ''x'')',
+  'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2902'', ''identity_rejection'', ''uji_alasan_sintetis'', ''x'')',
   '23505', 'uqp_reason_code_context_code');
 SELECT pg_temp.uji_boleh('A6.7 kode sama di konteks lain diterima', 'rs_api',
   'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2903'', ''claim_rejection'', ''nik_unavailable'', ''x'')', 1);
@@ -460,7 +467,9 @@ BEGIN
      OR EXISTS (SELECT 1 FROM app.identity_document) OR EXISTS (SELECT 1 FROM app.identity_verification_request)
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_status_event)
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_state)
-     OR EXISTS (SELECT 1 FROM app.account_owner_nik_registry) OR EXISTS (SELECT 1 FROM app.reason_code)
+     OR EXISTS (SELECT 1 FROM app.account_owner_nik_registry)
+     -- reason_code berisi data acuan migrasi data F1-T62 (tujuh alasan identity_rejection); data uji = ID lain.
+     OR EXISTS (SELECT 1 FROM app.reason_code WHERE id::text LIKE '00000000-0000-7000-8000-%')
      OR EXISTS (SELECT 1 FROM app.data_key) OR EXISTS (SELECT 1 FROM app.stored_file) OR EXISTS (SELECT 1 FROM app.account) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a2: data uji tersisa';
   END IF;

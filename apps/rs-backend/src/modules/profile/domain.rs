@@ -11,7 +11,8 @@
 //! - Pengajuan baru diizinkan dari semua status kecuali "Menunggu verifikasi" (US-106 AC1, AC5; AB-05a a).
 //! - UP-40: NIK yang sudah disetujui sebagai pemilik akun di penerima layanan lain tidak dapat diajukan
 //!   atau disetujui sebagai pemilik akun ([`owner_nik_conflict`]); NIK anggota keluarga boleh di banyak akun.
-//! - US-201 AC8: Verifikator tidak memutuskan pengajuan milik akunnya sendiri ([`verifier_may_decide`]).
+//! - US-201 AC8: Verifikator tidak memutuskan pengajuan milik akunnya sendiri ([`verifier_may_decide`] =
+//!   pemeriksaan ID akun; penentu utama NIK staf KEPUTUSAN-294 ada di `self_decision.rs`).
 //! - US-201 AC3/AC3a: alasan penolakan dari daftar tertutup, keterangan wajib untuk `other`, ≤ 500 karakter.
 
 use status_flow::TransitionRules;

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.note_enc AS \"note_enc!\", k.container_type\n           FROM app.identity_verification_request_status_event e\n           JOIN app.data_key k ON k.id = e.note_data_key_id\n           WHERE e.identity_verification_request_id = $1 AND e.to_status = 'rejected'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "note_enc!",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_status_event",
+            "name": "note_enc"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "container_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "data_key",
+            "name": "container_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "07b1587c1a4197672156660d17939f0247cdec468d59003a23f8435e11c81bf6"
+}

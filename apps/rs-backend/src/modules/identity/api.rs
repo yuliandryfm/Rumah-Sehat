@@ -31,7 +31,7 @@ pub use super::admin_domain::{
 pub use super::admin_service::{
     AccountChangeListener, AdminAccounts, AdminActor, AdminIdentityProvider, BootstrapApproval,
     CreatedAdmin, Deactivated, IdpFailure, IdpFuture, InviteDelivery, KeycloakAdminUsers,
-    NewAdminInput, NoAccountCache,
+    NewAdminInput, NoAccountCache, StaffNikIndex, staff_nik_index,
 };
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
 pub use super::error::IdentityError;

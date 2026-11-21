@@ -153,6 +153,50 @@ pub async fn revoke_role(
     Ok(done.rows_affected() == 1)
 }
 
+/// Menyimpan (atau mengosongkan dengan `None`) blind index NIK staf akun admin (US-201 AC8,
+/// KEPUTUSAN-294). Blind index saja; NIK staf tidak pernah disimpan dalam bentuk yang dapat dibaca kembali.
+pub async fn set_staff_nik(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+    nik: Option<(&[u8], i16)>,
+    by: Option<Uuid>,
+    now: OffsetDateTime,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query!(
+        "UPDATE app.account \
+         SET staff_nik_bidx = $2, staff_nik_bidx_key_version = $3, updated_at = $5, updated_by = $4 \
+         WHERE id = $1 AND account_type = 'rs_admin' AND deleted_at IS NULL",
+        account_id,
+        nik.map(|n| n.0),
+        nik.map(|n| n.1),
+        by,
+        now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(done.rows_affected() == 1)
+}
+
+/// Blind index NIK staf akun admin aktif maupun tidak (`None` bila akun tidak ada atau tanpa NIK staf).
+pub async fn staff_nik(
+    pool: &sqlx::PgPool,
+    account_id: Uuid,
+) -> Result<Option<(Vec<u8>, i16)>, sqlx::Error> {
+    let row = sqlx::query!(
+        "SELECT staff_nik_bidx, staff_nik_bidx_key_version FROM app.account \
+         WHERE id = $1 AND account_type = 'rs_admin' AND deleted_at IS NULL",
+        account_id,
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(
+        row.and_then(|r| match (r.staff_nik_bidx, r.staff_nik_bidx_key_version) {
+            (Some(b), Some(v)) => Some((b, v)),
+            _ => None,
+        }),
+    )
+}
+
 /// Menonaktifkan akun admin. `false` bila akun tidak ada atau sudah nonaktif.
 pub async fn deactivate(
     conn: &mut PgConnection,

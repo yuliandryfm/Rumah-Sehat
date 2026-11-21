@@ -148,6 +148,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backoffice/v1/identity-verification-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Daftar alasan penolakan (hanya baca; dikelola lewat migrasi data, US-201 AC3). */
+        get: operations["identity_verification_reason_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/identity-verifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Antrean pengajuan "Menunggu verifikasi", terlama lebih dulu (US-201 AC1). */
+        get: operations["identity_verification_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail pengajuan dengan NIK lengkap (US-201 AC1). Membuka detail tercatat E-05 lebih dulu. */
+        get: operations["identity_verification_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Menyetujui pengajuan (US-201 AC2, AC5, AC7). */
+        post: operations["identity_verification_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/document-photo-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * URL unduh foto dokumen berumur pendek (US-201 AC1, AC6; ADR-018 butir 3). E-05 tercatat sebelum URL
+         *     terbit; gagal mencatat = tidak ada URL.
+         */
+        post: operations["identity_verification_document_photo_url"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Menolak pengajuan dengan alasan dari daftar (US-201 AC3, AC3a, AC5; AC7 dengan `nik_unavailable`). */
+        post: operations["identity_verification_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -250,6 +355,26 @@ export interface components {
          * @enum {string}
          */
         ContentType: "banner" | "info_page" | "article" | "promo";
+        /** @description Hasil keputusan. */
+        DecisionDto: {
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            identity_verification_request_id: string;
+            /**
+             * @description Kode alasan (hanya penolakan).
+             * @example photo_unreadable
+             */
+            rejection_reason?: string | null;
+            status: components["schemas"]["RequestStatusDto"];
+        };
+        /** @description Bentuk dokumentasi respons keputusan. */
+        DecisionEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DecisionDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
         /** @description Soft delete dengan alasan wajib (ADR-003). */
         DeleteRequest: {
             /**
@@ -279,6 +404,28 @@ export interface components {
          * @enum {string}
          */
         DisplayStatus: "draft" | "scheduled" | "live" | "ended" | "archived" | "deleted";
+        /** @description URL unduh foto dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat. */
+        DocumentPhotoDto: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @example image/jpeg */
+            mime_type: string;
+            /**
+             * Format: int32
+             * @example 204800
+             */
+            size_bytes: number;
+            url: string;
+        };
+        /** @description Bentuk dokumentasi respons URL foto. */
+        DocumentPhotoEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DocumentPhotoDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
         /**
          * @description Status editorial tersimpan (`ck_cms_content_editorial_status`).
          * @enum {string}
@@ -363,6 +510,88 @@ export interface components {
             name: string;
             value: string;
         };
+        /** @description Bentuk dokumentasi respons antrean. */
+        QueueEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["QueueItemDto"][];
+            meta: components["schemas"]["MetaSchema"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /** @description Satu pengajuan di antrean (US-201 AC1). */
+        QueueItemDto: {
+            /**
+             * Format: date
+             * @example 1990-01-01
+             */
+            birth_date: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c */
+            care_recipient_id: string;
+            /**
+             * @description `ktp` | `kk`.
+             * @example ktp
+             */
+            document_type: string;
+            /** @example Pasien Sintetis */
+            full_name: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            identity_verification_request_id: string;
+            /** @description Pemilik akun (bukan anggota keluarga). */
+            is_account_owner: boolean;
+            /**
+             * @description Empat digit terakhir NIK (NIK lengkap hanya di detail).
+             * @example 0001
+             */
+            nik_last4: string;
+            /**
+             * @description `male` | `female`.
+             * @example female
+             */
+            sex: string;
+            /** Format: date-time */
+            submitted_at: string;
+            /**
+             * @description `document_submitted` | `profile_changed`.
+             * @example document_submitted
+             */
+            trigger_type: string;
+        };
+        /** @description Penolakan (US-201 AC3, AC3a). */
+        RejectRequest: {
+            /**
+             * @description Keterangan tambahan yang tampil ke pasien; wajib untuk `other`; paling panjang 500 karakter.
+             * @example Sudut kanan foto terpotong
+             */
+            note?: string | null;
+            /**
+             * @description Kode alasan dari `GET /backoffice/v1/identity-verification-reasons`.
+             * @example photo_unreadable
+             */
+            reason_code: string;
+        };
+        /** @description Satu alasan penolakan (data migrasi, US-201 AC3). */
+        RejectionReasonDto: {
+            /** @example photo_unreadable */
+            code: string;
+            /** @example Foto dokumen buram atau tidak terbaca */
+            label: string;
+        };
+        /** @description Bentuk dokumentasi respons daftar alasan. */
+        RejectionReasonsEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["RejectionReasonDto"][];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /**
+         * @description Status permintaan verifikasi untuk Verifikator.
+         * @enum {string}
+         */
+        RequestStatusDto: "pending" | "approved" | "rejected" | "cancelled";
         /** @description Jadwal tayang (US-1101 AC2). Tanpa `publish_start_at` = tayang sekarang menurut jam server. */
         ScheduleRequest: {
             /**
@@ -407,6 +636,56 @@ export interface components {
             /** @example 2010000 */
             response_code: string;
             /** @example Berhasil dibuat */
+            response_description: string;
+        };
+        /** @description Detail pengajuan dengan NIK lengkap (US-201 AC1; membuka detail tercatat E-05). */
+        VerificationDetailDto: {
+            /**
+             * Format: date
+             * @example 1990-01-01
+             */
+            birth_date: string;
+            /** @description Setuju/tolak tersedia (masih menunggu). */
+            can_decide: boolean;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c */
+            care_recipient_id: string;
+            /**
+             * Format: date-time
+             * @description Waktu keputusan (hanya bila `approved` atau `rejected`).
+             */
+            decided_at?: string | null;
+            /** @example ktp */
+            document_type: string;
+            /** @example Pasien Sintetis */
+            full_name: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            identity_verification_request_id: string;
+            is_account_owner: boolean;
+            /**
+             * @description NIK lengkap 16 digit (hanya Verifikator, PRD §3.1). Jangan disimpan atau dicatat di log klien.
+             * @example 9900000000000001
+             */
+            nik: string;
+            /**
+             * @description Kode alasan penolakan (hanya bila `rejected`).
+             * @example photo_unreadable
+             */
+            rejection_reason?: string | null;
+            /** @example female */
+            sex: string;
+            status: components["schemas"]["RequestStatusDto"];
+            /** Format: date-time */
+            submitted_at: string;
+            /** @example document_submitted */
+            trigger_type: string;
+        };
+        /** @description Bentuk dokumentasi respons detail. */
+        VerificationDetailEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["VerificationDetailDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
             response_description: string;
         };
     };
@@ -1222,6 +1501,399 @@ export interface operations {
                 };
             };
             /** @description Jadwal atau teks alternatif tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_reason_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daftar alasan penolakan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionReasonsEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_queue: {
+        parameters: {
+            query?: {
+                /** @description Cursor dari `meta.next_cursor` halaman sebelumnya (UUID). */
+                cursor?: string;
+                /** @description Jumlah item (1-100, bawaan 20). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Antrean. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Parameter tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID permintaan verifikasi (UUID). */
+                identity_verification_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detail pengajuan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationDetailEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Pengajuan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID permintaan verifikasi (UUID). */
+                identity_verification_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disetujui. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Pengajuan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090203: NIK sudah disetujui sebagai pemilik akun lain; tolak dengan alasan nik_unavailable (US-201 AC7). 4090204: pengajuan sudah diputuskan (US-201 AC5). 4090205: pemisahan tugas, pengajuan akun pasien milik Verifikator sendiri atau Verifikator tanpa NIK staf (US-201 AC8). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_document_photo_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID permintaan verifikasi (UUID). */
+                identity_verification_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description URL unduh berumur pendek. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPhotoEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Pengajuan atau berkas tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    identity_verification_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID permintaan verifikasi (UUID). */
+                identity_verification_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequest"];
+            };
+        };
+        responses: {
+            /** @description Ditolak. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Pengajuan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090204: pengajuan sudah diputuskan (US-201 AC5). 4090205: pemisahan tugas (US-201 AC8). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Alasan di luar daftar, keterangan wajib untuk other, atau lebih dari 500 karakter. */
             422: {
                 headers: {
                     [name: string]: unknown;

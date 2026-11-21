@@ -529,6 +529,7 @@ pub(super) async fn submit(
                     conn: &mut *conn,
                     request_id,
                     details: EventDetails {
+                        event_id: new_id(),
                         actor_type: "patient",
                         actor_account_id: account_id,
                         reason_code: None,
@@ -643,6 +644,7 @@ pub(super) async fn cancel(
                     conn: &mut *conn,
                     request_id: state.id,
                     details: EventDetails {
+                        event_id: new_id(),
                         actor_type: "patient",
                         actor_account_id: account_id,
                         reason_code: None,
@@ -691,7 +693,7 @@ pub(super) async fn cancel(
     .await;
 
     match result {
-        Ok(()) => identity_status_unchecked(&s.pool, care_recipient_id).await,
+        Ok(()) => identity_status_unchecked(s, care_recipient_id).await,
         Err(e) => {
             let e = audited_error(e);
             if matches!(e, ProfileError::TransitionConflict) {
@@ -746,15 +748,15 @@ pub(super) async fn status(
         Sensitivity::NonSensitive,
     )
     .await?;
-    identity_status_unchecked(&s.pool, care_recipient_id).await
+    identity_status_unchecked(s, care_recipient_id).await
 }
 
 /// Status tanpa pemeriksaan relasi: hanya dipanggil setelah relasi diperiksa di use case yang sama.
 async fn identity_status_unchecked(
-    pool: &PgPool,
+    s: &IdentityServices,
     care_recipient_id: Uuid,
 ) -> Result<IdentityStatusView, ProfileError> {
-    let row = repo::identity_status(pool, care_recipient_id)
+    let row = repo::identity_status(&s.pool, care_recipient_id)
         .await?
         .ok_or(ProfileError::NotFound)?;
     let status = row
@@ -769,7 +771,21 @@ async fn identity_status_unchecked(
         .transpose()?;
     let shown = IdentityStatus::from_effective(status)
         .ok_or(ProfileError::Internal("cancelled_effective_request"))?;
+    // US-201 AC3a: keterangan penolakan tampil ke pasien (didekripsi hanya bila status Ditolak).
+    let rejection_note = match (
+        shown,
+        row.request_id,
+        row.event_id,
+        &row.note_enc,
+        row.note_data_key_id,
+    ) {
+        (IdentityStatus::Rejected, Some(request_id), Some(event_id), Some(enc), Some(key_id)) => {
+            Some(open_status_note(s, request_id, event_id, key_id, enc).await?)
+        }
+        _ => None,
+    };
     Ok(IdentityStatusView {
+        rejection_note,
         status: shown.as_str(),
         identity_verification_request_id: row.request_id,
         rejection_reason: if shown == IdentityStatus::Rejected {
@@ -783,6 +799,38 @@ async fn identity_status_unchecked(
         can_cancel: shown == IdentityStatus::Pending
             && trigger == Some(TriggerType::DocumentSubmitted),
     })
+}
+
+/// Membuka keterangan riwayat status (DEK wadah `status_note` permintaan, AAD = baris event; F1-T62).
+async fn open_status_note(
+    s: &IdentityServices,
+    request_id: Uuid,
+    event_id: Uuid,
+    data_key_id: Uuid,
+    note_enc: &[u8],
+) -> Result<String, ProfileError> {
+    let mut conn = s.pool.acquire().await.map_err(|_| ProfileError::Database)?;
+    let record = crypto::load_data_key(&mut conn, data_key_id)
+        .await
+        .map_err(crypto_error)?
+        .ok_or(ProfileError::Internal("data_key_missing"))?;
+    drop(conn);
+    let key = s
+        .keyring
+        .open_data_key(
+            &record,
+            Container::new(ContainerType::StatusNote, request_id),
+        )
+        .await
+        .map_err(crypto_error)?;
+    let plain = key
+        .open(
+            EncryptionContext::IDENTITY_VERIFICATION_REQUEST_STATUS_EVENT_NOTE,
+            event_id,
+            note_enc,
+        )
+        .map_err(crypto_error)?;
+    String::from_utf8(plain.expose().to_vec()).map_err(|_| ProfileError::Internal("note"))
 }
 
 /// Objek penerima layanan untuk event hasil gagal yang permintaannya tidak dapat dipastikan (pembatalan

@@ -336,3 +336,18 @@ pub(super) async fn insert_stored_file(
     .await?;
     Ok(())
 }
+
+/// Kode alasan aktif satu konteks (A6.7 `reason_code`), urut ID (F1-T62).
+pub(super) async fn active_reason_codes(
+    conn: &mut PgConnection,
+    context: &str,
+) -> Result<Vec<super::api::ReasonCode>, sqlx::Error> {
+    sqlx::query_as!(
+        super::api::ReasonCode,
+        "SELECT code, label FROM app.reason_code \
+         WHERE context = $1 AND deleted_at IS NULL ORDER BY id",
+        context,
+    )
+    .fetch_all(conn)
+    .await
+}

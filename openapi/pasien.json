@@ -500,6 +500,14 @@
             "description": "Empat digit terakhir NIK permintaan efektif.",
             "example": "0001"
           },
+          "rejection_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Keterangan penolakan dari Verifikator, tampil apa adanya (hanya bila `rejected` dan diisi; paling\npanjang 500 karakter, US-201 AC3a).",
+            "example": "Sudut kanan foto terpotong"
+          },
           "rejection_reason": {
             "type": [
               "string",
