@@ -464,6 +464,12 @@ pub struct WorkerConfig {
     pub database_url: Sensitive<String>,
     /// Pengambil event Keycloak (`KEYCLOAK_ADMIN_URL`, `KEYCLOAK_EVENT_*`).
     pub keycloak_events: KeycloakEventConfig,
+    /// `WORKER_VALKEY_URL`: Valkey aplikasi yang sama dengan `API_VALKEY_URL`, untuk menyalin pencabutan sesi
+    /// dari event LOGOUT Keycloak (TD-27; rahasia). Valkey mati tidak menghentikan pengambil: pencabutan tetap
+    /// di PostgreSQL dan API memakai jalur cadangan (RT-18).
+    pub valkey_url: Sensitive<String>,
+    /// `WORKER_VALKEY_OP_TIMEOUT_MS` (bawaan `valkey::DEFAULT_OP_TIMEOUT_MS`).
+    pub valkey_op_timeout_ms: u64,
 }
 
 impl WorkerConfig {
@@ -473,6 +479,9 @@ impl WorkerConfig {
             base: BaseConfig::load(env)?,
             database_url: env.required_secret("WORKER_DATABASE_URL")?,
             keycloak_events: KeycloakEventConfig::load(env)?,
+            valkey_url: env.required_secret("WORKER_VALKEY_URL")?,
+            valkey_op_timeout_ms: env
+                .optional_or("WORKER_VALKEY_OP_TIMEOUT_MS", valkey::DEFAULT_OP_TIMEOUT_MS)?,
         })
     }
 }
@@ -817,11 +826,26 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+            (
+                "WORKER_VALKEY_URL",
+                "redis://:rahasia-valkey@127.0.0.1:16379",
+            ),
         ]);
         let c = WorkerConfig::load(&ok).unwrap();
         assert_eq!(c.keycloak_events.options().realms.len(), 2);
+        assert_eq!(c.valkey_op_timeout_ms, valkey::DEFAULT_OP_TIMEOUT_MS);
         let dbg = format!("{c:?}");
         assert!(!dbg.contains("postgres://") && !dbg.contains("rahasia"));
+        let no_valkey = EnvSource::from_pairs([
+            ("WORKER_DATABASE_URL", "postgres://x"),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "x"),
+            ("KEYCLOAK_EVENT_SECRET_ADMIN", "x"),
+        ]);
+        assert_eq!(
+            WorkerConfig::load(&no_valkey).unwrap_err().name(),
+            "WORKER_VALKEY_URL"
+        );
         let no_db = EnvSource::from_pairs([("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081")]);
         assert_eq!(
             WorkerConfig::load(&no_db).unwrap_err().name(),

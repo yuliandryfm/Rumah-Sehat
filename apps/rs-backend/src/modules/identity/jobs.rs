@@ -35,11 +35,29 @@
 //!
 //! Keterlambatan: bila putaran terakhir yang berhasil untuk suatu realm lebih tua dari ambang (bawaan 5
 //! menit, ADR-011 butir 10), security log `idp_event_pull_delayed` paling sering sekali per menit.
+//!
+//! Pencabutan sesi dari event LOGOUT (TD-27, US-103 AC4d, KEPUTUSAN-198): setiap event `LOGOUT` sukses yang
+//! membawa `sessionId` milik akun yang dikenal mencatat baris `session_revocation` (alasan `logout`) di transaksi
+//! teraudit yang sama dengan tanda terima dan E-03, lalu disalin ke Valkey setelah commit
+//! ([`AccountDirectory::publish_revocation`]). Sumber utama event itu adalah atur ulang password: formulir tema
+//! selalu mengirim `logout-sessions=on`, sehingga Keycloak mengakhiri semua sesi lain dan memancarkan satu
+//! LOGOUT per sesi (SRC-770). Token akses sesi itu yang belum kedaluwarsa ditolak paling lambat satu putaran
+//! (bawaan 60 detik) setelah event, di dalam batas AC4d 2 menit. Batas berlaku pencabutan = waktu event +
+//! [`LOGOUT_REVOCATION_TTL`] (umur token akses realm 300 detik + kelonggaran jam); event yang lebih tua dari itu
+//! tidak lagi dicabut karena semua token sesinya sudah kedaluwarsa. Event yang dibaca ulang dilewati lewat tanda
+//! terima (idempoten), dan pencatatan berulang untuk sesi yang sama tidak mempersingkat pencabutan. Setiap kali
+//! kunci pengambil diperoleh, salinan Valkey dibangun ulang dari PostgreSQL
+//! ([`AccountDirectory::rebuild_revocation_cache`], dicoba lagi tiap putaran sampai berhasil), sehingga
+//! pencabutan yang sudah commit tetapi belum sempat disalin sebelum proses mati tetap sampai ke Valkey (TD-24
+//! untuk jalur ini).
 
 use super::admin_service::{self, ActivationError};
 use super::domain::{IdpRealm, InvalidEvent, KcEvent, Mapped, RawEvent};
 use super::keycloak::{KeycloakClient, KeycloakError};
 use super::repo::{self, AccountRef};
+use super::service::{
+    AccountDirectory, RecordedRevocation, RevocationReason, record_revocation_in_tx,
+};
 use audit::{
     Actor, AuditContext, AuditErrorKind, AuditEvent, AuditedTxError, Code, EventCode, ObjectPolicy,
     ObjectRef, Outcome, Source,
@@ -64,6 +82,10 @@ pub const MAX_PAGES_PER_ROUND: usize = 200;
 pub const PAGE_SIZE_RANGE: std::ops::RangeInclusive<usize> = 1..=500;
 /// Tanda terima disimpan sekian lama di luar jendela tumpang-tindih sebelum dihapus.
 pub const RECEIPT_MARGIN: time::Duration = time::Duration::hours(1);
+/// Umur pencabutan sesi dari event LOGOUT, dihitung dari waktu event: umur token akses realm `pasien` dan
+/// `admin` (`accessTokenLifespan` 300 detik, `infra/keycloak/realms/*.json`, diperiksa
+/// `scripts/keycloak-check.sh`) ditambah 60 detik kelonggaran jam antar-node.
+pub const LOGOUT_REVOCATION_TTL: time::Duration = time::Duration::seconds(360);
 /// Jeda minimum antar-peringatan keterlambatan per realm.
 const LAG_ALERT_REPEAT: time::Duration = time::Duration::minutes(1);
 
@@ -183,6 +205,7 @@ enum TxWork {
     Duplicate,
     Db(sqlx::Error),
     Audit(AuditErrorKind),
+    Revocation,
 }
 
 impl fmt::Display for TxWork {
@@ -191,18 +214,28 @@ impl fmt::Display for TxWork {
             Self::Duplicate => f.write_str("duplikat"),
             Self::Db(_) => f.write_str("database"),
             Self::Audit(k) => write!(f, "audit {k:?}"),
+            Self::Revocation => f.write_str("pencabutan sesi"),
         }
     }
 }
 
 /// Pengambil event dengan pemantau keterlambatan per realm.
-#[derive(Debug)]
 pub struct Puller {
     options: PullOptions,
     client: Arc<KeycloakClient>,
     last_ok: HashMap<IdpRealm, OffsetDateTime>,
     last_alert: HashMap<IdpRealm, OffsetDateTime>,
     started: OffsetDateTime,
+    revocations: Option<Arc<AccountDirectory>>,
+}
+
+impl fmt::Debug for Puller {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Puller")
+            .field("options", &self.options)
+            .field("revocations", &self.revocations.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 impl Puller {
@@ -215,7 +248,16 @@ impl Puller {
             last_ok: HashMap::new(),
             last_alert: HashMap::new(),
             started,
+            revocations: None,
         }
+    }
+
+    /// Mengaktifkan penyalinan pencabutan sesi (event LOGOUT, TD-27) ke Valkey setelah commit. Tanpa ini baris
+    /// `session_revocation` tetap ditulis ke PostgreSQL (dibaca API lewat jalur cadangan atau pembangunan ulang
+    /// salinan). Proses `worker` selalu memasangnya.
+    pub fn with_revocations(mut self, directory: Arc<AccountDirectory>) -> Self {
+        self.revocations = Some(directory);
+        self
     }
 
     /// Satu putaran untuk semua realm. Galat per realm dicatat ke security log tanpa menghentikan realm
@@ -239,7 +281,16 @@ impl Puller {
                 self.last_ok
                     .insert(realm, cursor.last_pulled_at.unwrap_or(self.started));
             }
-            let result = pull_realm(lock, pool, &self.client, realm, &self.options, clock).await;
+            let result = pull_realm(
+                lock,
+                pool,
+                &self.client,
+                realm,
+                &self.options,
+                clock,
+                self.revocations.as_deref(),
+            )
+            .await;
             match &result {
                 Ok(r) => {
                     self.last_ok.insert(realm, clock.now());
@@ -298,6 +349,7 @@ pub async fn pull_realm(
     realm: IdpRealm,
     options: &PullOptions,
     clock: &dyn Clock,
+    revocations: Option<&AccountDirectory>,
 ) -> Result<RoundReport, PullError> {
     if lock.key() != RS_KEYCLOAK_EVENT_PULLER {
         return Err(PullError::WrongLock);
@@ -321,7 +373,14 @@ pub async fn pull_realm(
             .await
             .map_err(PullError::Keycloak)?;
         let n = page.events.len();
-        let last = process(pool, realm, page.events, correlation, &mut report).await?;
+        let ctx = RecordCtx {
+            pool,
+            realm,
+            correlation,
+            clock,
+            revocations,
+        };
+        let last = process(&ctx, page.events, &mut report).await?;
         match last {
             Some(t) if n >= page_size && t > from => {
                 position = position.max(t);
@@ -336,7 +395,7 @@ pub async fn pull_realm(
                 if all.events.len() >= SAME_MS_LIMIT {
                     return Err(PullError::TooManyEventsInOneMillisecond);
                 }
-                process(pool, realm, all.events, correlation, &mut report).await?;
+                process(&ctx, all.events, &mut report).await?;
                 position = position.max(t);
                 from = t.saturating_add(1);
             }
@@ -368,14 +427,22 @@ pub async fn pull_realm(
     Ok(report)
 }
 
+/// Konteks pencatatan satu putaran satu realm.
+struct RecordCtx<'a> {
+    pool: &'a PgPool,
+    realm: IdpRealm,
+    correlation: CorrelationId,
+    clock: &'a dyn Clock,
+    revocations: Option<&'a AccountDirectory>,
+}
+
 /// Memvalidasi dan mencatat satu halaman; mengembalikan waktu event terbesar.
 async fn process(
-    pool: &PgPool,
-    realm: IdpRealm,
+    ctx: &RecordCtx<'_>,
     raw: Vec<RawEvent>,
-    correlation: CorrelationId,
     report: &mut RoundReport,
 ) -> Result<Option<i64>, PullError> {
+    let realm = ctx.realm;
     let mut last = None;
     report.fetched += raw.len();
     for r in raw {
@@ -383,20 +450,28 @@ async fn process(
             .validate(realm)
             .map_err(|InvalidEvent(f)| PullError::InvalidEvent(f))?;
         last = Some(last.map_or(ev.time_ms, |l: i64| l.max(ev.time_ms)));
-        report.add(record(pool, realm, ev, correlation).await?);
+        report.add(record(ctx, ev).await?);
     }
     Ok(last)
 }
 
-/// Mencatat satu event: tanda terima + event audit dalam satu transaksi teraudit.
-async fn record(
-    pool: &PgPool,
-    realm: IdpRealm,
-    ev: KcEvent,
-    correlation: CorrelationId,
-) -> Result<RecordOutcome, PullError> {
+/// Mencatat satu event: tanda terima + event audit (+ pencabutan sesi untuk LOGOUT) dalam satu transaksi
+/// teraudit; pencabutan disalin ke Valkey setelah commit.
+async fn record(ctx: &RecordCtx<'_>, ev: KcEvent) -> Result<RecordOutcome, PullError> {
+    let (pool, realm, correlation) = (ctx.pool, ctx.realm, ctx.correlation);
     let Some(mapped) = ev.mapped else {
         return Ok(RecordOutcome::Ignored);
+    };
+    // Sesi yang diakhiri Keycloak: token akses sesi itu yang masih berlaku ditolak backend (TD-27). Batas
+    // dihitung dari waktu event; event yang lebih tua dari umur token tidak perlu dicabut lagi.
+    let now = ctx.clock.now();
+    let revoke_session = if mapped.code == EventCode::E03 && mapped.failure.is_none() {
+        ev.session_id
+            .clone()
+            .map(|sid| (sid, ev.time + LOGOUT_REVOCATION_TTL))
+            .filter(|(_, until)| *until > now)
+    } else {
+        None
     };
     // occurred_at = waktu event di server Keycloak (ADR-009 butir 6), bukan waktu pengambilan.
     let at = FixedClock::new(ev.time);
@@ -442,12 +517,23 @@ async fn record(
                     }
                 }
             }
-            Ok((account.map(|a| a.id), events))
+            let mut revoked = None;
+            if let (Some(a), Some((sid, until))) = (account.as_ref(), revoke_session) {
+                revoked = Some(
+                    record_revocation_in_tx(conn, a.id, &sid, RevocationReason::Logout, until, now)
+                        .await
+                        .map_err(|_| TxWork::Revocation)?,
+                );
+            }
+            Ok(((account.map(|a| a.id), revoked), events))
         })
     })
     .await;
     match result {
-        Ok(account_id) => {
+        Ok((account_id, revoked)) => {
+            if let Some(rec) = revoked {
+                publish(ctx.revocations, &rec).await;
+            }
             security::idp_event(
                 realm.as_str(),
                 mapped.code.as_str(),
@@ -460,8 +546,25 @@ async fn record(
         Err(AuditedTxError::Work(TxWork::Duplicate)) => Ok(RecordOutcome::Duplicate),
         Err(AuditedTxError::Work(TxWork::Db(e))) => Err(db_err(&e)),
         Err(AuditedTxError::Work(TxWork::Audit(k))) => Err(PullError::Audit(k)),
+        Err(AuditedTxError::Work(TxWork::Revocation)) => {
+            Err(PullError::Database { sqlstate: None })
+        }
         Err(AuditedTxError::Audit(e)) => Err(PullError::Audit(e.kind())),
         Err(AuditedTxError::Database { sqlstate }) => Err(PullError::Database { sqlstate }),
+    }
+}
+
+/// Menyalin pencabutan yang sudah commit ke Valkey. Gagal tidak menghentikan putaran: baris PostgreSQL sudah
+/// ada, dan `publish_revocation` sendiri mencatat galat, menghapus penanda salinan lengkap (semua proses API
+/// membaca PostgreSQL), serta mencoba ulang di latar belakang.
+async fn publish(revocations: Option<&AccountDirectory>, rec: &RecordedRevocation) {
+    match revocations {
+        Some(d) => {
+            if d.publish_revocation(rec).await.is_err() {
+                tracing::warn!("keycloak_logout_revocation_publish_deferred");
+            }
+        }
+        None => tracing::warn!("keycloak_logout_revocation_not_published"),
     }
 }
 
@@ -534,6 +637,7 @@ pub async fn run_puller(
     settings: PullerSettings,
     client: Arc<KeycloakClient>,
     clock: Arc<dyn Clock>,
+    revocations: Arc<AccountDirectory>,
 ) {
     let pool = match PgPoolOptions::new()
         .max_connections(4)
@@ -545,7 +649,8 @@ pub async fn run_puller(
             return;
         }
     };
-    let mut puller = Puller::new(settings.options.clone(), client, clock.now());
+    let mut puller =
+        Puller::new(settings.options.clone(), client, clock.now()).with_revocations(revocations);
     loop {
         if let Err(e) = session(&settings, &pool, &mut puller, clock.as_ref()).await {
             security::idp_event_pull_failed("-", e.stage());
@@ -578,7 +683,16 @@ async fn session(
             Err(_) => return Err(PullError::Database { sqlstate: None }),
         }
     };
+    // Pencabutan yang commit tetapi belum tersalin ke Valkey sebelum pengambil sebelumnya berhenti (TD-24):
+    // salinan dibangun ulang sekali per sesi kunci, dicoba lagi sebelum setiap putaran sampai berhasil.
+    let mut rebuilt = puller.revocations.is_none();
     loop {
+        if !rebuilt && let Some(d) = puller.revocations.as_deref() {
+            match d.rebuild_revocation_cache().await {
+                Ok(_) => rebuilt = true,
+                Err(_) => tracing::warn!("revocation_cache_rebuild_on_puller_start_failed"),
+            }
+        }
         puller.round(&mut lock, pool, clock).await?;
         tokio::time::sleep(settings.poll_interval).await;
     }

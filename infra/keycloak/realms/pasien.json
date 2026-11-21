@@ -4,6 +4,7 @@
   "displayName": "Ruang Sehat",
   "sslRequired": "external",
   "loginTheme": "ruang-sehat",
+  "emailTheme": "ruang-sehat",
   "internationalizationEnabled": true,
   "supportedLocales": ["id"],
   "defaultLocale": "id",
@@ -42,6 +43,7 @@
   "eventsExpiration": 604800,
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": false,
+  "eventsListeners": ["jboss-logging", "email"],
   "smtpServer": {
     "host": "$(env:RS_KC_SMTP_HOST)",
     "port": "$(env:RS_KC_SMTP_PORT)",
