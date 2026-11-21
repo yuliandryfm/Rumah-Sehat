@@ -367,7 +367,9 @@ describe("batas sesi dan pencabutan (trace: ADR-011 butir 7-8, NFR-SEC-04, KU-10
     }
     clock.advance(15 * MENIT);
     expect((await bffGet("/bff/v1/admin/akun", { "x-csrf-token": csrf })).res.status).toBe(401);
-  });
+    // 48 permintaan ber-JWE berurutan: batas waktu 5 detik bawaan terlalu ketat saat mesin dipakai
+    // banyak build paralel (gagal palsu 2026-11-21); asersi tidak berubah.
+  }, 30_000);
 
   test("sesi dicabut di server (keluar dari tab lain) → 401", async () => {
     const csrf = await login();
