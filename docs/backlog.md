@@ -55,7 +55,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | 1 (reference implementation; pemberitahuan AC2 dan AC7 di Fase 2 bersama US-1001; DoR AC terpenuhi, PRD v1.2 final) | Backlog |
+| US-201 | Verifikasi identitas (KTP/KK) | BR-004, BR-008 | Must | 1 (reference implementation; pemberitahuan AC2 dan AC7 di Fase 2 bersama US-1001; DoR AC terpenuhi, PRD v1.2 final) | Dalam pengerjaan: F1-T62 (backend Verifikator, AC1–AC3a, AC5–AC8 pemilik akun) SELESAI commit `f5d1974`; F1-T64 (panel backoffice) belum |
 | US-202 | Pendaftaran tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
 | US-203 | Verifikasi tenaga kesehatan | BR-005, BR-102 | Must | 2 | Backlog |
 | US-204 | Pemantauan masa berlaku SIP | BR-102 | Must | 2 | Backlog |
