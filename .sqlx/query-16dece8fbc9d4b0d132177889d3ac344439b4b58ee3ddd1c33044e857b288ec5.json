@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT latest_verification_request_id FROM app.care_recipient WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "latest_verification_request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "latest_verification_request_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "16dece8fbc9d4b0d132177889d3ac344439b4b58ee3ddd1c33044e857b288ec5"
+}

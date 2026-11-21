@@ -8,12 +8,17 @@ use authn::{
     Algorithm, AuthContext, AuthState, Authenticator, AuthnConfig, Backend, Realm, RealmConfig,
 };
 use authz::{DenialSink, PrincipalResolver, ResolveFuture, RevocationFuture, SessionGuard};
+use crypto::{
+    Container, CryptoError, DataKey, DataKeyFuture, DataKeyRecord, DataKeyring, NewDataKey,
+    NikBlindIndexKeyring, secret_bytes,
+};
 use foundation::{Clock, SystemClock};
 use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState, build_router};
 use rs_backend::http_support::EnvelopeRenderer;
 use rs_backend::modules::identity::api::AccountDirectory;
 use rs_backend::modules::platform::api::{FileStorage, FileStorageConfig, ReadinessCheck};
+use rs_backend::modules::profile::api::IdentityServices;
 use rs_backend::rate_limit::{RateBudget, RateLimiter};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -29,6 +34,7 @@ pub const TYPE_BASE: &str = "https://d.example/problems";
 pub const ADMIN_ISS: &str = "https://auth.ruang-sehat.invalid/realms/admin";
 pub const ADMIN_AUD: &str = "rs-backoffice-api";
 pub const PASIEN_ISS: &str = "https://auth.ruang-sehat.invalid/realms/pasien";
+pub const PASIEN_AUD: &str = "rs-patient-api";
 
 pub fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -53,6 +59,41 @@ pub fn unused_file_storage() -> FileStorage {
         ("OBJECT_STORAGE_BUCKET_PREFIX", "rs-uji-"),
     ]);
     FileStorage::new(&FileStorageConfig::load(&env).unwrap()).unwrap()
+}
+
+/// Keyring DEK yang selalu gagal seperti OpenBao tidak terjangkau (endpoint yang tidak memakai DEK).
+pub struct UnreachableKeyring;
+
+impl DataKeyring for UnreachableKeyring {
+    fn create_data_key(&self, _container: Container) -> DataKeyFuture<'_, (NewDataKey, DataKey)> {
+        Box::pin(async { Err(CryptoError::KmsUnavailable) })
+    }
+
+    fn open_data_key<'a>(
+        &'a self,
+        _record: &'a DataKeyRecord,
+        _expected: Container,
+    ) -> DataKeyFuture<'a, DataKey> {
+        Box::pin(async { Err(CryptoError::KmsUnavailable) })
+    }
+}
+
+/// Use case identitas dengan dependensi yang tidak dipakai (test endpoint selain identitas pasien):
+/// keyring gagal, kunci blind index sintetis, Valkey tidak terjangkau.
+pub fn unused_identity_services(pool: PgPool, files: Arc<FileStorage>) -> Arc<IdentityServices> {
+    let valkey = Valkey::connect_lazy(&ValkeyConfig {
+        url: foundation::Sensitive::new("redis://127.0.0.1:9".to_string()),
+        op_timeout: std::time::Duration::from_millis(50),
+    })
+    .unwrap();
+    Arc::new(IdentityServices::new(
+        pool,
+        Arc::new(SystemClock),
+        files,
+        Arc::new(UnreachableKeyring),
+        Arc::new(NikBlindIndexKeyring::new(vec![(1, secret_bytes(vec![7u8; 32]))]).unwrap()),
+        valkey,
+    ))
 }
 
 /// Pembatas laju longgar untuk test yang tidak menguji batas laju.
@@ -86,9 +127,9 @@ impl TestKeys {
     }
 }
 
-/// Validator token realm `admin` (kunci uji) seperti konfigurasi proses `api`.
+/// Validator token realm `admin` dan `pasien` (kunci uji) seperti konfigurasi proses `api`.
 pub fn auth_state(keys: &TestKeys, clock: Arc<dyn Clock>) -> AuthState {
-    let realm = RealmConfig {
+    let admin = RealmConfig {
         realm: Realm::Admin,
         issuer: ADMIN_ISS.to_string(),
         audiences: vec![ADMIN_AUD.to_string()],
@@ -96,8 +137,16 @@ pub fn auth_state(keys: &TestKeys, clock: Arc<dyn Clock>) -> AuthState {
         authorized_parties: vec![],
         jwks: Arc::new(StaticJwks::new(jwks_document(&[keys.admin.jwk()]))),
     };
+    let pasien = RealmConfig {
+        realm: Realm::Pasien,
+        issuer: PASIEN_ISS.to_string(),
+        audiences: vec![PASIEN_AUD.to_string()],
+        algorithms: vec![Algorithm::RS256],
+        authorized_parties: vec![],
+        jwks: Arc::new(StaticJwks::new(jwks_document(&[keys.pasien.jwk()]))),
+    };
     let authenticator = Authenticator::new(
-        AuthnConfig::with_defaults(Backend::RuangSehat, vec![realm]),
+        AuthnConfig::with_defaults(Backend::RuangSehat, vec![admin, pasien]),
         clock,
     )
     .unwrap();
@@ -171,13 +220,15 @@ pub async fn spawn_app(
 pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let keys = TestKeys::generate();
+    let files = Arc::new(unused_file_storage());
     let state = AppState::new(
         TYPE_BASE,
         readiness,
         AppServices {
             pool: unreachable_pool(),
             clock: Arc::clone(&clock),
-            files: Arc::new(unused_file_storage()),
+            identity: unused_identity_services(unreachable_pool(), Arc::clone(&files)),
+            files,
             public_content_limit: roomy_limiter(),
             public_image_limit: roomy_limiter(),
         },

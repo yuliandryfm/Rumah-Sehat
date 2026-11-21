@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.identity_verification_request (id, created_by, care_recipient_id, identity_document_id, trigger_type) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "baf3a6bda4f9ed4311fce7f3c401a0e1572985427dbe299cb734d76d5d07c8e0"
+}

@@ -144,6 +144,65 @@ openapi_sinkron() { # F1-T11: spesifikasi di-commit harus identik dengan hasil g
 SCHEMATHESIS_IMAGE="schemathesis/schemathesis:4.33.4@sha256:708d934c8208a8f785bdf1b1610476e691f1efda0b7a3cb9ce7536d0f3280eec"
 ST_PID=""
 ST_TMP=""
+ST_BAO=""
+ST_BAO_ADDR=""
+
+# F1-T61 (KEPUTUSAN-293): proses api memuat kunci blind index NIK dari OpenBao KV saat start (gagal cepat,
+# pola email-relay) dan membungkus DEK lewat Transit. Backend efemeral Schemathesis karena itu memakai
+# OpenBao dev sekali pakai (image yang sama dengan compose lokal, hanya 127.0.0.1, port acak): token root,
+# kunci blind index, dan kunci Transit acak per proses, tidak pernah dicetak dan tidak lewat argumen
+# perintah. Kontainer selalu dihapus openbao_api_bersih (dipanggil schemathesis_bersih, trap).
+openbao_api_bersih() {
+  if [ -n "$ST_BAO" ]; then
+    docker rm -f "$ST_BAO" >/dev/null 2>&1 || true
+    ST_BAO=""
+  fi
+  ST_BAO_ADDR=""
+}
+
+openbao_api_mulai() { # mengisi ST_BAO, ST_BAO_ADDR, dan ST_BAO_TOKEN (diekspor untuk proses api)
+  local img port i siap=""
+  img="$(sed -n 's|^[[:space:]]*image:[[:space:]]*\(openbao/openbao:[^[:space:]]*@sha256:[0-9a-f]*\)[[:space:]]*$|\1|p' \
+    "$ROOT/infra/local/compose.yaml" | sed -n '1p')"
+  if [ -z "$img" ]; then
+    echo "image openbao (tag@digest) tidak terbaca dari infra/local/compose.yaml" >&2
+    return 1
+  fi
+  ST_BAO_TOKEN="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+  export ST_BAO_TOKEN
+  ST_BAO="rs-st-openbao-$$-$RANDOM"
+  if ! BAO_DEV_ROOT_TOKEN_ID="$ST_BAO_TOKEN" docker run -d --name "$ST_BAO" --cap-add IPC_LOCK \
+    -e BAO_DEV_ROOT_TOKEN_ID -e BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200 -p 127.0.0.1::8200 \
+    "$img" server -dev >/dev/null; then
+    echo "OpenBao dev efemeral gagal dijalankan" >&2
+    return 1
+  fi
+  i=0
+  while [ "$i" -lt 60 ]; do
+    if docker exec -e BAO_ADDR=http://127.0.0.1:8200 "$ST_BAO" bao status >/dev/null 2>&1; then
+      siap=1
+      break
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  # Kunci blind index versi 1 (32 byte acak, base64; bentuk KV crate crypto) dan kunci Transit rs-dek-kek
+  # (aes256-gcm96, skema fisik §7.3), semuanya sintetis sekali pakai.
+  if [ -z "$siap" ] || ! BAO_TOKEN="$ST_BAO_TOKEN" ST_BIDX_KEY="$(head -c 32 /dev/urandom | base64 | tr -d '\n')" \
+    docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN -e ST_BIDX_KEY "$ST_BAO" sh -c \
+      'bao secrets enable transit && bao write -f transit/keys/rs-dek-kek type=aes256-gcm96 && bao kv put secret/ruang-sehat/blind-index/nik 1="$ST_BIDX_KEY"' \
+    >/dev/null; then
+    echo "OpenBao dev efemeral tidak siap atau kunci sintetis tidak tertulis" >&2
+    docker logs --tail 20 "$ST_BAO" >&2 || true
+    return 1
+  fi
+  port="$(docker port "$ST_BAO" 8200/tcp | sed -n 's/^127\.0\.0\.1:\([0-9][0-9]*\)$/\1/p' | sed -n '1p')"
+  if [ -z "$port" ]; then
+    echo "port OpenBao dev efemeral tidak terbaca" >&2
+    return 1
+  fi
+  ST_BAO_ADDR="http://127.0.0.1:$port"
+}
 
 schemathesis_bersih() { # dipasang sebagai trap: backend efemeral selalu dimatikan apa pun hasilnya
   if [ -n "$ST_PID" ]; then
@@ -151,6 +210,7 @@ schemathesis_bersih() { # dipasang sebagai trap: backend efemeral selalu dimatik
     wait "$ST_PID" 2>/dev/null || true
     ST_PID=""
   fi
+  openbao_api_bersih
   if [ -n "$ST_TMP" ]; then
     rm -rf "$ST_TMP"
     ST_TMP=""
@@ -193,12 +253,25 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
     trap - EXIT INT TERM
     return 1
   fi
+  if ! openbao_api_mulai; then
+    schemathesis_bersih
+    trap - EXIT INT TERM
+    return 1
+  fi
   # API_VALKEY_URL menunjuk loopback yang tidak melayani: resolver akun memakai cadangan PostgreSQL (RT-18).
+  # Realm pasien (F1-T61) sama seperti realm admin: JWKS di loopback yang tidak melayani, jadi endpoint
+  # /patient/v1 selalu dijawab 401 di sini; skenario bertoken diuji test integrasi.
   API_DATABASE_URL="$RS_TEST_DB_APP_URL" \
     API_VALKEY_URL="redis://127.0.0.1:9" API_VALKEY_OP_TIMEOUT_MS=50 \
     AUTH_ADMIN_ISSUER="https://auth.ruang-sehat.invalid/realms/admin" \
     AUTH_ADMIN_JWKS_URL="http://127.0.0.1:9/realms/admin/protocol/openid-connect/certs" \
     AUTH_ADMIN_AUDIENCE="rs-backoffice-api" \
+    AUTH_PATIENT_ISSUER="https://auth.ruang-sehat.invalid/realms/pasien" \
+    AUTH_PATIENT_JWKS_URL="http://127.0.0.1:9/realms/pasien/protocol/openid-connect/certs" \
+    AUTH_PATIENT_AUDIENCE="rs-patient-api" \
+    OPENBAO_ADDR="$ST_BAO_ADDR" OPENBAO_TOKEN="$ST_BAO_TOKEN" \
+    NIK_BLIND_INDEX_KV_PATH=ruang-sehat/blind-index/nik \
+    API_DEK_CACHE_TTL_SECONDS=300 API_DEK_CACHE_CAPACITY=64 \
     DEPLOY_ENV=local OBJECT_STORAGE_ENDPOINT="http://127.0.0.1:9" OBJECT_STORAGE_REGION=us-east-1 \
     OBJECT_STORAGE_ADDRESSING=path OBJECT_STORAGE_ACCESS_KEY_ID=schemathesis-sintetis \
     OBJECT_STORAGE_SECRET_ACCESS_KEY="st-$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')" \
@@ -249,8 +322,8 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
 schemathesis_dengan_db() { # F1-T92: schemathesis_run di dalam PostgreSQL sekali pakai (scripts/db-ephemeral.sh)
   # Fungsi dan variabel yang dipakai schemathesis_run diekspor ke shell anak yang dijalankan db-ephemeral;
   # kontainer database selalu dihapus db-ephemeral (trap), backend efemeral oleh schemathesis_bersih.
-  export -f schemathesis_run schemathesis_bersih tanpa_env_git
-  export ROOT SCHEMATHESIS_IMAGE ST_PID ST_TMP
+  export -f schemathesis_run schemathesis_bersih tanpa_env_git openbao_api_mulai openbao_api_bersih
+  export ROOT SCHEMATHESIS_IMAGE ST_PID ST_TMP ST_BAO ST_BAO_ADDR
   tanpa_env_git bash scripts/db-ephemeral.sh bash -c schemathesis_run
 }
 

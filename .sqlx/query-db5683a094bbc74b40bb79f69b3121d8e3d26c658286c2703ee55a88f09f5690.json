@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT care_recipient_id FROM app.account_owner_nik_registry WHERE deleted_at IS NULL AND (nik_bidx, nik_bidx_key_version) IN (SELECT v, k FROM UNNEST($1::bytea[], $2::smallint[]) AS c(v, k)) ORDER BY created_at LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "care_recipient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account_owner_nik_registry",
+            "name": "care_recipient_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "ByteaArray",
+        "Int2Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "db5683a094bbc74b40bb79f69b3121d8e3d26c658286c2703ee55a88f09f5690"
+}

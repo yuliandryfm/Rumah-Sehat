@@ -97,14 +97,16 @@ SELECT pg_temp.uji_nol('A2.3 address: index persis pk, uqp alamat utama, ix pati
     'CREATE UNIQUE INDEX pk_address ON app.address USING btree (id)',
     'CREATE UNIQUE INDEX uqp_address_patient_id_default ON app.address USING btree (patient_id) WHERE (is_default AND (deleted_at IS NULL))',
     'CREATE INDEX ix_address_patient_id ON app.address USING btree (patient_id) WHERE (deleted_at IS NULL)'])));
-SELECT pg_temp.uji_nol('A2.4 identity_document: index persis pk, uq data_key_id, ix (care_recipient_id, created_at DESC)',
+SELECT pg_temp.uji_nol('A2.4 identity_document: index persis pk, uq data_key_id, uq (id, care_recipient_id) sasaran FK komposit (TD-08), ix (care_recipient_id, created_at DESC)',
   ARRAY(SELECT pg_temp.uji_indeks('app.identity_document', ARRAY[
     'CREATE UNIQUE INDEX pk_identity_document ON app.identity_document USING btree (id)',
     'CREATE UNIQUE INDEX uq_identity_document_data_key_id ON app.identity_document USING btree (data_key_id)',
+    'CREATE UNIQUE INDEX uq_identity_document_id_care_recipient_id ON app.identity_document USING btree (id, care_recipient_id)',
     'CREATE INDEX ix_identity_document_care_recipient_id_created_at ON app.identity_document USING btree (care_recipient_id, created_at DESC)'])));
-SELECT pg_temp.uji_nol('A2.5 identity_verification_request: index persis pk, ix (care_recipient_id, created_at DESC)',
+SELECT pg_temp.uji_nol('A2.5 identity_verification_request: index persis pk, uq (id, care_recipient_id) sasaran FK komposit (TD-08), ix (care_recipient_id, created_at DESC)',
   ARRAY(SELECT pg_temp.uji_indeks('app.identity_verification_request', ARRAY[
     'CREATE UNIQUE INDEX pk_identity_verification_request ON app.identity_verification_request USING btree (id)',
+    'CREATE UNIQUE INDEX uq_identity_verification_request_id_care_recipient_id ON app.identity_verification_request USING btree (id, care_recipient_id)',
     'CREATE INDEX ix_ivr_care_recipient_id_created_at ON app.identity_verification_request USING btree (care_recipient_id, created_at DESC)'])));
 SELECT pg_temp.uji_nol('A2.6 status_event: index persis pk, uq (request, version) AB-36, uq (request, version, to_status) sasaran FK proyeksi',
   ARRAY(SELECT pg_temp.uji_indeks('app.identity_verification_request_status_event', ARRAY[
@@ -127,7 +129,11 @@ SELECT pg_temp.uji_nol('A2 FK khusus: sirkular care_recipient -> request terkini
       ('app.identity_document', 'fk_identity_document_data_key_id', 'FOREIGN KEY (data_key_id) REFERENCES app.data_key(id)'),
       ('app.identity_document', 'fk_identity_document_file_id', 'FOREIGN KEY (file_id) REFERENCES app.stored_file(id)'),
       ('app.identity_verification_request_status_event', 'fk_ivr_status_event_note_data_key_id', 'FOREIGN KEY (note_data_key_id) REFERENCES app.data_key(id)'),
-      ('app.account_owner_nik_registry', 'fk_owner_nik_registry_identity_verification_request_id', 'FOREIGN KEY (identity_verification_request_id) REFERENCES app.identity_verification_request(id)')) v(t, n, def),
+      ('app.account_owner_nik_registry', 'fk_owner_nik_registry_identity_verification_request_id', 'FOREIGN KEY (identity_verification_request_id) REFERENCES app.identity_verification_request(id)'),
+      -- TD-08 (F1-T59): FK komposit (id, care_recipient_id) mencegah kaitan lintas penerima layanan.
+      ('app.identity_verification_request', 'fk_ivr_identity_document_id_care_recipient_id', 'FOREIGN KEY (identity_document_id, care_recipient_id) REFERENCES app.identity_document(id, care_recipient_id)'),
+      ('app.care_recipient', 'fk_care_recipient_latest_verification_request_id_id', 'FOREIGN KEY (latest_verification_request_id, id) REFERENCES app.identity_verification_request(id, care_recipient_id)'),
+      ('app.account_owner_nik_registry', 'fk_owner_nik_registry_request_id_care_recipient_id', 'FOREIGN KEY (identity_verification_request_id, care_recipient_id) REFERENCES app.identity_verification_request(id, care_recipient_id)')) v(t, n, def),
         LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
                    FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = v.t::regclass) z
          WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)));
@@ -393,6 +399,19 @@ SELECT pg_temp.uji_boleh('A2.6 pekerja privasi membaca id dan note_data_key_id r
   'SELECT id, note_data_key_id FROM app.identity_verification_request_status_event', 3);
 SELECT pg_temp.uji_tolak('A2.6 NEG pekerja privasi membaca note_enc riwayat', 'rs_privacy_worker_login',
   'SELECT note_enc FROM app.identity_verification_request_status_event', '42501', 'permission denied for table identity_verification_request_status_event');
+
+-- TD-08 (F1-T59): kaitan lintas penerima layanan ditolak FK komposit, walaupun baris rujukannya ada.
+SELECT pg_temp.uji_tolak('A2.5 NEG permintaan untuk dokumen milik penerima layanan lain (TD-08)', 'rs_api',
+  'INSERT INTO app.identity_verification_request (id, care_recipient_id, identity_document_id, trigger_type) VALUES (''00000000-0000-7000-8000-0000000a2603'', ''00000000-0000-7000-8000-0000000a2201'', ''00000000-0000-7000-8000-0000000a2502'', ''document_submitted'')',
+  '23503', 'fk_ivr_identity_document_id_care_recipient_id');
+SELECT pg_temp.uji_tolak('A2.2 NEG penunjuk status terkini ke permintaan penerima layanan lain (TD-08)', 'rs_api',
+  'UPDATE app.care_recipient SET latest_verification_request_id = ''00000000-0000-7000-8000-0000000a2602'' WHERE id = ''00000000-0000-7000-8000-0000000a2201''',
+  '23503', 'fk_care_recipient_latest_verification_request_id_id');
+SELECT pg_temp.uji_boleh('A2.2 penunjuk status terkini ke permintaannya sendiri (TD-08 positif)', 'rs_api',
+  'UPDATE app.care_recipient SET latest_verification_request_id = ''00000000-0000-7000-8000-0000000a2601'', updated_at = now() WHERE id = ''00000000-0000-7000-8000-0000000a2201''', 1);
+SELECT pg_temp.uji_tolak('A2.8 NEG registri berdasar permintaan penerima layanan lain (TD-08)', 'rs_api',
+  'INSERT INTO app.account_owner_nik_registry (id, nik_bidx, nik_bidx_key_version, care_recipient_id, identity_verification_request_id) VALUES (''00000000-0000-7000-8000-0000000a2804'', decode(repeat(''55'', 32), ''hex''), 1, ''00000000-0000-7000-8000-0000000a2201'', ''00000000-0000-7000-8000-0000000a2602'')',
+  '23503', 'fk_owner_nik_registry_request_id_care_recipient_id');
 
 -- account_owner_nik_registry (M, A2.8): UP-40 lintas akun (US-201 AC7).
 SELECT pg_temp.uji_boleh('A2.8 persetujuan pertama mencatat NIK pemilik akun', 'rs_api',

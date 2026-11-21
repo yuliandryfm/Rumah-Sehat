@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id AS request_id, d.nik_bidx, d.nik_bidx_key_version, d.nik_last4 FROM app.identity_verification_request r JOIN app.identity_verification_request_state s ON s.identity_verification_request_id = r.id JOIN app.identity_document d ON d.id = r.identity_document_id WHERE r.care_recipient_id = $1 AND r.id <> $2 AND s.status <> 'cancelled' ORDER BY r.created_at DESC, r.id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "nik_bidx",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_bidx"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "nik_bidx_key_version",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_bidx_key_version"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "nik_last4",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_last4"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "17d9595e8c888851d8a3202ee55dff10c34fc5fd0e63d056b33ddba11ab8321d"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.identity_verification_request_state SET status = 'approved', version = 2 WHERE identity_verification_request_id = $1 AND version = 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "28817271c18845256462974ef1eff8fc8a929446743f00abc2aebde2ce67b4b6"
+}

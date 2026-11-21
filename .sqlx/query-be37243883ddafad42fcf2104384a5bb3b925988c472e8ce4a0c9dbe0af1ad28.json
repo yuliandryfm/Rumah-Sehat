@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.identity_verification_request_state SET status = $2, version = $3, updated_at = now() WHERE identity_verification_request_id = $1 AND version = $3 - 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be37243883ddafad42fcf2104384a5bb3b925988c472e8ce4a0c9dbe0af1ad28"
+}
