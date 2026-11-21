@@ -2,9 +2,9 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import TidakDitemukan from "../app/not-found.tsx";
 import Galat from "../app/error.tsx";
-import { BERANDA_CONTOH } from "../konten/contoh.ts";
+import type { Konten } from "../konten/tipe.ts";
 import { SEMBILAN_HALAMAN } from "../navigasi.ts";
-import { Beranda } from "./Beranda.tsx";
+import { Beranda, type DataBeranda } from "./Beranda.tsx";
 import { KerangkaSitus } from "./KerangkaSitus.tsx";
 
 const jalur = vi.hoisted(() => ({ nilai: "/" }));
@@ -77,29 +77,29 @@ describe("KerangkaSitus: landmark dan navigasi", () => {
   });
 });
 
+const KONTEN: Konten = { content_id: "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b", content_type: "info_page", title: "Judul CMS", body: "Isi **CMS**", published_at: "2026-11-20T00:00:00Z" };
+const KOSONG: DataBeranda = { beranda: null, layanan: null, untukPerusahaan: null, artikelTerbaru: [] };
+
 describe("Beranda: heading dan penanda", () => {
-  test("tepat satu h1, h2 untuk bagian, h3 untuk kartu → hierarki tidak melompat", () => {
-    render(<Beranda konten={BERANDA_CONTOH} />);
+  test("CMS kosong: tepat satu h1, h2 per bagian, tampil [TIDAK DIKETAHUI] bukan teks karangan", () => {
+    render(<Beranda data={KOSONG} />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Layanan", "Untuk Perusahaan", "Artikel terbaru"]);
-    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(6);
-  });
-
-  test("teks yang belum diketahui tampil sebagai [TIDAK DIKETAHUI], bukan teks karangan", () => {
-    render(<Beranda konten={BERANDA_CONTOH} />);
-    expect(screen.getAllByText("[TIDAK DIKETAHUI]").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("[TIDAK DIKETAHUI]").length).toBeGreaterThanOrEqual(4);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("[TIDAK DIKETAHUI]");
   });
 
-  test("teks CMS dirender sebagai teks (React meng-escape), bukan HTML", () => {
-    const { container } = render(<Beranda konten={{ ...BERANDA_CONTOH, judulUtama: "<img src=x onerror=alert(1)>" }} />);
-    expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("<img src=x onerror=alert(1)>");
+  test("dengan konten CMS: judul dan isi tampil, artikel terbaru bertautan ke detail", () => {
+    render(<Beranda data={{ ...KOSONG, beranda: KONTEN, artikelTerbaru: [{ ...KONTEN, content_type: "article", title: "Artikel A" }] }} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Judul CMS");
+    expect(screen.getByText("CMS").tagName).toBe("STRONG");
+    expect(screen.getByRole("link", { name: "Artikel A" }).getAttribute("href")).toBe(`/artikel/${KONTEN.content_id}`);
   });
 
-  test("gambar placeholder punya teks alternatif", () => {
-    render(<Beranda konten={BERANDA_CONTOH} />);
-    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(/Placeholder gambar utama/);
+  test("teks CMS dirender sebagai teks (React meng-escape), bukan HTML", () => {
+    const { container } = render(<Beranda data={{ ...KOSONG, beranda: { ...KONTEN, title: "<img src=x onerror=alert(1)>" } }} />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("<img src=x onerror=alert(1)>");
   });
 });
 

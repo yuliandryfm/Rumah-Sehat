@@ -1,27 +1,40 @@
-import type { KlienKonten, KontenBeranda } from "./tipe.ts";
+import type { HalamanSitus, HasilDaftar, KlienKonten, Konten } from "./tipe.ts";
 
-/**
- * Data contoh untuk test dan pratinjau lokal. Bukan konten bisnis: nama enam layanan dan uraian
- * singkatnya diambil dari wireframe `docs/wireframes/s01-situs-publik.html` (UP-63); teks lain null
- * (`[TIDAK DIKETAHUI]`). Tidak pernah dipakai di produksi (lihat `index.ts`).
- */
-export const BERANDA_CONTOH: KontenBeranda = {
-  judulUtama: null,
-  kalimatPembuka: null,
-  layanan: [
-    { judul: "Konsultasi Online", uraian: "Chat dan video dengan dokter atau psikolog." },
-    { judul: "Pendaftaran Klinik", uraian: "Daftar ke klinik rekanan." },
-    { judul: "Pendaftaran Lab", uraian: "Daftar ke lab rekanan." },
-    { judul: "Home Visit", uraian: "Tenaga medis datang ke rumah." },
-    { judul: "Biaya MCU & Lab", uraian: "Informasi biaya pemeriksaan." },
-    { judul: "Belanja Produk", uraian: "Obat bebas, kecantikan, dan produk kesehatan." },
-  ],
-  ringkasanKorporat: null,
-  artikelTerbaru: [],
+const JUDUL_CONTOH: Readonly<Record<HalamanSitus, string>> = {
+  home: "Beranda",
+  about: "Tentang Kami",
+  services: "Layanan",
+  for_business: "Untuk Perusahaan",
+  partners: "Rekanan",
+  articles: "Artikel",
+  contact: "Kontak",
+  download_app: "Unduh aplikasi",
+  privacy_terms: "Kebijakan privasi & syarat",
 };
 
+/**
+ * Klien contoh untuk test dan pratinjau lokal. Bukan konten bisnis: judul hanya label navigasi, isi hanya
+ * kalimat penanda bahwa ini contoh; Beranda dan Artikel kosong supaya penanda `[TIDAK DIKETAHUI]` tampil.
+ * Tidak pernah dipakai di produksi (lihat `index.ts`).
+ */
 export class KlienKontenContoh implements KlienKonten {
-  ambilBeranda(): Promise<KontenBeranda> {
-    return Promise.resolve(BERANDA_CONTOH);
+  ambilHalaman(halaman: HalamanSitus): Promise<Konten | null> {
+    if (halaman === "home" || halaman === "articles") return Promise.resolve(null);
+    return Promise.resolve({
+      content_id: "00000000-0000-7000-8000-000000000000",
+      content_type: "info_page",
+      title: JUDUL_CONTOH[halaman],
+      body: "Isi contoh untuk pratinjau lokal. Bukan konten bisnis.",
+      published_at: "2026-01-01T00:00:00Z",
+      site_page: halaman,
+    });
+  }
+
+  ambilItem(): Promise<Konten | null> {
+    return Promise.resolve(null);
+  }
+
+  daftar(): Promise<HasilDaftar> {
+    return Promise.resolve({ item: [], kursorBerikut: null });
   }
 }
