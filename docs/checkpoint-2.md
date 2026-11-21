@@ -144,7 +144,7 @@ Setelah butir 3, user menjawab lewat Telegram (2026-11-18 10:58 UTC): "jawab ses
 | PT-53 | Developer backend/web tambahan: jumlah orang, biaya terhadap toleransi +20%, tanggal mulai pasti (target awal Januari 2027) | User/CEO | Gerbang re-plan 2026-12-11 |
 | PT-54 | Bukti identitas pengganti untuk pasien yang kehilangan perangkat authenticator, kode pemulihan, dan akses email/password sekaligus (KEPUTUSAN-204, US-207 AC5, RT-37) | User (PM), Petugas PDP | Sebelum prosedur H-05 final, sebelum go-live |
 | PT-55 | Frekuensi tinjauan akses berkala admin (US-208 AC8) | User (PM) | Sebelum go-live |
-| PT-57 | Cara sistem mengenali Verifikator yang juga pemilik akun pasien untuk US-201 AC8 (QA T-38; opsi A NIK staf ter-hash dicocokkan ke registri NIK [usulan], B email, C pernyataan staf, D hapus AC8). Ditanyakan ke user lewat Telegram 2026-11-18, belum dijawab. Memblokir hanya TC-US-201-24–26 | User | Sebelum task US-201 di Fase 1 |
+| PT-57 | Cara sistem mengenali Verifikator yang juga pemilik akun pasien untuk US-201 AC8 (QA T-38; opsi A NIK staf ter-hash dicocokkan ke registri NIK [usulan], B email, C pernyataan staf, D hapus AC8). Ditanyakan ke user lewat Telegram 2026-11-18; **dijawab A** `[USER]` 2026-11-21 (KEPUTUSAN-294). Memblokir hanya TC-US-201-24–26 | User | Sebelum task US-201 di Fase 1 |
 | PT-56 | Larangan Verifikator memutuskan pengajuan identitas akunnya sendiri (klarifikasi T-19 d). **Terjawab**: usulan default T-19 d termasuk delegasi butir 7, diterapkan sebagai US-201 AC8 | Orkestrator | Selesai |
 
 ### Tindak lanjut wajib sebelum Tahap 8

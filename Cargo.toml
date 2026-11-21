@@ -17,3 +17,13 @@ unimplemented = "deny"
 indexing_slicing = "deny"
 dbg_macro = "deny"
 disallowed_methods = "deny"
+
+# KEPUTUSAN-295: profil dev/test ringan untuk menghemat disk mesin pengembangan
+# (worktree agent paralel). Crate workspace menyimpan tabel baris saja (backtrace
+# tetap bernomor baris); dependensi tanpa info debug. Tidak memengaruhi build
+# rilis maupun isi test.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
