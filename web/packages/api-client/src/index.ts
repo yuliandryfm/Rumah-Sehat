@@ -2,9 +2,12 @@ import createClient, { type ClientOptions } from "openapi-fetch";
 import type { paths as BackofficePaths } from "./generated/backoffice.ts";
 import type { paths as OpsPaths } from "./generated/ops.ts";
 
+import type { paths as PublicPaths } from "./generated/public.ts";
+
 export type { BackofficePaths };
 export type { components as BackofficeComponents } from "./generated/backoffice.ts";
-export type { OpsPaths };
+export type { OpsPaths, PublicPaths };
+export type { components as PublicComponents } from "./generated/public.ts";
 export type { components as OpsComponents } from "./generated/ops.ts";
 
 /**
@@ -22,4 +25,9 @@ export function createOpsClient(options: ClientOptions) {
  */
 export function createBackofficeClient(options: ClientOptions) {
   return createClient<BackofficePaths>(options);
+}
+
+/** Klien bertipe untuk API publik tanpa sesi (`openapi/public.json`, `/v1/public/*`): dipakai situs publik. */
+export function createPublicClient(options: ClientOptions) {
+  return createClient<PublicPaths>(options);
 }
