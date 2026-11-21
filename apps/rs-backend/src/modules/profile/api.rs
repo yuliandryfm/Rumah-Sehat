@@ -147,8 +147,9 @@ pub async fn identity_status(
 pub async fn create_ktp_upload_slot(
     services: &IdentityServices,
     principal: &Principal,
+    route: &str,
     content_type: String,
     size_bytes: u64,
 ) -> Result<UploadTicket, ProfileError> {
-    service::create_ktp_upload_slot(services, principal, content_type, size_bytes).await
+    service::create_ktp_upload_slot(services, principal, route, content_type, size_bytes).await
 }

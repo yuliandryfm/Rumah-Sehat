@@ -32,6 +32,12 @@ pub(super) const IP_REJECTIONS_LIMIT: i64 = 10;
 pub(super) const GLOBAL_REJECTION_ALERT_PER_HOUR: i64 = 20;
 /// Umur penghitung global per jam (satu jam berjalan + jeda).
 pub(super) const GLOBAL_COUNTER_TTL: Duration = Duration::from_secs(2 * 3600);
+/// Kuota slot unggah foto KTP per akun per jendela (review F1-T61 N3). `[ASUMSI]` usulan teknis 10 per jam:
+/// cukup untuk mengulang foto beberapa kali, membatasi pembuatan slot (baris + URL bertanda tangan) massal.
+/// Angka final belum ditetapkan dokumen mana pun.
+pub(super) const KTP_UPLOAD_SLOTS_PER_WINDOW: i64 = 10;
+/// Jendela kuota slot unggah foto KTP (jendela tetap sejak permintaan pertama). `[ASUMSI]` 1 jam.
+pub(super) const KTP_UPLOAD_SLOT_WINDOW: Duration = Duration::from_secs(3600);
 
 /// Status permintaan verifikasi (`identity_verification_request_status_event.to_status`,
 /// `identity_verification_request_state.status`; CHECK di migrasi F1-T18).

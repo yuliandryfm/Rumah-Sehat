@@ -20,7 +20,10 @@ use authn::{
     Algorithm, AuthState, Authenticator, AuthnConfig, Backend, HttpJwksSource, Realm, RealmConfig,
 };
 use authz::{DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DenialSink};
-use crypto::{DataKeyring, Keyring, KeyringConfig, System, TransitConfig, TransitKek};
+use crypto::{
+    DataKeyring, KeyEncryptionKey, Keyring, KeyringConfig, System, TransitConfig, TransitKek,
+    constant_time_eq,
+};
 use foundation::{Clock, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
@@ -490,6 +493,23 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         .await
 }
 
+/// KEPUTUSAN-293 (review F1-T61): akses Transit diverifikasi saat start dengan satu putaran `datakey` lalu
+/// `decrypt` memakai kunci yang dikonfigurasi (hak yang memang dipakai proses api, KEPUTUSAN-79). Mount atau
+/// kunci salah, token tanpa hak, OpenBao tidak terjangkau, atau hasil buka yang tidak sama = start gagal.
+/// DEK percobaan tidak disimpan di mana pun dan dibuang (zeroize) saat keluar fungsi.
+async fn probe_transit<K: KeyEncryptionKey>(kek: &K) -> Result<(), ()> {
+    let generated = kek.generate_dek().await.map_err(|_| ())?;
+    let opened = kek
+        .unwrap_dek(generated.wrapped.expose(), &generated.kek_ref)
+        .await
+        .map_err(|_| ())?;
+    if constant_time_eq(opened.expose(), generated.plaintext.expose()) {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
 /// F1-T61 (KEPUTUSAN-293): keyring DEK lewat OpenBao Transit dan kunci blind index NIK dari OpenBao KV,
 /// dimuat saat start (gagal cepat, pola `email-relay`). Galat dikembalikan sebagai nama bagian saja.
 async fn identity_services(
@@ -513,6 +533,9 @@ async fn identity_services(
         },
     )
     .map_err(|_| "openbao_transit")?;
+    probe_transit(&kek)
+        .await
+        .map_err(|_| "openbao_transit_probe")?;
     let keyring = Keyring::new(
         kek,
         KeyringConfig {
@@ -567,6 +590,60 @@ async fn shutdown_signal() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crypto::{CryptoError, GeneratedDek, SecretBytes, secret_bytes};
+    use foundation::Sensitive;
+
+    /// KEK uji untuk probe Transit: `open` menentukan hasil `unwrap_dek`.
+    struct ProbeKek {
+        generate_ok: bool,
+        open: Option<Vec<u8>>,
+    }
+
+    impl KeyEncryptionKey for ProbeKek {
+        async fn generate_dek(&self) -> Result<GeneratedDek, CryptoError> {
+            if !self.generate_ok {
+                // Mount atau kunci salah / token tanpa hak: OpenBao menolak (403/404).
+                return Err(CryptoError::KmsRejected { status: 404 });
+            }
+            Ok(GeneratedDek {
+                plaintext: secret_bytes(vec![7u8; crypto::DEK_LEN]),
+                wrapped: Sensitive::new("uji:dibungkus".to_string()),
+                kek_ref: "uji-kek:v1".to_string(),
+            })
+        }
+
+        async fn unwrap_dek(&self, _w: &str, _r: &str) -> Result<SecretBytes, CryptoError> {
+            self.open
+                .clone()
+                .map(secret_bytes)
+                .ok_or(CryptoError::KmsUnavailable)
+        }
+    }
+
+    // trace: KEPUTUSAN-293 (akses Transit diverifikasi saat start; mount/kunci salah = start gagal)
+    #[tokio::test]
+    async fn transit_probe_fails_closed() {
+        let ok = ProbeKek {
+            generate_ok: true,
+            open: Some(vec![7u8; crypto::DEK_LEN]),
+        };
+        assert_eq!(probe_transit(&ok).await, Ok(()));
+        let wrong_mount_or_key = ProbeKek {
+            generate_ok: false,
+            open: None,
+        };
+        assert_eq!(probe_transit(&wrong_mount_or_key).await, Err(()));
+        let decrypt_denied = ProbeKek {
+            generate_ok: true,
+            open: None,
+        };
+        assert_eq!(probe_transit(&decrypt_denied).await, Err(()));
+        let different_key = ProbeKek {
+            generate_ok: true,
+            open: Some(vec![8u8; crypto::DEK_LEN]),
+        };
+        assert_eq!(probe_transit(&different_key).await, Err(()));
+    }
 
     fn a(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| (*s).to_string()).collect()

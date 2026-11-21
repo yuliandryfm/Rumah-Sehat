@@ -30,9 +30,9 @@
 use super::api::{IdentityServices, IdentityStatusView, SubmissionAccepted};
 use super::domain::{
     ACCOUNT_REJECTIONS_BEFORE_HOLD, DocumentType, GLOBAL_COUNTER_TTL,
-    GLOBAL_REJECTION_ALERT_PER_HOUR, IP_REJECTIONS_LIMIT, IdentityStatus, NIK_HOLD,
-    NIK_REJECTION_WINDOW, NIK_REJECTIONS_BEFORE_HOLD, TriggerType, VerificationActor,
-    VerificationRules, VerificationStatus, owner_nik_conflict,
+    GLOBAL_REJECTION_ALERT_PER_HOUR, IP_REJECTIONS_LIMIT, IdentityStatus, KTP_UPLOAD_SLOT_WINDOW,
+    KTP_UPLOAD_SLOTS_PER_WINDOW, NIK_HOLD, NIK_REJECTION_WINDOW, NIK_REJECTIONS_BEFORE_HOLD,
+    TriggerType, VerificationActor, VerificationRules, VerificationStatus, owner_nik_conflict,
 };
 use super::error::ProfileError;
 use super::repo::{self, EventDetails, IvrStatusStore, RecipientNik, RepoError};
@@ -710,12 +710,33 @@ pub(super) async fn cancel(
 /// US-106 AC3 (F1-T61): slot unggah foto KTP milik akun pemanggil. Jenis dan ukuran yang dinyatakan
 /// diperiksa di sini (`4150001`/`4130001`); isi berkas diperiksa ulang saat pengajuan (ADR-018). Slot
 /// belum terikat ke penerima layanan mana pun; relasi diperiksa saat pengajuan.
+///
+/// Kuota per akun (review F1-T61 N3) memakai pola penghitung Valkey batas NIK: jendela tetap, dihitung
+/// sebelum slot dibuat; terlampaui = `429` dan satu entri security log per jendela. Valkey tidak tersedia =
+/// gagal-tertutup (`503`).
 pub(super) async fn create_ktp_upload_slot(
     s: &IdentityServices,
     principal: &Principal,
+    route: &str,
     content_type: String,
     size_bytes: u64,
 ) -> Result<UploadTicket, ProfileError> {
+    let account_id = principal.account_id();
+    let key = format!(
+        "rs:profile:ktp-upload-slot:account:{}:count",
+        account_id.hyphenated()
+    );
+    let n = s
+        .valkey
+        .incr_with_ttl(&key, KTP_UPLOAD_SLOT_WINDOW)
+        .await
+        .map_err(|_| ProfileError::Database)?;
+    if n > KTP_UPLOAD_SLOTS_PER_WINDOW {
+        if n == KTP_UPLOAD_SLOTS_PER_WINDOW + 1 {
+            security::rate_limited(Some(account_id), route);
+        }
+        return Err(ProfileError::RateLimited);
+    }
     files::create_upload_slot(
         &s.pool,
         s.clock.as_ref(),

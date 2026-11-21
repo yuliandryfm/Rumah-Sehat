@@ -5,6 +5,7 @@
 use super::api::{IdentityStatusView, SubmissionAccepted};
 use crate::modules::platform::api::{UploadInstruction, UploadTicket};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use utoipa::ToSchema;
@@ -25,8 +26,9 @@ pub(super) struct KtpUploadSlotRequest {
     pub(super) size_bytes: u64,
 }
 
-/// Pasangan nama-nilai (field formulir POST atau header PUT).
-#[derive(Debug, Serialize, ToSchema)]
+/// Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah
+/// (rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).
+#[derive(Serialize, ToSchema)]
 pub(super) struct NameValueDto {
     pub(super) name: String,
     pub(super) value: String,
@@ -42,8 +44,9 @@ pub(super) enum UploadMethodDto {
     Put,
 }
 
-/// Slot unggah yang diterbitkan.
-#[derive(Debug, Serialize, ToSchema)]
+/// Slot unggah yang diterbitkan. `url`, `fields`, dan `headers` rahasia berumur pendek: `Debug` manual
+/// menyamarkannya (KEPUTUSAN-122).
+#[derive(Serialize, ToSchema)]
 pub(super) struct UploadSlotDto {
     #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
     pub(super) upload_slot_id: String,
@@ -55,6 +58,19 @@ pub(super) struct UploadSlotDto {
     pub(super) fields: Vec<NameValueDto>,
     /// Header wajib (PUT); kosong untuk POST.
     pub(super) headers: Vec<NameValueDto>,
+}
+
+impl fmt::Debug for UploadSlotDto {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("UploadSlotDto")
+            .field("upload_slot_id", &self.upload_slot_id)
+            .field("expires_at", &self.expires_at)
+            .field("method", &self.method)
+            .field("url", &"[REDACTED]")
+            .field("fields", &"[REDACTED]")
+            .field("headers", &"[REDACTED]")
+            .finish()
+    }
 }
 
 fn pairs(v: Vec<(String, String)>) -> Vec<NameValueDto> {
@@ -97,8 +113,8 @@ pub(super) struct UploadSlotEnvelope {
     correlation_id: Option<String>,
 }
 
-/// Pengajuan NIK dan foto KTP (US-106 AC1, AC2).
-#[derive(Debug, Deserialize, ToSchema)]
+/// Pengajuan NIK dan foto KTP (US-106 AC1, AC2). `Debug` manual tanpa NIK (KEPUTUSAN-122, ADR-005).
+#[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub(super) struct IdentitySubmissionRequest {
     /// NIK tepat 16 digit angka (US-106 AC2). Tidak pernah dikembalikan di respons atau dicatat di log.
@@ -112,6 +128,15 @@ pub(super) struct IdentitySubmissionRequest {
     /// ID slot dari `POST /patient/v1/ktp-photos/upload-slots` yang berkasnya sudah diunggah.
     #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
     pub(super) upload_slot_id: String,
+}
+
+impl fmt::Debug for IdentitySubmissionRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IdentitySubmissionRequest")
+            .field("nik", &"[REDACTED]")
+            .field("upload_slot_id", &self.upload_slot_id)
+            .finish()
+    }
 }
 
 /// Status tampilan identitas (AB-05).
@@ -236,4 +261,33 @@ pub(super) struct IdentityEnvelope {
     data: IdentityDto,
     #[schema(nullable = false)]
     correlation_id: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // trace: KEPUTUSAN-122, ADR-005 (NIK dan tanda tangan URL unggah tidak pernah ada di Debug)
+    #[test]
+    fn debug_redacts_nik_and_upload_secrets() {
+        let req = IdentitySubmissionRequest {
+            nik: "9900000000000001".to_string(),
+            upload_slot_id: "slot".to_string(),
+        };
+        let d = format!("{req:?}");
+        assert!(!d.contains("9900000000000001"), "{d}");
+        let dto = UploadSlotDto {
+            upload_slot_id: "slot".to_string(),
+            expires_at: "2030-01-01T00:00:00Z".to_string(),
+            method: UploadMethodDto::Post,
+            url: "https://rahasia.example/bucket".to_string(),
+            fields: vec![NameValueDto {
+                name: "x-amz-signature".to_string(),
+                value: "tanda-tangan-rahasia".to_string(),
+            }],
+            headers: Vec::new(),
+        };
+        let d = format!("{dto:?}");
+        assert!(!d.contains("rahasia"), "{d}");
+    }
 }

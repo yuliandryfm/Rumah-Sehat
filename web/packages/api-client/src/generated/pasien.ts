@@ -175,7 +175,7 @@ export interface components {
          * @enum {string}
          */
         IdentityStatusDto: "not_uploaded" | "pending" | "approved" | "rejected";
-        /** @description Pengajuan NIK dan foto KTP (US-106 AC1, AC2). */
+        /** @description Pengajuan NIK dan foto KTP (US-106 AC1, AC2). `Debug` manual tanpa NIK (KEPUTUSAN-122, ADR-005). */
         IdentitySubmissionRequest: {
             /**
              * @description NIK tepat 16 digit angka (US-106 AC2). Tidak pernah dikembalikan di respons atau dicatat di log.
@@ -202,7 +202,10 @@ export interface components {
              */
             size_bytes: number;
         };
-        /** @description Pasangan nama-nilai (field formulir POST atau header PUT). */
+        /**
+         * @description Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah
+         *     (rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).
+         */
         NameValueDto: {
             name: string;
             value: string;
@@ -230,7 +233,10 @@ export interface components {
          * @enum {string}
          */
         UploadMethodDto: "post" | "put";
-        /** @description Slot unggah yang diterbitkan. */
+        /**
+         * @description Slot unggah yang diterbitkan. `url`, `fields`, dan `headers` rahasia berumur pendek: `Debug` manual
+         *     menyamarkannya (KEPUTUSAN-122).
+         */
         UploadSlotDto: {
             /** Format: date-time */
             expires_at: string;
@@ -529,6 +535,15 @@ export interface operations {
             };
             /** @description Isian tidak valid. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Kuota slot unggah per akun terlampaui (4290001). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
