@@ -40,3 +40,26 @@ main:focus { outline: none; }
   .bo-top { padding: var(--s2) var(--s4); flex-wrap: wrap; }
   .bo-side { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--c-border-divider); }
 }
+
+/* CMS (F1-T95): daftar, editor, dialog, pratinjau. Hanya token; tanpa warna harfiah. */
+.bo-judul-baris { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
+.bo-bantu { color: var(--c-text-secondary); margin: 0 0 var(--s4); }
+.bo-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.bo-filter-baris { display: flex; gap: var(--s4); flex-wrap: wrap; margin-bottom: var(--s4); }
+.bo-filter { min-width: 180px; }
+.bo-tabel-bungkus { overflow-x: auto; display: flex; flex-direction: column; gap: var(--s3); }
+.bo-tabel { width: 100%; border-collapse: collapse; background: var(--c-bg-surface); }
+.bo-tabel th, .bo-tabel td { text-align: left; padding: var(--s3); border-bottom: 1px solid var(--c-border-divider); vertical-align: middle; }
+.bo-aksi { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.bo-dialog { background: var(--c-bg-surface); border: 2px solid var(--c-border-divider); border-radius: var(--r-md); padding: var(--s4); margin: var(--s4) 0; max-width: 560px; display: flex; flex-direction: column; gap: var(--s3); }
+.bo-dialog h2 { margin: 0; }
+.bo-textarea { min-height: 96px; resize: vertical; font-family: inherit; }
+.bo-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s6); align-items: start; }
+.bo-form { display: flex; flex-direction: column; gap: var(--s4); }
+.bo-fieldset { border: 1px solid var(--c-border-divider); border-radius: var(--r-md); padding: var(--s3); display: flex; flex-direction: column; gap: var(--s3); }
+.bo-pratinjau-bungkus h2 { margin: 0 0 var(--s2); }
+.bo-pratinjau { width: 100%; min-height: 360px; border: 1px solid var(--c-border-divider); border-radius: var(--r-md); background: var(--c-bg-surface); }
+.bo-galat-daftar { list-style: none; margin: 0; padding: 0; }
+@media (max-width: 767px) {
+  .bo-editor { grid-template-columns: 1fr; }
+}
