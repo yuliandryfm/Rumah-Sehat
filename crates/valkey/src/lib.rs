@@ -307,6 +307,19 @@ impl Valkey {
             .await
     }
 
+    /// `INCR key` atomik bersama `PEXPIRE key ttl` saat kunci baru dibuat (nilai 1), lewat skrip Lua
+    /// (`EVAL`): penghitung jendela tetap yang selalu berumur (F1-T60, batas NIK berlapis US-106 AC4).
+    /// Mengembalikan nilai setelah dinaikkan.
+    pub async fn incr_with_ttl(&self, key: &str, ttl: Duration) -> Result<i64, ValkeyError> {
+        const SCRIPT: &str = "local n = redis.call('INCR', KEYS[1]) \
+            if n == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end return n";
+        let mut c = self.conn.clone();
+        let mut cmd = redis::cmd("EVAL");
+        cmd.arg(SCRIPT).arg(1).arg(key).arg(ttl_ms(ttl));
+        self.bounded(async move { cmd.query_async(&mut c).await })
+            .await
+    }
+
     /// `SET key value` tanpa TTL **hanya bila** nilai `guard_key` masih `expected` (`None` = kunci tidak
     /// ada), atomik di server lewat skrip Lua (`EVAL`). `true` bila tersimpan.
     pub async fn set_persistent_if_unchanged(

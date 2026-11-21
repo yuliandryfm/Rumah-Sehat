@@ -44,6 +44,8 @@ pub enum CryptoError {
     KeyShredded,
     /// Versi kunci (misalnya `nik_bidx_key_version`) tidak dikenal di keyring.
     UnknownKeyVersion,
+    /// Baris `data_key` gagal ditulis atau dibaca (database); pesan galat database tidak dibawa (TD-03).
+    Store,
 }
 
 impl fmt::Display for CryptoError {
@@ -66,6 +68,7 @@ impl fmt::Display for CryptoError {
             Self::ContainerMismatch => "wadah DEK tidak cocok",
             Self::KeyShredded => "DEK sudah dimusnahkan",
             Self::UnknownKeyVersion => "versi kunci tidak dikenal",
+            Self::Store => "penyimpanan data_key gagal",
         };
         f.write_str(msg)
     }

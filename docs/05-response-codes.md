@@ -253,3 +253,10 @@ Format tabel per modul:
 | `4090101` | 409 | Aksi atas akun sendiri tidak diizinkan | Admin mengubah sub-peran akunnya sendiri (US-208 AC3) atau menonaktifkan akunnya sendiri (US-208 AC5) | US-208 (F1-T65) | Aktif |
 | `4090102` | 409 | Super Admin aktif terakhir tidak dapat dicabut | Sub-peran Super Admin akan dicabut atau akunnya dinonaktifkan padahal tidak ada Super Admin aktif lain (US-208 AC2) | US-208 (F1-T65) | Aktif |
 | `4090103` | 409 | Auditor aktif terakhir tidak dapat dicabut | Sub-peran Auditor akan dicabut atau akunnya dinonaktifkan padahal tidak ada Auditor aktif lain (US-208 AC7). Pemisahan tugas Auditor (AC6) memakai `4220001` dengan galat isian `sub_roles`/`auditor_exclusive` | US-208 (F1-T65) | Aktif |
+
+### Modul `02` Profil dan verifikasi
+
+| `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
+| --- | --- | --- | --- | --- | --- |
+| `4090201` | 409 | Foto KTP tidak dapat diganti sampai pengajuan diputuskan atau dibatalkan | Pengajuan NIK dan foto KTP baru dikirim saat pengajuan sebelumnya masih "Menunggu verifikasi" (US-106 AC5). Pasien dapat membatalkan pengiriman lebih dulu | US-106 (F1-T61) | Aktif |
+| `4090202` | 409 | NIK ini tidak dapat dipakai untuk akun Anda. Hubungi Layanan Pelanggan bila ini NIK Anda. | NIK yang dikirim sebagai pemilik akun sudah disetujui sebagai pemilik akun lain (UP-40), **atau** pengajuan NIK sedang ditahan batas berlapis per akun, per NIK, atau per IP (US-106 AC4, KEPUTUSAN-291). Isi respons sama untuk semua sebab supaya keberadaan NIK tidak terbuka | US-106 (F1-T61) | Aktif |

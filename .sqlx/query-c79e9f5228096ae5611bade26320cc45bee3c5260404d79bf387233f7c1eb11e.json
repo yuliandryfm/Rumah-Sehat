@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.identity_verification_request_status_event (id, identity_verification_request_id, version, from_status, to_status, actor_type, correlation_id) VALUES ($1, $2, 2, 'pending', 'approved', 'rs_admin', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c79e9f5228096ae5611bade26320cc45bee3c5260404d79bf387233f7c1eb11e"
+}

@@ -91,6 +91,10 @@ impl Fixture {
             AppServices {
                 pool: pool.clone(),
                 clock: clock.clone(),
+                identity: common::unused_identity_services(
+                    pool.clone(),
+                    Arc::new(common::unused_file_storage()),
+                ),
                 files: Arc::new(common::unused_file_storage()),
                 public_content_limit: common::roomy_limiter(),
                 public_image_limit: common::roomy_limiter(),
