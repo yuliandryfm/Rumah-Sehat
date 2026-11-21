@@ -5,8 +5,8 @@
 //! yang sama dengan application log. Layer ([`crate::log`]) merutekan target [`SECURITY_TARGET`] ke
 //! sink security dengan `log_stream = "security"`; field `log_stream` dari kode lain dibuang.
 //!
-//! Jenis yang belum punya fungsi (percobaan ubah/hapus audit, penguncian akun, kegagalan MFA, log audit
-//! penyedia cloud) ditambahkan oleh task pemilik fiturnya dengan pola yang sama. Relay dan verifikasi
+//! Jenis yang belum punya fungsi (penguncian akun, kegagalan MFA, log audit penyedia cloud) ditambahkan
+//! oleh task pemilik fiturnya dengan pola yang sama. Percobaan ubah/hapus audit lewat API: F1-T68. Relay dan verifikasi
 //! rantai audit: F1-T24/F1-T25. Event Keycloak yang diambil worker dan kegagalan/keterlambatan
 //! pengambilannya: F1-T34.
 
@@ -67,6 +67,20 @@ pub fn login_failed(account_id: Option<Uuid>, reason: LoginFailure) {
 /// Akses ditolak, termasuk percobaan ganti ID. `route` harus pola rute, bukan URL berisi ID.
 pub fn access_denied(account_id: Option<Uuid>, route: &str, reason: AccessDenial) {
     warn!(target: SECURITY_TARGET, event_type = "access_denied", account_id = %opt(account_id), route = route, reason = reason.as_str(), "security_event");
+}
+
+/// Permintaan mengubah atau menghapus audit log lewat API (US-1504 AC2; ADR-009: permintaan semacam itu
+/// ditolak dan dicatat sebagai kejadian keamanan; F1-T68). Tidak ada endpoint ubah/hapus audit, sehingga
+/// permintaan itu selalu ditolak. `method` dari daftar tertutup (`POST`, `PUT`, `PATCH`, `DELETE`); `route`
+/// = pola rute terdaftar, atau `unmatched` bila tidak ada rute (URL mentah tidak pernah dicatat);
+/// `authenticated` = token sah atau tidak; `account_id` kosong bila tanpa token atau akun tidak dikenal.
+pub fn audit_modification_attempt(
+    account_id: Option<Uuid>,
+    method: &'static str,
+    route: &str,
+    authenticated: bool,
+) {
+    warn!(target: SECURITY_TARGET, event_type = "audit_modification_attempt", account_id = %opt(account_id), method = method, route = route, authenticated = authenticated, "security_event");
 }
 
 /// Batas laju terlampaui.

@@ -16,10 +16,14 @@
 //!   [`OwnedCareRecipient`]) dan penolakan objek yang dicatat di latar belakang ([`DenialSink`]:
 //!   security log, dan untuk data sensitif event audit E-05 hasil gagal lewat [`DenialAuditor`]) tanpa
 //!   menambah waktu tanggap jalur `404` (F1-T38, KU-03, TD-15).
+//! - Permintaan ubah/hapus ke jalur audit tanpa kebijakan ditolak (`401` tanpa token sah, selain itu
+//!   `404`) dan dicatat sebagai kejadian keamanan `audit_modification_attempt` ([`is_audit_path`],
+//!   US-1504 AC2, ADR-009; F1-T68).
 //!
 //! Belum di sini (task lain): relasi penugasan dan tenant, cakupan tenant `PartnerScope`
 //! (KEPUTUSAN-128), kebijakan klien realm `integrasi` (ADR-014), realm `korporat` (F1-T86/F1-T100).
 
+mod audit_guard;
 mod denial;
 mod enforce;
 mod error;
@@ -30,6 +34,7 @@ mod registry;
 mod role;
 mod router;
 
+pub use audit_guard::is_audit_path;
 pub use denial::{
     ClientIp, DEFAULT_DENIAL_AUDIT_CONCURRENCY, DEFAULT_DENIAL_QUEUE_CAPACITY, DROP_REPORT_WINDOW,
     DenialAuditError, DenialAuditFuture, DenialAuditor, DenialSink, DenialSinkError, DeniedAccess,

@@ -9,6 +9,7 @@ pub mod exceptions;
 pub mod fs;
 pub mod lexer;
 pub mod manifests;
+pub mod openapi;
 pub mod sources;
 pub mod tables;
 
@@ -77,5 +78,6 @@ pub fn check_all(root: &std::path::Path) -> Vec<Finding> {
     }
     out.extend(manifests::check_manifests(root));
     out.extend(tables::check_all_apps(root));
+    out.extend(openapi::check_openapi(root));
     out
 }
