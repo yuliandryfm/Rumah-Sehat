@@ -1,4 +1,4 @@
-"""Test realm `pasien` dan `admin` sebagai kode terhadap Keycloak sungguhan (F1-T31, modul kritis T1).
+"""Test realm `pasien`, `admin`, dan `korporat` sebagai kode (korporat: F1-T85, F1-T87, F1-T88) terhadap Keycloak sungguhan (F1-T31, modul kritis T1).
 
 Dijalankan oleh scripts/keycloak-check.sh setelah konfigurasi diterapkan dengan keycloak-config-cli.
 Hanya pustaka standar Python 3. Semua user uji sintetis (domain .invalid) dan dihapus di akhir.
@@ -82,12 +82,19 @@ KLIEN = {
         "redirect": env("RS_KC_BACKOFFICE_BFF_REDIRECT_URI"),
         "secret": env("RS_KC_BACKOFFICE_BFF_SECRET"),
     },
+    "korporat": {
+        "client_id": "rs-korporat-bff",
+        "redirect": env("RS_KC_KORPORAT_BFF_REDIRECT_URI"),
+        "secret": env("RS_KC_KORPORAT_BFF_SECRET"),
+    },
 }
 KLIEN_LAIN = {
     "admin": [("rs-portal-bff", env("RS_KC_PORTAL_BFF_REDIRECT_URI"), False)],
     "pasien": [],
+    "korporat": [],
 }
-SESI = {"pasien": (2592000, 7776000), "admin": (1800, 43200)}
+# korporat: idle 30 menit (US-1904 AC6, NFR-SEC-04), mutlak 12 jam (F1-T85)
+SESI = {"pasien": (2592000, 7776000), "admin": (1800, 43200), "korporat": (1800, 43200)}
 
 LULUS = 0
 GAGAL = 0
@@ -1435,7 +1442,7 @@ def main():
         print(f"Keycloak tidak siap di {BASE}: HTTP {r.status}", file=sys.stderr)
         return 1
     try:
-        for realm in ("pasien", "admin"):
+        for realm in ("pasien", "admin", "korporat"):
             r = k.request("GET", f"{BASE}/realms/{realm}")
             if not periksa(r.status == 200, f"[{realm}] realm ada"):
                 continue
@@ -1451,19 +1458,24 @@ def main():
                 jalankan(f"[{realm}] grant password", cek_grant_password, realm, user)
                 jalankan(f"[{realm}] konsol akun", cek_konsol_akun, realm, user)
                 jalankan(f"[{realm}] kode pemulihan", cek_kode_pemulihan, realm, user)
-                jalankan(f"[{realm}] atur ulang password", cek_atur_ulang_tidak_melewati_otp, realm, user)
+                if realm != "korporat":  # F1-T88
+                    jalankan(f"[{realm}] atur ulang password", cek_atur_ulang_tidak_melewati_otp, realm, user)
             else:
                 periksa(False, f"[{realm}] skenario kode pemulihan dan atur ulang password dijalankan",
                         "butuh user MFA dari skenario sebelumnya")
-            jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
-            if EMAIL_MODE == "relay":
+            if realm != "korporat":  # F1-T88
+                jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
+            if realm == "korporat":
+                pass
+            elif EMAIL_MODE == "relay":
                 jalankan(f"[{realm}] relay email", cek_relay_email, realm)
             else:
                 print(f"== [{realm}] relay email end-to-end: hanya mode ephemeral (mode ini memakai penangkap SMTP)")
             jalankan(f"[{realm}] Argon2 dan kebijakan password", cek_argon2_dan_kebijakan, realm)
-            jalankan(f"[{realm}] tema login", cek_tema, realm)
-            jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
-            jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
+            if realm != "korporat":  # F1-T87
+                jalankan(f"[{realm}] tema login", cek_tema, realm)
+                jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
+                jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
             jalankan(f"[{realm}] OTP salah dikunci", cek_otp_dan_kode_pemulihan_salah_dikunci, realm)
             jalankan(f"[{realm}] batal pendaftaran TOTP", cek_batal_pendaftaran_totp, realm)
         jalankan("[uji] pasca-kunci", cek_pasca_kunci)

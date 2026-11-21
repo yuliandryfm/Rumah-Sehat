@@ -50,6 +50,7 @@ export class EphemeralKeycloak {
         RS_KC_PASIEN_MOBILE_REDIRECT_URI: "com.example.ruangsehat.pasien:/oauth2redirect",
         RS_KC_BACKOFFICE_BFF_REDIRECT_URI: BACKOFFICE_REDIRECT,
         RS_KC_PORTAL_BFF_REDIRECT_URI: "http://127.0.0.1:3001/auth/callback",
+        RS_KC_KORPORAT_BFF_REDIRECT_URI: "http://127.0.0.1:3002/auth/callback",
       };
       const secretEnv = {
         KEYCLOAK_USER: "admin-uji",
@@ -58,6 +59,8 @@ export class EphemeralKeycloak {
         RS_KC_PORTAL_BFF_SECRET: randomSecret(),
         RS_KC_EVENT_READER_PASIEN_SECRET: randomSecret(),
         RS_KC_EVENT_READER_ADMIN_SECRET: randomSecret(),
+        RS_KC_EVENT_READER_KORPORAT_SECRET: randomSecret(),
+        RS_KC_KORPORAT_BFF_SECRET: randomSecret(),
         RS_KC_ADMIN_MANAGER_SECRET: randomSecret(),
       };
       const args = ["run", "--rm", "--network", `container:${container.id}`, "-v", `${REPO_ROOT}infra/keycloak/realms:/config:ro`];
