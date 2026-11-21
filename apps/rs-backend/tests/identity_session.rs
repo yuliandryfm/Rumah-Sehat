@@ -42,6 +42,9 @@ use valkey::{Valkey, ValkeyConfig};
 use valkey_support::{ValkeyContainer, dead_url};
 
 const OP: Duration = Duration::from_millis(250);
+/// Batas operasi untuk test dengan Valkey sehat: mesin pengembangan bersama bisa sangat sibuk
+/// (load 20+) sehingga 250 ms memberi `CacheUnavailable` palsu. Test Valkey beku tetap memakai `OP`.
+const OP_SEHAT: Duration = Duration::from_millis(2000);
 
 fn iss(realm: &str) -> String {
     format!("https://auth.ruang-sehat.invalid/realms/{realm}")
@@ -327,7 +330,7 @@ async fn deactivated_account_is_rejected_on_first_request_after_refresh() {
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
     let t = token(
@@ -367,7 +370,7 @@ async fn revoked_session_is_rejected_on_next_request_and_other_sessions_continue
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     dir.rebuild_revocation_cache().await.unwrap();
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
@@ -411,7 +414,7 @@ async fn role_change_takes_effect_after_refresh() {
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "rs_admin", "admin", "active").await;
     let role = add_role(&pool, id, "verifier").await;
@@ -438,7 +441,7 @@ async fn revocation_survives_valkey_content_loss_and_cache_is_rebuilt() {
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     dir.rebuild_revocation_cache().await.unwrap();
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
@@ -482,7 +485,7 @@ async fn failed_cache_publish_forces_database_path() {
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     dir.rebuild_revocation_cache().await.unwrap();
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
@@ -525,7 +528,7 @@ async fn failed_cache_publish_forces_database_path() {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     assert!(copied, "penyalinan tidak dicoba ulang");
-    let other = directory(pool.clone(), vk.client(OP));
+    let other = directory(pool.clone(), vk.client(OP_SEHAT));
     let addr_other = spawn(&keys, other).await;
     let r = get(addr_other, "/patient/v1/me", &t).await;
     assert_eq!((r.status, r.code().as_str()), (401, "4010001"));
@@ -666,7 +669,7 @@ async fn resolver_ignores_soft_deleted_accounts_and_corrupt_cache_values() {
     let pool = app_pool().await;
     let vk = ValkeyContainer::start();
     let keys = keys();
-    let dir = directory(pool.clone(), vk.client(OP));
+    let dir = directory(pool.clone(), vk.client(OP_SEHAT));
     let addr = spawn(&keys, dir.clone()).await;
     let (id, sub) = new_account(&pool, "patient", "pasien", "active").await;
     let t = token(

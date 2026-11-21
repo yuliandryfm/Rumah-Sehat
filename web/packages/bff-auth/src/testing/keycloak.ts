@@ -42,7 +42,7 @@ export class EphemeralKeycloak {
     });
     try {
       const baseUrl = `http://127.0.0.1:${String(container.hostPort(8080))}`;
-      await waitFor(async () => (await fetch(`${baseUrl}/realms/master`)).status === 200, 240_000, "Keycloak");
+      await waitFor(async () => (await fetch(`${baseUrl}/realms/master`)).status === 200, 400_000, "Keycloak");
       const realmEnv = {
         RS_KC_SMTP_HOST: "email-relay",
         RS_KC_SMTP_PORT: "2525",
