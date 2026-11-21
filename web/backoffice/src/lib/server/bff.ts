@@ -16,11 +16,12 @@ export const getCore = (): Promise<BffCore> =>
   }));
 
 /**
- * Namespace API Rust untuk kanal admin (ADR-006 butir 5); path lain dijawab 404 tanpa diteruskan.
+ * Namespace API Rust untuk kanal admin (ADR-006 butir 5): `/backoffice/v1/...` sesuai `openapi/backoffice.json`
+ * (dipanggil browser sebagai `/bff/backoffice/v1/...`); path lain dijawab 404 tanpa diteruskan.
  * `loginErrorPath` harus halaman publik: halaman terautentikasi mengalihkan ke login lagi (putaran).
  */
 export const OPSI_ROUTES = {
-  allowedApiPrefixes: ["v1/admin/"],
+  allowedApiPrefixes: ["backoffice/v1/"],
   defaultReturnPath: "/",
   loginErrorPath: "/masuk-gagal",
   afterLogoutPath: "/",
