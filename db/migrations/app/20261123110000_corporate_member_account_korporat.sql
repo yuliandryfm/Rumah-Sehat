@@ -1,4 +1,4 @@
--- db/migrations/app/20261121120000_corporate_member_account_korporat.sql
+-- db/migrations/app/20261123110000_corporate_member_account_korporat.sql
 -- F1-T99: tabel A20 K1 bagian 2, yaitu corporate_member (M, satu keanggotaan aktif per akun), dan perluasan
 -- (expand) A1.1 account untuk akun HR perusahaan: account_type corporate_admin, idp_realm korporat, beserta hak role;
 -- realm korporat juga ditambahkan ke CHECK idp_event_cursor dan idp_event_receipt (F1-T34).
@@ -38,8 +38,8 @@ BEGIN
   IF current_user <> 'rs_migration' THEN
     RAISE EXCEPTION 'migration must run as rs_migration, got % (session %)', current_user, session_user;
   END IF;
-  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261121120000) THEN
-    RAISE EXCEPTION 'migration order: version 20261121120000 is older than an applied migration (forward-only, ADR-019)';
+  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261123110000) THEN
+    RAISE EXCEPTION 'migration order: version 20261123110000 is older than an applied migration (forward-only, ADR-019)';
   END IF;
 END $$;
 SET LOCAL lock_timeout = '5s';

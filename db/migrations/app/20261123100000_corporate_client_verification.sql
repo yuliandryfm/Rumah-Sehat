@@ -1,4 +1,4 @@
--- db/migrations/app/20261121110000_corporate_client_verification.sql
+-- db/migrations/app/20261123100000_corporate_client_verification.sql
 -- F1-T98: tabel A20 K1 bagian 1, yaitu corporate_client (M), corporate_client_document (M), dan
 -- corporate_verification_decision (T), beserta hak role.
 --
@@ -38,8 +38,8 @@ BEGIN
   IF current_user <> 'rs_migration' THEN
     RAISE EXCEPTION 'migration must run as rs_migration, got % (session %)', current_user, session_user;
   END IF;
-  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261121110000) THEN
-    RAISE EXCEPTION 'migration order: version 20261121110000 is older than an applied migration (forward-only, ADR-019)';
+  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261123100000) THEN
+    RAISE EXCEPTION 'migration order: version 20261123100000 is older than an applied migration (forward-only, ADR-019)';
   END IF;
 END $$;
 SET LOCAL lock_timeout = '5s';
