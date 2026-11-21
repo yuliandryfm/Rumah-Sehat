@@ -2,6 +2,7 @@
   "realm": "korporat",
   "enabled": true,
   "displayName": "Ruang Sehat Korporat",
+  "loginTheme": "ruang-sehat",
   "internationalizationEnabled": true,
   "supportedLocales": [
     "id"

@@ -1472,10 +1472,9 @@ def main():
             else:
                 print(f"== [{realm}] relay email end-to-end: hanya mode ephemeral (mode ini memakai penangkap SMTP)")
             jalankan(f"[{realm}] Argon2 dan kebijakan password", cek_argon2_dan_kebijakan, realm)
-            if realm != "korporat":  # F1-T87
-                jalankan(f"[{realm}] tema login", cek_tema, realm)
-                jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
-                jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
+            jalankan(f"[{realm}] tema login", cek_tema, realm)
+            jalankan(f"[{realm}] tema MFA", cek_halaman_mfa_tema, realm)
+            jalankan(f"[{realm}] penguncian dan pesan", cek_penguncian_dan_pesan, realm)
             jalankan(f"[{realm}] OTP salah dikunci", cek_otp_dan_kode_pemulihan_salah_dikunci, realm)
             jalankan(f"[{realm}] batal pendaftaran TOTP", cek_batal_pendaftaran_totp, realm)
         jalankan("[uji] pasca-kunci", cek_pasca_kunci)
