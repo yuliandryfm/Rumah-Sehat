@@ -8,6 +8,8 @@
 -- test tidak bergantung pada tanggal hari ini (§6.2 butir 2).
 -- Dasar: docs/04-data-dictionary.md §0.6 B, B1-B6; docs/05-physical-schema.md §4.11, §5.6, §6.1-§6.4,
 -- §12 (T-06, T-08, T-09, T-18, T-19); ADR-005, ADR-009 butir 3-5, 8; ADR-012 butir 9.
+-- Bagian 3 (F1-T68, US-1504 AC1-AC3, TC-US-1504-5): matriks ubah/hapus semua tabel/partisi x semua role
+-- non-superuser dari katalog, session_replication_role, dan DISABLE/DROP trigger oleh bukan pemilik.
 
 SELECT pg_catalog.set_config('uji.prefiks', :'prefiks', false) AS _p \gset
 SELECT :'prefiks' || 'audit_migration' AS pemilik, :'prefiks' || 'audit_writer_login' AS penulis,
@@ -480,6 +482,138 @@ END $$;
 SELECT pg_temp.uji_boleh('B1 writer INSERT event E-18 (impor peserta korporat, PRD v1.3 CR-021) diterima CHECK event_code', :'penulis',
   $s$INSERT INTO audit.audit_event (event_id, recorded_at, seq, occurred_at, event_code, action_name, actor_type, object_type, subject_count, source_component, outcome, correlation_id, canonical_version, prev_hash, event_hash)
      VALUES ('00000000-0000-7000-8000-00000000b118', '2027-05-01 00:00:00+00', 18, '2027-05-01 00:00:00+00', 'e_18', 'corporate_participant_import', 'account', 'corporate_participant_import', 0, 'backoffice', 'success', '00000000-0000-7000-8000-00000000c118', 1, decode(repeat('44', 32), 'hex'), decode(repeat('55', 32), 'hex'))$s$, 1);
+-- 3. US-1504 AC1-AC3 (F1-T68; TC-US-1504-5): matriks ubah/hapus atas SEMUA tabel dan partisi skema
+-- audit untuk SEMUA role non-superuser klaster (dibaca dari katalog, bukan daftar tetap), termasuk
+-- pemilik skema dan role tanpa hak apa pun (mewakili PUBLIC; dibuat dan dibatalkan di transaksi ini).
+-- Setiap UPDATE, DELETE, TRUNCATE, dan MERGE (cabang UPDATE dan DELETE) wajib gagal 42501: role tanpa
+-- hak ditolak "permission denied"; role yang punya hak (pemilik) wajib dihentikan trigger penolak
+-- ("immutable_violation", ADR-009 butir 4, §4.11 tanpa pengecualian). Superuser dikecualikan: ia
+-- melewati trigger dan hanya dipakai di lingkungan uji (TC-US-1504-6, deteksi oleh audit-verify F1-T25).
+-- Ringkasan per jenis perintah (satu LULUS per jenis) supaya keluaran tidak membanjir.
+CREATE ROLE uji_f1t68_tanpa_hak NOLOGIN;
+DO $$
+DECLARE
+  pfx text := current_setting('uji.prefiks');
+  roles text[];
+  rn text;
+  t record;
+  s record;
+  v_state text;
+  v_msg text;
+  v_hak boolean;
+  temuan text[];
+  n integer;
+  n_tabel integer;
+BEGIN
+  roles := ARRAY(SELECT rolname::text FROM pg_roles WHERE NOT rolsuper AND rolname !~ '^pg_' ORDER BY 1);
+  IF NOT roles @> ARRAY[pfx || 'audit_writer', pfx || 'audit_writer_login', pfx || 'audit_reader', pfx || 'audit_verifier',
+                        pfx || 'audit_verifier_login', pfx || 'audit_migration', 'openbao_' || pfx || 'audit_admin', 'uji_f1t68_tanpa_hak']
+     OR (pfx = 'rme_' AND NOT roles @> ARRAY['rme_audit_tenant_reader', 'rme_audit_tenant_reader_login'])
+     OR (pfx = 'rs_' AND NOT roles @> ARRAY['rs_audit_reader_login']) THEN
+    RAISE EXCEPTION 'GAGAL US-1504 matriks: role audit yang diharapkan tidak ada di katalog (%)', roles;
+  END IF;
+  SELECT count(*) INTO n_tabel FROM pg_class c JOIN pg_namespace n2 ON n2.oid = c.relnamespace
+   WHERE n2.nspname = 'audit' AND c.relkind IN ('r', 'p') AND c.relname <> '_sqlx_migrations';
+  IF n_tabel < 6 + 2 * 38 THEN
+    RAISE EXCEPTION 'GAGAL US-1504 matriks: hanya % tabel/partisi audit (harap >= 82)', n_tabel;
+  END IF;
+  FOR s IN SELECT * FROM (VALUES
+      (1, 'UPDATE', 'UPDATE'), (2, 'DELETE', 'DELETE'), (3, 'TRUNCATE ... CASCADE', 'TRUNCATE'),
+      (4, 'MERGE ... UPDATE', 'UPDATE'), (5, 'MERGE ... DELETE', 'DELETE')) AS v(k, label, hak)
+  LOOP
+    temuan := '{}';
+    n := 0;
+    FOR t IN SELECT c.oid, format('%I.%I', n2.nspname, c.relname) AS nama, c.relkind,
+                    (SELECT quote_ident(a.attname) FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum = 1) AS kolom
+               FROM pg_class c JOIN pg_namespace n2 ON n2.oid = c.relnamespace
+              WHERE n2.nspname = 'audit' AND c.relkind IN ('r', 'p') AND c.relname <> '_sqlx_migrations'
+              ORDER BY 2
+    LOOP
+      -- MERGE hanya di induk dan tabel tak terpartisi (partisi sudah diuji UPDATE/DELETE langsung).
+      CONTINUE WHEN s.k >= 4 AND t.relkind = 'r' AND EXISTS (SELECT 1 FROM pg_inherits i WHERE i.inhrelid = t.oid);
+      FOREACH rn IN ARRAY roles LOOP
+        v_hak := has_table_privilege(rn, t.oid, s.hak);
+        v_state := NULL;
+        v_msg := NULL;
+        BEGIN
+          EXECUTE format('SET LOCAL ROLE %I', rn);
+          EXECUTE CASE s.k
+            WHEN 1 THEN format('UPDATE %s SET %s = %s', t.nama, t.kolom, t.kolom)
+            WHEN 2 THEN format('DELETE FROM %s', t.nama)
+            WHEN 3 THEN format('TRUNCATE %s CASCADE', t.nama)  -- CASCADE: tabel acuan FK (jangkar) tetap sampai trigger
+            WHEN 4 THEN format('MERGE INTO %s AS x USING (SELECT 1) AS s ON true WHEN MATCHED THEN UPDATE SET %s = x.%s', t.nama, t.kolom, t.kolom)
+            ELSE format('MERGE INTO %s AS x USING (SELECT 1) AS s ON true WHEN MATCHED THEN DELETE', t.nama)
+          END;
+          v_state := 'sukses';
+          RAISE EXCEPTION USING ERRCODE = 'P0099', MESSAGE = 'batalkan';
+        EXCEPTION WHEN OTHERS THEN
+          IF v_state IS NULL THEN
+            v_state := SQLSTATE;
+            v_msg := SQLERRM;
+          END IF;
+        END;
+        n := n + 1;
+        IF v_state IS DISTINCT FROM '42501' THEN
+          temuan := temuan || format('%s oleh %s: %s %s', t.nama, rn, v_state, coalesce(v_msg, 'BERHASIL'));
+        ELSIF v_hak AND v_msg !~ '^immutable_violation: ' THEN
+          temuan := temuan || format('%s oleh %s (punya hak %s): bukan ditolak trigger: %s', t.nama, rn, s.hak, v_msg);
+        ELSIF NOT v_hak AND v_msg !~ '^permission denied' THEN
+          temuan := temuan || format('%s oleh %s (tanpa hak): %s', t.nama, rn, v_msg);
+        END IF;
+      END LOOP;
+    END LOOP;
+    PERFORM pg_temp.uji_nol(format('US-1504 AC3 (TC-US-1504-5) %s ditolak di semua tabel/partisi audit untuk %s role non-superuser, termasuk pemilik dan role tanpa hak (%s percobaan)',
+                                   s.label, cardinality(roles), n), temuan);
+  END LOOP;
+END $$;
+-- Pemilik skema tidak dapat melewati trigger penolak lewat session_replication_role (hanya superuser,
+-- SRC-720); role lain juga tidak.
+DO $$
+DECLARE
+  rn text;
+BEGIN
+  FOR rn IN SELECT rolname::text FROM pg_roles WHERE NOT rolsuper AND rolname !~ '^pg_' ORDER BY 1 LOOP
+    PERFORM pg_temp.uji_tolak(format('US-1504 NEG %s SET session_replication_role = replica (melewati trigger penolak)', rn), rn,
+      'SET LOCAL session_replication_role = replica', '42501', 'permission denied to set parameter "session_replication_role"');
+  END LOOP;
+END $$;
+-- Role selain pemilik tidak dapat menonaktifkan atau menghapus trigger penolak (butuh kepemilikan tabel).
+DO $$
+DECLARE
+  rn text;
+  t record;
+  temuan text[] := '{}';
+  v_state text;
+  v_msg text;
+  n integer := 0;
+BEGIN
+  FOR t IN SELECT c.oid, c.relowner, format('%I.%I', n2.nspname, c.relname) AS nama,
+                  (SELECT format('%I', g.tgname) FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal AND g.tgname LIKE 'tg\_%\_reject\_%' ORDER BY 1 LIMIT 1) AS trig
+             FROM pg_class c JOIN pg_namespace n2 ON n2.oid = c.relnamespace
+            WHERE n2.nspname = 'audit' AND c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname <> '_sqlx_migrations'
+  LOOP
+    FOR rn IN SELECT rolname::text FROM pg_roles WHERE NOT rolsuper AND rolname !~ '^pg_' AND NOT pg_has_role(oid, t.relowner, 'USAGE') ORDER BY 1 LOOP
+      FOREACH v_msg IN ARRAY ARRAY[format('ALTER TABLE %s DISABLE TRIGGER ALL', t.nama), format('DROP TRIGGER %s ON %s', t.trig, t.nama)] LOOP
+        v_state := NULL;
+        BEGIN
+          EXECUTE format('SET LOCAL ROLE %I', rn);
+          EXECUTE v_msg;
+          v_state := 'sukses';
+          RAISE EXCEPTION USING ERRCODE = 'P0099', MESSAGE = 'batalkan';
+        EXCEPTION WHEN OTHERS THEN
+          IF v_state IS NULL THEN
+            v_state := SQLSTATE;
+          END IF;
+        END;
+        n := n + 1;
+        IF v_state IS DISTINCT FROM '42501' THEN
+          temuan := temuan || format('%s oleh %s: %s', v_msg, rn, v_state);
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+  PERFORM pg_temp.uji_nol(format('US-1504 NEG role selain pemilik tidak dapat DISABLE/DROP trigger penolak tabel audit (%s percobaan)', n), temuan);
+END $$;
 ROLLBACK;
 
 DO $$

@@ -1243,3 +1243,178 @@ async fn owner_read_for_another_care_recipient_is_rejected() {
     assert_eq!(r.status, 404);
     assert_eq!(r.json()["response_code"], "4040001");
 }
+
+// ----- US-1504 AC1–AC2: tidak ada endpoint ubah/hapus audit (F1-T68) -----
+
+fn audit_attempts(sec: &MemorySink) -> Vec<Value> {
+    sec.lines()
+        .iter()
+        .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+        .filter(|v| v["event_type"] == "audit_modification_attempt")
+        .collect()
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn audit_modification_requests_are_rejected_for_every_role_and_logged() {
+    // trace: US-1504 AC1, AC2; TC-US-1504-2, TC-US-1504-3.
+    let (_app_log, sec_log, _guard) = capture();
+    let keys = keys();
+    let resolver = Arc::new(MemResolver::default());
+    let admins: [(&str, &[AdminSubRole]); 3] = [
+        ("super", &[AdminSubRole::SuperAdmin]),
+        ("auditor", &[AdminSubRole::Auditor]),
+        ("both", &[AdminSubRole::SuperAdmin, AdminSubRole::Auditor]),
+    ];
+    for (i, (sub, roles)) in admins.iter().enumerate() {
+        resolver.add(
+            Realm::Admin,
+            sub,
+            record(
+                uuid(0x1504_0000 + i as u128),
+                AccountType::RsAdmin,
+                AccountStatus::Active,
+                roles,
+            ),
+        );
+    }
+    resolver.add(
+        Realm::Pasien,
+        "p-a",
+        record(
+            patient_a(),
+            AccountType::Patient,
+            AccountStatus::Active,
+            &[],
+        ),
+    );
+    let addr = spawn(&keys, resolver).await;
+    let unknown = call(addr, "GET", "/backoffice/v1/tidak-ada", None).await;
+    let event_id = "01936f8e-9c01-7e02-8f03-00000000e001";
+    let paths = [
+        // Rute baca audit terdaftar (GET saja): metode lain tidak punya kebijakan.
+        (
+            "/backoffice/v1/audit-logs".to_string(),
+            "/backoffice/v1/audit-logs",
+        ),
+        // Event tertentu, ejaan lain, dan jalur RME: tidak ada rute sama sekali.
+        (format!("/backoffice/v1/audit-logs/{event_id}"), "unmatched"),
+        (
+            format!("/backoffice/v1/Audit-Events/{event_id}"),
+            "unmatched",
+        ),
+        (
+            format!("/rme/v1/audit_events/{event_id}/delete"),
+            "unmatched",
+        ),
+    ];
+    let tokens = [
+        ("super", token(&keys.admin, "admin", "super")),
+        ("auditor", token(&keys.admin, "admin", "auditor")),
+        ("both", token(&keys.admin, "admin", "both")),
+        ("pasien", token(&keys.pasien, "pasien", "p-a")),
+    ];
+    let mut expected = 0;
+    for (path, _) in &paths {
+        for method in ["PUT", "PATCH", "DELETE", "POST"] {
+            for (who, t) in &tokens {
+                let r = call(addr, method, path, Some(t)).await;
+                assert_eq!(r.status, 404, "{method} {path} {who}");
+                assert_eq!(r.body, unknown.body, "{method} {path} {who}");
+                assert!(!r.body.contains("audit-ok"));
+                expected += 1;
+            }
+        }
+    }
+    // Rute baca tetap utuh dan tidak terpengaruh.
+    let read = call(addr, "GET", "/backoffice/v1/audit-logs", Some(&tokens[1].1)).await;
+    assert_eq!(read.status, 200);
+    assert_eq!(read.body, "audit-ok");
+
+    let logged = audit_attempts(&sec_log);
+    assert_eq!(logged.len(), expected, "{}", sec_log.text());
+    for v in &logged {
+        assert_eq!(v["log_stream"], "security");
+        assert_eq!(v["authenticated"], true);
+        assert!(["PUT", "PATCH", "DELETE", "POST"].contains(&v["method"].as_str().unwrap()));
+        assert!(
+            paths
+                .iter()
+                .any(|(_, route)| v["route"].as_str() == Some(*route))
+        );
+    }
+    // Akun dikenal tercatat; setiap akun lengkap 4 jalur x 4 metode.
+    for (i, _) in admins.iter().enumerate() {
+        let id = uuid(0x1504_0000 + i as u128).hyphenated().to_string();
+        assert_eq!(
+            logged
+                .iter()
+                .filter(|v| v["account_id"].as_str() == Some(id.as_str()))
+                .count(),
+            16
+        );
+    }
+    let sec = sec_log.text();
+    // URL mentah (ID event), token, dan sesi tidak pernah masuk security log.
+    assert!(!sec.contains(event_id), "{sec}");
+    assert!(!sec.contains("Audit-Events"));
+    assert!(!sec.contains("sesi-uji"));
+    for (_, t) in &tokens {
+        assert!(!sec.contains(t.as_str()));
+    }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn audit_modification_without_valid_token_is_401_and_logged() {
+    // trace: US-1504 AC2; TC-US-1504-4.
+    let (_app_log, sec_log, _guard) = capture();
+    let keys = keys();
+    let addr = spawn(&keys, Arc::new(MemResolver::default())).await;
+    let cases = [
+        None,
+        Some("bukan.token.sah".to_string()),
+        // Token realm rme (tidak dikonfigurasi backend Ruang Sehat) dan token bertanda tangan kunci lain.
+        Some(token(&keys.rme, "rme", "r-1")),
+        Some(token(&keys.pasien, "admin", "super")),
+    ];
+    let mut n = 0;
+    for path in [
+        "/backoffice/v1/audit-logs",
+        "/backoffice/v1/audit-logs/01936f8e-9c01-7e02-8f03-00000000e001",
+    ] {
+        for method in ["PUT", "PATCH", "DELETE", "POST"] {
+            for t in &cases {
+                let r = call(addr, method, path, t.as_deref()).await;
+                assert_eq!(r.status, 401, "{method} {path} {t:?}");
+                assert_eq!(r.json()["response_code"], "4010001");
+                assert_eq!(r.json()["correlation_id"], CID);
+                n += 1;
+            }
+        }
+    }
+    let logged = audit_attempts(&sec_log);
+    assert_eq!(logged.len(), n, "{}", sec_log.text());
+    assert!(logged.iter().all(|v| v["authenticated"] == false
+        && v["account_id"] == ""
+        && v["log_stream"] == "security"));
+    assert!(!sec_log.text().contains("bukan.token.sah"));
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn non_audit_or_read_requests_are_not_logged_as_audit_modification() {
+    // Pembanding negatif: rute tidak dikenal di luar jalur audit, segmen mirip (`auditors`), dan GET/HEAD
+    // ke jalur audit tetap 404 biasa tanpa kejadian `audit_modification_attempt`.
+    let (_app_log, sec_log, _guard) = capture();
+    let keys = keys();
+    let addr = spawn(&keys, Arc::new(MemResolver::default())).await;
+    for (method, path) in [
+        ("DELETE", "/backoffice/v1/contents/1"),
+        ("PUT", "/backoffice/v1/auditors/1"),
+        ("POST", "/patient/v1/me"),
+        ("GET", "/backoffice/v1/audit-logs/1"),
+        ("HEAD", "/backoffice/v1/audit-events"),
+    ] {
+        let r = call(addr, method, path, None).await;
+        assert_eq!(r.status, 404, "{method} {path}");
+    }
+    assert!(audit_attempts(&sec_log).is_empty(), "{}", sec_log.text());
+}
