@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.care_recipient (id, patient_id, is_account_owner, full_name, birth_date, sex) VALUES ($1, $2, true, 'Pasien Sintetis', '1990-01-01', 'female')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24b8851973ebe79f99212b4e2ca9dac015b10e13e32c8aa0df63db4e3d2b707a"
+}

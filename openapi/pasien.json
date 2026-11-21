@@ -1,0 +1,761 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ruang Sehat: API aplikasi pasien",
+    "description": "Endpoint aplikasi mobile pasien (realm pasien, akun berjenis pasien; relasi ke penerima layanan diperiksa per objek, KU-03). Kontrak antar-repo untuk repositori mobile (CR-019). Format respons: ADR-023.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/patient/v1/care-recipients/{care_recipient_id}/identity": {
+      "get": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Status identitas penerima layanan milik pemanggil (AB-05, US-106 AC1, AC5).",
+        "operationId": "identity_status_get",
+        "parameters": [
+          {
+            "name": "care_recipient_id",
+            "in": "path",
+            "description": "ID penerima layanan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status identitas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Penerima layanan tidak ada atau bukan milik akun ini (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/patient/v1/care-recipients/{care_recipient_id}/identity-submissions": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Pengajuan NIK dan foto KTP (US-106 AC1, AC2, AC4, AC5). Status menjadi \"Menunggu verifikasi\";\nverifikasi dilakukan manual oleh admin.",
+        "operationId": "identity_submission_create",
+        "parameters": [
+          {
+            "name": "care_recipient_id",
+            "in": "path",
+            "description": "ID penerima layanan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentitySubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Pengajuan diterima; status Menunggu verifikasi.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Penerima layanan atau slot unggah tidak ada atau bukan milik akun ini (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090201: pengajuan sebelumnya masih menunggu verifikasi (US-106 AC5). 4090202: NIK tidak dapat dipakai untuk akun ini, pesan umum (US-106 AC4).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "nik_unavailable": {
+                    "summary": "NIK tidak dapat dipakai",
+                    "value": {
+                      "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                      "instance": "/patient/v1/care-recipients/{care_recipient_id}/identity-submissions",
+                      "response_code": "4090202",
+                      "response_description": "NIK ini tidak dapat dipakai untuk akun Anda. Hubungi Layanan Pelanggan bila ini NIK Anda.",
+                      "type": "https://problems.ruang-sehat.invalid/4090202"
+                    }
+                  },
+                  "submission_locked": {
+                    "summary": "Masih menunggu verifikasi",
+                    "value": {
+                      "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                      "instance": "/patient/v1/care-recipients/{care_recipient_id}/identity-submissions",
+                      "response_code": "4090201",
+                      "response_description": "Foto KTP tidak dapat diganti sampai pengajuan diputuskan atau dibatalkan",
+                      "type": "https://problems.ruang-sehat.invalid/4090201"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Berkas melebihi 5.242.880 byte.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis berkas menurut isinya bukan JPG/PNG, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "NIK bukan 16 digit angka (4220001), slot tidak valid, atau berkas belum diunggah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/patient/v1/care-recipients/{care_recipient_id}/identity-submissions/cancel": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Membatalkan pengiriman yang masih menunggu verifikasi (US-106 AC5): status kembali seperti sebelum\npengajuan itu. Bila Verifikator sudah memutuskan lebih dulu, dijawab `409` (US-201 AC5).",
+        "operationId": "identity_submission_cancel",
+        "parameters": [
+          {
+            "name": "care_recipient_id",
+            "in": "path",
+            "description": "ID penerima layanan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dibatalkan; status identitas sesudahnya.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Penerima layanan tidak ada atau bukan milik akun ini (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tidak ada pengajuan dokumen yang menunggu, atau keputusan Verifikator tersimpan lebih dulu (4090001).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/patient/v1/ktp-photos/upload-slots": {
+      "post": {
+        "tags": [
+          "identity"
+        ],
+        "summary": "Slot unggah foto KTP untuk akun pemanggil (US-106 AC3). Berkas diunggah langsung ke object storage,\nlalu dikirim bersama NIK lewat `identity-submissions`.",
+        "operationId": "identity_ktp_upload_slot_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KtpUploadSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Slot unggah diterbitkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ukuran melebihi 5.242.880 byte.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis bukan image/jpeg atau image/png, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
+        "required": [
+          "type",
+          "response_code",
+          "response_description",
+          "correlation_id"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan; selalu ada pada galat.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorSchema"
+            },
+            "description": "Galat per isian; hanya pada galat validasi."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Pola rute (bukan URL dengan ID)."
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "4040001"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Data tidak ditemukan"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI jenis masalah: `<awalan>/<response_code>`.",
+            "example": "https://problems.ruang-sehat.invalid/4040001"
+          }
+        }
+      },
+      "FieldErrorSchema": {
+        "type": "object",
+        "description": "Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kode galat isian, snake_case Inggris.",
+            "example": "invalid_format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path isian.",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan Bahasa Indonesia untuk pengguna.",
+            "example": "Format email tidak valid"
+          }
+        }
+      },
+      "IdentityDto": {
+        "type": "object",
+        "description": "Status identitas penerima layanan (AB-05, US-106 AC1, AC5).",
+        "required": [
+          "status",
+          "can_submit",
+          "can_cancel"
+        ],
+        "properties": {
+          "can_cancel": {
+            "type": "boolean",
+            "description": "Pengajuan yang menunggu dapat dibatalkan (US-106 AC5)."
+          },
+          "can_submit": {
+            "type": "boolean",
+            "description": "Pengajuan baru diizinkan (US-106 AC1, AC5)."
+          },
+          "identity_verification_request_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Permintaan efektif; `null` bila \"Belum diunggah\".",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "nik_last4": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Empat digit terakhir NIK permintaan efektif.",
+            "example": "0001"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kode alasan penolakan (hanya bila `rejected`, US-201 AC3).",
+            "example": "photo_unreadable"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IdentityStatusDto"
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu pengajuan efektif."
+          }
+        }
+      },
+      "IdentityEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons status identitas.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/IdentityDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "IdentityStatusDto": {
+        "type": "string",
+        "description": "Status tampilan identitas (AB-05).",
+        "enum": [
+          "not_uploaded",
+          "pending",
+          "approved",
+          "rejected"
+        ]
+      },
+      "IdentitySubmissionRequest": {
+        "type": "object",
+        "description": "Pengajuan NIK dan foto KTP (US-106 AC1, AC2).",
+        "required": [
+          "nik",
+          "upload_slot_id"
+        ],
+        "properties": {
+          "nik": {
+            "type": "string",
+            "description": "NIK tepat 16 digit angka (US-106 AC2). Tidak pernah dikembalikan di respons atau dicatat di log.",
+            "example": "9900000000000001",
+            "maxLength": 16,
+            "minLength": 16,
+            "pattern": "^[0-9]{16}$"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "description": "ID slot dari `POST /patient/v1/ktp-photos/upload-slots` yang berkasnya sudah diunggah.",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KtpUploadSlotRequest": {
+        "type": "object",
+        "description": "Permintaan slot unggah foto KTP (US-106 AC3).",
+        "required": [
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Jenis yang dinyatakan: `image/jpeg` atau `image/png` (isi tetap diperiksa saat pengajuan).",
+            "example": "image/jpeg"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ukuran berkas (byte), maksimal 5.242.880 (KEPUTUSAN-191).",
+            "example": 204800,
+            "maximum": 5242880,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "NameValueDto": {
+        "type": "object",
+        "description": "Pasangan nama-nilai (field formulir POST atau header PUT).",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "SubmissionDto": {
+        "type": "object",
+        "description": "Pengajuan yang diterima.",
+        "required": [
+          "identity_verification_request_id",
+          "identity_document_id",
+          "status"
+        ],
+        "properties": {
+          "identity_document_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c"
+          },
+          "identity_verification_request_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IdentityStatusDto",
+            "description": "Selalu `pending` (\"Menunggu verifikasi\"; verifikasi dilakukan manual oleh admin, US-106 AC1)."
+          }
+        }
+      },
+      "SubmissionEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons pengajuan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/SubmissionDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      },
+      "UploadMethodDto": {
+        "type": "string",
+        "description": "Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).",
+        "enum": [
+          "post",
+          "put"
+        ]
+      },
+      "UploadSlotDto": {
+        "type": "object",
+        "description": "Slot unggah yang diterbitkan.",
+        "required": [
+          "upload_slot_id",
+          "expires_at",
+          "method",
+          "url",
+          "fields",
+          "headers"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Field formulir (POST); kosong untuk PUT."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValueDto"
+            },
+            "description": "Header wajib (PUT); kosong untuk POST."
+          },
+          "method": {
+            "$ref": "#/components/schemas/UploadMethodDto"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "UploadSlotEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons slot unggah.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UploadSlotDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "identity",
+      "description": "NIK dan foto KTP (US-106)"
+    }
+  ]
+}

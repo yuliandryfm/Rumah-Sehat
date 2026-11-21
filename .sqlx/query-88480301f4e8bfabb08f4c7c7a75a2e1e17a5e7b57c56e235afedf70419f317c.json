@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.identity_document (id, created_by, updated_by, care_recipient_id, document_type, nik_enc, nik_bidx, nik_bidx_key_version, nik_last4, data_key_id, file_id) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Int2",
+        "Bpchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "88480301f4e8bfabb08f4c7c7a75a2e1e17a5e7b57c56e235afedf70419f317c"
+}

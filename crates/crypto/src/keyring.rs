@@ -11,9 +11,9 @@
 //!   `consultation_clinical` berbagi `container_id` (DD §0.2).
 //! - [`DataKey::seal`]/[`DataKey::open`] menolak konteks kolom yang wadahnya bukan wadah DEK ini.
 //!
-//! Penyimpanan baris `data_key` (sqlx) belum ada di crate ini: langkah `sqlx-prepare` belum diterapkan
-//! di skrip verifikasi, sehingga pemakaian sqlx menunggu task yang menerapkannya. Tipe baris di sini
-//! mengikuti kolom migrasi F1-T17 supaya repository nanti cukup memetakan kolom.
+//! Penyimpanan baris `data_key` ada di modul `store` ([`crate::insert_data_key`], [`crate::load_data_key`],
+//! F1-T60). [`DataKeyring`] membungkus [`Keyring`] sebagai objek trait (future ber-`Box`), supaya service
+//! modul bisnis tidak perlu generik atas jenis KEK.
 
 use crate::context::{ContainerType, EncryptionContext, System};
 use crate::envelope::{AadV1, DataEncryptionKey, SecretBytes};
@@ -22,6 +22,8 @@ use crate::transit::KeyEncryptionKey;
 use foundation::{Clock, Sensitive, Uuid, new_id};
 use std::collections::HashMap;
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
 
@@ -332,6 +334,35 @@ impl<K: KeyEncryptionKey> Keyring<K> {
     #[cfg(test)]
     fn cached_len(&self) -> usize {
         self.lock().len()
+    }
+}
+
+/// Future hasil [`DataKeyring`].
+pub type DataKeyFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, CryptoError>> + Send + 'a>>;
+
+/// [`Keyring`] sebagai objek trait (`Arc<dyn DataKeyring>`), untuk service yang tidak generik atas KEK.
+pub trait DataKeyring: Send + Sync {
+    /// Lihat [`Keyring::create_data_key`].
+    fn create_data_key(&self, container: Container) -> DataKeyFuture<'_, (NewDataKey, DataKey)>;
+    /// Lihat [`Keyring::open_data_key`].
+    fn open_data_key<'a>(
+        &'a self,
+        record: &'a DataKeyRecord,
+        expected: Container,
+    ) -> DataKeyFuture<'a, DataKey>;
+}
+
+impl<K: KeyEncryptionKey + 'static> DataKeyring for Keyring<K> {
+    fn create_data_key(&self, container: Container) -> DataKeyFuture<'_, (NewDataKey, DataKey)> {
+        Box::pin(Keyring::create_data_key(self, container))
+    }
+
+    fn open_data_key<'a>(
+        &'a self,
+        record: &'a DataKeyRecord,
+        expected: Container,
+    ) -> DataKeyFuture<'a, DataKey> {
+        Box::pin(Keyring::open_data_key(self, record, expected))
     }
 }
 

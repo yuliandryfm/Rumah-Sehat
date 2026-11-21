@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.account_owner_nik_registry (id, nik_bidx, nik_bidx_key_version, care_recipient_id, identity_verification_request_id) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Int2",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7b12ad20af84c8e8814f2cbee5f009e0f97384ffc00ef5989bcdb390db02329e"
+}

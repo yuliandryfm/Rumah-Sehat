@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.identity_verification_request_state (identity_verification_request_id, status, version) VALUES ($1, $2, 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6bd4129e40dd67291eea35129fd945d1ce878082f3ae2ad882df1d0827185b93"
+}
