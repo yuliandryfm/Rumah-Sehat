@@ -99,6 +99,7 @@ SELECT pg_temp.uji_nol('A20 CHECK enum persis (status, asal, jenis dokumen, kepu
       ('corporate_client', 'ck_corporate_client_status', 'CHECK ((status = ANY (ARRAY[''pending_verification''::text, ''active''::text, ''rejected''::text, ''inactive''::text])))'),
       ('corporate_client', 'ck_corporate_client_origin', 'CHECK ((origin = ANY (ARRAY[''self_registered''::text, ''created_by_admin''::text])))'),
       ('corporate_client', 'ck_corporate_client_submission_round', 'CHECK ((submission_round >= 1))'),
+      ('corporate_client', 'ck_corporate_client_nib_trimmed', 'CHECK ((nib = btrim(nib)))'),
       ('corporate_client_document', 'ck_corporate_client_document_document_kind', 'CHECK ((document_kind = ANY (ARRAY[''nib''::text, ''npwp''::text, ''authority_proof''::text])))'),
       ('corporate_verification_decision', 'ck_corporate_verification_decision_decision', 'CHECK ((decision = ANY (ARRAY[''approved''::text, ''rejected''::text])))'),
       ('corporate_verification_decision', 'ck_corporate_verification_decision_reason_code', 'CHECK (((decision = ''rejected''::text) = (reason_code IS NOT NULL)))'),
@@ -180,6 +181,13 @@ SELECT pg_temp.uji_nol('A1.1 account (expand F1-T99): CHECK jenis, realm, dan pa
         UNION ALL
         SELECT format('CHECK account belum tervalidasi: %s', conname) FROM pg_constraint
          WHERE conrelid = 'app.account'::regclass AND contype = 'c' AND NOT convalidated));
+SELECT pg_temp.uji_nol('F1-T34 idp_event_cursor/idp_event_receipt (expand F1-T99): CHECK realm persis termasuk korporat',
+  ARRAY(SELECT x FROM (VALUES
+      ('idp_event_cursor', 'ck_idp_event_cursor_idp_realm', 'CHECK ((idp_realm = ANY (ARRAY[''pasien''::text, ''nakes''::text, ''admin''::text, ''korporat''::text])))'),
+      ('idp_event_receipt', 'ck_idp_event_receipt_idp_realm', 'CHECK ((idp_realm = ANY (ARRAY[''pasien''::text, ''nakes''::text, ''admin''::text, ''korporat''::text])))')) v(t, n, def),
+        LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
+                   FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = to_regclass('app.' || v.t)) z
+         WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)));
 
 -- 2. Negatif atas pemeriksa, lalu perilaku. Semua di-ROLLBACK.
 BEGIN;
@@ -230,7 +238,12 @@ SELECT pg_temp.uji_tolak('A20 NEG status di luar daftar', 'rs_api',
 SELECT pg_temp.uji_tolak('A20 NEG asal di luar daftar', 'rs_api',
   'UPDATE app.corporate_client SET origin = ''imported'' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_origin');
 SELECT pg_temp.uji_tolak('A20 NEG NIB kosong', 'rs_api',
-  'UPDATE app.corporate_client SET nib = ''  '' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_nib_length');
+  'UPDATE app.corporate_client SET nib = ''  '' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_nib_(length|trimmed)');
+SELECT pg_temp.uji_tolak('A20 NEG NIB dengan spasi tepi tidak lolos sebagai NIB lain (review DBA)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2023'', ''PT Lain'', '' 123'', ''NPWP-UJI-3'', ''Jl. Uji 3'', ''0210000003'', ''pending_verification'', ''self_registered'')',
+  '23514', 'ck_corporate_client_nib_trimmed');
+SELECT pg_temp.uji_tolak('A20 NEG NIB dengan spasi akhir', 'rs_api',
+  'UPDATE app.corporate_client SET nib = ''NIB-UJI-1 '' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_nib_trimmed');
 SELECT pg_temp.uji_tolak('A20 NEG nama badan usaha melebihi batas', 'rs_api',
   'UPDATE app.corporate_client SET legal_name = repeat(''x'', 201) WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_legal_name_length');
 SELECT pg_temp.uji_tolak('A20 NEG pengajuan ke-0', 'rs_api',
@@ -340,6 +353,12 @@ SELECT pg_temp.uji_tolak('A1.1 NEG admin Ruang Sehat di realm korporat', 'rs_api
 SELECT pg_temp.uji_tolak('A1.1 NEG jenis akun di luar daftar', 'rs_api',
   'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_owner'', ''korporat'', ''sub-hr-x'', ''x@contoh.invalid'', ''active'', now())',
   '23514', 'ck_account_(account_type_idp_realm|account_type)');
+SELECT pg_temp.uji_boleh('F1-T34 rs_worker mencatat posisi baca dan tanda terima realm korporat', 'rs_worker',
+  'WITH c AS (INSERT INTO app.idp_event_cursor (id, idp_realm, position_ms) VALUES (''00000000-0000-7000-8000-0000000a2071'', ''korporat'', 0) RETURNING id) '
+  || 'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) SELECT ''00000000-0000-7000-8000-0000000a2072'', ''korporat'', ''0193a1b2-0000-7000-8000-000000000001'', now() FROM c', 1);
+SELECT pg_temp.uji_tolak('F1-T34 NEG realm rme tetap ditolak pengambil event Ruang Sehat', 'rs_worker',
+  'INSERT INTO app.idp_event_receipt (id, idp_realm, idp_event_id, event_time) VALUES (''00000000-0000-7000-8000-0000000a2073'', ''rme'', ''0193a1b2-0000-7000-8000-000000000002'', now())',
+  '23514', 'ck_idp_event_receipt_idp_realm');
 SELECT pg_temp.uji_tolak('A1.1 NEG subjek IdP ganda di realm korporat (akun aktif)', 'rs_api',
   'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-0000000a2053'', ''corporate_admin'', ''korporat'', ''sub-hr-1'', ''lain@contoh.invalid'', ''active'', now())',
   '23505', 'uqp_account_idp_realm_idp_subject');
@@ -389,7 +408,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM app.corporate_client) OR EXISTS (SELECT 1 FROM app.corporate_client_document)
      OR EXISTS (SELECT 1 FROM app.corporate_verification_decision) OR EXISTS (SELECT 1 FROM app.corporate_member)
-     OR EXISTS (SELECT 1 FROM app.stored_file)
+     OR EXISTS (SELECT 1 FROM app.stored_file) OR EXISTS (SELECT 1 FROM app.idp_event_cursor) OR EXISTS (SELECT 1 FROM app.idp_event_receipt)
      OR EXISTS (SELECT 1 FROM app.account) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a20: data uji tersisa';
   END IF;

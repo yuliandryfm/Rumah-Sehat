@@ -1,7 +1,7 @@
 # Data Dictionary: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.2 (2026-11-20, CR-024: istilah "markup" diganti "margin", termasuk nama tabel dan kolom `margin_rule`, `margin_type`, `margin_percent_bp`, `margin_fixed_idr`, `margin_rule_id`, `service_margin_total_idr`, `unit_margin_idr`, `purpose_code = margin_revenue`; belum ada migrasi yang membuat objek ini, jadi hanya dokumen yang berubah; struktur tidak berubah). Versi 1.1 (2026-11-19, CR-021: bagian A20 "Layanan korporat" ditambahkan sebagai **rancangan**, beserta usulan perubahan A1.1, A13.1, A15.4, A19.7, B3; rincian kolom, index, dan hak role final ditetapkan di task migrasi dengan review DBA dan keamanan; keputusan user `[USER] C21-P4`, PRD v1.3 EP-19, ADR-028, ADR-029). Versi 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
+Versi: 1.3 (2026-11-21, F1-T98/F1-T99: rincian final tabel A20 K1 `corporate_client`, `corporate_client_document`, `corporate_verification_decision`, `corporate_member` sesuai migrasi `20261121110000_corporate_client_verification.sql` dan `20261121120000_corporate_member_account_korporat.sql`, termasuk kolom `submission_round`, `submitted_at`, `job_title` (Anonimkan), `anonymized_at`, constraint, index, batas panjang, dan hak role; perluasan A1.1 `account` dengan `corporate_admin`/`korporat` dan CHECK realm `idp_event_cursor`/`idp_event_receipt`; klasifikasi NPWP Terbatas; review DBA F1-T98/T99 LULUS). Versi 1.2 (2026-11-20, CR-024: istilah "markup" diganti "margin", termasuk nama tabel dan kolom `margin_rule`, `margin_type`, `margin_percent_bp`, `margin_fixed_idr`, `margin_rule_id`, `service_margin_total_idr`, `unit_margin_idr`, `purpose_code = margin_revenue`; belum ada migrasi yang membuat objek ini, jadi hanya dokumen yang berubah; struktur tidak berubah). Versi 1.1 (2026-11-19, CR-021: bagian A20 "Layanan korporat" ditambahkan sebagai **rancangan**, beserta usulan perubahan A1.1, A13.1, A15.4, A19.7, B3; rincian kolom, index, dan hak role final ditetapkan di task migrasi dengan review DBA dan keamanan; keputusan user `[USER] C21-P4`, PRD v1.3 EP-19, ADR-028, ADR-029). Versi 1.0, disetujui dan dikunci di gate Tahap 4, 2026-11-18 `[USER] T4-G5` (direview `dba-reviewer` tiga putaran dan `security-architect`)
 Penyusun: Claude (persona Solution Architect + DBA)
 Tingkat ketelitian: **T1 Kritis** (model data, data pribadi spesifik, uang, audit)
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, ADR-001–ADR-005 (diterima) dan ADR-006–ADR-021 (diusulkan) `[DOK: adr/]`, catatan Tahap 4 `[DOK: 04-catatan-arsitektur.md]`, termasuk keputusan identity provider Keycloak dan Redis `[USER] T4-Q4` (ADR-007 dan ADR-011 sedang direvisi orkestrator; `[KEPUTUSAN-24]` direvisi).
@@ -317,14 +317,14 @@ Akun aplikasi untuk semua jenis pengguna Ruang Sehat, dipetakan ke pengguna Keyc
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | |
-| account_type | text | tidak | | — | CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`) |
-| idp_realm | text | tidak | UQp | — | CHECK (`pasien`, `nakes`, `admin`). CHECK pasangan: `patient`→`pasien`, `health_worker`→`nakes`, `rs_admin`/`partner_admin`→`admin` |
+| account_type | text | tidak | | — | CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`, `corporate_admin`); `corporate_admin` = HR perusahaan (ADR-027 butir 3, F1-T99) |
+| idp_realm | text | tidak | UQp | — | CHECK (`pasien`, `nakes`, `admin`, `korporat`). CHECK pasangan: `patient`→`pasien`, `health_worker`→`nakes`, `rs_admin`/`partner_admin`→`admin`, `corporate_admin`→`korporat` (F1-T99) |
 | idp_subject | text | tidak | UQp | PII | ID pengguna Keycloak di realm itu |
 | email | text | tidak | | PII | Salinan untuk notifikasi; sumber kebenaran email dan verifikasinya di Keycloak. Perubahan email mandiri di konsol akun Keycloak dinonaktifkan; perubahan hanya lewat API aplikasi (US-105 AC4), yang memperbarui Keycloak dan kolom ini setelah email baru terverifikasi, sehingga salinan tidak menyimpang (review DBA S04, dicatat orkestrator di ADR-011) `[KEPUTUSAN-46]`. Anonimkan |
 | status | text | tidak | | — | CHECK (`pending_activation`, `active`, `inactive`). Status ini yang menentukan otorisasi di setiap permintaan (KU-10); cache di Redis (§0.10) |
 | status_reason | text | ya | | — | Alasan penonaktifan atau pengaktifan (US-207 AC1, AC4); tanpa data pribadi |
 | status_changed_at | timestamptz | tidak | | — | |
-| full_name | text | ya | | PII | Wajib untuk `rs_admin` dan `partner_admin` (CHECK); pasien dan tenaga kesehatan memakai tabel profil. Anonimkan |
+| full_name | text | ya | | PII | Wajib untuk `rs_admin` dan `partner_admin` (CHECK); pasien dan tenaga kesehatan memakai tabel profil. Tidak diwajibkan untuk `corporate_admin`, karena nama HR undangan belum tentu diketahui saat akun dibuat (US-1903 AC1, F1-T99). Anonimkan |
 | last_seen_at | timestamptz | ya | | — | Dipakai angka pendukung KPI (US-1701 AC2) lewat `patient_app_activity_month` |
 | anonymized_at | timestamptz | ya | | — | Diisi pekerja privasi (ADR-013 §5) |
 
@@ -2356,14 +2356,14 @@ Aturan:
 
 ### A20. Layanan korporat (CR-021, rancangan)
 
-Status: **rancangan** (data dictionary v1.1). Sumber: PRD v1.3 EP-19, AB-80–AB-87; ADR-028 (Diterima); ADR-029 (Diusulkan, arah dana menunggu PT-59/L-21); `docs/cr/CR-021-analisis.md` §5 `[KEPUTUSAN-262]`. Konvensi §0.2–§0.7 berlaku: PK UUIDv7, kolom standar STD-x, uang `bigint _idr`, PII di Master yang dapat dianonimkan ("Anonimkan"), isi spesifik terenkripsi per wadah. Rincian kolom, constraint, index, hak role (§0.6), dan kebijakan retensi (PT-24) ditetapkan di task migrasi: F1-T98/F1-T99 untuk tabel K1 (Fase 1), task K2 untuk sisanya (Fase 3), keduanya dengan review DBA dan keamanan. Tabel K1 dibangun di Fase 1; tabel K2/K3 di Fase 3 (phase plan v0.3, skenario S3 `[USER] C21-P4`).
+Status: **rancangan** (data dictionary v1.1); tabel K1 (`corporate_client`, `corporate_client_document`, `corporate_verification_decision`, `corporate_member`) **final** sejak v1.3 (F1-T98/F1-T99), rinciannya di "Rincian K1" di bawah tabel. Sumber: PRD v1.3 EP-19, AB-80–AB-87; ADR-028 (Diterima); ADR-029 (Diusulkan, arah dana menunggu PT-59/L-21); `docs/cr/CR-021-analisis.md` §5 `[KEPUTUSAN-262]`. Konvensi §0.2–§0.7 berlaku: PK UUIDv7, kolom standar STD-x, uang `bigint _idr`, PII di Master yang dapat dianonimkan ("Anonimkan"), isi spesifik terenkripsi per wadah. Rincian kolom, constraint, index, hak role (§0.6), dan kebijakan retensi (PT-24) ditetapkan di task migrasi: F1-T98/F1-T99 untuk tabel K1 (Fase 1), task K2 untuk sisanya (Fase 3), keduanya dengan review DBA dan keamanan. Tabel K1 dibangun di Fase 1; tabel K2/K3 di Fase 3 (phase plan v0.3, skenario S3 `[USER] C21-P4`).
 
 | Tabel | Kelas | Isi utama (rancangan) | Sensitivitas | Fase |
 | --- | --- | --- | --- | --- |
-| `corporate_client` | M | `legal_name`, `nib`, `npwp`, alamat, telepon kantor, `status` CHECK (`pending_verification`, `active`, `rejected`, `inactive`), `origin` CHECK (`self_registered`, `created_by_admin`). UQp `nib WHERE deleted_at IS NULL` (NIB ganda ditolak, `[USER] C21-P4` 4c) | — (badan usaha) | 1 |
-| `corporate_client_document` | M | `corporate_client_id`, `document_kind` CHECK (`nib`, `npwp`, `authority_proof`), `stored_file_id` (bukti kewenangan pendaftar wajib, `[USER] C21-P4` 4b) | Dokumen dapat memuat PII pengurus | 1 |
-| `corporate_verification_decision` | T | `corporate_client_id`, keputusan, `reason_code`, pemutus (Verifikator); UQ satu keputusan per pengajuan (keputusan pertama menang) | — | 1 |
-| `corporate_member` | M | `account_id` (jenis `corporate_admin`), `corporate_client_id`, `job_title`; UQp satu keanggotaan aktif per akun (M-51) | PII lewat akun | 1 |
+| `corporate_client` | M | `legal_name`, `nib`, `npwp`, `office_address`, `office_phone`, `status` CHECK (`pending_verification`, `active`, `rejected`, `inactive`), `origin` CHECK (`self_registered`, `created_by_admin`), `submission_round`, `submitted_at`. UQp `nib WHERE deleted_at IS NULL` (NIB ganda ditolak, `[USER] C21-P4` 4c) | — (badan usaha); `npwp` Terbatas (lihat Rincian K1) | 1 |
+| `corporate_client_document` | M | `corporate_client_id`, `document_kind` CHECK (`nib`, `npwp`, `authority_proof`), `stored_file_id` (bukti kewenangan pendaftar wajib, `[USER] C21-P4` 4b); satu dokumen aktif per jenis | Dokumen dapat memuat PII pengurus | 1 |
+| `corporate_verification_decision` | T | `corporate_client_id`, `submission_round`, `decision`, `reason_code`, `decided_by` (Verifikator); UQ `(corporate_client_id, submission_round)` (keputusan pertama menang) | — | 1 |
+| `corporate_member` | M | `account_id` (jenis `corporate_admin`, diperiksa aplikasi), `corporate_client_id`, `job_title` (Anonimkan), `anonymized_at`; UQp satu keanggotaan aktif per akun (M-51) | PII lewat akun; `job_title` PII | 1 |
 | `corporate_package` | M (salinan rekanan) | `partner_id`, `external_id`, `package_kind` CHECK (`mass_vaccination`, `mass_mcu`, `mass_lab`), nama, isi, `location_options`, `partner_price_idr`, `requires_nik`, `synced_at`. Masuk lewat Partner Integration API (K-04 opsi a) | — | 3 |
 | `corporate_order` | T | `corporate_client_id`, `corporate_package_id`, `partner_id`, `location_kind` CHECK (`onsite`, `partner_site`), alamat on-site, jumlah peserta | — | 3 |
 | `corporate_order_status_event` / `corporate_order_state` | R / P | Status UP-80 | — | 3 |
@@ -2380,13 +2380,29 @@ Status: **rancangan** (data dictionary v1.1). Sumber: PRD v1.3 EP-19, AB-80–AB
 | `corporate_share_consent_record` | L | Peserta tertaut, perusahaan, pesanan, `consent_text_version_id`, aksi (beri/tarik) | Merujuk orang lewat ID (KEPUTUSAN-42) | 3 |
 | `corporate_result_summary` | T | Peserta, pesanan, `summary_enc`, `data_key_id`, versi | Spesifik, Enc (wadah `corporate_result_summary`) | 3 |
 
+**Rincian K1 (final, F1-T98/F1-T99, review DBA LULUS).** Migrasi: `db/migrations/app/20261121110000_corporate_client_verification.sql` dan `20261121120000_corporate_member_account_korporat.sql`; test `db/test/tabel-app-a20.sql`. Semua tabel memakai STD-M/STD-T, FK tanpa `CASCADE`, komentar `class:<kelas> module:korporat`.
+
+| Tabel | Kolom tambahan dan batas | Constraint dan index | Hak role (§0.6 A) |
+| --- | --- | --- | --- |
+| `corporate_client` (M) | `legal_name` 1–200, `nib` 1–64 tanpa spasi tepi (`CHECK nib = btrim(nib)`), `npwp` 1–64, `office_address` 1–500, `office_phone` 1–32 (panjang dihitung setelah `btrim`); `submission_round integer NOT NULL DEFAULT 1` (≥ 1, naik satu saat pengajuan ulang setelah ditolak, US-1902 AC3); `submitted_at timestamptz NOT NULL DEFAULT now()` (waktu pengajuan terakhir); `delete_reason` ≤ 500 | `UQp (nib) WHERE deleted_at IS NULL` (termasuk perusahaan `rejected`/`inactive` yang belum dihapus lunak); `ix (submitted_at) WHERE deleted_at IS NULL AND status = 'pending_verification'` (antrean terlama, US-1902 AC1) | `rs_app` S, I, U; `rs_privacy_worker` S (tanpa kolom Anonimkan) |
+| `corporate_client_document` (M) | `delete_reason` ≤ 500. Penggantian dokumen = hapus lunak baris lama lalu sisip baris baru | `UQp (corporate_client_id, document_kind) WHERE deleted_at IS NULL` (alias `corp_client_doc`); `UQ (stored_file_id)` | `rs_app` S, I, U; `rs_privacy_worker` S. PII pengurus hanya di isi berkas (dimusnahkan lewat `stored_file.purged_at`, ADR-018) |
+| `corporate_verification_decision` (T) | `submission_round integer NOT NULL` (≥ 1); `decision` CHECK (`approved`, `rejected`); `reason_code` 1–64, wajib bila dan hanya bila `rejected`; `decided_by uuid NOT NULL FK→account` | `UQ (corporate_client_id, submission_round)` (alias `corp_verif_decision`; keputusan pertama menang, US-1902 AC4); trigger penolak UPDATE/DELETE/TRUNCATE tingkat statement | `rs_app` S, I; `rs_privacy_worker` tanpa hak (tidak ada FK subjek data pribadi) |
+| `corporate_member` (M) | `job_title` 1–100 atau `NULL` (HR undangan, US-1903 AC1, US-1904 AC2), Anonimkan; `anonymized_at`; `delete_reason` ≤ 500. Pencabutan atau perpindahan = hapus lunak lalu sisip baris baru; aplikasi mencabut sesi (M-51) | `UQp (account_id) WHERE deleted_at IS NULL`; `ix (corporate_client_id) WHERE deleted_at IS NULL` (daftar HR aktif, pemeriksaan HR aktif terakhir) | `rs_app` S, I, U; `rs_privacy_worker` S + U per kolom `job_title`, `anonymized_at`, `updated_at`, `updated_by` |
+
+Catatan:
+- Jenis akun anggota (`account.account_type = corporate_admin`) **tidak ditegakkan database**; diperiksa aplikasi, seperti `rs_admin_role.account_id` (A1.2).
+- Format resmi NIB dan NPWP `[TIDAK DIKETAHUI]` (US-1901 AC3); database hanya membatasi panjang dan spasi tepi NIB; format divalidasi aplikasi setelah diverifikasi ke sumber resmi (F1-T101).
+- `npwp` berklasifikasi **Terbatas** (keputusan review F1-T98/T99): tidak boleh muncul di log aplikasi, payload audit (`before_values`/`after_values`), maupun pesan galat. Perlu-tidaknya enkripsi tingkat aplikasi diputuskan di F1-T101. Label "Terbatas" belum ada di legenda §0.5.
+- `reason_code` penolakan perusahaan berupa teks kode; konteksnya di A6.7 `reason_code` belum ada dan ditambahkan di F1-T104.
+- Dengan F1-T99, CHECK realm `idp_event_cursor` dan `idp_event_receipt` (pengambil event Keycloak, F1-T34) juga menerima `korporat`. `actor_type` riwayat status verifikasi identitas tidak diperluas, karena HR tidak menulis tabel itu.
+
 **Catatan untuk DBA (review keamanan CR-021 putaran 2, R2-01)** atas `bank_statement_entry`, diputuskan di task migrasinya:
 1. Nominal ikut menjadi bagian kunci unik, sehingga salah ketik nominal untuk referensi yang sama lolos sebagai mutasi kedua. Pilih kunci tanpa nominal, atau peringatan bila referensi sama muncul dengan nominal berbeda.
 2. Mutasi yang dibalik lalu dicatat ulang dengan kunci identik akan ditolak UQ. Pilih UQ parsial yang mengecualikan mutasi yang sudah dibalik, atau koreksi lewat alokasi pembalik tanpa mencatat ulang mutasi.
 Komposisi kunci juga diverifikasi terhadap format mutasi bank yang dipakai.
 
 **Usulan perubahan tabel lain** (migrasi *expand*, ADR-019 butir 2):
-- A1.1 `account`: `account_type` + `corporate_admin`; `idp_realm` + `korporat`; CHECK pasangan `corporate_admin`→`korporat` (F1-T99, Fase 1).
+- A1.1 `account`: `account_type` + `corporate_admin`; `idp_realm` + `korporat`; CHECK pasangan `corporate_admin`→`korporat` (F1-T99, Fase 1). **Diterapkan** v1.3 (lihat A1.1).
 - A15.4 `cms_content`: kanal (`app`, `site`) dan halaman tujuan situs (F1-T91, Fase 1).
 - A19.7 `data_key.container_type`: + `corporate_participant_identity`, `corporate_import_preview`, `corporate_result_summary` `[KEPUTUSAN-258]` (Fase 3).
 - A13.1 `journal_account`: piutang korporat per perusahaan, pendapatan margin korporat, dan (bila L-21 memilih penerimaan penuh oleh PT. Arunika) kewajiban kepada rekanan atas pesanan korporat (ADR-029, Fase 3).

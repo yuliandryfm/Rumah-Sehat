@@ -76,6 +76,8 @@ CREATE TABLE app.corporate_client (
   CONSTRAINT ck_corporate_client_submission_round CHECK (submission_round >= 1),
   CONSTRAINT ck_corporate_client_legal_name_length CHECK (char_length(btrim(legal_name)) BETWEEN 1 AND 200),
   CONSTRAINT ck_corporate_client_nib_length CHECK (char_length(btrim(nib)) BETWEEN 1 AND 64),
+  -- Review DBA F1-T98: NIB disimpan tanpa spasi tepi, supaya ' 123' tidak lolos UQp sebagai NIB lain.
+  CONSTRAINT ck_corporate_client_nib_trimmed CHECK (nib = btrim(nib)),
   CONSTRAINT ck_corporate_client_npwp_length CHECK (char_length(btrim(npwp)) BETWEEN 1 AND 64),
   CONSTRAINT ck_corporate_client_office_address_length CHECK (char_length(btrim(office_address)) BETWEEN 1 AND 500),
   CONSTRAINT ck_corporate_client_office_phone_length CHECK (char_length(btrim(office_phone)) BETWEEN 1 AND 32),

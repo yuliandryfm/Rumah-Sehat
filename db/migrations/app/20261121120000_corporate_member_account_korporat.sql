@@ -1,6 +1,7 @@
 -- db/migrations/app/20261121120000_corporate_member_account_korporat.sql
 -- F1-T99: tabel A20 K1 bagian 2, yaitu corporate_member (M, satu keanggotaan aktif per akun), dan perluasan
--- (expand) A1.1 account untuk akun HR perusahaan: account_type corporate_admin, idp_realm korporat, beserta hak role.
+-- (expand) A1.1 account untuk akun HR perusahaan: account_type corporate_admin, idp_realm korporat, beserta hak role;
+-- realm korporat juga ditambahkan ke CHECK idp_event_cursor dan idp_event_receipt (F1-T34).
 --
 -- Modul kritis T1 (file migrasi skema dan hak role database; isolasi data per perusahaan; ADR-003, ADR-008,
 -- ADR-012, ADR-019, ADR-021 butir 4): review DBA + keamanan.
@@ -25,8 +26,11 @@
 -- - Perluasan account (expand §11.3, ADR-019 butir 2): tiga CHECK diganti dengan versi yang hanya menambah nilai,
 --   dalam satu ALTER TABLE (satu kunci), sehingga kode versi sebelumnya tetap kompatibel. ck_account_full_name tidak
 --   diubah: nama HR tidak selalu diketahui saat undangan dibuat (US-1903 AC1 hanya email HR pertama).
--- - idp_event_cursor/idp_event_receipt (F1-T34) tidak diperluas di sini; realm korporat untuk pengambil event
---   Keycloak (ADR-027 konsekuensi, ADR-011 butir 10) ditambahkan task realm/pengambil event korporat.
+-- - idp_event_cursor/idp_event_receipt (F1-T34): CHECK realm diperluas dengan korporat (review DBA F1-T99), supaya
+--   pengambil event Keycloak dapat mencatat posisi dan tanda terima realm korporat (ADR-027 konsekuensi, ADR-011
+--   butir 10). Kelas O, hanya menambah nilai (expand).
+-- - actor_type identity_verification_request_status_event (F1-T18) tidak diperluas: HR perusahaan tidak menulis
+--   riwayat verifikasi identitas pasien.
 
 -- Penjaga (§11.2) dari templat db/test/templat-penjaga-lanjutan-app.sql.
 DO $$
@@ -55,6 +59,14 @@ ALTER TABLE app.account
     OR (account_type IN ('rs_admin','partner_admin') AND idp_realm = 'admin')
     OR (account_type = 'corporate_admin' AND idp_realm = 'korporat'));
 -- Hak account tidak berubah (F1-T16): rs_app S, I, U; pekerja privasi S + U per kolom anonymize.
+
+-- F1-T34 pengambil event Keycloak (expand): realm korporat. Hak tidak berubah.
+ALTER TABLE app.idp_event_cursor
+  DROP CONSTRAINT ck_idp_event_cursor_idp_realm,
+  ADD CONSTRAINT ck_idp_event_cursor_idp_realm CHECK (idp_realm IN ('pasien','nakes','admin','korporat'));
+ALTER TABLE app.idp_event_receipt
+  DROP CONSTRAINT ck_idp_event_receipt_idp_realm,
+  ADD CONSTRAINT ck_idp_event_receipt_idp_realm CHECK (idp_realm IN ('pasien','nakes','admin','korporat'));
 
 -- A20 corporate_member (M): keanggotaan akun HR di perusahaan (tenant, ADR-028 butir 1).
 CREATE TABLE app.corporate_member (
