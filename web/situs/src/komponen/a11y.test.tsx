@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import Galat from "../app/error.tsx";
 import TidakDitemukan from "../app/not-found.tsx";
 import type { Konten } from "../konten/tipe.ts";
+import { DaftarArtikel, DetailArtikel } from "./Artikel.tsx";
 import { Beranda, type DataBeranda } from "./Beranda.tsx";
 import { HalamanKonten } from "./HalamanKonten.tsx";
 import { KerangkaSitus } from "./KerangkaSitus.tsx";
@@ -51,6 +52,10 @@ describe("aksesibilitas otomatis (axe-core)", () => {
     ["Beranda, CMS kosong", <Beranda key="a" data={KOSONG} />],
     ["Beranda, CMS terisi", <Beranda key="b" data={PENUH} />],
     ["Halaman isi CMS", <HalamanKonten key="c" konten={KONTEN} />],
+    ["Halaman isi bertanda draf (kebijakan)", <HalamanKonten key="f" konten={KONTEN} draf />],
+    ["Daftar artikel, ada kursor", <DaftarArtikel key="g" pengantar={KONTEN} artikel={[{ ...KONTEN, content_type: "article" }]} kursorBerikut={KONTEN.content_id} />],
+    ["Daftar artikel kosong", <DaftarArtikel key="h" pengantar={null} artikel={[]} kursorBerikut={null} />],
+    ["Detail artikel", <DetailArtikel key="i" artikel={{ ...KONTEN, content_type: "article", category: "Kesehatan" }} />],
     ["Halaman tidak ditemukan", <TidakDitemukan key="d" />],
     ["Galat umum", <Galat key="e" error={new Error("x")} reset={() => undefined} />],
   ])("%s dalam kerangka situs: tanpa pelanggaran", async (_nama, isi) => {
