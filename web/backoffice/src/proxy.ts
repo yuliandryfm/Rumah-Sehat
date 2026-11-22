@@ -10,7 +10,12 @@ import { idKorelasi } from "./lib/korelasi.ts";
 export function proxy(request: NextRequest): NextResponse {
   const nonce = buatNonce();
   const dev = process.env.NODE_ENV === "development";
-  const csp = buatCsp(nonce, dev, originUnggahDariEnv(process.env["BACKOFFICE_UPLOAD_ORIGIN"], dev));
+  const csp = buatCsp(
+    nonce,
+    dev,
+    originUnggahDariEnv(process.env["BACKOFFICE_UPLOAD_ORIGIN"], dev),
+    originUnggahDariEnv(process.env["BACKOFFICE_DOCUMENT_ORIGIN"], dev),
+  );
   const korelasi = idKorelasi(request.headers.get("x-correlation-id"));
 
   // Next membaca nonce dari CSP pada header permintaan lalu memasangnya ke skrip dan gaya buatannya.

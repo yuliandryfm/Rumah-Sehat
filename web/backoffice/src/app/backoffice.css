@@ -60,6 +60,14 @@ main:focus { outline: none; }
 .bo-pratinjau-bungkus h2 { margin: 0 0 var(--s2); }
 .bo-pratinjau { width: 100%; min-height: 360px; border: 1px solid var(--c-border-divider); border-radius: var(--r-md); background: var(--c-bg-surface); }
 .bo-galat-daftar { list-style: none; margin: 0; padding: 0; }
+.bo-verif { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s6); align-items: start; }
+.bo-verif-detail { display: flex; flex-direction: column; gap: var(--s3); background: var(--c-bg-surface); border: 1px solid var(--c-border-divider); border-radius: var(--r-md); padding: var(--s4); }
+.bo-verif-detail h2, .bo-verif-detail h3 { margin: 0; }
+.bo-dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s2) var(--s4); margin: 0; }
+.bo-dl dt { color: var(--c-text-secondary); }
+.bo-dl dd { margin: 0; overflow-wrap: anywhere; }
+.bo-foto { max-width: 100%; border: 1px solid var(--c-border-divider); border-radius: var(--r-md); }
 @media (max-width: 767px) {
   .bo-editor { grid-template-columns: 1fr; }
+  .bo-verif { grid-template-columns: 1fr; }
 }
