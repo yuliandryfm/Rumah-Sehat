@@ -269,10 +269,13 @@ fn security_log_obeys_the_same_denylist() {
 
 #[test]
 fn audit_write_failure_goes_to_security_stream_only() {
+    let before = security::audit_write_failures_total();
     let c = capture(LogLevel::Error, || {
         security::audit_write_failed("e_09", security::AuditWriteFailure::StoreError);
         security::audit_write_failed("e_05", security::AuditWriteFailure::InvalidEvent);
     });
+    // US-1501 AC3 Fase 1: penghitung naik satu per kegagalan (test lain di biner ini tidak memanggilnya).
+    assert_eq!(security::audit_write_failures_total() - before, 2);
     assert!(!c.app.text().contains("audit_write_failed"));
     let sec = c.security.lines();
     assert_eq!(sec.len(), 2, "{sec:?}");

@@ -51,6 +51,7 @@ Berkas modul `profile` dan perannya:
 - Semua aksi sensitif memakai `audit::in_audited_tx(pool, clock, |conn| ...)`: transaksi tingkat atas milik pustaka; event masuk `audit_outbox` di transaksi yang sama sehingga gagal tulis outbox membatalkan aksi (`AuditedTxError::{Work, Audit, Database}`).
 - Pembangun event dan konteks di `service.rs`: `request_event`, `status_change`, `audit_context`, `actor`, `source_component`. Field "Sumber" memerlukan IP klien; tanpa IP aksi ditolak gagal-tertutup (`client_ip` di `service.rs`; test `missing_client_ip_fails_closed_without_side_effects`).
 - Aksi gagal dicatat di transaksi tersendiri lewat `record_failed` (`service.rs`).
+- Field wajib per kode event ditegakkan pustaka (`audit::check_payload` di `AuditEvent::finish`, F1-T69). Pemancar event baru wajib didaftarkan di `audit-event-coverage.toml` dengan test yang memanggil `assert_event_complete` (`apps/rs-backend/tests/audit_support`) atau `audit_events` (`identity_support`); aturan arch-check `audit-coverage` menolak yang tidak terdaftar.
 - Akses data sensitif (E-05) dicatat sebelum data dibuka: foto dokumen (`document_photo_url`) dan pembukaan NIK (`open_document_nik` di `verification.rs`). Field sensitif memakai aturan `audit::FieldRule` (NIK hanya 4 digit terakhir, `FieldRule::last4("nik")` di `service.rs`; tipe di `crates/audit/src/policy.rs`).
 
 ## 5. Otorisasi (ADR-012, coding-standards §5.4)

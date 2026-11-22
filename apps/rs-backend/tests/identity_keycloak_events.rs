@@ -18,6 +18,8 @@
     clippy::indexing_slicing
 )]
 
+mod audit_support;
+
 use axum::Router;
 use axum::body::Bytes;
 use axum::extract::{Path, State};
@@ -675,6 +677,15 @@ async fn events_are_mapped_masked_and_written_once() {
     assert_eq!(pasien.position_ms, t0 + 6);
 
     let rows = outbox(&e.relay).await;
+    // F1-T69 (US-1501 AC1–AC2): semua event E-01–E-04 dari IdP lengkap dan bersih, termasuk subjek tidak
+    // dikenal (tanpa ID objek) dan penguncian (E-02 hasil gagal).
+    audit_support::assert_events_complete(&rows, &["e_01", "e_02", "e_03", "e_04"]);
+    let locked = by_action(&rows, "account_locked_temporarily");
+    assert_eq!(locked[0]["outcome"], "failure");
+    assert_eq!(
+        locked[0]["outcome_reason_code"],
+        "user_temporarily_disabled"
+    );
     assert_eq!(
         rows.len(),
         8,
@@ -1153,6 +1164,7 @@ async fn first_admin_login_activates_pending_admin_account() {
         assert_eq!(st, want);
     }
     let rows = outbox(&e.relay).await;
+    audit_support::assert_events_complete(&rows, &["e_01", "e_02", "e_10"]);
     let activated = by_action(&rows, "admin_account_activated");
     assert_eq!(activated.len(), 1, "hanya login pertama yang berhasil");
     let a = activated[0];

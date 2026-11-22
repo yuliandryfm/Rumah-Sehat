@@ -11,6 +11,7 @@
     clippy::indexing_slicing
 )] // berkas test
 
+mod audit_support;
 mod common;
 
 use common::{ADMIN_AUD, ADMIN_ISS, PASIEN_ISS, Resp, TestKeys, request, request_json, token};
@@ -503,6 +504,29 @@ async fn soft_delete_requires_reason_hides_content_and_restores() {
 
     // Event E-16 ditulis di transaksi yang sama oleh audit::in_audited_tx (gagal tulis = 500 dan rollback,
     // diuji crate audit); isi event diuji unit test service (`deletion_and_restore_events_*`).
+    // F1-T69 (US-1501 AC1–AC2): event yang tersimpan di outbox lengkap per PRD §7.2 dan tanpa alasan
+    // teks bebas (hanya nama field `delete_reason`).
+    let relay = pool("RS_TEST_DB_RELAY_URL").await;
+    let all: Vec<Value> =
+        sqlx::query_scalar!("SELECT payload FROM app.audit_outbox ORDER BY occurred_at, id")
+            .fetch_all(&relay)
+            .await
+            .unwrap();
+    let mine: Vec<Value> = all
+        .into_iter()
+        .filter(|p| p["object_id"].as_str() == Some(id.as_str()))
+        .collect();
+    let actions: Vec<_> = mine.iter().map(|p| p["action_name"].clone()).collect();
+    assert_eq!(
+        actions,
+        [json!("cms_content_deleted"), json!("cms_content_restored")]
+    );
+    audit_support::assert_events_complete(&mine, &["e_16"]);
+    assert!(
+        !serde_json::to_string(&mine)
+            .unwrap()
+            .contains("Konten usang")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

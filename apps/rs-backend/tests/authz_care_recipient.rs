@@ -11,6 +11,8 @@
     clippy::indexing_slicing
 )] // berkas test
 
+mod audit_support;
+
 use authn::testing::{StaticJwks, TestRealmKey, jwks_document};
 use authn::{
     Algorithm, AuthContext, AuthState, Authenticator, AuthnConfig, Backend, ErrorRenderer, Realm,
@@ -333,6 +335,7 @@ async fn patient_reaches_own_recipients_only_and_foreign_attempts_are_audited_as
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
     assert_eq!(events.len(), 1, "{events:?}");
+    audit_support::assert_event_complete(&events[0], "e_05");
     let e = &events[0];
     assert_eq!(e["outcome"], "failure");
     assert_eq!(e["outcome_reason_code"], "access_denied");

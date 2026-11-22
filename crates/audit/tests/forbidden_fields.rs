@@ -126,7 +126,12 @@ fn every_event_code_payload_is_free_of_forbidden_values() {
             None,
             Some(Value::text(format!("otp {OTP} token {TOKEN}"))),
         ))
-        .outcome(Outcome::success())
+        .outcome(if ec == EventCode::E02 {
+            // E-02 (login gagal) selalu hasil gagal (F1-T69, PRD §7.1).
+            Outcome::failure(code("invalid_user_credentials"))
+        } else {
+            Outcome::success()
+        })
         .context(&user_ctx());
         if ec == EventCode::E17 {
             ev = ev.disclosure(Disclosure::new(
@@ -362,6 +367,11 @@ fn required_fields_enforced() {
         Actor::system(),
         ObjectRef::with_uuid(&ACCOUNT, new_id()),
     )
+    .change(FieldChange::new(
+        "status",
+        Some(Value::code("active").unwrap()),
+        Some(Value::code("anonymized").unwrap()),
+    ))
     .outcome(Outcome::success())
     .context(&AuditContext::new(
         CorrelationId::new(),
@@ -382,6 +392,7 @@ fn disclosure_rules_for_e17() {
             Actor::system(),
             ObjectRef::new(&ACCOUNT, Some(ObjectId::Code(code("export_batch")))),
         )
+        .subject(Subject::care_recipient(new_id()))
         .outcome(Outcome::success())
         .context(&AuditContext::new(
             CorrelationId::new(),
@@ -570,6 +581,7 @@ fn debug_output_of_event_and_record_does_not_leak() {
         user(),
         ObjectRef::with_uuid(&CARE_RECIPIENT, new_id()),
     )
+    .subject(Subject::care_recipient(new_id()))
     .change(FieldChange::new(
         "nik",
         None,
@@ -691,4 +703,138 @@ fn numbers_smuggled_through_values_are_blocked() {
         "{ua}"
     );
     assert!(ua.contains("App/1.0"), "{ua}");
+}
+
+/// F1-T69 (US-1501 AC1, TC-US-1501-4): field wajib per kode event ditegakkan saat event dibentuk, sehingga
+/// event yang kurang tidak pernah ditulis dan aksi pemanggil batal.
+#[test]
+fn per_event_code_requirements_reject_incomplete_events() {
+    let c = clock();
+    let ev = |ec: EventCode| {
+        AuditEvent::new(
+            ec,
+            code("sample_action"),
+            user(),
+            ObjectRef::with_uuid(&ACCOUNT, new_id()),
+        )
+        .context(&user_ctx())
+    };
+    let status = || {
+        FieldChange::new(
+            "status",
+            Some(Value::code("pending").unwrap()),
+            Some(Value::code("approved").unwrap()),
+        )
+    };
+    // E-07 tanpa subjek data.
+    let e = ev(EventCode::E07)
+        .change(status())
+        .outcome(Outcome::success())
+        .finish(&c)
+        .unwrap_err();
+    assert_eq!(
+        (e.kind(), e.what()),
+        (AuditErrorKind::MissingField, "subjects")
+    );
+    // E-07 tanpa nilai berubah.
+    let e = ev(EventCode::E07)
+        .subject(Subject::care_recipient(new_id()))
+        .outcome(Outcome::success())
+        .finish(&c)
+        .unwrap_err();
+    assert_eq!(e.what(), "changed_fields");
+    // E-05 yang membuka data tanpa subjek; penolakan tanpa subjek boleh.
+    let e = ev(EventCode::E05)
+        .outcome(Outcome::success())
+        .finish(&c)
+        .unwrap_err();
+    assert_eq!(e.what(), "subjects");
+    ev(EventCode::E05)
+        .outcome(Outcome::failure(code("access_denied")))
+        .finish(&c)
+        .unwrap();
+    // E-02 selalu gagal, E-01 selalu sukses.
+    let e = ev(EventCode::E02)
+        .outcome(Outcome::success())
+        .finish(&c)
+        .unwrap_err();
+    assert_eq!(
+        (e.kind(), e.what()),
+        (AuditErrorKind::InvalidCombination, "outcome")
+    );
+    let e = ev(EventCode::E01)
+        .outcome(Outcome::failure(code("invalid_user_credentials")))
+        .finish(&c)
+        .unwrap_err();
+    assert_eq!(e.what(), "outcome");
+    // E-10/E-11/E-16 berhasil wajib before/after; hasil gagal tidak.
+    for ec in [EventCode::E10, EventCode::E11, EventCode::E16] {
+        let e = ev(ec).outcome(Outcome::success()).finish(&c).unwrap_err();
+        assert_eq!(e.what(), "changed_fields", "{ec}");
+        ev(ec)
+            .outcome(Outcome::failure(code("transition_conflict")))
+            .finish(&c)
+            .unwrap();
+        ev(ec)
+            .change(status())
+            .outcome(Outcome::success())
+            .finish(&c)
+            .unwrap();
+    }
+    // ID objek wajib kecuali autentikasi IdP dengan subjek tidak dikenal (aktor sistem).
+    let worker = AuditContext::new(
+        CorrelationId::new(),
+        Source::component(SourceComponent::Worker),
+    );
+    let e = AuditEvent::new(
+        EventCode::E10,
+        code("account_changed"),
+        user(),
+        ObjectRef::new(&ACCOUNT, None),
+    )
+    .change(status())
+    .outcome(Outcome::success())
+    .context(&user_ctx())
+    .finish(&c)
+    .unwrap_err();
+    assert_eq!(e.what(), "object_id");
+    let rec = AuditEvent::new(
+        EventCode::E02,
+        code("login_failed"),
+        Actor::system(),
+        ObjectRef::new(&ACCOUNT, None),
+    )
+    .outcome(Outcome::failure(code("user_not_found")))
+    .context(&worker)
+    .finish(&c)
+    .unwrap();
+    assert!(rec.payload()["object_id"].is_null());
+}
+
+/// F1-T69 (US-1501 AC1–AC2): setiap payload yang lolos `finish` juga lolos pemeriksa yang dipakai test
+/// integrasi atas payload tersimpan; payload yang dirusak sesudahnya terdeteksi.
+#[test]
+fn finished_payloads_pass_check_payload() {
+    let rec = AuditEvent::new(
+        EventCode::E14,
+        code("payout_account_changed"),
+        user(),
+        ObjectRef::with_uuid(&PAYOUT_ACCOUNT, new_id()),
+    )
+    .change(FieldChange::new(
+        "account_number",
+        None,
+        Some(Value::digits(secret(ACCOUNT_NO))),
+    ))
+    .outcome(Outcome::success())
+    .context(&user_ctx())
+    .finish(&clock())
+    .unwrap();
+    assert_eq!(audit::check_payload(rec.payload()), []);
+    let mut tampered = rec.payload().clone();
+    tampered["after_values"]["account_number"] = json!(ACCOUNT_NO);
+    assert!(!audit::check_payload(&tampered).is_empty());
+    let mut tampered = rec.payload().clone();
+    tampered["otp"] = json!(OTP);
+    assert!(!audit::check_payload(&tampered).is_empty());
 }

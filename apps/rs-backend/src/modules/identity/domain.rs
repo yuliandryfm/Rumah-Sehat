@@ -259,7 +259,14 @@ pub fn map_event(kind: &str, error: Option<&str>, credential: Option<&str>) -> O
     } else {
         (code, action)
     };
-    let failure = is_error.then(|| reason_code(error));
+    // E-02 selalu hasil gagal dengan kode alasan (PRD §7.1 "login gagal, termasuk akun terkunci"; F1-T69,
+    // ditegakkan `audit::check_payload`). Event penguncian Keycloak bukan `*_ERROR`, jadi kode alasannya
+    // diambil dari konstanta `Errors` Keycloak yang sepadan (SRC-623).
+    let failure = match base {
+        "USER_DISABLED_BY_TEMPORARY_LOCKOUT" => Some("user_temporarily_disabled"),
+        "USER_DISABLED_BY_PERMANENT_LOCKOUT" => Some("user_disabled"),
+        _ => is_error.then(|| reason_code(error)),
+    };
     Some(Mapped {
         code,
         action,
@@ -391,7 +398,19 @@ mod tests {
         );
         assert_eq!(
             m("USER_DISABLED_BY_TEMPORARY_LOCKOUT", None, None),
-            Some((EventCode::E02, "account_locked_temporarily", None))
+            Some((
+                EventCode::E02,
+                "account_locked_temporarily",
+                Some("user_temporarily_disabled")
+            ))
+        );
+        assert_eq!(
+            m("USER_DISABLED_BY_PERMANENT_LOCKOUT", None, None),
+            Some((
+                EventCode::E02,
+                "account_locked_permanently",
+                Some("user_disabled")
+            ))
         );
         assert_eq!(
             m("LOGOUT", None, None),

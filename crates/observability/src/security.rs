@@ -11,6 +11,7 @@
 //! pengambilannya: F1-T34.
 
 use foundation::Uuid;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tracing::{info, warn};
 
 /// Target tracing khusus security log. Dipakai layer untuk memilih aliran.
@@ -254,9 +255,21 @@ pub fn email_recipient_rate_dropped(correlation_id: Uuid) {
     warn!(target: SECURITY_TARGET, event_type = "email_recipient_rate_dropped", relay_correlation_id = %correlation_id.hyphenated(), "security_event");
 }
 
+/// Penghitung kegagalan pencatatan event audit sejak proses mulai (US-1501 AC3 Fase 1, KEPUTUSAN-197:
+/// "menaikkan metrik penghitung"). Pengekspor metrik ke Prometheus belum ada (agen metrik
+/// `[TIDAK DIKETAHUI]`, docs/05-stack.md §4); nilainya dibaca lewat [`audit_write_failures_total`].
+static AUDIT_WRITE_FAILURES: AtomicU64 = AtomicU64::new(0);
+
+/// Jumlah kegagalan pencatatan event audit di proses ini (monoton naik).
+pub fn audit_write_failures_total() -> u64 {
+    AUDIT_WRITE_FAILURES.load(Ordering::Relaxed)
+}
+
 /// Penulisan event audit gagal; aksi pemanggil dibatalkan (ADR-009 butir 2, klarifikasi T-21 US-1501 AC3).
-/// Hanya kode event dan tahap kegagalan; isi event dan pesan galat database tidak dicatat.
+/// Hanya kode event dan tahap kegagalan; isi event dan pesan galat database tidak dicatat. Setiap panggilan
+/// = satu entri security log dan penghitung [`audit_write_failures_total`] naik satu.
 pub fn audit_write_failed(event_code: &'static str, stage: AuditWriteFailure) {
+    AUDIT_WRITE_FAILURES.fetch_add(1, Ordering::Relaxed);
     warn!(target: SECURITY_TARGET, event_type = "audit_write_failed", event_code = event_code, stage = stage.as_str(), "security_event");
 }
 

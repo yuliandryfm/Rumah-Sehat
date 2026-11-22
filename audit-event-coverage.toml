@@ -1,0 +1,92 @@
+# Inventaris pemancar event audit dan test kelengkapannya (F1-T69, US-1501 AC1–AC2, PRD §7.1–§7.3).
+#
+# Dijaga aturan arch-check `audit-coverage` (crates/arch-check/src/audit_coverage.rs, langkah
+# "test-arsitektur" di scripts/verify.sh). Setiap berkas kode non-test yang menyebut `EventCode::Exx` atau
+# memanggil `AuditEvent::new` wajib punya entri di sini dengan kode event yang disebutnya persis, dan
+# minimal satu test integrasi yang membaca payload tersimpan lalu memanggil salah satu `checkers`
+# (semuanya bermuara di `audit::check_payload`). Event baru tanpa entri = verifikasi merah.
+#
+# Kelengkapan per cabang pemancar juga ditegakkan saat runtime: `AuditEvent::finish` menjalankan
+# `check_payload` dan menolak event yang kurang field wajib untuk kodenya, sehingga aksi pemanggil batal
+# (ADR-009 butir 2, KEPUTUSAN-15).
+
+# assert_event_complete / assert_events_complete: apps/rs-backend/tests/audit_support/mod.rs
+# audit_events: apps/rs-backend/tests/identity_support/mod.rs (memeriksa semua payload outbox sebelum relay)
+# e05_events: apps/rs-backend/tests/platform_files_download.rs (idem)
+checkers = ["assert_event_complete", "assert_events_complete", "audit_events", "e05_events"]
+
+# E-05 hasil gagal atas penerima layanan milik pasien lain (F1-T38, KU-03).
+[[emitter]]
+file = "apps/rs-backend/src/access_audit.rs"
+codes = ["E05"]
+tests = [
+  "apps/rs-backend/tests/authz_care_recipient.rs::patient_reaches_own_recipients_only_and_foreign_attempts_are_audited_as_failed_e05",
+]
+
+# E-01–E-04 dari event Keycloak: pemetaan (domain.rs) dan penyusunan event + aktivasi admin (jobs.rs).
+[[emitter]]
+file = "apps/rs-backend/src/modules/identity/domain.rs"
+codes = ["E01", "E02", "E03", "E04"]
+tests = [
+  "apps/rs-backend/tests/identity_keycloak_events.rs::events_are_mapped_masked_and_written_once",
+]
+
+[[emitter]]
+file = "apps/rs-backend/src/modules/identity/jobs.rs"
+codes = ["E01", "E03"]
+tests = [
+  "apps/rs-backend/tests/identity_keycloak_events.rs::events_are_mapped_masked_and_written_once",
+  "apps/rs-backend/tests/identity_keycloak_events.rs::first_admin_login_activates_pending_admin_account",
+]
+
+# E-10/E-11 akun dan sub-peran admin (F1-T65, US-208), termasuk undangan aktivasi berhasil dan gagal.
+[[emitter]]
+file = "apps/rs-backend/src/modules/identity/admin_service.rs"
+codes = ["E10", "E11"]
+tests = [
+  "apps/rs-backend/tests/identity_admin_accounts.rs::bootstrap_creates_one_pending_super_admin_with_invite_and_audit",
+  "apps/rs-backend/tests/identity_admin_accounts.rs::bootstrap_reissue_only_for_single_pending_super_admin",
+  "apps/rs-backend/tests/identity_admin_accounts.rs::super_admin_creates_admin_with_sub_roles_and_audit",
+  "apps/rs-backend/tests/identity_admin_accounts.rs::sub_role_change_rules_and_audit",
+  "apps/rs-backend/tests/identity_admin_accounts.rs::deactivation_rules_audit_and_keycloak_sync",
+  "apps/rs-backend/tests/identity_admin_accounts.rs::resend_invite_only_for_pending_accounts_by_super_admin",
+  "apps/rs-backend/tests/identity_keycloak_events.rs::first_admin_login_activates_pending_admin_account",
+]
+
+# E-16 soft delete dan pemulihan konten CMS (F1-T92).
+[[emitter]]
+file = "apps/rs-backend/src/modules/content_support/service.rs"
+codes = ["E16"]
+tests = [
+  "apps/rs-backend/tests/content_cms.rs::soft_delete_requires_reason_hides_content_and_restores",
+]
+
+# E-10 pengajuan dan pembatalan dokumen identitas (F1-T60, US-106), termasuk pembatalan yang kalah.
+[[emitter]]
+file = "apps/rs-backend/src/modules/profile/service.rs"
+codes = ["E10"]
+tests = [
+  "apps/rs-backend/tests/profile_identity_submission.rs::submission_encrypts_nik_and_moves_status_to_pending",
+  "apps/rs-backend/tests/profile_identity_submission.rs::pending_submission_locks_photo_until_cancelled_and_cancel_restores_previous_status",
+  "apps/rs-backend/tests/profile_identity_submission.rs::cancel_after_decision_is_rejected_and_status_kept",
+]
+
+# E-05 pembukaan NIK dan E-07 keputusan Verifikator (F1-T62, US-201), termasuk keputusan yang kalah.
+[[emitter]]
+file = "apps/rs-backend/src/modules/profile/verification.rs"
+codes = ["E05", "E07"]
+tests = [
+  "apps/rs-backend/tests/profile_identity_verifier.rs::queue_detail_photo_and_approve",
+  "apps/rs-backend/tests/profile_identity_verifier.rs::reject_reasons_and_note_rules",
+  "apps/rs-backend/tests/profile_identity_verifier.rs::first_decision_wins",
+]
+
+# E-05 pembukaan berkas oleh staf (URL unduh) dan percobaan yang ditolak (F1-T30, ADR-018).
+[[emitter]]
+file = "apps/rs-backend/src/modules/platform/service.rs"
+codes = ["E05"]
+tests = [
+  "apps/rs-backend/tests/platform_files_download.rs::verifier_gets_short_lived_attachment_url_after_e05_is_recorded",
+  "apps/rs-backend/tests/platform_files_download.rs::unauthorised_requests_get_no_url_and_are_logged",
+  "apps/rs-backend/tests/profile_identity_verifier.rs::queue_detail_photo_and_approve",
+]

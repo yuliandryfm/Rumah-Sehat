@@ -458,7 +458,7 @@ mod tests {
                 .user_agent("uji/1.0"),
         );
         let mut e = AuditEvent::new(
-            EventCode::E07,
+            EventCode::E09,
             code("status_changed"),
             Actor::account(new_id(), code("rs_admin"), Vec::new()),
             ObjectRef::with_uuid(&POLICY, new_id()),
@@ -488,7 +488,7 @@ mod tests {
         let rec = record(0);
         let b = map(&rec, rec.payload()).unwrap();
         assert_eq!(b.event_id, rec.event_id());
-        assert_eq!(b.event_code, "e_07");
+        assert_eq!(b.event_code, "e_09");
         assert_eq!(b.actor_type, "account");
         assert_eq!(b.actor_roles, None, "tanpa peran = NULL");
         assert_eq!(b.subject_count, 0);

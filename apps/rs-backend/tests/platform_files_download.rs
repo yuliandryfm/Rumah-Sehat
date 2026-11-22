@@ -17,6 +17,7 @@
     clippy::indexing_slicing
 )] // berkas test
 
+mod audit_support;
 mod files;
 
 use audit::{AuditContext, Source, SourceComponent, Subject};
@@ -387,9 +388,19 @@ async fn connection(var: &str) -> PgConnection {
 }
 
 /// Memindahkan semua event outbox ke database audit lewat relay, lalu mengembalikan event E-05 berobjek
-/// `file_id`.
+/// `file_id`. F1-T69: sebelum dipindahkan, setiap event di outbox diperiksa kelengkapan field PRD §7.2 dan
+/// larangan §7.3 (`audit_support::assert_event_complete`), termasuk E-05 hasil gagal.
 async fn e05_events(file_id: Uuid) -> Vec<StoredEvent> {
     let mut conn = connection("RS_TEST_DB_RELAY_URL").await;
+    let pending: Vec<serde_json::Value> =
+        sqlx::query_scalar!("SELECT payload FROM app.audit_outbox ORDER BY occurred_at, id")
+            .fetch_all(&mut conn)
+            .await
+            .unwrap();
+    // Outbox dipakai bersama biner test lain: semua kode diperiksa, bukan hanya E-05.
+    for p in &pending {
+        audit_support::assert_event_complete(p, p["event_code"].as_str().unwrap_or("-"));
+    }
     let mut lock = None;
     for _ in 0..100 {
         match SingletonLock::try_acquire(conn, RS_AUDIT_RELAY)

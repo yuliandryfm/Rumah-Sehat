@@ -19,6 +19,8 @@
     clippy::indexing_slicing
 )]
 
+mod audit_support;
+
 use audit::{AuditContext, Source, SourceComponent};
 use authz::AdminSubRole;
 use foundation::{Clock, CorrelationId, Sensitive, SystemClock, Uuid, new_id};
@@ -369,12 +371,13 @@ async fn bootstrap_creates_one_pending_super_admin_with_invite_and_audit() {
     assert_eq!(ACTIVATION_INVITE_LIFESPAN_SECONDS, 86_400);
 
     let evs = events(&e.relay, created.account_id).await;
+    audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
     assert_eq!(
         actions(&evs),
         [
             ("e_10".into(), "admin_account_bootstrapped".into()),
             ("e_11".into(), "sub_role_granted".into()),
-            ("e_10".into(), "activation_invite_sent".into()),
+            ("e_10".into(), "activation_invite_requested".into()),
         ]
     );
     for ev in &evs {
@@ -472,6 +475,21 @@ async fn bootstrap_reissue_only_for_single_pending_super_admin() {
         status(&e.app, created.account_id).await,
         "pending_activation"
     );
+    // F1-T69 (US-1501 AC1, AC3): undangan dicatat sebelum dikirim; kegagalan Keycloak dicatat sebagai aksi
+    // yang sama dengan hasil gagal.
+    let evs = events(&e.relay, created.account_id).await;
+    let invites: Vec<_> = evs
+        .iter()
+        .filter(|p| p["action_name"] == "activation_invite_requested")
+        .collect();
+    assert_eq!(invites.len(), 2, "{invites:?}");
+    assert_eq!(invites[0]["outcome"], "success");
+    assert_eq!(invites[1]["outcome"], "failure");
+    assert_eq!(
+        invites[1]["outcome_reason_code"],
+        "identity_provider_unavailable"
+    );
+    audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
     // Perintah bootstrap biasa tetap ditolak karena ada Super Admin menunggu aktivasi.
     let err = e
         .svc
@@ -486,7 +504,7 @@ async fn bootstrap_reissue_only_for_single_pending_super_admin() {
     let evs = events(&e.relay, created.account_id).await;
     assert_eq!(
         actions(&evs).last(),
-        Some(&("e_10".into(), "activation_invite_sent".into()))
+        Some(&("e_10".into(), "activation_invite_requested".into()))
     );
 
     // Setelah ada Super Admin aktif, undangan ulang lewat bootstrap ditolak.
@@ -568,13 +586,14 @@ async fn super_admin_creates_admin_with_sub_roles_and_audit() {
         ["customer_service", "verifier"]
     );
     let evs = events(&e.relay, created.account_id).await;
+    audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
     assert_eq!(
         actions(&evs),
         [
             ("e_10".into(), "admin_account_created".into()),
             ("e_11".into(), "sub_role_granted".into()),
             ("e_11".into(), "sub_role_granted".into()),
-            ("e_10".into(), "activation_invite_sent".into()),
+            ("e_10".into(), "activation_invite_requested".into()),
         ]
     );
     for ev in &evs {
@@ -851,6 +870,7 @@ async fn sub_role_change_rules_and_audit() {
     assert_eq!(diff.revoked, roles(&[Verifier]));
     assert_eq!(active_roles(&e.app, staff).await, ["content", "finance"]);
     let evs = events(&e.relay, staff).await;
+    audit_support::assert_events_complete(&evs, &["e_11"]);
     assert_eq!(
         actions(&evs),
         [
@@ -933,6 +953,7 @@ async fn deactivation_rules_audit_and_keycloak_sync() {
         actions(&evs),
         [("e_10".into(), "admin_account_deactivated".into())]
     );
+    audit_support::assert_events_complete(&evs, &["e_10"]);
     assert_eq!(evs[0]["before_values"]["status"], "active");
     assert_eq!(evs[0]["after_values"]["status"], "inactive");
     assert!(
@@ -1019,6 +1040,12 @@ async fn resend_invite_only_for_pending_accounts_by_super_admin() {
         e.svc.resend_invite(&actor(sa), pending).await.unwrap(),
         InviteDelivery::Sent
     );
+    let evs = events(&e.relay, pending).await;
+    assert_eq!(
+        actions(&evs),
+        [("e_10".into(), "activation_invite_requested".into())]
+    );
+    audit_support::assert_events_complete(&evs, &["e_10"]);
     let err = e.svc.resend_invite(&actor(sa), active).await.unwrap_err();
     assert_eq!(rule(&err), Some(AdminRuleViolation::TargetInactive));
     let err = e
