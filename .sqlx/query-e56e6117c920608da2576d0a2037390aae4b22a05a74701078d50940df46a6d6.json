@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT stored_file_id FROM app.corporate_client_document WHERE corporate_client_id = $1 AND document_kind = $2 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stored_file_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "stored_file_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e56e6117c920608da2576d0a2037390aae4b22a05a74701078d50940df46a6d6"
+}

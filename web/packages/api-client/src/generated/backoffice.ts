@@ -148,6 +148,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backoffice/v1/corporate-verification-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Daftar alasan penolakan perusahaan (hanya baca; dikelola lewat migrasi data, US-1902 AC3). */
+        get: operations["corporate_verification_reason_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/corporate-verifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Antrean pengajuan perusahaan "Menunggu verifikasi", terlama lebih dulu (US-1902 AC1). */
+        get: operations["corporate_verification_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail perusahaan termasuk NPWP dan jenis dokumen aktif (US-1902 AC1). */
+        get: operations["corporate_verification_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Menyetujui pengajuan perusahaan: status Aktif (US-1902 AC2, AC4). */
+        post: operations["corporate_verification_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/documents/{document_kind}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * URL unduh dokumen NIB, NPWP, atau bukti kewenangan pendaftar berumur pendek (US-1902 AC1; ADR-018
+         *     butir 3). E-05 tercatat sebelum URL terbit; gagal mencatat = tidak ada URL.
+         */
+        post: operations["corporate_verification_document_url"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Menolak pengajuan perusahaan dengan kode alasan dari daftar: status Ditolak (US-1902 AC3, AC4). */
+        post: operations["corporate_verification_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/backoffice/v1/identity-verification-reasons": {
         parameters: {
             query?: never;
@@ -355,6 +460,11 @@ export interface components {
          * @enum {string}
          */
         ContentType: "banner" | "info_page" | "article" | "promo";
+        /**
+         * @description Status perusahaan.
+         * @enum {string}
+         */
+        CorporateStatusDto: "pending_verification" | "active" | "rejected" | "inactive";
         /** @description Hasil keputusan. */
         DecisionDto: {
             /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
@@ -398,12 +508,67 @@ export interface components {
             /** @example Berhasil */
             response_description: string;
         };
+        /** @description Detail perusahaan untuk Verifikator (US-1902 AC1). */
+        DetailDto: {
+            /** @description Setuju/tolak tersedia (masih menunggu verifikasi). */
+            can_decide: boolean;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            corporate_client_id: string;
+            /**
+             * Format: date-time
+             * @description Waktu keputusan putaran berjalan, bila sudah diputuskan.
+             */
+            decided_at?: string | null;
+            /** @description Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. */
+            documents: components["schemas"]["DocumentKindDto"][];
+            /** @example PT Sintetis Sejahtera */
+            legal_name: string;
+            /** @example 9120000000001 */
+            nib: string;
+            /**
+             * @description NPWP (klasifikasi Terbatas): jangan disimpan atau dicatat di log klien.
+             * @example 990000000000001
+             */
+            npwp: string;
+            /** @example Jl. Sintetis No. 1, Jakarta */
+            office_address: string;
+            /** @example 0210000001 */
+            office_phone: string;
+            origin: components["schemas"]["OriginDto"];
+            /**
+             * @description Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
+             * @example authority_proof_insufficient
+             */
+            rejection_reason?: string | null;
+            status: components["schemas"]["CorporateStatusDto"];
+            /**
+             * Format: int32
+             * @example 1
+             */
+            submission_round: number;
+            /** Format: date-time */
+            submitted_at: string;
+        };
+        /** @description Bentuk dokumentasi respons detail. */
+        DetailEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DetailDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
         /**
          * @description Status tampilan yang dihitung (wireframe C14: Draf, Tayang (terjadwal), Tayang, Selesai, Diarsipkan,
          *     Terhapus).
          * @enum {string}
          */
         DisplayStatus: "draft" | "scheduled" | "live" | "ended" | "archived" | "deleted";
+        /**
+         * @description Jenis dokumen perusahaan.
+         * @enum {string}
+         */
+        DocumentKindDto: "authority_proof" | "nib" | "npwp";
         /** @description URL unduh foto dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat. */
         DocumentPhotoDto: {
             /** Format: date-time */
@@ -421,6 +586,28 @@ export interface components {
         DocumentPhotoEnvelope: {
             correlation_id?: string;
             data: components["schemas"]["DocumentPhotoDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /** @description URL unduh dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat. */
+        DocumentUrlDto: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @example image/jpeg */
+            mime_type: string;
+            /**
+             * Format: int32
+             * @example 204800
+             */
+            size_bytes: number;
+            url: string;
+        };
+        /** @description Bentuk dokumentasi respons URL dokumen. */
+        DocumentUrlEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DocumentUrlDto"];
             /** @example 2000000 */
             response_code: string;
             /** @example Berhasil */
@@ -510,6 +697,11 @@ export interface components {
             name: string;
             value: string;
         };
+        /**
+         * @description Asal perusahaan.
+         * @enum {string}
+         */
+        OriginDto: "self_registered" | "created_by_admin";
         /** @description Bentuk dokumentasi respons antrean. */
         QueueEnvelope: {
             correlation_id?: string;
@@ -1501,6 +1693,401 @@ export interface operations {
                 };
             };
             /** @description Jadwal atau teks alternatif tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_reason_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daftar alasan penolakan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionReasonsEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_queue: {
+        parameters: {
+            query?: {
+                /** @description Cursor dari `meta.next_cursor` halaman sebelumnya (UUID). */
+                cursor?: string;
+                /** @description Jumlah item (1-100, bawaan 20). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Antrean. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Parameter tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID perusahaan (UUID). */
+                corporate_client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detail perusahaan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetailEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Perusahaan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID perusahaan (UUID). */
+                corporate_client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disetujui. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Perusahaan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_document_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID perusahaan (UUID). */
+                corporate_client_id: string;
+                /** @description Jenis dokumen. */
+                document_kind: components["schemas"]["DocumentKindDto"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description URL unduh berumur pendek. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentUrlEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Perusahaan, jenis dokumen, atau berkas tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID perusahaan (UUID). */
+                corporate_client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequest"];
+            };
+        };
+        responses: {
+            /** @description Ditolak. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Perusahaan tidak ada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Alasan di luar daftar. */
             422: {
                 headers: {
                     [name: string]: unknown;

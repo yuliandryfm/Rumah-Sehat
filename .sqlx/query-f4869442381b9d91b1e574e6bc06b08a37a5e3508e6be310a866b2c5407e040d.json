@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES ($1, 'PT Tanpa Dokumen', $2, $3, 'Jl. Sintetis', '0210000002', 'pending_verification', 'self_registered')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f4869442381b9d91b1e574e6bc06b08a37a5e3508e6be310a866b2c5407e040d"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.reason_code SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL WHERE context = 'corporate_rejection' AND code = 'company_data_mismatch' AND delete_reason = 'uji_f1_t104'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c8dce4be623402d267fb6655248688fbf058ed4adf524a15a640186352705246"
+}

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT status, submission_round FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "submission_round",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "submission_round"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8112b2a980375bd79c9786214a1b78d0e7b5fccecc8afdebcdbef02f95e73f29"
+}

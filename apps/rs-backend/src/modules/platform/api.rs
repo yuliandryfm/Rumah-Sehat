@@ -536,6 +536,17 @@ pub enum FileAccess {
         /// Subjek data berkas.
         subject: Subject,
     },
+    /// Admin Ruang Sehat dengan salah satu sub-peran `roles` membuka dokumen perusahaan (Verifikator membuka
+    /// NIB, NPWP, atau bukti kewenangan pendaftar, US-1902 AC1, F1-T104) yang relasinya ke berkas sudah
+    /// diperiksa modul pemanggil. Seperti [`FileAccess::Staff`], E-05 dicatat dan di-commit sebelum URL
+    /// diterbitkan; perusahaan bukan subjek data pribadi, sehingga event tanpa subjek dan `tenant_id` =
+    /// `corporate_client_id` (ADR-028 butir 1).
+    StaffCorporate {
+        /// Sub-peran yang diizinkan (minimal satu harus dipegang).
+        roles: &'static [AdminSubRole],
+        /// Perusahaan pemilik dokumen.
+        corporate_client_id: Uuid,
+    },
 }
 
 /// Permintaan URL unduh.
@@ -579,8 +590,9 @@ impl fmt::Debug for DownloadTicket {
 ///    diakses menurut [`FileAccess`] → [`FileError::NotFound`] yang sama (KU-03, ADR-012 butir 4) lewat
 ///    `authz::visible_object` (security log `access_denied`); percobaan atas berkas yang ada juga dicatat
 ///    E-05 hasil gagal di transaksi tersendiri (KU-03, coding-standards §4.4 butir 3);
-/// 2. akses [`FileAccess::Staff`]: E-05 ditulis dan di-commit lewat `audit::in_audited_tx` sebelum URL
-///    dibuat; gagal mencatat → akses ditolak (500) tanpa URL (coding-standards §4.4 butir 2);
+/// 2. akses [`FileAccess::Staff`] dan [`FileAccess::StaffCorporate`]: E-05 ditulis dan di-commit lewat
+///    `audit::in_audited_tx` sebelum URL dibuat; gagal mencatat → akses ditolak (500) tanpa URL
+///    (coding-standards §4.4 butir 2);
 /// 3. URL GET bertanda tangan [`DOWNLOAD_URL_TTL`] dengan header respons lampiran.
 pub async fn issue_download_url(
     pool: &PgPool,

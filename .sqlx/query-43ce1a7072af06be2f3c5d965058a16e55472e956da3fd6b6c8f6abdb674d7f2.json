@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_client SET status = $3, updated_at = now(), updated_by = $4 WHERE id = $1 AND submission_round = $2 AND status = 'pending_verification' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "43ce1a7072af06be2f3c5d965058a16e55472e956da3fd6b6c8f6abdb674d7f2"
+}

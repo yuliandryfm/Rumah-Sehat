@@ -85,6 +85,12 @@ SELECT pg_temp.uji_nol('A6.7 reason_code: daftar alasan penolakan identitas awal
       FROM app.reason_code WHERE context = 'identity_rejection' AND deleted_at IS NULL) s
    WHERE x <> 'photo_unreadable,document_invalid,nik_mismatch,profile_mismatch,guardian_not_listed,nik_unavailable,other'));
 
+SELECT pg_temp.uji_nol('A6.7 reason_code: daftar alasan penolakan perusahaan (draf) persis empat kode, termasuk bukti kewenangan US-1902 AC3 (migrasi data F1-T104)',
+  ARRAY(SELECT x FROM (
+    SELECT coalesce(string_agg(code, ',' ORDER BY id), '<kosong>') AS x
+      FROM app.reason_code WHERE context = 'corporate_rejection' AND deleted_at IS NULL) s
+   WHERE x <> 'nib_document_invalid,npwp_document_invalid,company_data_mismatch,authority_proof_insufficient'));
+
 SELECT pg_temp.uji_nol('A6.7 reason_code: index persis pk, uqp (context, code) aktif',
   ARRAY(SELECT pg_temp.uji_indeks('app.reason_code', ARRAY[
     'CREATE UNIQUE INDEX pk_reason_code ON app.reason_code USING btree (id)',
@@ -209,6 +215,8 @@ SELECT pg_temp.uji_tolak('A6.7 NEG kode ganda dalam konteks yang sama (aktif)', 
   '23505', 'uqp_reason_code_context_code');
 SELECT pg_temp.uji_boleh('A6.7 kode sama di konteks lain diterima', 'rs_api',
   'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2903'', ''claim_rejection'', ''nik_unavailable'', ''x'')', 1);
+SELECT pg_temp.uji_boleh('A6.7 konteks corporate_rejection diterima (F1-T104)', 'rs_api',
+  'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2905'', ''corporate_rejection'', ''uji_alasan_sintetis'', ''x'')', 1);
 SELECT pg_temp.uji_tolak('A6.7 NEG konteks di luar daftar', 'rs_api',
   'INSERT INTO app.reason_code (id, context, code, label) VALUES (''00000000-0000-7000-8000-0000000a2904'', ''lainnya'', ''x'', ''x'')',
   '23514', 'ck_reason_code_context');
@@ -468,12 +476,15 @@ BEGIN
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_status_event)
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_state)
      OR EXISTS (SELECT 1 FROM app.account_owner_nik_registry)
-     -- reason_code hanya boleh berisi data acuan migrasi data F1-T62: persis tujuh ID seed identity_rejection.
+     -- reason_code hanya boleh berisi data acuan migrasi data: tujuh ID seed identity_rejection (F1-T62)
+     -- dan empat ID seed corporate_rejection (F1-T104).
      OR (SELECT coalesce(string_agg(id::text, ',' ORDER BY id), '') FROM app.reason_code)
         <> '01a1fbb5-46b5-7438-b0a4-16ef04d0d2d7,01a1fbb5-46b6-7bc6-83f9-ba413d5ceb2f,'
         || '01a1fbb5-46b7-7d0b-a9f6-61bfc9c84ccf,01a1fbb5-46b8-72d2-8fb4-7450e115b86a,'
         || '01a1fbb5-46b9-725a-949e-815a005f99dd,01a1fbb5-46ba-7286-911f-b123e709f97f,'
-        || '01a1fbb5-46bb-77b7-95ec-5a099c556716'
+        || '01a1fbb5-46bb-77b7-95ec-5a099c556716,'
+        || '01a20f24-ce00-73b1-857a-14a3c9462341,01a20f24-ce01-717a-a44b-c2d779b486b7,'
+        || '01a20f24-ce02-77c5-8412-ddab61ba42b4,01a20f24-ce03-76b9-b9f6-5772c63ca9c3'
      OR EXISTS (SELECT 1 FROM app.data_key) OR EXISTS (SELECT 1 FROM app.stored_file) OR EXISTS (SELECT 1 FROM app.account) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a2: data uji tersisa';
   END IF;

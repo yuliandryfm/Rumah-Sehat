@@ -104,7 +104,8 @@ pub struct OpsApiDoc;
     ),
     tags(
         (name = "cms", description = "Konten (CMS) aplikasi dan situs"),
-        (name = "identity-verification", description = "Verifikasi identitas oleh Verifikator (US-201)")
+        (name = "identity-verification", description = "Verifikasi identitas oleh Verifikator (US-201)"),
+        (name = "corporate-verification", description = "Verifikasi perusahaan oleh Verifikator (US-1902)")
     ),
     modifiers(&BearerAuth)
 )]

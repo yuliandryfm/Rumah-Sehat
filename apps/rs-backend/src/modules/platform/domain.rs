@@ -125,7 +125,7 @@ impl LogicalBucket {
 }
 
 /// Tujuan unggahan: menentukan bucket, kategori, jenis, dan batas ukuran. F1-T29 foto KTP (US-106); F1-T93
-/// gambar konten CMS (US-1802).
+/// gambar konten CMS (US-1802); F1-T104 dokumen perusahaan (US-1902).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadPurpose {
     /// Foto KTP pemilik akun (US-106 AC3).
@@ -133,6 +133,13 @@ pub enum UploadPurpose {
     /// Gambar konten CMS (US-1802, F1-T93): bucket `public_content` yang tetap privat; disajikan endpoint
     /// gambar publik backend hanya untuk konten yang sedang tayang (ADR-027 butir 5).
     ContentImage,
+    /// Dokumen perusahaan: NIB, NPWP, dan bukti kewenangan pendaftar (A20 `corporate_client_document`,
+    /// US-1901 AC1, US-1902 AC1). Bucket `license_document` mengikuti preseden dokumen izin usaha rekanan
+    /// (DD A5.3 `partner_license_document`); usulan teknis F1-T104, belum ada keputusan bucket khusus dokumen
+    /// perusahaan di ADR-018. F1-T104 hanya memakai tujuan ini untuk membuka berkas (URL unduh); jalur
+    /// unggah, PDF, dan penetralan PDF (ADR-018) ditetapkan F1-T102, sampai saat itu jenis yang diterima sama
+    /// dengan foto.
+    CorporateDocument,
 }
 
 impl UploadPurpose {
@@ -141,6 +148,7 @@ impl UploadPurpose {
         match self {
             Self::KtpPhoto => LogicalBucket::IdentityDocument,
             Self::ContentImage => LogicalBucket::PublicContent,
+            Self::CorporateDocument => LogicalBucket::LicenseDocument,
         }
     }
 
@@ -149,20 +157,21 @@ impl UploadPurpose {
         match self {
             Self::KtpPhoto => "ktp_photo",
             Self::ContentImage => "cms_image",
+            Self::CorporateDocument => "corporate_document",
         }
     }
 
     /// Batas ukuran berkas seperti diunggah.
     pub const fn max_size_bytes(self) -> u64 {
         match self {
-            Self::KtpPhoto | Self::ContentImage => MAX_PHOTO_BYTES,
+            Self::KtpPhoto | Self::ContentImage | Self::CorporateDocument => MAX_PHOTO_BYTES,
         }
     }
 
     /// Apakah jenis foto diizinkan untuk tujuan ini.
     pub fn allows(self, format: PhotoFormat) -> bool {
         match self {
-            Self::KtpPhoto | Self::ContentImage => {
+            Self::KtpPhoto | Self::ContentImage | Self::CorporateDocument => {
                 matches!(format, PhotoFormat::Jpeg | PhotoFormat::Png)
             }
         }
@@ -436,6 +445,14 @@ mod tests {
         assert_eq!(UploadPurpose::ContentImage.max_size_bytes(), 5_242_880);
         assert_eq!(UploadPurpose::KtpPhoto.max_size_bytes(), 5_242_880);
         assert!(UploadPurpose::KtpPhoto.allows(PhotoFormat::Png));
+        assert_eq!(
+            UploadPurpose::CorporateDocument.bucket().as_str(),
+            "license_document"
+        );
+        assert_eq!(
+            UploadPurpose::CorporateDocument.category(),
+            "corporate_document"
+        );
         for b in LogicalBucket::ALL {
             assert_eq!(LogicalBucket::parse(b.as_str()), Some(b));
         }

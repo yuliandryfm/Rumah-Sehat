@@ -642,6 +642,10 @@ pub(super) async fn reconcile_bucket(
 /// Kebijakan audit objek `stored_file` (dokumen: hanya nama field, PRD §7.3). Akses baca tidak mengubah
 /// field, sehingga daftar field kosong.
 static STORED_FILE_POLICY: ObjectPolicy = ObjectPolicy::clinical_or_document("stored_file", &[]);
+/// Kebijakan audit berkas dokumen perusahaan (F1-T104, KEPUTUSAN-304): jenis objek sendiri supaya
+/// pengecualian subjek E-05 di `audit::check_payload` hanya berlaku untuk berkas ini (dengan `tenant_id`).
+static CORPORATE_DOCUMENT_FILE_POLICY: ObjectPolicy =
+    ObjectPolicy::clinical_or_document(audit::CORPORATE_DOCUMENT_OBJECT_TYPE, &[]);
 /// Nama aksi E-05 membuka berkas.
 const FILE_OPENED_ACTION: &str = "stored_file_opened";
 /// Kode alasan E-05 hasil gagal.
@@ -667,24 +671,46 @@ fn actor(principal: &Principal) -> Result<Actor, FileError> {
     Ok(Actor::account(principal.account_id(), account_type, roles))
 }
 
+/// Subjek data dan tenant event E-05 menurut dasar akses: berkas pasien bersubjek penerima layanan; berkas
+/// perusahaan (badan usaha, bukan subjek data pribadi) tanpa subjek, dengan tenant = perusahaan (ADR-028
+/// butir 1; DD B1 `tenant_id`).
+fn audit_scope(access: FileAccess) -> (Option<Subject>, Option<Uuid>) {
+    match access {
+        FileAccess::Owner => (None, None),
+        FileAccess::Staff { subject, .. } => (Some(subject), None),
+        FileAccess::StaffCorporate {
+            corporate_client_id,
+            ..
+        } => (None, Some(corporate_client_id)),
+    }
+}
+
 fn file_event(
     principal: &Principal,
     audit: &AuditContext,
     file_id: Uuid,
-    subject: Option<Subject>,
+    access: FileAccess,
     outcome: Outcome,
 ) -> Result<AuditEvent, FileError> {
+    let (subject, tenant) = audit_scope(access);
+    let policy = match access {
+        FileAccess::StaffCorporate { .. } => &CORPORATE_DOCUMENT_FILE_POLICY,
+        FileAccess::Owner | FileAccess::Staff { .. } => &STORED_FILE_POLICY,
+    };
     let action = Code::new(FILE_OPENED_ACTION).map_err(|_| FileError::Internal("audit_action"))?;
     let mut event = AuditEvent::new(
         EventCode::E05,
         action,
         actor(principal)?,
-        ObjectRef::with_uuid(&STORED_FILE_POLICY, file_id),
+        ObjectRef::with_uuid(policy, file_id),
     )
     .outcome(outcome)
     .context(audit);
     if let Some(s) = subject {
         event = event.subject(s);
+    }
+    if let Some(t) = tenant {
+        event = event.tenant(t);
     }
     Ok(event)
 }
@@ -708,7 +734,7 @@ async fn record_denied(
     principal: &Principal,
     audit: &AuditContext,
     file_id: Uuid,
-    subject: Option<Subject>,
+    access: FileAccess,
 ) {
     let Ok(reason) = Code::new(ACCESS_DENIED_REASON) else {
         return;
@@ -718,7 +744,7 @@ async fn record_denied(
             principal,
             audit,
             file_id,
-            subject,
+            access,
             Outcome::failure(reason.clone()),
         ) else {
             break;
@@ -744,7 +770,7 @@ fn extension(mime: &str) -> &'static str {
 fn may_access(principal: &Principal, access: FileAccess, file: &repo::FileForDownload) -> bool {
     match access {
         FileAccess::Owner => file.owner_account_id == Some(principal.account_id()),
-        FileAccess::Staff { roles, .. } => {
+        FileAccess::Staff { roles, .. } | FileAccess::StaffCorporate { roles, .. } => {
             principal.account_type() == AccountType::RsAdmin
                 && roles.iter().any(|r| principal.has_sub_role(*r))
         }
@@ -767,10 +793,6 @@ pub(super) async fn issue_download_url(
         // percobaan atas objek milik pihak lain lewat endpoint ini).
         .filter(|f| f.category == purpose.category() && f.bucket == purpose.bucket().as_str());
     let exists = found.is_some();
-    let subject = match request.access {
-        FileAccess::Staff { subject, .. } => Some(subject),
-        FileAccess::Owner => None,
-    };
     let file = match visible_object(principal, request.route, found, |f| {
         may_access(principal, request.access, f)
     }) {
@@ -783,15 +805,24 @@ pub(super) async fn issue_download_url(
                     principal,
                     audit,
                     request.stored_file_id,
-                    subject,
+                    request.access,
                 )
                 .await;
             }
             return Err(FileError::NotFound);
         }
     };
-    if let FileAccess::Staff { subject, .. } = request.access {
-        let event = file_event(principal, audit, file.id, Some(subject), Outcome::success())?;
+    if matches!(
+        request.access,
+        FileAccess::Staff { .. } | FileAccess::StaffCorporate { .. }
+    ) {
+        let event = file_event(
+            principal,
+            audit,
+            file.id,
+            request.access,
+            Outcome::success(),
+        )?;
         // E-05 di-commit sebelum URL dibuat; gagal → akses ditolak (coding-standards §4.4 butir 2).
         write_events(pool, clock, vec![event])
             .await
@@ -980,6 +1011,11 @@ mod tests {
     fn stored_file_audit_policy_is_a_valid_document_policy() {
         assert!(STORED_FILE_POLICY.validate().is_ok());
         assert_eq!(STORED_FILE_POLICY.object_type(), "stored_file");
+        assert!(CORPORATE_DOCUMENT_FILE_POLICY.validate().is_ok());
+        assert_eq!(
+            CORPORATE_DOCUMENT_FILE_POLICY.object_type(),
+            "corporate_document_file"
+        );
         assert!(Code::new(FILE_OPENED_ACTION).is_ok());
         assert!(Code::new(ACCESS_DENIED_REASON).is_ok());
     }
