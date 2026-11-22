@@ -3,5 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Kerangka workspace member area HR korporat Ruang Sehat (ADR-027). Aplikasi Next.js penuh dibuat di task fitur."
+  "description": "Member area HR korporat Ruang Sehat (ADR-027, ADR-028, CR-021): Next.js dengan server Next.js sebagai BFF realm korporat (sesi di Valkey, rahasia dari OpenBao).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/periksa-build.mjs"
+  },
+  "dependencies": {
+    "@rs/bff-auth": "workspace:*",
+    "@rs/ui": "workspace:*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
 }

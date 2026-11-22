@@ -1,0 +1,46 @@
+/*
+ * Tata letak member area (port wireframe K01 layar 9 ke token web/packages/ui/src/tokens.css). Hanya
+ * `var(--...)`: tanpa warna harfiah, tanpa font atau aset jarak jauh, tanpa atribut `style` inline (CSP).
+ */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--c-bg-app); }
+body {
+  margin: 0;
+  background: var(--c-bg-app);
+  color: var(--c-text-primary);
+  font-family: var(--f-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+}
+a { color: var(--c-primary-strong); }
+a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+main:focus { outline: none; }
+
+.kp-app { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 64px 1fr; min-height: 100vh; }
+.kp-skip { position: absolute; left: -9999px; top: 0; background: var(--c-bg-surface); padding: var(--s2) var(--s4); z-index: 5; }
+.kp-skip:focus { left: var(--s2); top: var(--s2); box-shadow: var(--focus-ring); }
+.kp-top { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s4); padding: 0 var(--s6); background: var(--c-bg-surface); border-bottom: 1px solid var(--c-border-divider); }
+.kp-grow { flex: 1; }
+.kp-logo { font-size: var(--t-title-size); font-weight: 700; color: var(--c-primary-strong); }
+.kp-kecil { font-size: var(--t-body-sm-size); line-height: var(--t-body-sm-line); }
+.kp-side { background: var(--c-bg-surface); border-right: 1px solid var(--c-border-divider); padding: var(--s3); display: flex; flex-direction: column; gap: 2px; }
+.kp-side a { min-height: 40px; display: flex; align-items: center; padding: 0 var(--s3); border-radius: var(--r-md); color: var(--c-text-primary); text-decoration: none; }
+.kp-side a:hover { background: var(--c-bg-neutral); }
+.kp-side a[aria-current="page"] { background: var(--c-mint); color: var(--c-primary-strong); font-weight: 700; }
+.kp-main { padding: var(--s6); }
+.kp-main h1 { font-size: var(--t-title-lg-size); line-height: var(--t-title-lg-line); margin: 0 0 var(--s3); }
+
+.kp-status { max-width: 520px; margin: var(--s12) auto; padding: 0 var(--s4); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--s3); }
+.kp-status h1 { font-size: var(--t-display-size); line-height: var(--t-display-line); margin: 0; }
+.kp-status p { margin: 0; color: var(--c-text-secondary); }
+.kp-ref { font-size: var(--t-caption-size); line-height: var(--t-caption-line); overflow-wrap: anywhere; }
+
+@media (max-width: 767px) {
+  .kp-app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+  .kp-top { padding: var(--s2) var(--s4); flex-wrap: wrap; }
+  .kp-side { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--c-border-divider); }
+}
+
+/* Navigasi layanan yang belum tersedia (K01 layar 9). */
+.kp-sec { padding: var(--s3) var(--s3) 0; font-size: var(--t-caption-size); line-height: var(--t-caption-line); color: var(--c-text-secondary); text-transform: uppercase; }
+.kp-nonaktif { min-height: 40px; display: flex; align-items: center; padding: 0 var(--s3); color: var(--c-text-secondary); }
