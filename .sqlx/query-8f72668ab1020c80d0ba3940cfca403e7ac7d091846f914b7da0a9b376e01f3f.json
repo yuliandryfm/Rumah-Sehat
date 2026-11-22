@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT decision, reason_code, created_at FROM app.corporate_verification_decision WHERE corporate_client_id = $1 AND submission_round = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "decision",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "decision"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "reason_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "reason_code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "8f72668ab1020c80d0ba3940cfca403e7ac7d091846f914b7da0a9b376e01f3f"
+}

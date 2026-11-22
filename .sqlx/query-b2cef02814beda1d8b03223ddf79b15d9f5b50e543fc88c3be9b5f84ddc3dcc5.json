@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT submission_round, decision, reason_code, decided_by FROM app.corporate_verification_decision WHERE corporate_client_id = $1 ORDER BY submission_round",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "submission_round",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "submission_round"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "decision",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "decision"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "reason_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "reason_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "decided_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_verification_decision",
+            "name": "decided_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b2cef02814beda1d8b03223ddf79b15d9f5b50e543fc88c3be9b5f84ddc3dcc5"
+}

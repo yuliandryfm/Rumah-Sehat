@@ -89,4 +89,15 @@ tests = [
   "apps/rs-backend/tests/platform_files_download.rs::verifier_gets_short_lived_attachment_url_after_e05_is_recorded",
   "apps/rs-backend/tests/platform_files_download.rs::unauthorised_requests_get_no_url_and_are_logged",
   "apps/rs-backend/tests/profile_identity_verifier.rs::queue_detail_photo_and_approve",
+  "apps/rs-backend/tests/corporate_verification.rs::document_url_is_issued_only_after_e05_is_recorded",
+]
+
+# E-10 keputusan Verifikator atas pengajuan perusahaan, berhasil dan kalah (F1-T104, US-1902 AC2-AC4).
+[[emitter]]
+file = "apps/rs-backend/src/modules/corporate/verification.rs"
+codes = ["E10"]
+tests = [
+  "apps/rs-backend/tests/corporate_verification.rs::approval_activates_the_company_and_records_e10",
+  "apps/rs-backend/tests/corporate_verification.rs::rejection_requires_an_active_listed_reason",
+  "apps/rs-backend/tests/corporate_verification.rs::first_decision_wins_when_two_verifiers_decide_concurrently",
 ]

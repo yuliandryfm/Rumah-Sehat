@@ -2,6 +2,7 @@
 //! dan resolver akun, middleware korelasi (KEPUTUSAN-123), dan penolakan berformat envelope.
 
 use crate::modules::content_support;
+use crate::modules::corporate;
 use crate::modules::corporate::api::CorporateDirectory;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
@@ -106,6 +107,7 @@ pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(BackofficeApiDoc::openapi())
         .merge(content_support::backoffice_router())
         .merge(profile::backoffice_router())
+        .merge(corporate::backoffice_router())
 }
 
 /// Router API aplikasi pasien (`openapi/pasien.json`, awalan `/patient/v1`, KEPUTUSAN-120, realm `pasien`).
@@ -213,15 +215,18 @@ mod tests {
         }
     }
 
-    // trace: US-1802 AC4 (CMS hanya sub-peran Konten), US-201 AC6 (verifikasi identitas hanya Verifikator)
+    // trace: US-1802 AC4 (CMS hanya sub-peran Konten), US-201 AC6 (verifikasi identitas hanya Verifikator),
+    // US-1902 AC5 (verifikasi perusahaan hanya Verifikator)
     #[test]
     fn every_backoffice_route_requires_exactly_one_sub_role() {
         let router = backoffice_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 16);
+        assert_eq!(entries.len(), 22);
         for ((_method, path), policy) in entries {
             assert!(path.starts_with("/backoffice/v1/"), "{path}");
-            let role = if path.starts_with("/backoffice/v1/identity-verification") {
+            let role = if path.starts_with("/backoffice/v1/identity-verification")
+                || path.starts_with("/backoffice/v1/corporate-verification")
+            {
                 authz::AdminSubRole::Verifier
             } else {
                 authz::AdminSubRole::Content

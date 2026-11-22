@@ -126,6 +126,19 @@ fn subject_required(code: EventCode, success: bool) -> bool {
     }
 }
 
+/// Jenis objek berkas dokumen perusahaan (NIB, NPWP, bukti kewenangan pendaftar; F1-T104, US-1902 AC1).
+pub const CORPORATE_DOCUMENT_OBJECT_TYPE: &str = "corporate_document_file";
+
+/// KEPUTUSAN-304: "subjek data" PRD §7.2 adalah orang perseorangan (UU PDP); perusahaan bukan subjek, dan
+/// jenis subjek untuk akun HR pengaju belum ada di `subject_kind`. Pengecualian SEMPIT: E-05 atas berkas
+/// dokumen perusahaan (jenis objek [`CORPORATE_DOCUMENT_OBJECT_TYPE`]) boleh tanpa subjek **hanya bila**
+/// `tenant_id` (perusahaan) terisi. E-05 atas objek lain tanpa subjek tetap ditolak.
+fn corporate_document_exempt(code: EventCode, p: &Map<String, Json>) -> bool {
+    code == EventCode::E05
+        && p.get("object_type").and_then(Json::as_str) == Some(CORPORATE_DOCUMENT_OBJECT_TYPE)
+        && is_uuid(p.get("tenant_id"))
+}
+
 /// Daftar field berubah wajib untuk kode ini (lihat dokumentasi modul).
 fn changes_required(code: EventCode, success: bool) -> bool {
     success
@@ -334,7 +347,10 @@ pub fn check_payload(payload: &Json) -> Vec<Violation> {
         if c == EventCode::E02 && outcome != Some("failure") {
             push("outcome", "e_02_is_failure", InvalidCombination);
         }
-        if subject_required(c, success) && subjects.is_none_or(Vec::is_empty) {
+        if subject_required(c, success)
+            && subjects.is_none_or(Vec::is_empty)
+            && !corporate_document_exempt(c, p)
+        {
             push("subjects", "required_for_event_code", MissingField);
         }
         let changed = p.get("changed_fields").and_then(Json::as_array);
@@ -642,7 +658,32 @@ mod tests {
         // E-05: subjek wajib bila data dibuka; penolakan tanpa subjek boleh.
         let e05 = with(base(), "event_code", json!("e_05"));
         assert_eq!(rules(&e05), [("subjects", "required_for_event_code")]);
-        assert_eq!(rules(&failed(e05)), []);
+        assert_eq!(rules(&failed(e05.clone())), []);
+        // KEPUTUSAN-304: pengecualian sempit untuk berkas dokumen perusahaan dengan tenant terisi.
+        let tenant = json!("0190f5c2-7c1a-7000-8000-0000000000aa");
+        let corp = with(
+            e05.clone(),
+            "object_type",
+            json!(CORPORATE_DOCUMENT_OBJECT_TYPE),
+        );
+        assert_eq!(rules(&with(corp.clone(), "tenant_id", tenant.clone())), []);
+        // Negatif: tanpa tenant, tenant bukan UUID, objek lain dengan tenant, atau kode lain (E-07) tetap
+        // wajib subjek.
+        assert_eq!(rules(&corp), [("subjects", "required_for_event_code")]);
+        assert_eq!(
+            rules(&with(corp.clone(), "tenant_id", json!("bukan-uuid"))),
+            [("subjects", "required_for_event_code")]
+        );
+        for other in ["stored_file", "care_recipient", "corporate_client"] {
+            let p = with(e05.clone(), "object_type", json!(other));
+            assert_eq!(
+                rules(&with(p, "tenant_id", tenant.clone())),
+                [("subjects", "required_for_event_code")],
+                "{other}"
+            );
+        }
+        let e07 = with(with(corp, "tenant_id", tenant), "event_code", json!("e_07"));
+        assert!(rules(&e07).contains(&("subjects", "required_for_event_code")));
         for c in ["e_10", "e_11", "e_14", "e_16"] {
             let p = with(base(), "event_code", json!(c));
             assert_eq!(

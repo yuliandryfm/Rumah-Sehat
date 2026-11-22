@@ -1080,6 +1080,529 @@
         ]
       }
     },
+    "/backoffice/v1/corporate-verification-reasons": {
+      "get": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Daftar alasan penolakan perusahaan (hanya baca; dikelola lewat migrasi data, US-1902 AC3).",
+        "operationId": "corporate_verification_reason_list",
+        "responses": {
+          "200": {
+            "description": "Daftar alasan penolakan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionReasonsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/corporate-verifications": {
+      "get": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Antrean pengajuan perusahaan \"Menunggu verifikasi\", terlama lebih dulu (US-1902 AC1).",
+        "operationId": "corporate_verification_queue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah item (1-100, bawaan 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Antrean.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parameter tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}": {
+      "get": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Detail perusahaan termasuk NPWP dan jenis dokumen aktif (US-1902 AC1).",
+        "operationId": "corporate_verification_get",
+        "parameters": [
+          {
+            "name": "corporate_client_id",
+            "in": "path",
+            "description": "ID perusahaan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail perusahaan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Perusahaan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/approve": {
+      "post": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Menyetujui pengajuan perusahaan: status Aktif (US-1902 AC2, AC4).",
+        "operationId": "corporate_verification_approve",
+        "parameters": [
+          {
+            "name": "corporate_client_id",
+            "in": "path",
+            "description": "ID perusahaan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Disetujui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Perusahaan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/documents/{document_kind}/download-url": {
+      "post": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "URL unduh dokumen NIB, NPWP, atau bukti kewenangan pendaftar berumur pendek (US-1902 AC1; ADR-018\nbutir 3). E-05 tercatat sebelum URL terbit; gagal mencatat = tidak ada URL.",
+        "operationId": "corporate_verification_document_url",
+        "parameters": [
+          {
+            "name": "corporate_client_id",
+            "in": "path",
+            "description": "ID perusahaan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_kind",
+            "in": "path",
+            "description": "Jenis dokumen.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentKindDto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL unduh berumur pendek.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUrlEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Perusahaan, jenis dokumen, atau berkas tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/corporate-verifications/{corporate_client_id}/reject": {
+      "post": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Menolak pengajuan perusahaan dengan kode alasan dari daftar: status Ditolak (US-1902 AC3, AC4).",
+        "operationId": "corporate_verification_reject",
+        "parameters": [
+          {
+            "name": "corporate_client_id",
+            "in": "path",
+            "description": "ID perusahaan (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ditolak.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Perusahaan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Alasan di luar daftar.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/backoffice/v1/identity-verification-reasons": {
       "get": {
         "tags": [
@@ -1921,6 +2444,16 @@
           "promo"
         ]
       },
+      "CorporateStatusDto": {
+        "type": "string",
+        "description": "Status perusahaan.",
+        "enum": [
+          "pending_verification",
+          "active",
+          "rejected",
+          "inactive"
+        ]
+      },
       "DecisionDto": {
         "type": "object",
         "description": "Hasil keputusan.",
@@ -2029,6 +2562,119 @@
           }
         }
       },
+      "DetailDto": {
+        "type": "object",
+        "description": "Detail perusahaan untuk Verifikator (US-1902 AC1).",
+        "required": [
+          "corporate_client_id",
+          "legal_name",
+          "nib",
+          "npwp",
+          "office_address",
+          "office_phone",
+          "status",
+          "origin",
+          "submission_round",
+          "submitted_at",
+          "documents",
+          "can_decide"
+        ],
+        "properties": {
+          "can_decide": {
+            "type": "boolean",
+            "description": "Setuju/tolak tersedia (masih menunggu verifikasi)."
+          },
+          "corporate_client_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "decided_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu keputusan putaran berjalan, bila sudah diputuskan."
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentKindDto"
+            },
+            "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen."
+          },
+          "legal_name": {
+            "type": "string",
+            "example": "PT Sintetis Sejahtera"
+          },
+          "nib": {
+            "type": "string",
+            "example": "9120000000001"
+          },
+          "npwp": {
+            "type": "string",
+            "description": "NPWP (klasifikasi Terbatas): jangan disimpan atau dicatat di log klien.",
+            "example": "990000000000001"
+          },
+          "office_address": {
+            "type": "string",
+            "example": "Jl. Sintetis No. 1, Jakarta"
+          },
+          "office_phone": {
+            "type": "string",
+            "example": "0210000001"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/OriginDto"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kode alasan penolakan putaran berjalan (hanya bila `rejected`).",
+            "example": "authority_proof_insufficient"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CorporateStatusDto"
+          },
+          "submission_round": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1,
+            "minimum": 1
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DetailEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons detail.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DetailDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
       "DisplayStatus": {
         "type": "string",
         "description": "Status tampilan yang dihitung (wireframe C14: Draf, Tayang (terjadwal), Tayang, Selesai, Diarsipkan,\nTerhapus).",
@@ -2039,6 +2685,15 @@
           "ended",
           "archived",
           "deleted"
+        ]
+      },
+      "DocumentKindDto": {
+        "type": "string",
+        "description": "Jenis dokumen perusahaan.",
+        "enum": [
+          "authority_proof",
+          "nib",
+          "npwp"
         ]
       },
       "DocumentPhotoDto": {
@@ -2083,6 +2738,59 @@
           },
           "data": {
             "$ref": "#/components/schemas/DocumentPhotoDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "DocumentUrlDto": {
+        "type": "object",
+        "description": "URL unduh dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat.",
+        "required": [
+          "url",
+          "expires_at",
+          "mime_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mime_type": {
+            "type": "string",
+            "example": "image/jpeg"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 204800
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentUrlEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons URL dokumen.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentUrlDto"
           },
           "response_code": {
             "type": "string",
@@ -2241,6 +2949,14 @@
             "type": "string"
           }
         }
+      },
+      "OriginDto": {
+        "type": "string",
+        "description": "Asal perusahaan.",
+        "enum": [
+          "self_registered",
+          "created_by_admin"
+        ]
       },
       "QueueEnvelope": {
         "type": "object",
@@ -2657,6 +3373,10 @@
     {
       "name": "identity-verification",
       "description": "Verifikasi identitas oleh Verifikator (US-201)"
+    },
+    {
+      "name": "corporate-verification",
+      "description": "Verifikasi perusahaan oleh Verifikator (US-1902)"
     }
   ]
 }

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.stored_file_id FROM app.corporate_client_document d JOIN app.corporate_client c ON c.id = d.corporate_client_id WHERE d.corporate_client_id = $1 AND d.document_kind = $2 AND d.deleted_at IS NULL AND c.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stored_file_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "stored_file_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8832f840bbf33c8f26f33a65ff21674aba2f9e362e0c5100fe75f3698fcbeba3"
+}

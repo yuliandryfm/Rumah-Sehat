@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT document_kind FROM app.corporate_client_document WHERE corporate_client_id = $1 AND deleted_at IS NULL ORDER BY document_kind",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "document_kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "document_kind"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e04c13f2e3c91acfadf28bb7298e3681a59af067d07727ad672e468793900aad"
+}

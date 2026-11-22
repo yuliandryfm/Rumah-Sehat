@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_client SET deleted_at = now(), delete_reason = 'uji' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab3873e187c6e44fae91b80a98b779b217334f4b2e00405f352926ee8621cd00"
+}
