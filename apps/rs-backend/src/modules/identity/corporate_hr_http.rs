@@ -191,7 +191,7 @@ async fn list_members(
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut (termasuk pemanggil yang baru saja dinonaktifkan HR lain).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Perusahaan belum Aktif (menunggu verifikasi atau ditolak).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Keanggotaan tidak ada, sudah dicabut, atau milik perusahaan lain.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090101: HR menonaktifkan dirinya sendiri. 4090104: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090101: HR menonaktifkan dirinya sendiri. 4090105: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
     )

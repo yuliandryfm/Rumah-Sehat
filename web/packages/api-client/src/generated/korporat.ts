@@ -245,7 +245,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090101: HR menonaktifkan dirinya sendiri. 4090104: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif. */
+            /** @description 4090101: HR menonaktifkan dirinya sendiri. 4090105: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif. */
             409: {
                 headers: {
                     [name: string]: unknown;

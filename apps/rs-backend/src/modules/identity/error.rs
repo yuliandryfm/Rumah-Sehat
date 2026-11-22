@@ -6,7 +6,7 @@
 //! `4220001` dengan galat isian `sub_roles`/`auditor_exclusive`.
 //!
 //! F1-T107 (US-1904 AC2): HR menonaktifkan dirinya sendiri memakai `4090101` yang sama `[ASUMSI]`; HR aktif
-//! terakhir perusahaan `4090104`.
+//! terakhir perusahaan `4090105`.
 
 use super::admin_domain::AdminRuleViolation;
 use super::corporate_hr_domain::HrRuleViolation;
@@ -23,9 +23,9 @@ pub const LAST_SUPER_ADMIN: ResponseCode =
 pub const LAST_AUDITOR: ResponseCode =
     ResponseCode::new("4090103", "Auditor aktif terakhir tidak dapat dicabut");
 
-/// `4090104`: HR aktif terakhir perusahaan (US-1904 AC2).
+/// `4090105`: HR aktif terakhir perusahaan (US-1904 AC2).
 pub const LAST_ACTIVE_CORPORATE_HR: ResponseCode = ResponseCode::new(
-    "4090104",
+    "4090105",
     "HR aktif terakhir perusahaan tidak dapat dinonaktifkan",
 );
 
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(IdentityError::NotFound.response_code().as_str(), "4040001");
         let hr = |v: HrRuleViolation| IdentityError::HrRule(v).response_code().as_str();
         assert_eq!(hr(HrRuleViolation::SelfDeactivation), "4090101");
-        assert_eq!(hr(HrRuleViolation::LastActiveHr), "4090104");
+        assert_eq!(hr(HrRuleViolation::LastActiveHr), "4090105");
         assert_eq!(hr(HrRuleViolation::TargetInactive), "4090001");
         assert_eq!(hr(HrRuleViolation::TargetNotFound), "4040001");
         assert_eq!(hr(HrRuleViolation::ActorNotActive), "4010001");

@@ -362,8 +362,11 @@ async fn only_active_hr_stays_and_invited_hr_can_be_deactivated() {
     assert_eq!(r.status, 200, "{}", r.body);
     assert_eq!(w.account_status(&invited).await, "inactive");
     // Satu-satunya HR aktif hanya dapat mencoba menonaktifkan dirinya sendiri: ditolak, tetap aktif.
+    // Penolakan diri sendiri didahulukan (4090101); kode HR aktif terakhir 4090105 tidak dapat dicapai
+    // lewat endpoint ini karena pemanggil wajib HR aktif (dijaga aturan murni, corporate_hr_domain.rs).
     let r = w.deactivate(&a, a.member_id).await;
-    assert_eq!(r.status, 409);
+    assert_eq!((r.status, code(&r)), (409, "4090101".to_string()));
+    assert_ne!(code(&r), "4090105");
     assert_eq!(w.account_status(&a).await, "active");
 }
 
