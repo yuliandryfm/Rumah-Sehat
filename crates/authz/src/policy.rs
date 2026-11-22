@@ -1,5 +1,6 @@
 //! Kebijakan endpoint (ADR-012 butir 1: setiap endpoint menyatakan kebijakannya; default deny).
 
+use crate::corporate::CorporateAccess;
 use crate::principal::Principal;
 use crate::role::{AccountType, AdminSubRole};
 use authn::Realm;
@@ -23,6 +24,7 @@ pub enum PublicReason {
 pub struct Requirement {
     account_types: BTreeSet<AccountType>,
     any_sub_role: BTreeSet<AdminSubRole>,
+    corporate_access: CorporateAccess,
 }
 
 impl Requirement {
@@ -34,6 +36,16 @@ impl Requirement {
     /// Sub-peran admin yang diizinkan (cukup salah satu). Kosong = jenis akun saja yang diperiksa.
     pub fn any_sub_role(&self) -> &BTreeSet<AdminSubRole> {
         &self.any_sub_role
+    }
+
+    /// Syarat status perusahaan untuk HR (berlaku bila kebijakan memuat [`AccountType::CorporateAdmin`]).
+    pub fn corporate_access(&self) -> CorporateAccess {
+        self.corporate_access
+    }
+
+    /// Kebijakan untuk HR perusahaan (cakupan perusahaan wajib, [`crate::CorporateScope`]).
+    pub fn is_corporate(&self) -> bool {
+        self.account_types.contains(&AccountType::CorporateAdmin)
     }
 
     /// Realm yang dapat menerbitkan token untuk endpoint ini (dari jenis akun).
@@ -58,10 +70,13 @@ impl Requirement {
         true
     }
 
+    /// Dapat dipenuhi: minimal satu jenis akun; admin Ruang Sehat dengan minimal satu sub-peran; HR
+    /// perusahaan tidak digabung dengan jenis akun lain (namespace dan audience sendiri, ADR-027 butir 2).
     pub(crate) fn is_satisfiable(&self) -> bool {
         !self.account_types.is_empty()
             && (!self.account_types.contains(&AccountType::RsAdmin)
                 || !self.any_sub_role.is_empty())
+            && (!self.is_corporate() || self.account_types.len() == 1)
     }
 }
 
@@ -90,20 +105,45 @@ impl Policy {
         Self::accounts(&[AccountType::PartnerAdmin])
     }
 
+    /// HR perusahaan (realm `korporat`) dengan perusahaan **Aktif**. Cakupan perusahaan dari keanggotaan
+    /// aktif di sesi ([`crate::CorporateScope`], ADR-028 butir 1); hanya di namespace `/v1/corporate/`.
+    pub fn corporate_hr() -> Self {
+        Self::Require(Requirement {
+            account_types: BTreeSet::from([AccountType::CorporateAdmin]),
+            any_sub_role: BTreeSet::new(),
+            corporate_access: CorporateAccess::ActiveClient,
+        })
+    }
+
+    /// HR perusahaan yang perusahaannya Aktif, Menunggu verifikasi, atau Ditolak: hanya untuk status
+    /// verifikasi, alasan penolakan, dan profil perusahaan sendiri (US-1901 AC6). Perusahaan nonaktif tetap
+    /// ditolak.
+    pub fn corporate_hr_any_verification_state() -> Self {
+        Self::Require(Requirement {
+            account_types: BTreeSet::from([AccountType::CorporateAdmin]),
+            any_sub_role: BTreeSet::new(),
+            corporate_access: CorporateAccess::AnyVerificationState,
+        })
+    }
+
     /// Admin Ruang Sehat yang memegang **salah satu** sub-peran `roles` (UP-18, hak minimum per fungsi).
     /// Daftar kosong menghasilkan kebijakan yang tidak dapat dipenuhi dan ditolak saat start.
     pub fn rs_admin(roles: &[AdminSubRole]) -> Self {
         Self::Require(Requirement {
             account_types: BTreeSet::from([AccountType::RsAdmin]),
             any_sub_role: roles.iter().copied().collect(),
+            corporate_access: CorporateAccess::ActiveClient,
         })
     }
 
-    /// Gabungan jenis akun bebas (tanpa admin Ruang Sehat; pakai [`Policy::rs_admin`] untuk admin).
+    /// Gabungan jenis akun bebas (tanpa admin Ruang Sehat; pakai [`Policy::rs_admin`] untuk admin). HR
+    /// perusahaan lewat fungsi ini memperoleh syarat bawaan [`CorporateAccess::ActiveClient`], dan bila
+    /// digabung dengan jenis akun lain kebijakannya tidak dapat dipenuhi (ditolak saat start).
     pub fn accounts(types: &[AccountType]) -> Self {
         Self::Require(Requirement {
             account_types: types.iter().copied().collect(),
             any_sub_role: BTreeSet::new(),
+            corporate_access: CorporateAccess::ActiveClient,
         })
     }
 
@@ -151,6 +191,55 @@ mod tests {
             panic!("bukan Require");
         };
         assert!(r.is_satisfiable());
+    }
+
+    #[test]
+    fn corporate_policies_are_korporat_only_and_never_mixed() {
+        for (policy, access) in [
+            (Policy::corporate_hr(), CorporateAccess::ActiveClient),
+            (
+                Policy::corporate_hr_any_verification_state(),
+                CorporateAccess::AnyVerificationState,
+            ),
+            (
+                Policy::accounts(&[AccountType::CorporateAdmin]),
+                CorporateAccess::ActiveClient,
+            ),
+        ] {
+            let Policy::Require(r) = policy else {
+                panic!("bukan Require");
+            };
+            assert!(r.is_corporate());
+            assert!(r.is_satisfiable());
+            assert_eq!(r.corporate_access(), access);
+            assert_eq!(r.realms(), BTreeSet::from([Realm::Korporat]));
+            assert!(r.accepts_realm(Realm::Korporat));
+            for other in [
+                Realm::Pasien,
+                Realm::Nakes,
+                Realm::Admin,
+                Realm::Rme,
+                Realm::Integrasi,
+            ] {
+                assert!(!r.accepts_realm(other), "{other}");
+            }
+        }
+        // HR digabung dengan jenis akun lain = tidak dapat dipenuhi (ditolak saat start).
+        let mixed = [
+            Policy::accounts(&[AccountType::CorporateAdmin, AccountType::Patient]),
+            Policy::accounts(&[AccountType::PartnerAdmin, AccountType::CorporateAdmin]),
+            Policy::corporate_hr().or_rs_admin(&[AdminSubRole::Verifier]),
+        ];
+        for policy in mixed {
+            let Policy::Require(r) = policy else {
+                panic!("bukan Require");
+            };
+            assert!(!r.is_satisfiable(), "{r:?}");
+        }
+        let Policy::Require(r) = Policy::patient() else {
+            panic!("bukan Require");
+        };
+        assert!(!r.is_corporate());
     }
 
     #[test]

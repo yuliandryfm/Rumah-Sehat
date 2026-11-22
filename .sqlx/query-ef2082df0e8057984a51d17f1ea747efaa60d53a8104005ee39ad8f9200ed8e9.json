@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_member SET job_title = $1, updated_at = now() WHERE id = $2 AND corporate_client_id = $3 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef2082df0e8057984a51d17f1ea747efaa60d53a8104005ee39ad8f9200ed8e9"
+}

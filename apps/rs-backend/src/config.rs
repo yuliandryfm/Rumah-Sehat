@@ -32,6 +32,9 @@ pub struct ApiConfig {
     pub admin_realm: RealmAuthConfig,
     /// Validasi token realm `pasien` untuk endpoint `/patient/v1` (F1-T61, ADR-011 butir 3 dan 8).
     pub patient_realm: RealmAuthConfig,
+    /// Validasi token realm `korporat` untuk endpoint `/v1/corporate` (F1-T100, ADR-027 butir 2 dan 3, ADR-011
+    /// butir 8). Realm Keycloak korporat sebagai kode dibuat F1-T85.
+    pub corporate_realm: RealmAuthConfig,
     /// Kunci data identitas (F1-T61, KEPUTUSAN-293): OpenBao Transit untuk DEK dan kunci blind index NIK
     /// dari OpenBao KV yang dimuat saat start (gagal cepat).
     pub identity_keys: IdentityKeysConfig,
@@ -166,6 +169,11 @@ impl ApiConfig {
                 issuer: env.required("AUTH_PATIENT_ISSUER")?,
                 jwks_url: env.required("AUTH_PATIENT_JWKS_URL")?,
                 audience: env.required("AUTH_PATIENT_AUDIENCE")?,
+            },
+            corporate_realm: RealmAuthConfig {
+                issuer: env.required("AUTH_CORPORATE_ISSUER")?,
+                jwks_url: env.required("AUTH_CORPORATE_JWKS_URL")?,
+                audience: env.required("AUTH_CORPORATE_AUDIENCE")?,
             },
             identity_keys: IdentityKeysConfig {
                 openbao_addr: env.required("OPENBAO_ADDR")?,
@@ -611,6 +619,15 @@ mod tests {
                 "http://127.0.0.1:18081/realms/pasien/protocol/openid-connect/certs",
             ),
             ("AUTH_PATIENT_AUDIENCE", "rs-patient-api"),
+            (
+                "AUTH_CORPORATE_ISSUER",
+                "https://auth.ruang-sehat.invalid/realms/korporat",
+            ),
+            (
+                "AUTH_CORPORATE_JWKS_URL",
+                "http://127.0.0.1:18081/realms/korporat/protocol/openid-connect/certs",
+            ),
+            ("AUTH_CORPORATE_AUDIENCE", "rs-corporate-api"),
             ("OPENBAO_ADDR", "http://127.0.0.1:18200"),
             ("OPENBAO_TOKEN", "token-uji-sintetis-api"),
             ("NIK_BLIND_INDEX_KV_PATH", "ruang-sehat/blind-index/nik"),
@@ -717,6 +734,7 @@ mod tests {
         assert_eq!(c.database_max_connections.get(), 20);
         assert_eq!(c.admin_realm.audience, "rs-backoffice-api");
         assert_eq!(c.patient_realm.audience, "rs-patient-api");
+        assert_eq!(c.corporate_realm.audience, "rs-corporate-api");
         assert_eq!(c.identity_keys.transit_mount, "transit");
         assert_eq!(c.identity_keys.transit_key, "rs-dek-kek");
         assert_eq!(c.identity_keys.blind_index_kv_mount, "secret");
@@ -758,6 +776,9 @@ mod tests {
             "AUTH_PATIENT_ISSUER",
             "AUTH_PATIENT_JWKS_URL",
             "AUTH_PATIENT_AUDIENCE",
+            "AUTH_CORPORATE_ISSUER",
+            "AUTH_CORPORATE_JWKS_URL",
+            "AUTH_CORPORATE_AUDIENCE",
             "OPENBAO_ADDR",
             "OPENBAO_TOKEN",
             "NIK_BLIND_INDEX_KV_PATH",
@@ -774,6 +795,9 @@ mod tests {
                 ("AUTH_PATIENT_ISSUER", "https://p"),
                 ("AUTH_PATIENT_JWKS_URL", "http://127.0.0.1:1/p"),
                 ("AUTH_PATIENT_AUDIENCE", "p"),
+                ("AUTH_CORPORATE_ISSUER", "https://k"),
+                ("AUTH_CORPORATE_JWKS_URL", "http://127.0.0.1:1/k"),
+                ("AUTH_CORPORATE_AUDIENCE", "k"),
                 ("OPENBAO_ADDR", "http://127.0.0.1:1"),
                 ("OPENBAO_TOKEN", "t"),
                 ("NIK_BLIND_INDEX_KV_PATH", "rs/nik"),

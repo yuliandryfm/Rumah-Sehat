@@ -203,6 +203,8 @@ pub enum SourceComponent {
     Backoffice,
     /// Portal rekanan.
     PartnerPortal,
+    /// Member area HR perusahaan `web/korporat` (realm `korporat`, ADR-027; F1-T100).
+    CorporatePortal,
     /// RME minimalis.
     Rme,
     /// Worker/proses otomatis.
@@ -218,6 +220,7 @@ impl SourceComponent {
             Self::PractitionerApp => "practitioner_app",
             Self::Backoffice => "backoffice",
             Self::PartnerPortal => "partner_portal",
+            Self::CorporatePortal => "corporate_portal",
             Self::Rme => "rme",
             Self::Worker => "worker",
             Self::Integration => "integration",

@@ -2,6 +2,7 @@
 //! dan resolver akun, middleware korelasi (KEPUTUSAN-123), dan penolakan berformat envelope.
 
 use crate::modules::content_support;
+use crate::modules::corporate::api::CorporateDirectory;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
 use crate::modules::profile;
@@ -10,8 +11,8 @@ use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
 use crate::rate_limit::RateLimiter;
 use authn::AuthState;
 use authz::{
-    ClientIp, DenialSink, EnforcedRouter, Enforcement, PolicyRouter, PolicySetupError,
-    PrincipalResolver, SessionGuard,
+    ClientIp, DenialSink, EndpointKey, EnforcedRouter, Enforcement, Policy, PolicyRouter,
+    PolicySetupError, PrincipalResolver, SessionGuard, is_corporate_path,
 };
 use axum::extract::{ConnectInfo, Request};
 use axum::middleware::Next;
@@ -118,6 +119,29 @@ pub(crate) fn public_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
 }
 
+/// Endpoint terdaftar di namespace API korporat `/v1/corporate/` beserta kebijakannya (F1-T100, ADR-028
+/// butir 1). Dipakai harness isolasi `tests/corporate_isolation.rs`, yang gagal bila ada endpoint di sini
+/// tanpa kasus harness (H-18).
+pub fn corporate_endpoints() -> Vec<(EndpointKey, Policy)> {
+    all_routes()
+        .registry()
+        .iter()
+        .filter(|((_, path), _)| is_corporate_path(path))
+        .map(|(k, p)| (k.clone(), p.clone()))
+        .collect()
+}
+
+/// Semua endpoint terautentikasi proses `api` di luar namespace korporat (F1-T100): harness memastikan
+/// token realm `korporat` ditolak di semuanya (US-1904 AC4).
+pub fn non_corporate_authenticated_endpoints() -> Vec<EndpointKey> {
+    all_routes()
+        .registry()
+        .iter()
+        .filter(|((_, path), p)| !is_corporate_path(path) && matches!(p, Policy::Require(_)))
+        .map(|(k, _)| k.clone())
+        .collect()
+}
+
 /// Semua rute proses `api` (ops, backoffice, pasien, publik), masing-masing dengan kebijakannya.
 pub(crate) fn all_routes() -> PolicyRouter<AppState> {
     PolicyRouter::new()
@@ -151,6 +175,8 @@ async fn client_ip_middleware(mut req: Request, next: Next) -> Response {
 /// - Endpoint terautentikasi memakai `auth` (validasi token realm `admin` untuk backoffice dan realm `pasien`
 ///   untuk `/patient/v1`), `resolver` dan
 ///   `sessions` (modul identity `AccountDirectory`, F1-T33), dan `denials` (E-05 hasil gagal, F1-T38).
+/// - Endpoint HR perusahaan memakai pembaca keanggotaan aktif modul `corporate` di atas pool aplikasi
+///   ([`CorporateDirectory`], F1-T100, ADR-028 butir 1).
 /// - Middleware korelasi dan IP klien dipasang terakhir dengan `EnforcedRouter::layer`, sehingga membungkus
 ///   penegak dan `MatchedPath` tersedia. Router hasil `finish` tertutup untuk penambahan rute (TD-15).
 pub fn build_router(
@@ -160,8 +186,10 @@ pub fn build_router(
     sessions: Arc<dyn SessionGuard>,
     denials: DenialSink,
 ) -> Result<EnforcedRouter, PolicySetupError> {
-    let (router, _spec) =
-        all_routes().finish(Enforcement::new(auth, resolver, sessions, denials))?;
+    let corporate = Arc::new(CorporateDirectory::new(state.pool().clone()));
+    let (router, _spec) = all_routes().finish(
+        Enforcement::new(auth, resolver, sessions, denials).with_corporate_scopes(corporate),
+    )?;
     Ok(router
         .with_state(state)
         .layer(axum::middleware::from_fn(client_ip_middleware))

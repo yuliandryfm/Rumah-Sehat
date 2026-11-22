@@ -35,6 +35,8 @@ pub const ADMIN_ISS: &str = "https://auth.ruang-sehat.invalid/realms/admin";
 pub const ADMIN_AUD: &str = "rs-backoffice-api";
 pub const PASIEN_ISS: &str = "https://auth.ruang-sehat.invalid/realms/pasien";
 pub const PASIEN_AUD: &str = "rs-patient-api";
+pub const KORPORAT_ISS: &str = "https://auth.ruang-sehat.invalid/realms/korporat";
+pub const KORPORAT_AUD: &str = "rs-corporate-api";
 
 pub fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -112,10 +114,11 @@ pub fn unreachable_pool() -> PgPool {
         .unwrap()
 }
 
-/// Kunci realm uji `admin` dan `pasien`.
+/// Kunci realm uji `admin`, `pasien`, dan `korporat`.
 pub struct TestKeys {
     pub admin: TestRealmKey,
     pub pasien: TestRealmKey,
+    pub korporat: TestRealmKey,
 }
 
 impl TestKeys {
@@ -123,11 +126,13 @@ impl TestKeys {
         Self {
             admin: TestRealmKey::generate("kid-admin").unwrap(),
             pasien: TestRealmKey::generate("kid-pasien").unwrap(),
+            korporat: TestRealmKey::generate("kid-korporat").unwrap(),
         }
     }
 }
 
-/// Validator token realm `admin` dan `pasien` (kunci uji) seperti konfigurasi proses `api`.
+/// Validator token realm `admin`, `pasien`, dan `korporat` (kunci uji; realm `korporat` Keycloak belum
+/// ada sebagai kode, F1-T85) seperti konfigurasi proses `api`.
 pub fn auth_state(keys: &TestKeys, clock: Arc<dyn Clock>) -> AuthState {
     let admin = RealmConfig {
         realm: Realm::Admin,
@@ -145,8 +150,16 @@ pub fn auth_state(keys: &TestKeys, clock: Arc<dyn Clock>) -> AuthState {
         authorized_parties: vec![],
         jwks: Arc::new(StaticJwks::new(jwks_document(&[keys.pasien.jwk()]))),
     };
+    let korporat = RealmConfig {
+        realm: Realm::Korporat,
+        issuer: KORPORAT_ISS.to_string(),
+        audiences: vec![KORPORAT_AUD.to_string()],
+        algorithms: vec![Algorithm::RS256],
+        authorized_parties: vec![],
+        jwks: Arc::new(StaticJwks::new(jwks_document(&[keys.korporat.jwk()]))),
+    };
     let authenticator = Authenticator::new(
-        AuthnConfig::with_defaults(Backend::RuangSehat, vec![admin, pasien]),
+        AuthnConfig::with_defaults(Backend::RuangSehat, vec![admin, pasien, korporat]),
         clock,
     )
     .unwrap();

@@ -443,6 +443,9 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         .map_err(|_| setup_failed("auth_admin_jwks_url"))?;
     let patient_jwks = HttpJwksSource::new(&config.patient_realm.jwks_url, Duration::from_secs(5))
         .map_err(|_| setup_failed("auth_patient_jwks_url"))?;
+    let corporate_jwks =
+        HttpJwksSource::new(&config.corporate_realm.jwks_url, Duration::from_secs(5))
+            .map_err(|_| setup_failed("auth_corporate_jwks_url"))?;
     let authenticator = Authenticator::new(
         AuthnConfig::with_defaults(
             Backend::RuangSehat,
@@ -463,6 +466,16 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
                     algorithms: vec![Algorithm::RS256],
                     authorized_parties: Vec::new(),
                     jwks: Arc::new(patient_jwks),
+                },
+                // Realm korporat (F1-T100): endpoint /v1/corporate untuk HR perusahaan, audience sendiri
+                // (ADR-027 butir 2); token realm ini ditolak di endpoint lain dan sebaliknya.
+                RealmConfig {
+                    realm: Realm::Korporat,
+                    issuer: config.corporate_realm.issuer.clone(),
+                    audiences: vec![config.corporate_realm.audience.clone()],
+                    algorithms: vec![Algorithm::RS256],
+                    authorized_parties: Vec::new(),
+                    jwks: Arc::new(corporate_jwks),
                 },
             ],
         ),
