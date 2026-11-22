@@ -154,7 +154,7 @@ pub(super) enum IdentityStatusDto {
 }
 
 impl IdentityStatusDto {
-    fn parse(code: &str) -> Option<Self> {
+    pub(super) fn parse(code: &str) -> Option<Self> {
         match code {
             "not_uploaded" => Some(Self::NotUploaded),
             "pending" => Some(Self::Pending),

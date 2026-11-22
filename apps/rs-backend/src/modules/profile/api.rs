@@ -9,7 +9,7 @@
 //!   pembatalan ([`cancel_identity_submission`]), dan status ([`identity_status`]) dengan dependensinya
 //!   dalam satu wadah [`IdentityServices`] yang dirakit aplikasi.
 
-use super::{repo, service, verification};
+use super::{profile_service, repo, service, verification};
 use authz::{CareRecipientOwner, Principal};
 use crypto::{DataKeyring, NikBlindIndexKeyring};
 use foundation::{Clock, Uuid};
@@ -308,4 +308,178 @@ pub async fn identity_rejection_reasons(
     services: &IdentityServices,
 ) -> Result<Vec<RejectionReasonView>, ProfileError> {
     verification::rejection_reasons(services).await
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Profil dan alamat pasien (F1-T56, US-105). Tipe berisi data pribadi (nama, tanggal lahir, nomor HP,
+// alamat) memakai `Debug` manual tanpa nilai (KEPUTUSAN-122, ADR-005).
+
+/// Profil pemilik akun (US-105 AC1) beserta status identitas yang tampil (AB-05).
+#[derive(Clone, PartialEq, Eq)]
+pub struct ProfileView {
+    /// Penerima layanan pemilik akun.
+    pub care_recipient_id: Uuid,
+    /// Nama lengkap.
+    pub full_name: String,
+    /// Tanggal lahir.
+    pub birth_date: time::Date,
+    /// `male` | `female`.
+    pub sex: String,
+    /// Nomor HP berbentuk `+62...`; kosong bila belum diisi.
+    pub phone: Option<String>,
+    /// `not_uploaded` | `pending` | `approved` | `rejected`.
+    pub identity_status: &'static str,
+}
+
+impl fmt::Debug for ProfileView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProfileView")
+            .field("care_recipient_id", &self.care_recipient_id)
+            .field("identity_status", &self.identity_status)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Isian simpan profil (belum divalidasi).
+#[derive(Clone, Copy)]
+pub struct ProfileInput<'a> {
+    /// Nama lengkap.
+    pub full_name: &'a str,
+    /// Tanggal lahir `YYYY-MM-DD`.
+    pub birth_date: &'a str,
+    /// `male` | `female`.
+    pub sex: &'a str,
+    /// Nomor HP (opsional; kosong = dikosongkan).
+    pub phone: Option<&'a str>,
+}
+
+impl fmt::Debug for ProfileInput<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProfileInput").finish_non_exhaustive()
+    }
+}
+
+/// Satu alamat aktif pasien.
+#[derive(Clone, PartialEq, Eq)]
+pub struct AddressView {
+    /// ID alamat.
+    pub id: Uuid,
+    /// Label, misalnya "Rumah".
+    pub label: Option<String>,
+    /// Nama penerima.
+    pub recipient_name: String,
+    /// Nomor HP penerima (`+62...`).
+    pub recipient_phone: String,
+    /// Alamat lengkap.
+    pub address_line: String,
+    /// Provinsi.
+    pub province_name: String,
+    /// Kota.
+    pub city_name: String,
+    /// Kode pos.
+    pub postal_code: Option<String>,
+    /// Patokan alamat.
+    pub notes: Option<String>,
+    /// Nama zona waktu IANA (ADR-017 butir 2).
+    pub time_zone: String,
+    /// Alamat utama.
+    pub is_default: bool,
+}
+
+impl fmt::Debug for AddressView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AddressView")
+            .field("id", &self.id)
+            .field("is_default", &self.is_default)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Isian tambah atau ubah alamat (belum divalidasi).
+#[derive(Clone, Copy)]
+pub struct AddressInput<'a> {
+    /// Label (opsional).
+    pub label: Option<&'a str>,
+    /// Nama penerima.
+    pub recipient_name: &'a str,
+    /// Nomor HP penerima.
+    pub recipient_phone: &'a str,
+    /// Alamat lengkap.
+    pub address_line: &'a str,
+    /// Provinsi.
+    pub province_name: &'a str,
+    /// Kota.
+    pub city_name: &'a str,
+    /// Kode pos (opsional).
+    pub postal_code: Option<&'a str>,
+    /// Patokan (opsional).
+    pub notes: Option<&'a str>,
+    /// Zona waktu IANA (opsional; bawaan `Asia/Jakarta`).
+    pub time_zone: Option<&'a str>,
+    /// Jadikan alamat utama.
+    pub is_default: Option<bool>,
+}
+
+impl fmt::Debug for AddressInput<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AddressInput").finish_non_exhaustive()
+    }
+}
+
+/// US-105 AC1: profil akun pemanggil. Akun tanpa profil = `NotFound`.
+pub async fn get_profile(
+    services: &IdentityServices,
+    principal: &Principal,
+) -> Result<ProfileView, ProfileError> {
+    profile_service::get_profile(services, principal).await
+}
+
+/// US-105 AC1, AC1a, AC1b, AC3: simpan profil akun pemanggil. Perubahan nama atau tanggal lahir pada
+/// identitas "Disetujui" mengembalikannya ke "Menunggu verifikasi".
+pub async fn update_profile(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    input: &ProfileInput<'_>,
+) -> Result<ProfileView, ProfileError> {
+    profile_service::update_profile(services, principal, route, input).await
+}
+
+/// US-105 AC2: daftar alamat aktif akun pemanggil.
+pub async fn list_addresses(
+    services: &IdentityServices,
+    principal: &Principal,
+) -> Result<Vec<AddressView>, ProfileError> {
+    profile_service::list_addresses(services, principal).await
+}
+
+/// US-105 AC2: tambah alamat; mengembalikan daftar alamat sesudahnya.
+pub async fn create_address(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    input: &AddressInput<'_>,
+) -> Result<Vec<AddressView>, ProfileError> {
+    profile_service::create_address(services, principal, route, input).await
+}
+
+/// US-105 AC2: ubah alamat milik pemanggil; mengembalikan daftar alamat sesudahnya.
+pub async fn update_address(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    address_id: Uuid,
+    input: &AddressInput<'_>,
+) -> Result<Vec<AddressView>, ProfileError> {
+    profile_service::update_address(services, principal, route, address_id, input).await
+}
+
+/// US-105 AC2, KU-04: hapus (soft delete) alamat milik pemanggil; mengembalikan daftar sesudahnya.
+pub async fn delete_address(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    address_id: Uuid,
+) -> Result<Vec<AddressView>, ProfileError> {
+    profile_service::delete_address(services, principal, route, address_id).await
 }

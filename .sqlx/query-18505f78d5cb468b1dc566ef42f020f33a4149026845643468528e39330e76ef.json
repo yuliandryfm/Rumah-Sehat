@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT trigger_type FROM app.identity_verification_request WHERE care_recipient_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "trigger_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request",
+            "name": "trigger_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "18505f78d5cb468b1dc566ef42f020f33a4149026845643468528e39330e76ef"
+}

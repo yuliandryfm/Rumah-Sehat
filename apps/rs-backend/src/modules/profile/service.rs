@@ -95,7 +95,7 @@ fn audited_error(e: AuditedTxError<ProfileError>) -> ProfileError {
     }
 }
 
-fn transition_error<E>(e: TransitionError<VerificationStatus, E>) -> ProfileError
+pub(super) fn transition_error<E>(e: TransitionError<VerificationStatus, E>) -> ProfileError
 where
     E: Into<ProfileError>,
 {

@@ -6,6 +6,328 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/patient/v1/addresses": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Daftar alamat aktif (US-105 AC2): alamat utama pertama; alamat terhapus tidak tampil (KU-04).",
+        "operationId": "address_list",
+        "responses": {
+          "200": {
+            "description": "Daftar alamat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Akun belum memiliki profil.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Tambah alamat (US-105 AC1a, AC2). Alamat pertama otomatis utama; `is_default = true` melepas utama\nyang lama. Jumlah alamat aktif paling banyak 20 (batas teknis awal). Respons memuat daftar alamat\nsesudahnya.",
+        "operationId": "address_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Alamat ditambahkan; daftar alamat sesudahnya.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressListCreatedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Akun belum memiliki profil.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid per field (4220001), atau jumlah alamat melebihi batas.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/patient/v1/addresses/{address_id}": {
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Ubah alamat milik pemanggil (penggantian penuh). `is_default = true` menjadikannya utama; `false` pada\nalamat utama ditolak (`4220001`, field `is_default`). ID alamat yang tidak ada dan milik pasien lain\ndijawab `404` yang sama (KU-03) dan dicatat sebagai event E-10 gagal.",
+        "operationId": "address_update",
+        "parameters": [
+          {
+            "name": "address_id",
+            "in": "path",
+            "description": "ID alamat (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Alamat tersimpan; daftar alamat sesudahnya.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressListEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alamat tidak ada atau bukan milik akun ini (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid per field (4220001).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Hapus alamat milik pemanggil (soft delete, ADR-003). Bila yang dihapus alamat utama, alamat aktif\ntertua berikutnya menjadi utama. Respons memuat daftar alamat sesudahnya.",
+        "operationId": "address_delete",
+        "parameters": [
+          {
+            "name": "address_id",
+            "in": "path",
+            "description": "ID alamat (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alamat dihapus; daftar alamat sesudahnya.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alamat tidak ada atau bukan milik akun ini (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/patient/v1/care-recipients/{care_recipient_id}/identity": {
       "get": {
         "tags": [
@@ -404,10 +726,385 @@
           }
         ]
       }
+    },
+    "/patient/v1/profile": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Profil data diri pemilik akun (US-105 AC1) beserta status identitas (AB-05).",
+        "operationId": "profile_get",
+        "responses": {
+          "200": {
+            "description": "Profil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Akun belum memiliki profil.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Simpan profil (US-105 AC1, AC1a, AC1b, AC3). Mengubah nama atau tanggal lahir saat identitas\n`approved` mengembalikan status ke `pending` (menunggu verifikasi ulang); perubahan lain tidak\nmemengaruhi status. Simpan tanpa perubahan tidak mencatat event.",
+        "operationId": "profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Profil tersimpan; status identitas sesudahnya.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Akun belum memiliki profil.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transisi status identitas kalah oleh keputusan lain yang tersimpan lebih dulu (4090001).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid per field (4220001): nama, tanggal lahir (sah, rentang, usia minimum), jenis kelamin, nomor HP.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AddressDto": {
+        "type": "object",
+        "description": "Satu alamat.",
+        "required": [
+          "id",
+          "recipient_name",
+          "recipient_phone",
+          "address_line",
+          "province_name",
+          "city_name",
+          "time_zone",
+          "is_default"
+        ],
+        "properties": {
+          "address_line": {
+            "type": "string"
+          },
+          "city_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postal_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "province_name": {
+            "type": "string"
+          },
+          "recipient_name": {
+            "type": "string"
+          },
+          "recipient_phone": {
+            "type": "string",
+            "example": "+6281234567890"
+          },
+          "time_zone": {
+            "type": "string",
+            "example": "Asia/Jakarta"
+          }
+        }
+      },
+      "AddressListCreatedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar alamat setelah tambah (201).",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AddressListDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      },
+      "AddressListDto": {
+        "type": "object",
+        "description": "Daftar alamat aktif: alamat utama pertama, lalu urutan dibuat. Tepat satu `is_default` bila tidak\nkosong.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressDto"
+            }
+          }
+        }
+      },
+      "AddressListEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar alamat (200).",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AddressListDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "AddressRequest": {
+        "type": "object",
+        "description": "Tambah atau ubah alamat (US-105 AC1a, AC2). Pada ubah (`PUT`) semua field dikirim ulang.",
+        "required": [
+          "recipient_name",
+          "recipient_phone",
+          "address_line",
+          "province_name",
+          "city_name"
+        ],
+        "properties": {
+          "address_line": {
+            "type": "string",
+            "description": "5-500 karakter.",
+            "example": "Jl. Contoh No. 1, RT 01/RW 02",
+            "maxLength": 500,
+            "minLength": 5
+          },
+          "city_name": {
+            "type": "string",
+            "description": "2-100 karakter (sampai sistem kode wilayah ditetapkan).",
+            "example": "Jakarta Selatan",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "is_default": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "`true` menjadikan alamat ini utama (yang lama dilepas). Alamat pertama selalu utama. `false` pada\nalamat utama ditolak: pilih alamat lain sebagai utama."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Paling banyak 30 karakter, mis. \"Rumah\".",
+            "example": "Rumah",
+            "maxLength": 30
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Patokan alamat, paling banyak 200 karakter.",
+            "example": "Sebelah warung biru",
+            "maxLength": 200
+          },
+          "postal_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hanya angka.",
+            "example": "12345",
+            "maxLength": 10,
+            "pattern": "^[0-9]+$"
+          },
+          "province_name": {
+            "type": "string",
+            "description": "2-100 karakter (sampai sistem kode wilayah ditetapkan).",
+            "example": "DKI Jakarta",
+            "maxLength": 100,
+            "minLength": 2
+          },
+          "recipient_name": {
+            "type": "string",
+            "description": "Aturan nama seperti nama lengkap.",
+            "example": "Siti Aminah",
+            "maxLength": 100
+          },
+          "recipient_phone": {
+            "type": "string",
+            "description": "Aturan nomor HP seperti profil.",
+            "example": "081234567890"
+          },
+          "time_zone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nama zona waktu IANA; bawaan `Asia/Jakarta`.",
+            "example": "Asia/Jakarta"
+          }
+        },
+        "additionalProperties": false
+      },
       "ErrorEnvelope": {
         "type": "object",
         "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
@@ -638,6 +1335,79 @@
           }
         }
       },
+      "ProfileDto": {
+        "type": "object",
+        "description": "Profil pemilik akun.",
+        "required": [
+          "care_recipient_id",
+          "full_name",
+          "birth_date",
+          "sex",
+          "identity_status"
+        ],
+        "properties": {
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-01-31"
+          },
+          "care_recipient_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "full_name": {
+            "type": "string",
+            "example": "Budi Santoso"
+          },
+          "identity_status": {
+            "$ref": "#/components/schemas/IdentityStatusDto",
+            "description": "Status identitas (AB-05). Berubah ke `pending` bila nama atau tanggal lahir diubah saat `approved`\n(US-105 AC3)."
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "+6281234567890"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/SexDto"
+          }
+        }
+      },
+      "ProfileEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons profil.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProfileDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "SexDto": {
+        "type": "string",
+        "description": "Jenis kelamin (CHECK `ck_care_recipient_sex`).",
+        "enum": [
+          "male",
+          "female"
+        ]
+      },
       "SubmissionDto": {
         "type": "object",
         "description": "Pengajuan yang diterima.",
@@ -685,6 +1455,41 @@
             "example": "Berhasil dibuat"
           }
         }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Simpan profil (US-105 AC1, AC1a, AC1b). Penggantian penuh: `phone` yang tidak dikirim atau `null`\nmengosongkan nomor HP. Perubahan NIK bukan lewat sini (US-106).",
+        "required": [
+          "full_name",
+          "birth_date",
+          "sex"
+        ],
+        "properties": {
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Tanggal sah `TTTT-BB-HH`; tidak di masa depan (tanggal WIB), tidak lebih dari 120 tahun lalu, usia\nminimum pemilik akun (PB-22, nilai uji Fase 1).",
+            "example": "1990-01-31"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "1-100 karakter setelah dipangkas; huruf, spasi, titik, koma, apostrof, tanda hubung.",
+            "example": "Budi Santoso",
+            "maxLength": 100
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Spasi dan tanda hubung dibuang; awalan `+62` atau `0`; 8-13 digit setelah kode negara; disimpan\nsebagai `+62...`.",
+            "example": "0812-3456-7890"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/SexDto"
+          }
+        },
+        "additionalProperties": false
       },
       "UploadMethodDto": {
         "type": "string",
@@ -774,6 +1579,10 @@
     {
       "name": "identity",
       "description": "NIK dan foto KTP (US-106)"
+    },
+    {
+      "name": "profile",
+      "description": "Profil data diri dan alamat (US-105)"
     }
   ]
 }

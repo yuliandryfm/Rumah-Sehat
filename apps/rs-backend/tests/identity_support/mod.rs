@@ -499,25 +499,53 @@ async fn connection(var: &str) -> PgConnection {
 /// yang kurang field atau memuat data terlarang, termasuk event hasil gagal dan E-05 yang dipancarkan
 /// sepanjang test itu.
 pub async fn audit_events(event_code: &str, subject: Uuid) -> Vec<StoredEvent> {
-    let mut conn = connection("RS_TEST_DB_RELAY_URL").await;
-    let pending: Vec<serde_json::Value> =
-        sqlx::query_scalar!("SELECT payload FROM app.audit_outbox ORDER BY occurred_at, id")
-            .fetch_all(&mut conn)
-            .await
-            .unwrap();
-    for p in &pending {
-        let violations = audit::check_payload(p);
-        assert!(
-            violations.is_empty(),
-            "event {} `{}` tidak lengkap/terlarang: {:?}",
-            p["event_code"],
-            p["action_name"],
-            violations
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-        );
+    for p in &pending_payloads().await {
+        assert_payload_complete(p, audit::check_payload(p));
     }
+    relay_and_read(|e| {
+        e.event.body.event_code == event_code && e.event.body.subject_id == Some(subject)
+    })
+    .await
+}
+
+/// Seperti [`audit_events`] (termasuk pemeriksaan `audit::check_payload` atas semua payload outbox), tetapi
+/// untuk event berkode `event_code` atas objek `object_id` (event tanpa subjek, misalnya percobaan gagal
+/// atas objek yang tidak ditemukan).
+pub async fn audit_events_for_object(event_code: &str, object_id: Uuid) -> Vec<StoredEvent> {
+    for p in &pending_payloads().await {
+        assert_payload_complete(p, audit::check_payload(p));
+    }
+    let object_id = object_id.hyphenated().to_string();
+    relay_and_read(|e| {
+        e.event.body.event_code == event_code
+            && e.event.body.object_id.as_deref() == Some(object_id.as_str())
+    })
+    .await
+}
+
+async fn pending_payloads() -> Vec<serde_json::Value> {
+    let mut conn = connection("RS_TEST_DB_RELAY_URL").await;
+    sqlx::query_scalar!("SELECT payload FROM app.audit_outbox ORDER BY occurred_at, id")
+        .fetch_all(&mut conn)
+        .await
+        .unwrap()
+}
+
+fn assert_payload_complete(p: &serde_json::Value, violations: Vec<audit::Violation>) {
+    assert!(
+        violations.is_empty(),
+        "event {} `{}` tidak lengkap/terlarang: {:?}",
+        p["event_code"],
+        p["action_name"],
+        violations
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+    );
+}
+
+async fn relay_and_read(keep: impl Fn(&StoredEvent) -> bool) -> Vec<StoredEvent> {
+    let mut conn = connection("RS_TEST_DB_RELAY_URL").await;
     let mut lock = None;
     for _ in 0..300 {
         match SingletonLock::try_acquire(conn, RS_AUDIT_RELAY)
@@ -557,9 +585,7 @@ pub async fn audit_events(event_code: &str, subject: Uuid) -> Vec<StoredEvent> {
             seq: last.event.seq,
             event_id: last.event.body.event_id,
         };
-        out.extend(page.into_iter().filter(|e| {
-            e.event.body.event_code == event_code && e.event.body.subject_id == Some(subject)
-        }));
+        out.extend(page.into_iter().filter(|e| keep(e)));
     }
     out
 }

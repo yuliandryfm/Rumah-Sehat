@@ -118,7 +118,10 @@ pub struct BackofficeApiDoc;
         description = "Endpoint aplikasi mobile pasien (realm pasien, akun berjenis pasien; relasi ke penerima layanan diperiksa per objek, KU-03). Kontrak antar-repo untuk repositori mobile (CR-019). Format respons: ADR-023.",
         version = env!("CARGO_PKG_VERSION")
     ),
-    tags((name = "identity", description = "NIK dan foto KTP (US-106)")),
+    tags(
+        (name = "identity", description = "NIK dan foto KTP (US-106)"),
+        (name = "profile", description = "Profil data diri dan alamat (US-105)")
+    ),
     modifiers(&BearerAuth)
 )]
 pub struct PatientApiDoc;

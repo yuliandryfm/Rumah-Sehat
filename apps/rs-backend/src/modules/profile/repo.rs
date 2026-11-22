@@ -671,3 +671,383 @@ pub(super) async fn pending_owner_document(
     .await
     .map_err(map_db)
 }
+
+// ----------------------------------------------------------------------------------------------------
+// Profil dan alamat pasien (F1-T56, US-105). Semua query dibatasi ke akun pemanggil lewat
+// `patient.account_id`, sehingga ID alamat yang tidak ada dan milik akun lain memberi hasil yang sama.
+
+/// Profil pemilik akun: baris `patient` + `care_recipient` pemilik akun + status identitas efektif.
+pub(super) struct OwnProfile {
+    pub(super) patient_id: Uuid,
+    pub(super) care_recipient_id: Uuid,
+    pub(super) full_name: String,
+    pub(super) birth_date: time::Date,
+    pub(super) sex: String,
+    pub(super) phone: Option<String>,
+    pub(super) latest_verification_request_id: Option<Uuid>,
+    /// Status permintaan efektif (`None` = "Belum diunggah").
+    pub(super) identity_status: Option<String>,
+}
+
+/// Membaca profil akun `account_id` tanpa mengunci.
+pub(super) async fn own_profile(
+    pool: &PgPool,
+    account_id: Uuid,
+) -> Result<Option<OwnProfile>, RepoError> {
+    sqlx::query_as!(
+        OwnProfile,
+        r#"SELECT p.id AS patient_id, cr.id AS care_recipient_id, cr.full_name, cr.birth_date, cr.sex,
+                  p.phone, cr.latest_verification_request_id, s.status AS "identity_status?"
+           FROM app.patient p
+           JOIN app.care_recipient cr ON cr.patient_id = p.id AND cr.is_account_owner
+           LEFT JOIN app.identity_verification_request_state s
+                  ON s.identity_verification_request_id = cr.latest_verification_request_id
+           WHERE p.account_id = $1 AND p.deleted_at IS NULL AND cr.deleted_at IS NULL"#,
+        account_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(map_db)
+}
+
+/// Membaca dan mengunci (`FOR UPDATE`) profil akun `account_id`: dua simpan paralel berjalan berurutan.
+pub(super) async fn lock_own_profile(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<OwnProfile>, RepoError> {
+    sqlx::query_as!(
+        OwnProfile,
+        r#"SELECT p.id AS patient_id, cr.id AS care_recipient_id, cr.full_name, cr.birth_date, cr.sex,
+                  p.phone, cr.latest_verification_request_id, s.status AS "identity_status?"
+           FROM app.patient p
+           JOIN app.care_recipient cr ON cr.patient_id = p.id AND cr.is_account_owner
+           LEFT JOIN app.identity_verification_request_state s
+                  ON s.identity_verification_request_id = cr.latest_verification_request_id
+           WHERE p.account_id = $1 AND p.deleted_at IS NULL AND cr.deleted_at IS NULL
+           FOR UPDATE OF p, cr"#,
+        account_id,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}
+
+/// Mengubah nama, tanggal lahir, dan jenis kelamin penerima layanan pemilik akun.
+pub(super) async fn update_owner_profile(
+    conn: &mut PgConnection,
+    care_recipient_id: Uuid,
+    full_name: &str,
+    birth_date: time::Date,
+    sex: &str,
+    updated_by: Uuid,
+) -> Result<(), RepoError> {
+    let n = sqlx::query!(
+        "UPDATE app.care_recipient \
+         SET full_name = $2, birth_date = $3, sex = $4, updated_at = now(), updated_by = $5 \
+         WHERE id = $1 AND is_account_owner AND deleted_at IS NULL",
+        care_recipient_id,
+        full_name,
+        birth_date,
+        sex,
+        updated_by,
+    )
+    .execute(conn)
+    .await
+    .map_err(map_db)?
+    .rows_affected();
+    if n == 1 {
+        Ok(())
+    } else {
+        Err(RepoError::Database)
+    }
+}
+
+/// Mengubah nomor HP profil (`None` = dikosongkan).
+pub(super) async fn update_patient_phone(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+    phone: Option<&str>,
+    updated_by: Uuid,
+) -> Result<(), RepoError> {
+    let n = sqlx::query!(
+        "UPDATE app.patient SET phone = $2, updated_at = now(), updated_by = $3 \
+         WHERE id = $1 AND deleted_at IS NULL",
+        patient_id,
+        phone,
+        updated_by,
+    )
+    .execute(conn)
+    .await
+    .map_err(map_db)?
+    .rows_affected();
+    if n == 1 {
+        Ok(())
+    } else {
+        Err(RepoError::Database)
+    }
+}
+
+/// Dokumen dan NIK terakhir dari permintaan efektif yang sudah disetujui: dasar permintaan
+/// `profile_changed` (US-105 AC3), yang memakai dokumen yang sama dan tidak meminta NIK atau foto baru.
+pub(super) struct EffectiveDocument {
+    pub(super) document_id: Uuid,
+    pub(super) nik_bidx: Vec<u8>,
+    pub(super) nik_bidx_key_version: i16,
+    pub(super) nik_last4: String,
+}
+
+pub(super) async fn effective_document(
+    conn: &mut PgConnection,
+    request_id: Uuid,
+) -> Result<Option<EffectiveDocument>, RepoError> {
+    sqlx::query_as!(
+        EffectiveDocument,
+        "SELECT d.id AS document_id, d.nik_bidx, d.nik_bidx_key_version, d.nik_last4 \
+         FROM app.identity_verification_request r \
+         JOIN app.identity_document d ON d.id = r.identity_document_id \
+         WHERE r.id = $1",
+        request_id,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}
+
+/// Satu alamat aktif milik pasien.
+pub(super) struct AddressRow {
+    pub(super) id: Uuid,
+    pub(super) label: Option<String>,
+    pub(super) recipient_name: String,
+    pub(super) recipient_phone: String,
+    pub(super) address_line: String,
+    pub(super) province_name: String,
+    pub(super) city_name: String,
+    pub(super) postal_code: Option<String>,
+    pub(super) notes: Option<String>,
+    pub(super) time_zone: String,
+    pub(super) is_default: bool,
+}
+
+/// Alamat aktif pasien: alamat utama lebih dulu, lalu urutan dibuat (KU-04: baris terhapus tidak tampil).
+pub(super) async fn list_addresses(
+    pool: &PgPool,
+    patient_id: Uuid,
+) -> Result<Vec<AddressRow>, RepoError> {
+    sqlx::query_as!(
+        AddressRow,
+        "SELECT id, label, recipient_name, recipient_phone, address_line, province_name, city_name, \
+                postal_code, notes, time_zone, is_default \
+         FROM app.address WHERE patient_id = $1 AND deleted_at IS NULL \
+         ORDER BY is_default DESC, created_at, id",
+        patient_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(map_db)
+}
+
+/// Pasien milik akun `account_id` beserta penerima layanan pemilik akunnya, dengan `patient` dikunci:
+/// semua perubahan alamat satu pasien berjalan berurutan.
+pub(super) struct LockedPatient {
+    pub(super) patient_id: Uuid,
+    pub(super) care_recipient_id: Uuid,
+}
+
+pub(super) async fn lock_patient(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<LockedPatient>, RepoError> {
+    sqlx::query_as!(
+        LockedPatient,
+        "SELECT p.id AS patient_id, cr.id AS care_recipient_id \
+         FROM app.patient p \
+         JOIN app.care_recipient cr ON cr.patient_id = p.id AND cr.is_account_owner \
+         WHERE p.account_id = $1 AND p.deleted_at IS NULL AND cr.deleted_at IS NULL \
+         FOR UPDATE OF p",
+        account_id,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}
+
+pub(super) async fn count_addresses(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+) -> Result<i64, RepoError> {
+    sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.address WHERE patient_id = $1 AND deleted_at IS NULL"#,
+        patient_id,
+    )
+    .fetch_one(conn)
+    .await
+    .map_err(map_db)
+}
+
+/// Alamat aktif `address_id` **milik pasien `patient_id`**; selain itu `None` (ID tidak ada dan milik
+/// pasien lain tidak dapat dibedakan, KU-03).
+pub(super) async fn find_address(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+    address_id: Uuid,
+) -> Result<Option<AddressRow>, RepoError> {
+    sqlx::query_as!(
+        AddressRow,
+        "SELECT id, label, recipient_name, recipient_phone, address_line, province_name, city_name, \
+                postal_code, notes, time_zone, is_default \
+         FROM app.address WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL",
+        address_id,
+        patient_id,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}
+
+/// Baris alamat baru atau nilai baru alamat yang diubah.
+pub(super) struct AddressWrite<'a> {
+    pub(super) id: Uuid,
+    pub(super) patient_id: Uuid,
+    pub(super) actor_account_id: Uuid,
+    pub(super) label: Option<&'a str>,
+    pub(super) recipient_name: &'a str,
+    pub(super) recipient_phone: &'a str,
+    pub(super) address_line: &'a str,
+    pub(super) province_name: &'a str,
+    pub(super) city_name: &'a str,
+    pub(super) postal_code: Option<&'a str>,
+    pub(super) notes: Option<&'a str>,
+    pub(super) time_zone: &'a str,
+    pub(super) is_default: bool,
+}
+
+pub(super) async fn insert_address(
+    conn: &mut PgConnection,
+    a: &AddressWrite<'_>,
+) -> Result<(), RepoError> {
+    sqlx::query!(
+        "INSERT INTO app.address (id, created_by, updated_by, patient_id, label, recipient_name, \
+                                  recipient_phone, address_line, province_name, city_name, postal_code, \
+                                  notes, time_zone, is_default) \
+         VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+        a.id,
+        a.actor_account_id,
+        a.patient_id,
+        a.label,
+        a.recipient_name,
+        a.recipient_phone,
+        a.address_line,
+        a.province_name,
+        a.city_name,
+        a.postal_code,
+        a.notes,
+        a.time_zone,
+        a.is_default,
+    )
+    .execute(conn)
+    .await
+    .map_err(map_db)?;
+    Ok(())
+}
+
+pub(super) async fn update_address(
+    conn: &mut PgConnection,
+    a: &AddressWrite<'_>,
+) -> Result<(), RepoError> {
+    let n = sqlx::query!(
+        "UPDATE app.address \
+         SET label = $3, recipient_name = $4, recipient_phone = $5, address_line = $6, \
+             province_name = $7, city_name = $8, postal_code = $9, notes = $10, time_zone = $11, \
+             is_default = $12, updated_at = now(), updated_by = $13 \
+         WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL",
+        a.id,
+        a.patient_id,
+        a.label,
+        a.recipient_name,
+        a.recipient_phone,
+        a.address_line,
+        a.province_name,
+        a.city_name,
+        a.postal_code,
+        a.notes,
+        a.time_zone,
+        a.is_default,
+        a.actor_account_id,
+    )
+    .execute(conn)
+    .await
+    .map_err(map_db)?
+    .rows_affected();
+    if n == 1 {
+        Ok(())
+    } else {
+        Err(RepoError::Database)
+    }
+}
+
+/// Melepas penanda alamat utama pasien (sebelum alamat lain ditandai utama); mengembalikan ID alamat
+/// yang tadinya utama.
+pub(super) async fn clear_default(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+    updated_by: Uuid,
+) -> Result<Option<Uuid>, RepoError> {
+    sqlx::query_scalar!(
+        "UPDATE app.address SET is_default = false, updated_at = now(), updated_by = $2 \
+         WHERE patient_id = $1 AND is_default AND deleted_at IS NULL RETURNING id",
+        patient_id,
+        updated_by,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}
+
+/// Soft delete alamat (ADR-003); baris tidak pernah dihapus fisik.
+pub(super) async fn soft_delete_address(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+    address_id: Uuid,
+    deleted_by: Uuid,
+    reason: &str,
+) -> Result<(), RepoError> {
+    let n = sqlx::query!(
+        "UPDATE app.address \
+         SET deleted_at = now(), deleted_by = $3, delete_reason = $4, is_default = false, \
+             updated_at = now(), updated_by = $3 \
+         WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL",
+        address_id,
+        patient_id,
+        deleted_by,
+        reason,
+    )
+    .execute(conn)
+    .await
+    .map_err(map_db)?
+    .rows_affected();
+    if n == 1 {
+        Ok(())
+    } else {
+        Err(RepoError::Database)
+    }
+}
+
+/// Menandai alamat aktif tertua pasien sebagai utama (setelah alamat utama dihapus); `None` bila tidak
+/// ada alamat tersisa.
+pub(super) async fn promote_oldest_address(
+    conn: &mut PgConnection,
+    patient_id: Uuid,
+    updated_by: Uuid,
+) -> Result<Option<Uuid>, RepoError> {
+    sqlx::query_scalar!(
+        "UPDATE app.address SET is_default = true, updated_at = now(), updated_by = $2 \
+         WHERE id = (SELECT id FROM app.address WHERE patient_id = $1 AND deleted_at IS NULL \
+                     ORDER BY created_at, id LIMIT 1) \
+         RETURNING id",
+        patient_id,
+        updated_by,
+    )
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db)
+}

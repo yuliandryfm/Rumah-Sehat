@@ -6,6 +6,8 @@
 //! (`/patient/v1`, `openapi/pasien.json`). Endpoint profil lain dibuat task masing-masing.
 //! F1-T62 (reference implementation US-201): use case dan endpoint Verifikator (`/backoffice/v1`,
 //! `openapi/backoffice.json`): antrean, detail, URL foto dokumen, setujui/tolak.
+//! F1-T56 (US-105): profil data diri dan alamat jamak pasien (`/patient/v1/profile`, `/patient/v1/addresses`);
+//! perubahan nama atau tanggal lahir pada identitas disetujui membuat permintaan verifikasi `profile_changed`.
 
 pub mod api;
 mod domain;
@@ -13,6 +15,10 @@ mod dto;
 mod error;
 mod http;
 mod policy;
+mod profile_dto;
+mod profile_http;
+mod profile_rules;
+mod profile_service;
 mod repo;
 mod self_decision;
 mod service;
@@ -25,7 +31,7 @@ use authz::PolicyRouter;
 
 /// Rute aplikasi pasien modul ini (`/patient/v1`, realm `pasien`).
 pub(crate) fn patient_router() -> PolicyRouter<AppState> {
-    http::router()
+    http::router().merge(profile_http::router())
 }
 
 /// Rute backoffice Verifikator modul ini (`/backoffice/v1`, realm `admin`, sub-peran Verifikator).

@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id AS patient_id, cr.id AS care_recipient_id, cr.full_name, cr.birth_date, cr.sex,\n                  p.phone, cr.latest_verification_request_id, s.status AS \"identity_status?\"\n           FROM app.patient p\n           JOIN app.care_recipient cr ON cr.patient_id = p.id AND cr.is_account_owner\n           LEFT JOIN app.identity_verification_request_state s\n                  ON s.identity_verification_request_id = cr.latest_verification_request_id\n           WHERE p.account_id = $1 AND p.deleted_at IS NULL AND cr.deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "patient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "care_recipient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "full_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "full_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "birth_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "birth_date"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "sex",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "sex"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "phone"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "latest_verification_request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "latest_verification_request_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "identity_status?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identity_verification_request_state",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a01a019352535e9b45b3de5720d0de90676ab19af30672058206ebbfda7cf74b"
+}

@@ -11,9 +11,10 @@
 # (ADR-009 butir 2, KEPUTUSAN-15).
 
 # assert_event_complete / assert_events_complete: apps/rs-backend/tests/audit_support/mod.rs
-# audit_events: apps/rs-backend/tests/identity_support/mod.rs (memeriksa semua payload outbox sebelum relay)
+# audit_events, audit_events_for_object: apps/rs-backend/tests/identity_support/mod.rs (memeriksa semua payload
+# outbox sebelum relay; varian kedua memilih event menurut objek, untuk event hasil gagal tanpa subjek)
 # e05_events: apps/rs-backend/tests/platform_files_download.rs (idem)
-checkers = ["assert_event_complete", "assert_events_complete", "audit_events", "e05_events"]
+checkers = ["assert_event_complete", "assert_events_complete", "audit_events", "audit_events_for_object", "e05_events"]
 
 # E-05 hasil gagal atas penerima layanan milik pasien lain (F1-T38, KU-03).
 [[emitter]]
@@ -89,4 +90,16 @@ tests = [
   "apps/rs-backend/tests/platform_files_download.rs::verifier_gets_short_lived_attachment_url_after_e05_is_recorded",
   "apps/rs-backend/tests/platform_files_download.rs::unauthorised_requests_get_no_url_and_are_logged",
   "apps/rs-backend/tests/profile_identity_verifier.rs::queue_detail_photo_and_approve",
+]
+
+# E-10 ubah profil dan alamat pasien, permintaan verifikasi ulang karena ubah nama/tanggal lahir, dan
+# E-16 soft delete alamat, termasuk percobaan atas alamat yang tidak ditemukan (F1-T56, US-105).
+[[emitter]]
+file = "apps/rs-backend/src/modules/profile/profile_service.rs"
+codes = ["E10", "E16"]
+tests = [
+  "apps/rs-backend/tests/profile_patient_profile_http.rs::profile_is_read_saved_and_unchanged_save_writes_no_event",
+  "apps/rs-backend/tests/profile_patient_profile_http.rs::name_or_birth_date_change_returns_approved_identity_to_pending",
+  "apps/rs-backend/tests/profile_patient_profile_http.rs::addresses_keep_exactly_one_default_and_soft_delete",
+  "apps/rs-backend/tests/profile_patient_profile_http.rs::foreign_address_is_not_found_identically_and_audited",
 ]

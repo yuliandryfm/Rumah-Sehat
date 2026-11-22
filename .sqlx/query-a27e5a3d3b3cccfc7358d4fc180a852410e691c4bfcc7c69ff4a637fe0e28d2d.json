@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id AS patient_id, cr.id AS care_recipient_id FROM app.patient p JOIN app.care_recipient cr ON cr.patient_id = p.id AND cr.is_account_owner WHERE p.account_id = $1 AND p.deleted_at IS NULL AND cr.deleted_at IS NULL FOR UPDATE OF p",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "patient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "care_recipient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "care_recipient",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "a27e5a3d3b3cccfc7358d4fc180a852410e691c4bfcc7c69ff4a637fe0e28d2d"
+}
