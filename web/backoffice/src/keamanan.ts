@@ -39,13 +39,19 @@ export function buatNonce(): string {
  * SATU origin object storage ke `connect-src` supaya browser dapat mengunggah gambar CMS lewat URL bertanda
  * tangan (F1-T95, ADR-018); hanya dari `originUnggahDariEnv`.
  */
-export function buatCsp(nonce: string | null, dev = false, originUnggah: string | null = null): string {
+export function buatCsp(
+  nonce: string | null,
+  dev = false,
+  originUnggah: string | null = null,
+  originFotoDokumen: string | null = null,
+): string {
   const nonceSumber = nonce === null ? "" : ` 'nonce-${nonce}'`;
   const arahan = [
     "default-src 'self'",
     `script-src 'self'${nonceSumber}${nonce === null ? "" : " 'strict-dynamic'"}${dev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self'${nonceSumber}`,
-    "img-src 'self'",
+    // Foto dokumen identitas (F1-T64, ADR-018): satu origin object storage, hanya untuk URL unduh bertanda tangan.
+    `img-src 'self'${originFotoDokumen === null ? "" : ` ${originFotoDokumen}`}`,
     "font-src 'self'",
     `connect-src 'self'${originUnggah === null ? "" : ` ${originUnggah}`}`,
     "object-src 'none'",

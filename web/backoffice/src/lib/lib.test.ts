@@ -77,7 +77,7 @@ describe("navigasi menurut sub-peran", () => {
     expect(menuUntuk(["Peran Karangan"], daftar).map((i) => i.href)).toEqual(["/"]);
   });
 
-  test("daftar menu bawaan hanya memuat tautan ke halaman yang ada (Beranda, Konten/CMS F1-T95)", () => {
-    expect(ITEM_NAV.map((i) => i.href)).toEqual(["/", "/konten"]);
+  test("daftar menu bawaan hanya memuat tautan ke halaman yang ada (Beranda, Konten F1-T95, Verifikasi F1-T64)", () => {
+    expect(ITEM_NAV.map((i) => i.href)).toEqual(["/", "/konten", "/verifikasi"]);
   });
 });
