@@ -665,6 +665,12 @@ if [ -f web/package.json ] && [ -f web/pnpm-workspace.yaml ]; then
   jalankan "web-lint" di_web pnpm run lint
   jalankan "web-test" di_web pnpm run test
   jalankan "web-api-client-sinkron" di_web pnpm run generate:check
+  # TD-32 (KEPUTUSAN-136/297/298): lisensi dependensi npm runtime dan dev sesuai daftar izin; Unknown = gagal.
+  if [ -f web/scripts/periksa-lisensi.mjs ]; then
+    jalankan "web-lisensi" di_web pnpm run lisensi
+  else
+    gagal "web-lisensi" "web/scripts/periksa-lisensi.mjs (TD-32) tidak ada"
+  fi
   # F1-T40: skrip kontras token tanpa dependensi (K1–K13, N1–N4; design guideline §7.4), lalu build
   # setiap paket/aplikasi yang punya skrip build (saat ini galeri state web/packages/ui; aplikasi Next.js
   # menambah `next build` pada task fiturnya). Hilangnya semua skrip build GAGAL, bukan dilewati.
