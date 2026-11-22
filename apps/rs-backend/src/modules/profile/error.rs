@@ -1,6 +1,7 @@
 //! Galat modul `profile` dan pemetaannya ke kode terdaftar (coding-standards §3.2,
 //! docs/05-response-codes.md §3 dan §6 modul `02`). Kode khusus modul `02` didaftarkan bersama endpoint
-//! pengajuan identitas (F1-T61, US-106); arti lain memakai kode umum modul `00`.
+//! pengajuan identitas (F1-T61, US-106) dan keputusan Verifikator (F1-T62, US-201); arti lain memakai
+//! kode umum modul `00`.
 
 use crate::modules::platform::api::FileError;
 use envelope::{ApiError, FieldError, ResponseCode, codes};
@@ -16,6 +17,22 @@ const SUBMISSION_LOCKED: ResponseCode = ResponseCode::new(
 const NIK_UNAVAILABLE: ResponseCode = ResponseCode::new(
     "4090202",
     "NIK ini tidak dapat dipakai untuk akun Anda. Hubungi Layanan Pelanggan bila ini NIK Anda.",
+);
+
+/// US-201 AC7: persetujuan pemilik akun dengan NIK yang sudah disetujui sebagai pemilik akun lain.
+const OWNER_NIK_TAKEN: ResponseCode = ResponseCode::new(
+    "4090203",
+    "NIK sudah disetujui sebagai pemilik akun lain. Tolak pengajuan dengan alasan nik_unavailable.",
+);
+
+/// US-201 AC5: keputusan atas pengajuan yang sudah diputuskan (keputusan pertama yang berlaku).
+const ALREADY_DECIDED: ResponseCode = ResponseCode::new("4090204", "Pengajuan sudah diputuskan");
+
+/// US-201 AC8: pemisahan tugas; Verifikator tidak memutuskan pengajuan akun pasiennya sendiri, dan
+/// Verifikator tanpa NIK staf tidak memutuskan apa pun (KEPUTUSAN-294). Pesan sama untuk kedua sebab.
+const SEPARATION_OF_DUTIES: ResponseCode = ResponseCode::new(
+    "4090205",
+    "Pengajuan ini tidak dapat Anda putuskan (pemisahan tugas). Pengajuan diputuskan Verifikator lain.",
 );
 
 /// Galat use case profil dan verifikasi identitas.
@@ -40,6 +57,12 @@ pub enum ProfileError {
     /// Transisi status tidak sah atau kalah oleh transisi yang tersimpan lebih dulu (AB-36, US-106 AC5,
     /// US-201 AC5).
     TransitionConflict,
+    /// Keputusan Verifikator atas pengajuan yang sudah diputuskan atau dibatalkan (US-201 AC5).
+    AlreadyDecided,
+    /// Persetujuan pemilik akun ditolak: NIK sudah disetujui sebagai pemilik akun lain (US-201 AC7).
+    OwnerNikTaken,
+    /// Pemisahan tugas Verifikator (US-201 AC8, KEPUTUSAN-294).
+    SeparationOfDuties,
     /// Proyeksi status menyimpang dari riwayat (ADR-008 butir 4); transaksi dibatalkan (500).
     ProjectionMismatch,
     /// Galat berkas dari modul `platform` (404/413/415/422/503).
@@ -63,6 +86,9 @@ impl fmt::Display for ProfileError {
             Self::NikUnavailable => f.write_str("NIK tidak dapat dipakai"),
             Self::DuplicateNikInAccount => f.write_str("NIK sudah dipakai di akun yang sama"),
             Self::TransitionConflict => f.write_str("konflik status"),
+            Self::AlreadyDecided => f.write_str("pengajuan sudah diputuskan"),
+            Self::OwnerNikTaken => f.write_str("NIK sudah dipegang pemilik akun lain"),
+            Self::SeparationOfDuties => f.write_str("pemisahan tugas Verifikator"),
             Self::ProjectionMismatch => f.write_str("proyeksi status menyimpang"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::RateLimited => f.write_str("terlalu banyak permintaan"),
@@ -85,6 +111,9 @@ impl ApiError for ProfileError {
             Self::NikUnavailable => NIK_UNAVAILABLE,
             // US-108 (anggota keluarga) belum punya endpoint; kodenya didaftarkan task itu.
             Self::DuplicateNikInAccount | Self::TransitionConflict => codes::STATUS_CONFLICT,
+            Self::AlreadyDecided => ALREADY_DECIDED,
+            Self::OwnerNikTaken => OWNER_NIK_TAKEN,
+            Self::SeparationOfDuties => SEPARATION_OF_DUTIES,
             Self::ProjectionMismatch | Self::Internal(_) => codes::INTERNAL,
             Self::File(e) => e.response_code(),
             Self::RateLimited => codes::RATE_LIMITED,
@@ -116,6 +145,9 @@ mod tests {
             (ProfileError::NikUnavailable, "4090202"),
             (ProfileError::DuplicateNikInAccount, "4090001"),
             (ProfileError::TransitionConflict, "4090001"),
+            (ProfileError::OwnerNikTaken, "4090203"),
+            (ProfileError::AlreadyDecided, "4090204"),
+            (ProfileError::SeparationOfDuties, "4090205"),
             (ProfileError::ProjectionMismatch, "5000001"),
             (ProfileError::File(FileError::TooLarge), "4130001"),
             (ProfileError::File(FileError::UnsupportedType), "4150001"),

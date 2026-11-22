@@ -9,7 +9,7 @@
 //!   pembatalan ([`cancel_identity_submission`]), dan status ([`identity_status`]) dengan dependensinya
 //!   dalam satu wadah [`IdentityServices`] yang dirakit aplikasi.
 
-use super::{repo, service};
+use super::{repo, service, verification};
 use authz::{CareRecipientOwner, Principal};
 use crypto::{DataKeyring, NikBlindIndexKeyring};
 use foundation::{Clock, Uuid};
@@ -20,7 +20,7 @@ use time::OffsetDateTime;
 use valkey::Valkey;
 
 pub use super::error::ProfileError;
-use crate::modules::platform::api::{FileStorage, UploadTicket};
+use crate::modules::platform::api::{DownloadTicket, FileStorage, UploadTicket};
 
 /// Pemilik penerima layanan `care_recipient_id` (`patient.account_id`, `is_account_owner`). `None` bila
 /// penerima layanan atau pasiennya tidak ada atau terhapus (ADR-003).
@@ -92,6 +92,8 @@ pub struct IdentityStatusView {
     pub identity_verification_request_id: Option<Uuid>,
     /// Kode alasan penolakan (hanya bila `rejected`, US-201 AC3).
     pub rejection_reason: Option<String>,
+    /// Keterangan penolakan dari Verifikator (hanya bila `rejected` dan diisi, US-201 AC3a).
+    pub rejection_note: Option<String>,
     /// Empat digit terakhir NIK permintaan efektif.
     pub nik_last4: Option<String>,
     /// Waktu pengajuan efektif.
@@ -152,4 +154,158 @@ pub async fn create_ktp_upload_slot(
     size_bytes: u64,
 ) -> Result<UploadTicket, ProfileError> {
     service::create_ktp_upload_slot(services, principal, route, content_type, size_bytes).await
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Verifikator (F1-T62, reference implementation US-201). Dipanggil handler backoffice modul ini;
+// kebijakan rute = sub-peran Verifikator.
+
+/// Satu pengajuan di antrean Verifikator (US-201 AC1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueueItemView {
+    /// Permintaan verifikasi.
+    pub identity_verification_request_id: Uuid,
+    /// Penerima layanan pemilik dokumen.
+    pub care_recipient_id: Uuid,
+    /// Pemilik akun (bukan anggota keluarga).
+    pub is_account_owner: bool,
+    /// Nama di profil.
+    pub full_name: String,
+    /// Tanggal lahir di profil.
+    pub birth_date: time::Date,
+    /// `male` | `female`.
+    pub sex: String,
+    /// `ktp` | `kk`.
+    pub document_type: &'static str,
+    /// `document_submitted` | `profile_changed`.
+    pub trigger_type: &'static str,
+    /// Empat digit terakhir NIK.
+    pub nik_last4: String,
+    /// Waktu pengajuan.
+    pub submitted_at: OffsetDateTime,
+}
+
+/// Detail pengajuan untuk Verifikator dengan NIK lengkap (US-201 AC1, PRD §3.1).
+#[derive(Clone, PartialEq, Eq)]
+pub struct VerificationDetailView {
+    /// Permintaan verifikasi.
+    pub identity_verification_request_id: Uuid,
+    /// Penerima layanan pemilik dokumen.
+    pub care_recipient_id: Uuid,
+    /// Pemilik akun (bukan anggota keluarga).
+    pub is_account_owner: bool,
+    /// Nama di profil.
+    pub full_name: String,
+    /// Tanggal lahir di profil.
+    pub birth_date: time::Date,
+    /// `male` | `female`.
+    pub sex: String,
+    /// `ktp` | `kk`.
+    pub document_type: &'static str,
+    /// `document_submitted` | `profile_changed`.
+    pub trigger_type: &'static str,
+    /// NIK lengkap (rahasia: tidak pernah dicatat di log).
+    pub nik: String,
+    /// Waktu pengajuan.
+    pub submitted_at: OffsetDateTime,
+    /// `pending` | `approved` | `rejected` | `cancelled`.
+    pub status: &'static str,
+    /// Kode alasan (hanya bila `rejected`).
+    pub rejection_reason: Option<String>,
+    /// Waktu keputusan (hanya bila `approved`/`rejected`).
+    pub decided_at: Option<OffsetDateTime>,
+    /// Setuju/tolak tersedia untuk pemanggil.
+    pub can_decide: bool,
+}
+
+impl fmt::Debug for VerificationDetailView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VerificationDetailView")
+            .field(
+                "identity_verification_request_id",
+                &self.identity_verification_request_id,
+            )
+            .field("nik", &"[REDACTED]")
+            .field("status", &self.status)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Hasil keputusan Verifikator.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecisionView {
+    /// Permintaan verifikasi.
+    pub identity_verification_request_id: Uuid,
+    /// `approved` | `rejected`.
+    pub status: &'static str,
+    /// Kode alasan (hanya penolakan).
+    pub rejection_reason: Option<String>,
+}
+
+/// Satu alasan penolakan aktif (data migrasi, US-201 AC3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RejectionReasonView {
+    /// Kode alasan.
+    pub code: &'static str,
+    /// Label tampilan.
+    pub label: String,
+}
+
+/// US-201 AC1: antrean "Menunggu verifikasi" terlama lebih dulu (`cursor` = ID permintaan terakhir halaman
+/// sebelumnya, `limit` 1-100).
+pub async fn verification_queue(
+    services: &IdentityServices,
+    cursor: Option<Uuid>,
+    limit: Option<i64>,
+) -> Result<(Vec<QueueItemView>, envelope::Meta), ProfileError> {
+    verification::queue(services, cursor, limit).await
+}
+
+/// US-201 AC1: detail pengajuan dengan NIK lengkap; E-05 dicatat lebih dulu.
+pub async fn verification_detail(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    request_id: Uuid,
+) -> Result<VerificationDetailView, ProfileError> {
+    verification::detail(services, principal, route, request_id).await
+}
+
+/// US-201 AC1, AC6: URL unduh foto dokumen (E-05 dulu, `FileAccess::Staff`).
+pub async fn verification_document_photo_url(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    request_id: Uuid,
+) -> Result<DownloadTicket, ProfileError> {
+    verification::document_photo_url(services, principal, route, request_id).await
+}
+
+/// US-201 AC2, AC5, AC7: menyetujui pengajuan.
+pub async fn approve_identity(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    request_id: Uuid,
+) -> Result<DecisionView, ProfileError> {
+    verification::approve(services, principal, route, request_id).await
+}
+
+/// US-201 AC3, AC3a, AC5: menolak pengajuan dengan kode alasan dan keterangan opsional.
+pub async fn reject_identity(
+    services: &IdentityServices,
+    principal: &Principal,
+    route: &str,
+    request_id: Uuid,
+    reason_code: &str,
+    note: Option<&str>,
+) -> Result<DecisionView, ProfileError> {
+    verification::reject(services, principal, route, request_id, reason_code, note).await
+}
+
+/// US-201 AC3: daftar alasan penolakan aktif.
+pub async fn identity_rejection_reasons(
+    services: &IdentityServices,
+) -> Result<Vec<RejectionReasonView>, ProfileError> {
+    verification::rejection_reasons(services).await
 }

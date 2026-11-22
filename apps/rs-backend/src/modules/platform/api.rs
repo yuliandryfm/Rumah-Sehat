@@ -486,6 +486,29 @@ pub async fn read_public_content_file(
     service::read_public_content_file(pool, clock, storage, stored_file_id).await
 }
 
+/// Satu kode alasan aktif (A6.7 `reason_code`): data rujukan lintas modul milik `platform`, diisi lewat
+/// migrasi data (misalnya daftar alasan penolakan identitas US-201 AC3, F1-T62).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReasonCode {
+    /// Kode (snake_case).
+    pub code: String,
+    /// Label tampilan.
+    pub label: String,
+}
+
+/// Database tidak tersedia saat membaca `reason_code` (detail hanya di log pemanggil).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReasonCodeUnavailable;
+
+/// Kode alasan aktif (tanpa yang terhapus, ADR-003) satu `context` (nilai CHECK `ck_reason_code_context`,
+/// misalnya `identity_rejection`), urut ID (urutan migrasi data). `conn` boleh koneksi transaksi pemanggil.
+pub async fn active_reason_codes(
+    conn: &mut PgConnection,
+    context: &str,
+) -> Result<Vec<ReasonCode>, ReasonCodeUnavailable> {
+    service::active_reason_codes(conn, context).await
+}
+
 /// Membuang berkas tervalidasi yang tidak jadi dicatat (transaksi pemanggil gagal).
 pub async fn discard_validated(
     clock: &dyn Clock,

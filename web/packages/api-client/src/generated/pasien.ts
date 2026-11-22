@@ -150,6 +150,12 @@ export interface components {
              */
             nik_last4?: string | null;
             /**
+             * @description Keterangan penolakan dari Verifikator, tampil apa adanya (hanya bila `rejected` dan diisi; paling
+             *     panjang 500 karakter, US-201 AC3a).
+             * @example Sudut kanan foto terpotong
+             */
+            rejection_note?: string | null;
+            /**
              * @description Kode alasan penolakan (hanya bila `rejected`, US-201 AC3).
              * @example photo_unreadable
              */

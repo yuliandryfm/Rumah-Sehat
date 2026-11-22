@@ -20,6 +20,13 @@
 //! ID entitas OpenBao operator dan penyetuju dari Control Group (US-208 AC4). Pemberian sub-peran sensitif
 //! (AC8) ditandai `sensitive_grant` di E-11; pemberitahuan ke Super Admin dan Auditor menyusul bersama kanal
 //! notifikasi admin US-1003 (Fase 2).
+//!
+//! NIK staf Verifikator (US-201 AC8, KEPUTUSAN-294 = jawaban user PT-57 opsi A): setiap kali sub-peran
+//! Verifikator diberikan (akun baru atau perubahan sub-peran), NIK staf wajib dan disimpan sebagai blind
+//! index saja (versi kunci terbaru, `account.staff_nik_bidx`) di transaksi yang sama dengan pemberian
+//! sub-peran; E-11 hanya mencatat nama field `staff_nik`, tidak pernah nilainya. Pencabutan Verifikator
+//! mengosongkan blind index itu (data minimal). Modul `profile` mencocokkannya lewat [`staff_nik_index`]
+//! sebelum Verifikator memutuskan pengajuan identitas.
 
 use super::admin_domain::{
     self, ACTIVATION_INVITE_LIFESPAN_SECONDS, AdminCensus, AdminRuleViolation, RoleDiff,
@@ -35,7 +42,8 @@ use audit::{
 };
 use authn::Realm;
 use authz::{AccountStatus, AdminSubRole};
-use foundation::{Clock, Uuid, new_id};
+use crypto::{Nik, NikBlindIndexKeyring};
+use foundation::{Clock, Sensitive, Uuid, new_id};
 use sqlx::{PgConnection, PgPool};
 use std::collections::BTreeSet;
 use std::future::Future;
@@ -192,6 +200,38 @@ pub struct NewAdminInput {
     pub full_name: String,
     /// Sub-peran.
     pub sub_roles: BTreeSet<AdminSubRole>,
+    /// NIK staf 16 digit; wajib bila `sub_roles` memuat Verifikator (US-201 AC8, KEPUTUSAN-294), diabaikan
+    /// bila tidak. Hanya blind index-nya yang disimpan.
+    pub staff_nik: Option<Sensitive<String>>,
+}
+
+/// Blind index NIK staf akun admin (US-201 AC8, KEPUTUSAN-294) untuk dicocokkan modul `profile`.
+#[derive(Clone, PartialEq, Eq)]
+pub struct StaffNikIndex {
+    /// Blind index HMAC 32 byte.
+    pub bidx: Vec<u8>,
+    /// Versi kunci blind index.
+    pub key_version: i16,
+}
+
+impl std::fmt::Debug for StaffNikIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StaffNikIndex")
+            .field("key_version", &self.key_version)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Blind index NIK staf akun admin `account_id`; `None` bila akun tidak ada atau belum punya NIK staf
+/// (Verifikator tanpa NIK staf tidak boleh memutuskan pengajuan identitas: gagal-tertutup di pemanggil).
+pub async fn staff_nik_index(
+    pool: &PgPool,
+    account_id: Uuid,
+) -> Result<Option<StaffNikIndex>, IdentityError> {
+    admin_repo::staff_nik(pool, account_id)
+        .await
+        .map(|r| r.map(|(bidx, key_version)| StaffNikIndex { bidx, key_version }))
+        .map_err(|_| IdentityError::Database)
 }
 
 /// Status pengiriman undangan.
@@ -228,6 +268,7 @@ static ADMIN_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
         FieldRule::value("account_type"),
         FieldRule::value("sub_role"),
         FieldRule::value("sensitive_grant"),
+        FieldRule::name_only("staff_nik"),
         FieldRule::name_only("status_reason"),
         FieldRule::value("invite_expires_at"),
         FieldRule::value("bootstrap_operator_entity_id"),
@@ -246,10 +287,12 @@ pub struct AdminAccounts {
     idp: Arc<dyn AdminIdentityProvider>,
     cache: Arc<dyn AccountChangeListener>,
     clock: Arc<dyn Clock>,
+    staff_nik_index: Option<Arc<NikBlindIndexKeyring>>,
 }
 
 enum Work {
     Rule(AdminRuleViolation),
+    StaffNikRequired,
     NotFound,
     Db,
     Audit,
@@ -265,6 +308,7 @@ fn map_tx(e: AuditedTxError<Work>) -> IdentityError {
     match e {
         AuditedTxError::Work(Work::Rule(v)) => v.into(),
         AuditedTxError::Work(Work::NotFound) => IdentityError::NotFound,
+        AuditedTxError::Work(Work::StaffNikRequired) => staff_nik_required(),
         AuditedTxError::Work(Work::Db) | AuditedTxError::Database { .. } => IdentityError::Database,
         AuditedTxError::Work(Work::Audit) | AuditedTxError::Audit(_) => IdentityError::Audit,
     }
@@ -322,15 +366,33 @@ fn grant_event(
     role: AdminSubRole,
     ctx: &AuditContext,
 ) -> Result<AuditEvent, Work> {
-    Ok(
-        event(EventCode::E11, "sub_role_granted", actor, target, ctx)?
-            .change(FieldChange::new("sub_role", None, Some(role_value(role)?)))
-            .change(FieldChange::new(
-                "sensitive_grant",
-                None,
-                Some(Value::Bool(admin_domain::is_sensitive(role))),
-            )),
+    let mut e = event(EventCode::E11, "sub_role_granted", actor, target, ctx)?
+        .change(FieldChange::new("sub_role", None, Some(role_value(role)?)))
+        .change(FieldChange::new(
+            "sensitive_grant",
+            None,
+            Some(Value::Bool(admin_domain::is_sensitive(role))),
+        ));
+    if role == AdminSubRole::Verifier {
+        // US-201 AC8: hanya nama field (NIK staf terdaftar), tanpa nilai apa pun (PRD §7.3).
+        e = e.change(FieldChange::new("staff_nik", None, Some(Value::Bool(true))));
+    }
+    Ok(e)
+}
+
+fn staff_nik_required() -> IdentityError {
+    IdentityError::field(
+        "staff_nik",
+        "required",
+        "NIK staf 16 digit wajib untuk sub-peran Verifikator (pemisahan tugas verifikasi identitas)",
     )
+}
+
+/// Blind index NIK staf siap disimpan.
+#[derive(Clone)]
+struct StaffNik {
+    bidx: Vec<u8>,
+    key_version: i16,
 }
 
 fn revoke_event(
@@ -385,7 +447,36 @@ impl AdminAccounts {
             idp,
             cache,
             clock,
+            staff_nik_index: None,
         }
+    }
+
+    /// Kunci blind index NIK (versi terbaru) untuk NIK staf Verifikator (US-201 AC8). Tanpa ini, pemberian
+    /// sub-peran Verifikator ditolak (`503`, gagal-tertutup).
+    #[must_use]
+    pub fn with_staff_nik_index(mut self, index: Arc<NikBlindIndexKeyring>) -> Self {
+        self.staff_nik_index = Some(index);
+        self
+    }
+
+    /// Mengurai dan menghitung blind index NIK staf (tanpa I/O). `None` bila tidak diberikan.
+    fn prepare_staff_nik(
+        &self,
+        raw: Option<&Sensitive<String>>,
+    ) -> Result<Option<StaffNik>, IdentityError> {
+        let Some(raw) = raw else { return Ok(None) };
+        let nik = Nik::parse(raw.expose()).map_err(|_| {
+            IdentityError::field("staff_nik", "invalid_format", "NIK harus 16 digit angka")
+        })?;
+        let Some(index) = &self.staff_nik_index else {
+            tracing::error!("staff_nik_index_not_configured");
+            return Err(IdentityError::Database);
+        };
+        let b = index.compute(&nik).map_err(|_| IdentityError::Database)?;
+        Ok(Some(StaffNik {
+            bidx: b.value.to_vec(),
+            key_version: b.key_version,
+        }))
     }
 
     async fn census_unlocked(&self) -> Result<AdminCensus, IdentityError> {
@@ -410,11 +501,20 @@ impl AdminAccounts {
         let (email, full_name) = validate_identity(&input.email, &input.full_name)?;
         let pre = self.census_unlocked().await?;
         admin_domain::check_creation(&pre, actor.account_id, &input.sub_roles)?;
+        let staff_nik = if input.sub_roles.contains(&AdminSubRole::Verifier) {
+            Some(
+                self.prepare_staff_nik(input.staff_nik.as_ref())?
+                    .ok_or_else(staff_nik_required)?,
+            )
+        } else {
+            None
+        };
         self.create(
             Creator::Admin(actor.account_id),
             &email,
             &full_name,
             input.sub_roles,
+            staff_nik,
             &actor.context,
         )
         .await
@@ -438,6 +538,7 @@ impl AdminAccounts {
             &email,
             &full_name,
             roles,
+            None,
             context,
         )
         .await
@@ -449,6 +550,7 @@ impl AdminAccounts {
         email: &str,
         full_name: &str,
         roles: BTreeSet<AdminSubRole>,
+        staff_nik: Option<StaffNik>,
         context: &AuditContext,
     ) -> Result<CreatedAdmin, IdentityError> {
         let subject = match self.idp.create_user(email).await {
@@ -516,6 +618,17 @@ impl AdminAccounts {
                         created = bootstrap_fields(created, a);
                     }
                     let mut events = vec![created];
+                    if roles.contains(&AdminSubRole::Verifier) {
+                        let n = staff_nik.as_ref().ok_or(Work::StaffNikRequired)?;
+                        admin_repo::set_staff_nik(
+                            conn,
+                            account_id,
+                            Some((&n.bidx, n.key_version)),
+                            created_by,
+                            now,
+                        )
+                        .await?;
+                    }
                     for role in &roles {
                         admin_repo::grant_role(conn, new_id(), account_id, *role, created_by, now)
                             .await?;
@@ -651,13 +764,32 @@ impl AdminAccounts {
             .ok_or(IdentityError::NotFound)
     }
 
-    /// US-208 AC1–AC3, AC6, AC7: Super Admin mengganti sub-peran akun admin lain menjadi `wanted`.
+    /// US-208 AC1–AC3, AC6, AC7: Super Admin mengganti sub-peran akun admin lain menjadi `wanted`, tanpa NIK
+    /// staf (pemberian Verifikator ditolak; pakai [`Self::change_sub_roles_with_staff_nik`]).
     pub async fn change_sub_roles(
         &self,
         actor: &AdminActor,
         target: Uuid,
         wanted: BTreeSet<AdminSubRole>,
     ) -> Result<RoleDiff, IdentityError> {
+        self.change_sub_roles_with_staff_nik(actor, target, wanted, None)
+            .await
+    }
+
+    /// Seperti [`Self::change_sub_roles`]; `staff_nik` wajib bila sub-peran Verifikator baru diberikan
+    /// (US-201 AC8, KEPUTUSAN-294). Pencabutan Verifikator mengosongkan blind index NIK staf.
+    pub async fn change_sub_roles_with_staff_nik(
+        &self,
+        actor: &AdminActor,
+        target: Uuid,
+        wanted: BTreeSet<AdminSubRole>,
+        staff_nik: Option<Sensitive<String>>,
+    ) -> Result<RoleDiff, IdentityError> {
+        let staff_nik = if wanted.contains(&AdminSubRole::Verifier) {
+            self.prepare_staff_nik(staff_nik.as_ref())?
+        } else {
+            None
+        };
         let actor_id = actor.account_id;
         let ctx = actor.context.clone();
         let now = self.clock.now();
@@ -671,6 +803,19 @@ impl AdminAccounts {
                     .map_err(Work::Rule)?;
                 let actor = admin_actor(&census, actor_id)?;
                 let mut events = Vec::new();
+                if diff.granted.contains(&AdminSubRole::Verifier) {
+                    let n = staff_nik.as_ref().ok_or(Work::StaffNikRequired)?;
+                    admin_repo::set_staff_nik(
+                        conn,
+                        target,
+                        Some((&n.bidx, n.key_version)),
+                        Some(actor_id),
+                        now,
+                    )
+                    .await?;
+                } else if diff.revoked.contains(&AdminSubRole::Verifier) {
+                    admin_repo::set_staff_nik(conn, target, None, Some(actor_id), now).await?;
+                }
                 for role in &diff.revoked {
                     admin_repo::revoke_role(conn, target, *role, actor_id, ROLE_REVOKE_REASON, now)
                         .await?;

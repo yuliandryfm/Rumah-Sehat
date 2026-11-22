@@ -21,7 +21,7 @@
 
 use audit::{AuditContext, Source, SourceComponent};
 use authz::AdminSubRole;
-use foundation::{Clock, CorrelationId, SystemClock, Uuid, new_id};
+use foundation::{Clock, CorrelationId, Sensitive, SystemClock, Uuid, new_id};
 use observability::EnvSource;
 use rs_backend::modules::identity::api::{
     ACTIVATION_INVITE_LIFESPAN_SECONDS, AccountChangeListener, AdminAccounts, AdminActor,
@@ -178,12 +178,10 @@ async fn env() -> Env {
     let idp = Arc::new(FakeIdp::default());
     let cache = Arc::new(Cache::default());
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
-    let svc = Arc::new(AdminAccounts::new(
-        app.clone(),
-        idp.clone(),
-        cache.clone(),
-        clock,
-    ));
+    let svc = Arc::new(
+        AdminAccounts::new(app.clone(), idp.clone(), cache.clone(), clock)
+            .with_staff_nik_index(Arc::new(staff_nik_keyring())),
+    );
     Env {
         app,
         relay,
@@ -191,6 +189,29 @@ async fn env() -> Env {
         cache,
         svc,
     }
+}
+
+/// Kunci blind index NIK uji (versi 1, nilai tetap; data sintetis).
+fn staff_nik_keyring() -> crypto::NikBlindIndexKeyring {
+    crypto::NikBlindIndexKeyring::new(vec![(
+        1,
+        crypto::secret_bytes(vec![7u8; crypto::BLIND_INDEX_KEY_LEN]),
+    )])
+    .unwrap()
+}
+
+/// NIK staf sintetis berawalan `99` (bukan kode wilayah nyata).
+const STAFF_NIK: &str = "9900000000000007";
+
+async fn staff_nik_stored(app: &PgPool, id: Uuid) -> Option<(Vec<u8>, i16)> {
+    let r = sqlx::query!(
+        "SELECT staff_nik_bidx, staff_nik_bidx_key_version FROM app.account WHERE id = $1",
+        id
+    )
+    .fetch_one(app)
+    .await
+    .unwrap();
+    r.staff_nik_bidx.zip(r.staff_nik_bidx_key_version)
 }
 
 fn ctx() -> AuditContext {
@@ -533,6 +554,7 @@ async fn super_admin_creates_admin_with_sub_roles_and_audit() {
                 email: "verifikator@example.com".into(),
                 full_name: "Verifikator Uji".into(),
                 sub_roles: roles(&[Verifier, CustomerService]),
+                staff_nik: Some(Sensitive::new(STAFF_NIK.to_string())),
             },
         )
         .await
@@ -577,6 +599,86 @@ async fn super_admin_creates_admin_with_sub_roles_and_audit() {
         ]
     );
     assert_no_personal_data(&evs, "verifikator@example.com", "Verifikator Uji");
+    // US-201 AC8 (KEPUTUSAN-294): NIK staf tersimpan sebagai blind index versi terbaru saja; E-11 hanya
+    // mencatat bahwa NIK staf terdaftar.
+    let expected = staff_nik_keyring()
+        .compute(&crypto::Nik::parse(STAFF_NIK).unwrap())
+        .unwrap();
+    assert_eq!(
+        staff_nik_stored(&e.app, created.account_id).await,
+        Some((expected.value.to_vec(), 1))
+    );
+    let verifier_grant = evs
+        .iter()
+        .find(|e| e["after_values"]["sub_role"] == "verifier")
+        .unwrap();
+    assert!(
+        verifier_grant["changed_fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f == "staff_nik")
+    );
+    assert!(verifier_grant["after_values"].get("staff_nik").is_none());
+    let raw = serde_json::to_string(&evs).unwrap();
+    assert!(!raw.contains(STAFF_NIK) && !raw.contains(&STAFF_NIK[12..]));
+}
+
+// trace: US-201 AC8, KEPUTUSAN-294 (NIK staf wajib saat Verifikator diberikan, format 16 digit, dikosongkan
+// saat Verifikator dicabut)
+#[tokio::test(flavor = "multi_thread")]
+async fn verifier_grant_requires_staff_nik() {
+    let _g = SERIAL.lock().await;
+    let e = env().await;
+    let sa = seed(&e.app, "active", &[SuperAdmin]).await;
+    let input = |nik: Option<&str>| NewAdminInput {
+        email: "verifikator2@example.com".into(),
+        full_name: "Verifikator Dua".into(),
+        sub_roles: roles(&[Verifier]),
+        staff_nik: nik.map(|n| Sensitive::new(n.to_string())),
+    };
+    let before = admin_count(&e.app).await;
+    for (nik, code) in [(None, "required"), (Some("12345"), "invalid_format")] {
+        let err = e
+            .svc
+            .create_admin(&actor(sa), input(nik))
+            .await
+            .unwrap_err();
+        assert_eq!(field_code(&err).as_deref(), Some(code), "{nik:?}");
+    }
+    assert!(
+        e.idp.calls().is_empty(),
+        "ditolak sebelum Keycloak disentuh"
+    );
+    assert_eq!(admin_count(&e.app).await, before);
+
+    let staff = seed(&e.app, "active", &[Content]).await;
+    let err = e
+        .svc
+        .change_sub_roles(&actor(sa), staff, roles(&[Content, Verifier]))
+        .await
+        .unwrap_err();
+    assert_eq!(field_code(&err).as_deref(), Some("required"));
+    assert_eq!(active_roles(&e.app, staff).await, ["content"]);
+    e.svc
+        .change_sub_roles_with_staff_nik(
+            &actor(sa),
+            staff,
+            roles(&[Content, Verifier]),
+            Some(Sensitive::new(STAFF_NIK.to_string())),
+        )
+        .await
+        .unwrap();
+    assert!(staff_nik_stored(&e.app, staff).await.is_some());
+    e.svc
+        .change_sub_roles(&actor(sa), staff, roles(&[Content]))
+        .await
+        .unwrap();
+    assert_eq!(
+        staff_nik_stored(&e.app, staff).await,
+        None,
+        "pencabutan Verifikator mengosongkan NIK staf"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -588,6 +690,7 @@ async fn creation_is_rejected_for_non_super_admin_auditor_combination_and_duplic
         email: "baru@example.com".into(),
         full_name: "Baru".into(),
         sub_roles: roles(r),
+        staff_nik: None,
     };
     for (who, st) in [
         (
@@ -666,6 +769,7 @@ async fn rejection_after_keycloak_user_creation_compensates_and_changes_nothing(
                 email: "telat@example.com".into(),
                 full_name: "Telat".into(),
                 sub_roles: roles(&[Content]),
+                staff_nik: None,
             },
         )
         .await

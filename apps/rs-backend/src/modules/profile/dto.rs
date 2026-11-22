@@ -222,6 +222,10 @@ pub(super) struct IdentityDto {
     /// Kode alasan penolakan (hanya bila `rejected`, US-201 AC3).
     #[schema(example = "photo_unreadable")]
     pub(super) rejection_reason: Option<String>,
+    /// Keterangan penolakan dari Verifikator, tampil apa adanya (hanya bila `rejected` dan diisi; paling
+    /// panjang 500 karakter, US-201 AC3a).
+    #[schema(example = "Sudut kanan foto terpotong")]
+    pub(super) rejection_note: Option<String>,
     /// Empat digit terakhir NIK permintaan efektif.
     #[schema(example = "0001")]
     pub(super) nik_last4: Option<String>,
@@ -242,6 +246,7 @@ impl IdentityDto {
                 .identity_verification_request_id
                 .map(|id| id.hyphenated().to_string()),
             rejection_reason: v.rejection_reason,
+            rejection_note: v.rejection_note,
             nik_last4: v.nik_last4,
             submitted_at: v.submitted_at.map(ts).transpose()?,
             can_submit: v.can_submit,

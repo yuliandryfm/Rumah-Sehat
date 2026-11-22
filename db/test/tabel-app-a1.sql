@@ -20,12 +20,12 @@ SELECT pg_temp.uji_nol('A1 komentar kelas: account M, rs_admin_role M, session_r
                        ('session_revocation', 'class:O module:identitas'), ('idp_event_cursor', 'class:O module:identitas'),
                        ('idp_event_receipt', 'class:O module:identitas')) v(t, k)
          WHERE obj_description(to_regclass('app.' || t), 'pg_class') IS DISTINCT FROM k));
-SELECT pg_temp.uji_nol('A1.1 account: kolom anonymize persis email, full_name (DD A1.1 "Anonimkan")',
+SELECT pg_temp.uji_nol('A1.1 account: kolom anonymize persis email, full_name, staff_nik_bidx (DD A1.1 "Anonimkan"; KEPUTUSAN-294)',
   ARRAY(SELECT x FROM (
     SELECT 'kolom anonymize ' || coalesce(string_agg(attname::text, ',' ORDER BY attname), '<kosong>') AS x
       FROM pg_attribute WHERE attrelid = 'app.account'::regclass AND attnum > 0 AND NOT attisdropped
        AND col_description(attrelid, attnum) = 'anonymize') s
-   WHERE x <> 'kolom anonymize email,full_name'));
+   WHERE x <> 'kolom anonymize email,full_name,staff_nik_bidx'));
 SELECT pg_temp.uji_nol('A1 tabel lain tanpa kolom anonymize (rs_admin_role, session_revocation, idp_event_cursor, idp_event_receipt)',
   ARRAY(SELECT format('%s.%s', attrelid::regclass, attname) FROM pg_attribute
          WHERE attrelid IN ('app.rs_admin_role'::regclass, 'app.session_revocation'::regclass,

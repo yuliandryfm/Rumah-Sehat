@@ -102,7 +102,10 @@ pub struct OpsApiDoc;
         description = "Endpoint backoffice admin Ruang Sehat (realm admin, sub-peran per endpoint, UP-18). Format respons: ADR-023.",
         version = env!("CARGO_PKG_VERSION")
     ),
-    tags((name = "cms", description = "Konten (CMS) aplikasi dan situs")),
+    tags(
+        (name = "cms", description = "Konten (CMS) aplikasi dan situs"),
+        (name = "identity-verification", description = "Verifikasi identitas oleh Verifikator (US-201)")
+    ),
     modifiers(&BearerAuth)
 )]
 pub struct BackofficeApiDoc;

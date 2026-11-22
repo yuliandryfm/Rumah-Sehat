@@ -1079,6 +1079,542 @@
           }
         ]
       }
+    },
+    "/backoffice/v1/identity-verification-reasons": {
+      "get": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "Daftar alasan penolakan (hanya baca; dikelola lewat migrasi data, US-201 AC3).",
+        "operationId": "identity_verification_reason_list",
+        "responses": {
+          "200": {
+            "description": "Daftar alasan penolakan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionReasonsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/identity-verifications": {
+      "get": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "Antrean pengajuan \"Menunggu verifikasi\", terlama lebih dulu (US-201 AC1).",
+        "operationId": "identity_verification_queue",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah item (1-100, bawaan 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Antrean.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parameter tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}": {
+      "get": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "Detail pengajuan dengan NIK lengkap (US-201 AC1). Membuka detail tercatat E-05 lebih dulu.",
+        "operationId": "identity_verification_get",
+        "parameters": [
+          {
+            "name": "identity_verification_request_id",
+            "in": "path",
+            "description": "ID permintaan verifikasi (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail pengajuan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationDetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pengajuan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/approve": {
+      "post": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "Menyetujui pengajuan (US-201 AC2, AC5, AC7).",
+        "operationId": "identity_verification_approve",
+        "parameters": [
+          {
+            "name": "identity_verification_request_id",
+            "in": "path",
+            "description": "ID permintaan verifikasi (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Disetujui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pengajuan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090203: NIK sudah disetujui sebagai pemilik akun lain; tolak dengan alasan nik_unavailable (US-201 AC7). 4090204: pengajuan sudah diputuskan (US-201 AC5). 4090205: pemisahan tugas, pengajuan akun pasien milik Verifikator sendiri atau Verifikator tanpa NIK staf (US-201 AC8).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "already_decided": {
+                    "summary": "Sudah diputuskan",
+                    "value": {
+                      "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                      "instance": "/backoffice/v1/identity-verifications/{identity_verification_request_id}/approve",
+                      "response_code": "4090204",
+                      "response_description": "Pengajuan sudah diputuskan",
+                      "type": "https://problems.ruang-sehat.invalid/4090204"
+                    }
+                  },
+                  "owner_nik_taken": {
+                    "summary": "NIK dipegang pemilik akun lain",
+                    "value": {
+                      "correlation_id": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f",
+                      "instance": "/backoffice/v1/identity-verifications/{identity_verification_request_id}/approve",
+                      "response_code": "4090203",
+                      "response_description": "NIK sudah disetujui sebagai pemilik akun lain. Tolak pengajuan dengan alasan nik_unavailable.",
+                      "type": "https://problems.ruang-sehat.invalid/4090203"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/document-photo-url": {
+      "post": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "URL unduh foto dokumen berumur pendek (US-201 AC1, AC6; ADR-018 butir 3). E-05 tercatat sebelum URL\nterbit; gagal mencatat = tidak ada URL.",
+        "operationId": "identity_verification_document_photo_url",
+        "parameters": [
+          {
+            "name": "identity_verification_request_id",
+            "in": "path",
+            "description": "ID permintaan verifikasi (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL unduh berumur pendek.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPhotoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pengajuan atau berkas tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/backoffice/v1/identity-verifications/{identity_verification_request_id}/reject": {
+      "post": {
+        "tags": [
+          "identity-verification"
+        ],
+        "summary": "Menolak pengajuan dengan alasan dari daftar (US-201 AC3, AC3a, AC5; AC7 dengan `nik_unavailable`).",
+        "operationId": "identity_verification_reject",
+        "parameters": [
+          {
+            "name": "identity_verification_request_id",
+            "in": "path",
+            "description": "ID permintaan verifikasi (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ditolak.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pengajuan tidak ada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090204: pengajuan sudah diputuskan (US-201 AC5). 4090205: pemisahan tugas (US-201 AC8).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Alasan di luar daftar, keterangan wajib untuk other, atau lebih dari 500 karakter.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1385,6 +1921,56 @@
           "promo"
         ]
       },
+      "DecisionDto": {
+        "type": "object",
+        "description": "Hasil keputusan.",
+        "required": [
+          "identity_verification_request_id",
+          "status"
+        ],
+        "properties": {
+          "identity_verification_request_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kode alasan (hanya penolakan).",
+            "example": "photo_unreadable"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatusDto"
+          }
+        }
+      },
+      "DecisionEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons keputusan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DecisionDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
       "DeleteRequest": {
         "type": "object",
         "description": "Soft delete dengan alasan wajib (ADR-003).",
@@ -1454,6 +2040,59 @@
           "archived",
           "deleted"
         ]
+      },
+      "DocumentPhotoDto": {
+        "type": "object",
+        "description": "URL unduh foto dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat.",
+        "required": [
+          "url",
+          "expires_at",
+          "mime_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mime_type": {
+            "type": "string",
+            "example": "image/jpeg"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 204800
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentPhotoEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons URL foto.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentPhotoDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
       },
       "EditorialStatus": {
         "type": "string",
@@ -1603,6 +2242,181 @@
           }
         }
       },
+      "QueueEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons antrean.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueItemDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MetaSchema"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "QueueItemDto": {
+        "type": "object",
+        "description": "Satu pengajuan di antrean (US-201 AC1).",
+        "required": [
+          "identity_verification_request_id",
+          "care_recipient_id",
+          "is_account_owner",
+          "full_name",
+          "birth_date",
+          "sex",
+          "document_type",
+          "trigger_type",
+          "nik_last4",
+          "submitted_at"
+        ],
+        "properties": {
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-01-01"
+          },
+          "care_recipient_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c"
+          },
+          "document_type": {
+            "type": "string",
+            "description": "`ktp` | `kk`.",
+            "example": "ktp"
+          },
+          "full_name": {
+            "type": "string",
+            "example": "Pasien Sintetis"
+          },
+          "identity_verification_request_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "is_account_owner": {
+            "type": "boolean",
+            "description": "Pemilik akun (bukan anggota keluarga)."
+          },
+          "nik_last4": {
+            "type": "string",
+            "description": "Empat digit terakhir NIK (NIK lengkap hanya di detail).",
+            "example": "0001"
+          },
+          "sex": {
+            "type": "string",
+            "description": "`male` | `female`.",
+            "example": "female"
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trigger_type": {
+            "type": "string",
+            "description": "`document_submitted` | `profile_changed`.",
+            "example": "document_submitted"
+          }
+        }
+      },
+      "RejectRequest": {
+        "type": "object",
+        "description": "Penolakan (US-201 AC3, AC3a).",
+        "required": [
+          "reason_code"
+        ],
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Keterangan tambahan yang tampil ke pasien; wajib untuk `other`; paling panjang 500 karakter.",
+            "example": "Sudut kanan foto terpotong",
+            "maxLength": 500
+          },
+          "reason_code": {
+            "type": "string",
+            "description": "Kode alasan dari `GET /backoffice/v1/identity-verification-reasons`.",
+            "example": "photo_unreadable"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RejectionReasonDto": {
+        "type": "object",
+        "description": "Satu alasan penolakan (data migrasi, US-201 AC3).",
+        "required": [
+          "code",
+          "label"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "photo_unreadable"
+          },
+          "label": {
+            "type": "string",
+            "example": "Foto dokumen buram atau tidak terbaca"
+          }
+        }
+      },
+      "RejectionReasonsEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar alasan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RejectionReasonDto"
+            }
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "RequestStatusDto": {
+        "type": "string",
+        "description": "Status permintaan verifikasi untuk Verifikator.",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "cancelled"
+        ]
+      },
       "ScheduleRequest": {
         "type": "object",
         "description": "Jadwal tayang (US-1101 AC2). Tanpa `publish_start_at` = tayang sekarang menurut jam server.",
@@ -1716,6 +2530,115 @@
             "example": "Berhasil dibuat"
           }
         }
+      },
+      "VerificationDetailDto": {
+        "type": "object",
+        "description": "Detail pengajuan dengan NIK lengkap (US-201 AC1; membuka detail tercatat E-05).",
+        "required": [
+          "identity_verification_request_id",
+          "care_recipient_id",
+          "is_account_owner",
+          "full_name",
+          "birth_date",
+          "sex",
+          "document_type",
+          "trigger_type",
+          "nik",
+          "submitted_at",
+          "status",
+          "can_decide"
+        ],
+        "properties": {
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-01-01"
+          },
+          "can_decide": {
+            "type": "boolean",
+            "description": "Setuju/tolak tersedia (masih menunggu)."
+          },
+          "care_recipient_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c"
+          },
+          "decided_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu keputusan (hanya bila `approved` atau `rejected`)."
+          },
+          "document_type": {
+            "type": "string",
+            "example": "ktp"
+          },
+          "full_name": {
+            "type": "string",
+            "example": "Pasien Sintetis"
+          },
+          "identity_verification_request_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "is_account_owner": {
+            "type": "boolean"
+          },
+          "nik": {
+            "type": "string",
+            "description": "NIK lengkap 16 digit (hanya Verifikator, PRD §3.1). Jangan disimpan atau dicatat di log klien.",
+            "example": "9900000000000001"
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kode alasan penolakan (hanya bila `rejected`).",
+            "example": "photo_unreadable"
+          },
+          "sex": {
+            "type": "string",
+            "example": "female"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatusDto"
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trigger_type": {
+            "type": "string",
+            "example": "document_submitted"
+          }
+        }
+      },
+      "VerificationDetailEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons detail.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/VerificationDetailDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -1730,6 +2653,10 @@
     {
       "name": "cms",
       "description": "Konten (CMS) aplikasi dan situs"
+    },
+    {
+      "name": "identity-verification",
+      "description": "Verifikasi identitas oleh Verifikator (US-201)"
     }
   ]
 }

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT identity_verification_request_id, deleted_at, deleted_by, delete_reason FROM app.account_owner_nik_registry WHERE care_recipient_id = $1 ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "identity_verification_request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account_owner_nik_registry",
+            "name": "identity_verification_request_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "deleted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "account_owner_nik_registry",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "deleted_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account_owner_nik_registry",
+            "name": "deleted_by"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "delete_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account_owner_nik_registry",
+            "name": "delete_reason"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c174931e756a5de6e3daa67dc89fbedb15760eafcc1d8e8c5a7509d0ec354cec"
+}

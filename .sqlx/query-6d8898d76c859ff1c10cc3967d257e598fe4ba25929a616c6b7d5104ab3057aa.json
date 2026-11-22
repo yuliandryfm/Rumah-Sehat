@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET staff_nik_bidx = $2, staff_nik_bidx_key_version = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d8898d76c859ff1c10cc3967d257e598fe4ba25929a616c6b7d5104ab3057aa"
+}
