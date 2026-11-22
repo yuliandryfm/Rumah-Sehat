@@ -12,7 +12,8 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
-    "kontras": "node packages/ui/scripts/kontras.mjs",
+    "lisensi": "node scripts/periksa-lisensi.mjs",
+    "kontras":"node packages/ui/scripts/kontras.mjs",
     "generate": "pnpm --filter @rs/api-client run generate",
     "generate:check": "pnpm --filter @rs/api-client run generate:check"
   },

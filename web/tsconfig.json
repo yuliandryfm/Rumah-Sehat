@@ -9,6 +9,8 @@
     "packages/*/src",
     "packages/ui/gallery",
     "packages/ui/scripts/*.d.mts",
+    "scripts/*.d.mts",
+    "scripts/*.test.ts",
     "packages/ui/vite.gallery.config.ts",
     "vitest.config.ts"
   ]

@@ -16,6 +16,7 @@ export default defineConfig({
             "*/src/**/*.test.ts",
             "packages/api-client/src/**/*.test.ts",
             "packages/ui/scripts/**/*.test.ts",
+            "scripts/**/*.test.ts",
             "packages/bff-auth/src/**/*.test.ts",
           ],
           exclude: ["**/node_modules/**", "**/*.integration.test.ts"],
