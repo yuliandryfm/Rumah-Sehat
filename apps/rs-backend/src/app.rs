@@ -3,11 +3,13 @@
 
 use crate::modules::content_support;
 use crate::modules::corporate::api::CorporateDirectory;
+use crate::modules::identity;
+use crate::modules::identity::api::CorporateHrAccounts;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
 use crate::modules::profile;
 use crate::modules::profile::api::IdentityServices;
-use crate::openapi::{BackofficeApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
+use crate::openapi::{BackofficeApiDoc, CorporateApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
 use crate::rate_limit::RateLimiter;
 use authn::AuthState;
 use authz::{
@@ -39,6 +41,8 @@ pub struct AppServices {
     pub public_content_limit: Arc<RateLimiter>,
     /// Batas laju endpoint gambar konten publik (F1-T93).
     pub public_image_limit: Arc<RateLimiter>,
+    /// Kelola anggota HR perusahaan (modul identity, F1-T107).
+    pub corporate_hr: Arc<CorporateHrAccounts>,
 }
 
 /// Keadaan bersama handler. Murah di-clone.
@@ -94,6 +98,10 @@ impl AppState {
     pub(crate) fn public_image_limit(&self) -> &RateLimiter {
         &self.services.public_image_limit
     }
+
+    pub(crate) fn corporate_hr(&self) -> &CorporateHrAccounts {
+        &self.services.corporate_hr
+    }
 }
 
 /// Router endpoint operasional beserta spesifikasinya (`openapi/ops.json`); setiap rute berkebijakan.
@@ -117,6 +125,12 @@ pub(crate) fn patient_router() -> PolicyRouter<AppState> {
 /// ADR-012 butir 3). Jaringan `web/situs` hanya menjangkau `/v1/public/*` (ADR-027 butir 6).
 pub(crate) fn public_router() -> PolicyRouter<AppState> {
     PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
+}
+
+/// Router API korporat untuk HR perusahaan (`openapi/korporat.json`, awalan `/v1/corporate/`, realm
+/// `korporat`, ADR-027 butir 3, ADR-028 butir 1). Setiap endpoint wajib punya kasus di harness isolasi.
+pub(crate) fn corporate_router() -> PolicyRouter<AppState> {
+    PolicyRouter::with_openapi(CorporateApiDoc::openapi()).merge(identity::corporate_router())
 }
 
 /// Endpoint terdaftar di namespace API korporat `/v1/corporate/` beserta kebijakannya (F1-T100, ADR-028
@@ -149,6 +163,7 @@ pub(crate) fn all_routes() -> PolicyRouter<AppState> {
         .merge(backoffice_router())
         .merge(patient_router())
         .merge(public_router())
+        .merge(corporate_router())
 }
 
 /// Memasang [`ClientIp`] dari alamat peer TCP (`ConnectInfo`, tersedia lewat
@@ -257,6 +272,22 @@ mod tests {
                 "{path}"
             );
         }
+    }
+
+    // trace: ADR-028 butir 1, US-1904 AC3 (endpoint korporat hanya untuk HR, awalan /v1/corporate/)
+    #[test]
+    fn every_corporate_route_requires_corporate_hr_under_v1_corporate() {
+        let router = corporate_router();
+        let entries: Vec<_> = router.registry().iter().collect();
+        assert_eq!(entries.len(), 2);
+        for ((_method, path), policy) in entries {
+            assert!(is_corporate_path(path), "{path}");
+            assert!(
+                matches!(policy, Policy::Require(r) if r.is_corporate()),
+                "{path}"
+            );
+        }
+        assert_eq!(corporate_endpoints().len(), 2);
     }
 
     #[test]

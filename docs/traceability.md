@@ -84,7 +84,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-126 | RME minimalis hanya mencatat pasien yang memesan layanan lewat aplikasi Ruang Sehat | `[USER] T3-Q1c` | US-1306, US-1310 | TC-US-1306-1–9; TC-US-1310-1–4 |  | BRD v1.2 (CR-006/Tahap 3) |
 | BR-130 | Situs web company profile sembilan halaman | `[USER] C21-P1-1` | US-1801 | — (dibuat QA dari PRD v1.3) |  | BRD v1.4 (CR-021) |
 | BR-131 | Konten situs lewat CMS backoffice | `[USER] C21-P3-4` | US-1101, US-1801, US-1802 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
-| BR-132 | Member area korporat: HR di web, peserta di aplikasi pasien | `[USER] C21-P0-2, C21-P4` | US-1904 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-132 | Member area korporat: HR di web, peserta di aplikasi pasien | `[USER] C21-P0-2, C21-P4` | US-1904 | — (dibuat QA) | F1-T107 (US-1904 AC2, AC5, sebagian: undangan HR menunggu pekerja ADR-030): `apps/rs-backend/src/modules/identity/corporate_hr_{domain,repo,service,http}.rs`, `apps/rs-backend/src/modules/corporate/{api,repo}.rs`, `openapi/korporat.json`, `web/packages/api-client/src/index.ts`; test `apps/rs-backend/tests/corporate_hr_members.rs`, `corporate_isolation.rs` | BRD v1.4 (CR-021) |
 | BR-133 | Layanan korporat: vaksinasi, MCU, lab massal | `[USER] C21-P1-2, C21-P4` | US-1905 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-134 | Pelaksana klinik/lab rekanan, Ruang Sehat perantara | `[USER] C21-P1-3` | US-1917 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-135 | Lokasi on-site atau di rekanan per pesanan | `[USER] C21-P3-2` | US-1906, US-1911 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
@@ -97,7 +97,7 @@ Diisi bertahap: kolom BR di Tahap 2, story di Tahap 3, test case di Tahap 7, fil
 | BR-142 | Invoice saat konfirmasi, jatuh tempo 14 hari, jadwal setelah lunas | `[USER] C21-P3-3` | US-1906, US-1909, US-1911 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-143 | Hasil lengkap hanya untuk peserta | `[USER] C21-P2-4` | US-1915 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
 | BR-144 | HR: rekap kehadiran; ringkasan hanya dengan persetujuan | `[USER] C21-P2-4` | US-1912, US-1913, US-1914 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
-| BR-145 | Data peserta dan hasil sebagai data pribadi (spesifik); isolasi per perusahaan; audit | BR-105, BR-080, BR-107 `[SRC-440]` | US-1904, US-1907, US-1908, US-1913, NFR-SEC-06 | — (dibuat QA) |  | BRD v1.4 (CR-021) |
+| BR-145 | Data peserta dan hasil sebagai data pribadi (spesifik); isolasi per perusahaan; audit | BR-105, BR-080, BR-107 `[SRC-440]` | US-1904, US-1907, US-1908, US-1913, NFR-SEC-06 | — (dibuat QA) | F1-T107: endpoint `/v1/corporate/members` terdaftar di harness isolasi, sidik data diperluas ke akun HR (TD-34); test `apps/rs-backend/tests/corporate_isolation.rs` | BRD v1.4 (CR-021) |
 
 ## NFR → arsitektur (Tahap 4)
 

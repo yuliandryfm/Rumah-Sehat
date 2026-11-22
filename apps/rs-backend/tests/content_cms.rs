@@ -99,6 +99,7 @@ impl Fixture {
                 files: Arc::new(common::unused_file_storage()),
                 public_content_limit: common::roomy_limiter(),
                 public_image_limit: common::roomy_limiter(),
+                corporate_hr: common::corporate_hr(common::unreachable_pool()),
             },
         );
         // Masa berlaku token dinilai dengan jam sistem; aturan tayang dengan jam aplikasi yang diatur test.

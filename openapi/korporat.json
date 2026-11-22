@@ -1,0 +1,374 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ruang Sehat: API korporat",
+    "description": "Endpoint member area HR perusahaan (realm korporat, akun HR dengan keanggotaan aktif; data perusahaan lain dijawab 404, ADR-028 butir 1). Format respons: ADR-023.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/corporate/members": {
+      "get": {
+        "tags": [
+          "corporate-hr"
+        ],
+        "summary": "Anggota HR perusahaan pemanggil, termasuk undangan yang belum diaktivasi (US-1904 AC2).",
+        "operationId": "corporate_member_list",
+        "responses": {
+          "200": {
+            "description": "Anggota HR perusahaan pemanggil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrMembersEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perusahaan belum Aktif (menunggu verifikasi atau ditolak).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/corporate/members/{corporate_member_id}/deactivate": {
+      "post": {
+        "tags": [
+          "corporate-hr"
+        ],
+        "summary": "Menonaktifkan HR lain di perusahaan pemanggil (US-1904 AC2, AC5): keanggotaan dicabut dan akun\nnonaktif; permintaan berikutnya HR itu langsung ditolak.",
+        "operationId": "corporate_member_deactivate",
+        "parameters": [
+          {
+            "name": "corporate_member_id",
+            "in": "path",
+            "description": "ID keanggotaan HR (UUID).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dinonaktifkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrDeactivatedEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut (termasuk pemanggil yang baru saja dinonaktifkan HR lain).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perusahaan belum Aktif (menunggu verifikasi atau ditolak).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Keanggotaan tidak ada, sudah dicabut, atau milik perusahaan lain.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090101: HR menonaktifkan dirinya sendiri. 4090104: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
+        "required": [
+          "type",
+          "response_code",
+          "response_description",
+          "correlation_id"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string",
+            "description": "UUID korelasi permintaan; selalu ada pada galat.",
+            "example": "01936f8e-9c01-7e02-8f03-1a2b3c4d5e6f"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorSchema"
+            },
+            "description": "Galat per isian; hanya pada galat validasi."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Pola rute (bukan URL dengan ID)."
+          },
+          "response_code": {
+            "type": "string",
+            "description": "Kode 7 digit `HHHMMCC` (docs/05-response-codes.md).",
+            "example": "4040001"
+          },
+          "response_description": {
+            "type": "string",
+            "description": "Deskripsi Bahasa Indonesia untuk kode itu.",
+            "example": "Data tidak ditemukan"
+          },
+          "type": {
+            "type": "string",
+            "description": "URI jenis masalah: `<awalan>/<response_code>`.",
+            "example": "https://problems.ruang-sehat.invalid/4040001"
+          }
+        }
+      },
+      "FieldErrorSchema": {
+        "type": "object",
+        "description": "Satu galat per isian (`errors[]`), sama dengan `envelope::FieldError`.",
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Kode galat isian, snake_case Inggris.",
+            "example": "invalid_format"
+          },
+          "field": {
+            "type": "string",
+            "description": "Path isian.",
+            "example": "email"
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan Bahasa Indonesia untuk pengguna.",
+            "example": "Format email tidak valid"
+          }
+        }
+      },
+      "HrDeactivatedDto": {
+        "type": "object",
+        "description": "Hasil penonaktifan.",
+        "required": [
+          "corporate_member_id",
+          "status",
+          "identity_provider_synced"
+        ],
+        "properties": {
+          "corporate_member_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "identity_provider_synced": {
+            "type": "boolean",
+            "description": "Pengguna Keycloak sudah dinonaktifkan. `false` = akses backend sudah tertutup, sesi login Keycloak\ndiakhiri kemudian."
+          },
+          "status": {
+            "$ref": "#/components/schemas/HrStatusDto"
+          }
+        }
+      },
+      "HrDeactivatedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons penonaktifan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/HrDeactivatedDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "HrMemberDto": {
+        "type": "object",
+        "description": "Satu anggota HR perusahaan pemanggil.",
+        "required": [
+          "corporate_member_id",
+          "email",
+          "status",
+          "is_self"
+        ],
+        "properties": {
+          "corporate_member_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "email": {
+            "type": "string",
+            "example": "hr@perusahaan.example"
+          },
+          "full_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "HR Sintetis"
+          },
+          "is_self": {
+            "type": "boolean",
+            "description": "Anggota ini adalah pemanggil (tidak dapat dinonaktifkan sendiri)."
+          },
+          "job_title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "HR Manager"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HrStatusDto"
+          }
+        }
+      },
+      "HrMembersEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons daftar anggota HR.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HrMemberDto"
+            }
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "HrStatusDto": {
+        "type": "string",
+        "description": "Status akun HR.",
+        "enum": [
+          "pending_activation",
+          "active",
+          "inactive"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "corporate-hr",
+      "description": "Anggota HR perusahaan (US-1904)"
+    }
+  ]
+}

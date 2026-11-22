@@ -4,8 +4,12 @@
 //! Kode spesifik modul (F1-T65, US-208): `4090101` aksi atas akun sendiri (AC3, AC5), `4090102` Super Admin
 //! aktif terakhir (AC2), `4090103` Auditor aktif terakhir (AC7). Pemisahan tugas Auditor (AC6) memakai
 //! `4220001` dengan galat isian `sub_roles`/`auditor_exclusive`.
+//!
+//! F1-T107 (US-1904 AC2): HR menonaktifkan dirinya sendiri memakai `4090101` yang sama `[ASUMSI]`; HR aktif
+//! terakhir perusahaan `4090104`.
 
 use super::admin_domain::AdminRuleViolation;
+use super::corporate_hr_domain::HrRuleViolation;
 use envelope::{ApiError, FieldError, ResponseCode, codes};
 use std::fmt;
 
@@ -19,6 +23,12 @@ pub const LAST_SUPER_ADMIN: ResponseCode =
 pub const LAST_AUDITOR: ResponseCode =
     ResponseCode::new("4090103", "Auditor aktif terakhir tidak dapat dicabut");
 
+/// `4090104`: HR aktif terakhir perusahaan (US-1904 AC2).
+pub const LAST_ACTIVE_CORPORATE_HR: ResponseCode = ResponseCode::new(
+    "4090104",
+    "HR aktif terakhir perusahaan tidak dapat dinonaktifkan",
+);
+
 /// Galat use case identitas, sesi, dan akun admin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdentityError {
@@ -30,6 +40,8 @@ pub enum IdentityError {
     InvalidRevocation,
     /// Aturan akun admin dilanggar (US-208).
     AdminRule(AdminRuleViolation),
+    /// Aturan kelola anggota HR perusahaan dilanggar (US-1904 AC2).
+    HrRule(HrRuleViolation),
     /// Akun admin sasaran tidak ada (atau bukan akun admin Ruang Sehat).
     NotFound,
     /// Isian tidak valid.
@@ -48,6 +60,7 @@ impl fmt::Display for IdentityError {
             Self::CacheUnavailable => f.write_str("cache tidak tersedia"),
             Self::InvalidRevocation => f.write_str("pencabutan sesi tidak valid"),
             Self::AdminRule(v) => write!(f, "aturan akun admin dilanggar: {v:?}"),
+            Self::HrRule(v) => write!(f, "aturan anggota HR dilanggar: {v:?}"),
             Self::NotFound => f.write_str("akun admin tidak ditemukan"),
             Self::Invalid(_) => f.write_str("isian tidak valid"),
             Self::IdentityProvider => f.write_str("Keycloak gagal"),
@@ -66,6 +79,7 @@ impl IdentityError {
             Self::CacheUnavailable => "cache_unavailable",
             Self::InvalidRevocation => "invalid_revocation",
             Self::AdminRule(_) => "admin_rule",
+            Self::HrRule(_) => "hr_rule",
             Self::NotFound => "not_found",
             Self::Invalid(_) => "invalid",
             Self::IdentityProvider => "identity_provider",
@@ -109,6 +123,14 @@ impl ApiError for IdentityError {
             Self::NotFound => codes::NOT_FOUND,
             Self::Invalid(_) => codes::INVALID,
             Self::IdentityProvider => codes::UPSTREAM_BAD_GATEWAY,
+            Self::HrRule(v) => match v {
+                HrRuleViolation::SelfDeactivation => SELF_ACTION_REJECTED,
+                HrRuleViolation::LastActiveHr => LAST_ACTIVE_CORPORATE_HR,
+                HrRuleViolation::TargetInactive => codes::STATUS_CONFLICT,
+                HrRuleViolation::TargetNotFound => codes::NOT_FOUND,
+                // Pemanggil baru saja dinonaktifkan HR lain: sama dengan penolakan middleware (KU-10).
+                HrRuleViolation::ActorNotActive => codes::UNAUTHENTICATED,
+            },
             Self::AdminRule(v) => match v {
                 AdminRuleViolation::SelfRoleChange | AdminRuleViolation::SelfDeactivation => {
                     SELF_ACTION_REJECTED
@@ -159,6 +181,12 @@ mod tests {
         assert_eq!(code(AdminRuleViolation::TargetInactive), "4090001");
         assert_eq!(code(AdminRuleViolation::AuditorNotExclusive), "4220001");
         assert_eq!(IdentityError::NotFound.response_code().as_str(), "4040001");
+        let hr = |v: HrRuleViolation| IdentityError::HrRule(v).response_code().as_str();
+        assert_eq!(hr(HrRuleViolation::SelfDeactivation), "4090101");
+        assert_eq!(hr(HrRuleViolation::LastActiveHr), "4090104");
+        assert_eq!(hr(HrRuleViolation::TargetInactive), "4090001");
+        assert_eq!(hr(HrRuleViolation::TargetNotFound), "4040001");
+        assert_eq!(hr(HrRuleViolation::ActorNotActive), "4010001");
         assert_eq!(
             IdentityError::IdentityProvider.response_code().as_str(),
             "5020001"
@@ -182,7 +210,12 @@ mod tests {
 
     #[test]
     fn specific_codes_belong_to_module_01_and_match_http() {
-        for c in [SELF_ACTION_REJECTED, LAST_SUPER_ADMIN, LAST_AUDITOR] {
+        for c in [
+            SELF_ACTION_REJECTED,
+            LAST_SUPER_ADMIN,
+            LAST_AUDITOR,
+            LAST_ACTIVE_CORPORATE_HR,
+        ] {
             assert!(c.as_str().starts_with("40901"), "{}", c.as_str());
         }
     }

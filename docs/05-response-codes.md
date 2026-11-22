@@ -250,9 +250,10 @@ Format tabel per modul:
 | `response_code` | HTTP | `response_description` | Kapan dipakai | Story | Status |
 | --- | --- | --- | --- | --- | --- |
 | `4030101` | 403 | Permintaan tidak dapat diverifikasi | BFF web (server Next.js) menolak permintaan ke Route Handler `bff/`, "Tetap masuk", atau keluar: token CSRF tidak ada atau tidak cocok dengan sesi, atau header `Origin`/`Sec-Fetch-Site` bukan asal aplikasi (ADR-011 butir 7, threat model WEB-04). Dipancarkan BFF, bukan API Rust | EN-11 (F1-T42) | Aktif |
-| `4090101` | 409 | Aksi atas akun sendiri tidak diizinkan | Admin mengubah sub-peran akunnya sendiri (US-208 AC3) atau menonaktifkan akunnya sendiri (US-208 AC5) | US-208 (F1-T65) | Aktif |
+| `4090101` | 409 | Aksi atas akun sendiri tidak diizinkan | Admin mengubah sub-peran akunnya sendiri (US-208 AC3) atau menonaktifkan akunnya sendiri (US-208 AC5); HR perusahaan menonaktifkan dirinya sendiri lewat `POST /v1/corporate/members/{corporate_member_id}/deactivate` (US-1904 AC2, `[ASUMSI]` pola US-208 AC5, F1-T107) | US-208 (F1-T65), US-1904 (F1-T107) | Aktif |
 | `4090102` | 409 | Super Admin aktif terakhir tidak dapat dicabut | Sub-peran Super Admin akan dicabut atau akunnya dinonaktifkan padahal tidak ada Super Admin aktif lain (US-208 AC2) | US-208 (F1-T65) | Aktif |
 | `4090103` | 409 | Auditor aktif terakhir tidak dapat dicabut | Sub-peran Auditor akan dicabut atau akunnya dinonaktifkan padahal tidak ada Auditor aktif lain (US-208 AC7). Pemisahan tugas Auditor (AC6) memakai `4220001` dengan galat isian `sub_roles`/`auditor_exclusive` | US-208 (F1-T65) | Aktif |
+| `4090104` | 409 | HR aktif terakhir perusahaan tidak dapat dinonaktifkan | Penonaktifan HR akan menyisakan nol HR aktif (akun `active` dengan keanggotaan belum dicabut) di perusahaan itu; diperiksa di transaksi berkunci (KEPUTUSAN-290) (US-1904 AC2) | US-1904 (F1-T107) | Aktif |
 
 ### Modul `02` Profil dan verifikasi
 

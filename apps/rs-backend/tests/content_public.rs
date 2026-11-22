@@ -94,6 +94,7 @@ impl Fixture {
                 files: Arc::new(common::unused_file_storage()),
                 public_content_limit: Arc::new(RateLimiter::new(budget)),
                 public_image_limit: Arc::new(RateLimiter::new(ROOMY)),
+                corporate_hr: common::corporate_hr(common::unreachable_pool()),
             },
         );
         let auth = common::auth_state(&keys, Arc::new(SystemClock));

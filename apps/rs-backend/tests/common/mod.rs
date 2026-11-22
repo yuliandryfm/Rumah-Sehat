@@ -16,7 +16,9 @@ use foundation::{Clock, SystemClock};
 use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState, build_router};
 use rs_backend::http_support::EnvelopeRenderer;
-use rs_backend::modules::identity::api::AccountDirectory;
+use rs_backend::modules::identity::api::{
+    AccountDirectory, CorporateHrAccounts, ProvisionerNotConfigured,
+};
 use rs_backend::modules::platform::api::{FileStorage, FileStorageConfig, ReadinessCheck};
 use rs_backend::modules::profile::api::IdentityServices;
 use rs_backend::rate_limit::{RateBudget, RateLimiter};
@@ -210,6 +212,17 @@ pub fn account_directory(pool: PgPool) -> Arc<AccountDirectory> {
     ))
 }
 
+/// Kelola anggota HR (F1-T107) di atas `pool`, dengan resolver akun tanpa Valkey dan tanpa penyedia
+/// Keycloak (sama dengan proses `api` saat ini).
+pub fn corporate_hr(pool: PgPool) -> Arc<CorporateHrAccounts> {
+    Arc::new(CorporateHrAccounts::new(
+        pool.clone(),
+        Arc::new(SystemClock),
+        account_directory(pool),
+        Arc::new(ProvisionerNotConfigured),
+    ))
+}
+
 /// Menjalankan router lengkap di localhost dengan `ConnectInfo` (alamat klien untuk audit dan batas laju).
 pub async fn spawn_app(
     state: AppState,
@@ -244,6 +257,7 @@ pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
             files,
             public_content_limit: roomy_limiter(),
             public_image_limit: roomy_limiter(),
+            corporate_hr: corporate_hr(unreachable_pool()),
         },
     );
     spawn_app(

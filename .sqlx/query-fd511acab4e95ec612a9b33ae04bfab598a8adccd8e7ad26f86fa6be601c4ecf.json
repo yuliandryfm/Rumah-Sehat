@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET status = 'inactive', status_reason = 'uji_harness', updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fd511acab4e95ec612a9b33ae04bfab598a8adccd8e7ad26f86fa6be601c4ecf"
+}

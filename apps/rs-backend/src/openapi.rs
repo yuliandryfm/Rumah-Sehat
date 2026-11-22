@@ -7,7 +7,7 @@
 //!
 //! Berkas yang dihasilkan: `ops.json` (endpoint operasional tanpa audiens: kesehatan) dan `backoffice.json`
 //! (F1-T92, `/backoffice/v1`), `pasien.json` (F1-T61, `/patient/v1`), `public.json` (F1-T94,
-//! `/v1/public/content`). Berkas audiens lain (`nakes`, `portal`, `partner-v1`, `webhook`,
+//! `/v1/public/content`), `korporat.json` (F1-T107, `/v1/corporate/`). Berkas audiens lain (`nakes`, `portal`, `partner-v1`, `webhook`,
 //! `rme`; docs/05-stack.md §7) ditambahkan task yang memperkenalkan endpoint audiens itu.
 
 use serde::Serialize;
@@ -135,6 +135,20 @@ pub struct PatientApiDoc;
 )]
 pub struct PublicApiDoc;
 
+/// Dasar spesifikasi API korporat (HR perusahaan, realm `korporat`, `/v1/corporate/`); path dari anotasi
+/// handler modul. Dipanggil server BFF `web/korporat` (ADR-027 butir 3).
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Ruang Sehat: API korporat",
+        description = "Endpoint member area HR perusahaan (realm korporat, akun HR dengan keanggotaan aktif; data perusahaan lain dijawab 404, ADR-028 butir 1). Format respons: ADR-023.",
+        version = env!("CARGO_PKG_VERSION")
+    ),
+    tags((name = "corporate-hr", description = "Anggota HR perusahaan (US-1904)")),
+    modifiers(&BearerAuth)
+)]
+pub struct CorporateApiDoc;
+
 /// Seluruh spesifikasi yang dihasilkan sebagai pasangan (nama berkas, isi JSON). Isi diakhiri satu
 /// baris baru; urutan kunci deterministik (utoipa memakai BTreeMap tanpa fitur `preserve_order`).
 /// `ops.json` selalu pertama (dipakai test `openapi_schema_drift`).
@@ -147,6 +161,10 @@ pub fn generate() -> Result<Vec<(&'static str, String)>, serde_json::Error> {
         ),
         ("pasien.json", crate::app::patient_router().into_openapi()),
         ("public.json", crate::app::public_router().into_openapi()),
+        (
+            "korporat.json",
+            crate::app::corporate_router().into_openapi(),
+        ),
     ];
     let mut out = Vec::with_capacity(specs.len());
     for (name, mut spec) in specs {
