@@ -8,6 +8,7 @@
 use crate::code::{Code, EventCode};
 use crate::error::{AuditError, AuditErrorKind};
 use crate::policy::{ContentClass, ObjectPolicy};
+use crate::requirements::check_payload;
 use crate::value::{FieldChange, mask, rfc3339};
 use foundation::{Clock, CorrelationId, Uuid, new_id};
 use serde::Serialize;
@@ -582,6 +583,11 @@ impl AuditEvent {
         };
         let payload = serde_json::to_value(&payload)
             .map_err(|_| AuditError::new(AuditErrorKind::Serialization, "payload"))?;
+        // Kelengkapan per kode event (PRD §7.2, US-1501 AC1) dan lapis kedua larangan §7.3 (AC2) atas
+        // payload jadi: event yang kurang field tidak pernah ditulis (F1-T69).
+        if let Some(v) = check_payload(&payload).first() {
+            return Err(AuditError::new(v.kind(), v.field()));
+        }
         Ok(AuditRecord {
             event_id,
             occurred_at,

@@ -330,6 +330,15 @@ async fn cancel_after_decision_is_rejected_and_status_kept() {
         .await
         .unwrap();
     assert_eq!(v.status, "approved");
+    // F1-T69 (US-1501 AC1): pembatalan yang kalah tetap tercatat dengan hasil gagal dan field lengkap
+    // (`audit_events` memeriksa kelengkapan semua event outbox).
+    let failed: Vec<_> = audit_events("e_10", cr)
+        .await
+        .into_iter()
+        .filter(|e| e.event.body.action_name == "identity_submission_cancelled")
+        .collect();
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].event.body.outcome, "failure");
 }
 
 // trace: US-106 AC4, UP-40, TD-10 (registri versi kunci lama tetap terdeteksi)

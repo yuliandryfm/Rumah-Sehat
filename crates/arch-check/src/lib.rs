@@ -5,6 +5,7 @@
 //! dan crate ini menjaga agar konfigurasi itu tidak dilemahkan serta menutup celah yang tidak
 //! dijangkau clippy (kepemilikan tabel, pola log, pengecualian yang melebar).
 
+pub mod audit_coverage;
 pub mod exceptions;
 pub mod fs;
 pub mod lexer;
@@ -79,5 +80,6 @@ pub fn check_all(root: &std::path::Path) -> Vec<Finding> {
     out.extend(manifests::check_manifests(root));
     out.extend(tables::check_all_apps(root));
     out.extend(openapi::check_openapi(root));
+    out.extend(audit_coverage::check(root));
     out
 }

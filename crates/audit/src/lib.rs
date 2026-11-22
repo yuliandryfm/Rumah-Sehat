@@ -10,6 +10,9 @@
 //! hasil gagal tanpa perubahan data) di transaksi tersendiri secara idempoten (`ON CONFLICT DO
 //! NOTHING`, satu-satunya constraint unik `audit_outbox` adalah PK `id`), untuk percobaan ulang di luar jalur permintaan; event aksi bisnis tetap lewat
 //! [`in_audited_tx`] (KEPUTUSAN-283).
+//! F1-T69: [`check_payload`] memeriksa field wajib PRD §7.2 per kode event dan larangan §7.3 atas payload
+//! jadi; dipanggil [`AuditEvent::finish`] (event kurang field ditolak, aksi batal) dan oleh test integrasi
+//! setiap pemancar event yang terdaftar di `audit-event-coverage.toml` (aturan arch-check `audit-coverage`).
 //! F1-T24: [`relay`] memindahkan event dari `audit_outbox` ke database audit (rantai hash lewat crate
 //! `audit-store`) dengan satu relay aktif (kunci advisory `platform_jobs::lock`), ADR-009 butir 3.
 //!
@@ -37,6 +40,7 @@ mod event;
 mod outbox;
 mod policy;
 pub mod relay;
+mod requirements;
 mod value;
 
 pub use code::{CODE_MAX_DIGITS, CODE_MAX_LEN, Code, EventCode};
@@ -50,4 +54,5 @@ pub use outbox::{AuditedTxError, AuditedWork, in_audited_tx, insert_failed_acces
 pub use policy::{
     ContentClass, FieldKind, FieldRule, ObjectPolicy, is_forbidden_field_name, is_number_field_name,
 };
+pub use requirements::{Violation, check_payload};
 pub use value::{FieldChange, IDR_MAX_ABS, INT_MAX_ABS, TEXT_MAX_CHARS, Value};

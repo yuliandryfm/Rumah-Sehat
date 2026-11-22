@@ -493,8 +493,31 @@ async fn connection(var: &str) -> PgConnection {
 
 /// Memindahkan semua event outbox ke database audit lewat relay, lalu mengembalikan event berkode
 /// `event_code` (misalnya `e_10`) yang subjeknya `subject`.
+///
+/// F1-T69 (US-1501 AC1–AC2): sebelum dipindahkan, SEMUA payload di `audit_outbox` diperiksa
+/// `audit::check_payload` (field wajib PRD §7.2 per kode event, larangan §7.3); test gagal bila ada event
+/// yang kurang field atau memuat data terlarang, termasuk event hasil gagal dan E-05 yang dipancarkan
+/// sepanjang test itu.
 pub async fn audit_events(event_code: &str, subject: Uuid) -> Vec<StoredEvent> {
     let mut conn = connection("RS_TEST_DB_RELAY_URL").await;
+    let pending: Vec<serde_json::Value> =
+        sqlx::query_scalar!("SELECT payload FROM app.audit_outbox ORDER BY occurred_at, id")
+            .fetch_all(&mut conn)
+            .await
+            .unwrap();
+    for p in &pending {
+        let violations = audit::check_payload(p);
+        assert!(
+            violations.is_empty(),
+            "event {} `{}` tidak lengkap/terlarang: {:?}",
+            p["event_code"],
+            p["action_name"],
+            violations
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        );
+    }
     let mut lock = None;
     for _ in 0..300 {
         match SingletonLock::try_acquire(conn, RS_AUDIT_RELAY)

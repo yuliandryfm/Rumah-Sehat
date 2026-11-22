@@ -380,6 +380,35 @@ fn grant_event(
     Ok(e)
 }
 
+/// Nama aksi E-10 undangan aktivasi: dicatat sebelum undangan dikirim (hasil sukses = undangan diminta dan
+/// diteruskan ke Keycloak); bila Keycloak gagal mengirim, aksi yang sama dicatat lagi dengan hasil gagal.
+const INVITE_ACTION: &str = "activation_invite_requested";
+/// Kode alasan undangan yang gagal dikirim Keycloak.
+const INVITE_FAILED_REASON: &str = "identity_provider_unavailable";
+/// Percobaan menulis event hasil gagal (coding-standards §4.4 butir 3: "dicoba ulang").
+const FAILED_AUDIT_ATTEMPTS: usize = 3;
+
+async fn invite_actor(conn: &mut PgConnection, creator: &Creator) -> Result<Actor, Work> {
+    match creator {
+        Creator::Admin(id) => admin_actor(&census(conn).await?, *id),
+        Creator::Bootstrap(_) => Ok(Actor::system()),
+    }
+}
+
+fn invite_event(
+    actor: &Actor,
+    account_id: Uuid,
+    creator: &Creator,
+    ctx: &AuditContext,
+    outcome: Outcome,
+) -> Result<AuditEvent, Work> {
+    let mut e = event(EventCode::E10, INVITE_ACTION, actor, account_id, ctx)?.outcome(outcome);
+    if let Creator::Bootstrap(a) = creator {
+        e = bootstrap_fields(e, a);
+    }
+    Ok(e)
+}
+
 fn staff_nik_required() -> IdentityError {
     IdentityError::field(
         "staff_nik",
@@ -664,6 +693,32 @@ impl AdminAccounts {
         creator: &Creator,
         context: &AuditContext,
     ) -> InviteDelivery {
+        // US-1501 AC3 (F1-T69): E-10 dicatat dan di-commit SEBELUM undangan dikirim. Bila event tidak dapat
+        // dicatat, undangan tidak dikirim dan pemanggil menerima `Failed` (aksi pengguna batal, security log
+        // oleh pustaka). Mengirim dulu lalu mencatat akan meninggalkan efek eksternal tanpa jejak audit.
+        let expires_at = self.clock.now()
+            + time::Duration::seconds(i64::from(ACTIVATION_INVITE_LIFESPAN_SECONDS));
+        let recorded = {
+            let creator = creator.clone();
+            let ctx = context.clone();
+            in_audited_tx(&self.pool, self.clock.as_ref(), move |conn| {
+                Box::pin(async move {
+                    let actor = invite_actor(conn, &creator).await?;
+                    let e = invite_event(&actor, account_id, &creator, &ctx, Outcome::success())?
+                        .change(FieldChange::new(
+                            "invite_expires_at",
+                            None,
+                            Some(Value::Timestamp(expires_at)),
+                        ));
+                    Ok::<_, Work>(((), vec![e]))
+                })
+            })
+            .await
+        };
+        if recorded.is_err() {
+            tracing::error!(account_id = %account_id, "admin_activation_invite_audit_failed");
+            return InviteDelivery::Failed;
+        }
         if self
             .idp
             .send_activation(subject, ACTIVATION_INVITE_LIFESPAN_SECONDS)
@@ -671,42 +726,44 @@ impl AdminAccounts {
             .is_err()
         {
             tracing::error!(account_id = %account_id, "admin_activation_invite_failed");
+            self.record_invite_failure(account_id, creator, context)
+                .await;
             return InviteDelivery::Failed;
         }
-        let expires_at = self.clock.now()
-            + time::Duration::seconds(i64::from(ACTIVATION_INVITE_LIFESPAN_SECONDS));
-        let creator = creator.clone();
-        let ctx = context.clone();
-        let recorded = in_audited_tx(&self.pool, self.clock.as_ref(), move |conn| {
-            Box::pin(async move {
-                let actor = match &creator {
-                    Creator::Admin(id) => admin_actor(&census(conn).await?, *id)?,
-                    Creator::Bootstrap(_) => Actor::system(),
-                };
-                let mut e = event(
-                    EventCode::E10,
-                    "activation_invite_sent",
-                    &actor,
-                    account_id,
-                    &ctx,
-                )?
-                .change(FieldChange::new(
-                    "invite_expires_at",
-                    None,
-                    Some(Value::Timestamp(expires_at)),
-                ));
-                if let Creator::Bootstrap(a) = &creator {
-                    e = bootstrap_fields(e, a);
-                }
-                Ok::<_, Work>(((), vec![e]))
-            })
-        })
-        .await;
-        if recorded.is_err() {
-            // Undangan sudah terkirim; kegagalan catatan dilaporkan ke log galat (security log oleh pustaka).
-            tracing::error!(account_id = %account_id, "admin_activation_invite_audit_failed");
-        }
         InviteDelivery::Sent
+    }
+
+    /// Undangan yang sudah dicatat tetapi gagal dikirim Keycloak: event yang sama dengan hasil gagal di
+    /// transaksi tersendiri, dicoba ulang; kegagalan pencatatan tidak mengubah hasil `Failed`
+    /// (coding-standards §4.4 butir 3, US-1501 AC3 "event aksi gagal tetap dicoba dicatat").
+    async fn record_invite_failure(
+        &self,
+        account_id: Uuid,
+        creator: &Creator,
+        context: &AuditContext,
+    ) {
+        for _ in 0..FAILED_AUDIT_ATTEMPTS {
+            let creator = creator.clone();
+            let ctx = context.clone();
+            let written = in_audited_tx(&self.pool, self.clock.as_ref(), move |conn| {
+                Box::pin(async move {
+                    let actor = invite_actor(conn, &creator).await?;
+                    let e = invite_event(
+                        &actor,
+                        account_id,
+                        &creator,
+                        &ctx,
+                        Outcome::failure(code(INVITE_FAILED_REASON)?),
+                    )?;
+                    Ok::<_, Work>(((), vec![e]))
+                })
+            })
+            .await;
+            if written.is_ok() {
+                return;
+            }
+        }
+        tracing::error!(account_id = %account_id, "admin_activation_invite_failure_audit_failed");
     }
 
     /// Mengirim ulang undangan untuk akun admin yang masih menunggu aktivasi (undangan lama kedaluwarsa atau
