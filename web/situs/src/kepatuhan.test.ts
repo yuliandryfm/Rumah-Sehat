@@ -41,7 +41,7 @@ describe("batas keamanan situs (ADR-027 butir 1 dan 5)", () => {
 
   test("package.json: tanpa dependensi di luar daftar yang disetujui", () => {
     const pkg = JSON.parse(readFileSync(join(akar, "package.json"), "utf8")) as { dependencies: Record<string, string> };
-    expect(Object.keys(pkg.dependencies).sort()).toEqual(["@rs/api-client", "@rs/ui", "next", "react", "react-dom"]);
+    expect(Object.keys(pkg.dependencies).sort()).toEqual(["@rs/api-client", "@rs/ui", "commonmark", "next", "react", "react-dom"]);
     expect(pkg.dependencies["next"]).toBe("16.4.6");
   });
 });

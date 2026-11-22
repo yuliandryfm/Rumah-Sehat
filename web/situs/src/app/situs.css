@@ -72,3 +72,19 @@ main:focus { outline: none; }
   .situs-sec { padding: var(--s6) var(--s4); }
   .situs-foot { grid-template-columns: 1fr; padding: var(--s4); }
 }
+
+/* Halaman isi dari CMS (F1-T96/F1-T97): lebar baca terbatas, Markdown dirender tanpa kelas dari konten. */
+.situs-baca { max-width: 780px; margin: 0 auto; width: 100%; }
+.situs-baca h1 { font-size: var(--t-display-size); line-height: var(--t-display-line); margin: 0; }
+.situs-md { display: flex; flex-direction: column; gap: var(--s3); overflow-wrap: anywhere; }
+.situs-md > * { margin: 0; }
+.situs-md h2 { font-size: var(--t-title-lg-size); line-height: var(--t-title-lg-line); }
+.situs-md h3, .situs-md h4, .situs-md h5, .situs-md h6 { font-size: var(--t-title-size); line-height: var(--t-title-line); }
+.situs-md ul, .situs-md ol { padding-left: var(--s6); }
+.situs-md li + li { margin-top: var(--s1); }
+.situs-md blockquote { padding-left: var(--s4); border-left: 4px solid var(--c-border-control); color: var(--c-text-secondary); }
+.situs-md pre { overflow-x: auto; padding: var(--s3); background: var(--c-bg-neutral); border-radius: var(--r-md); }
+.situs-md img, .situs-gambar-konten { max-width: 100%; height: auto; border-radius: var(--r-md); }
+.situs-hero .situs-md { color: inherit; }
+.situs-draf { padding: var(--s3) var(--s4); background: var(--c-warning-bg); color: var(--c-text-primary); border: 1px solid var(--c-border-control); border-radius: var(--r-md); }
+.situs-draf p { margin: 0; }

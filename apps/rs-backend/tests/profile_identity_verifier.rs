@@ -901,4 +901,20 @@ async fn verifier_cannot_decide_own_account() {
     let r = f.approve(&tn, pending).await;
     assert_eq!(denied(&r), (409, "4090205".to_string()), "{}", r.body);
     assert_eq!(request_status(&f, pending).await, "pending");
+
+    // Pemilik akun R baru mengajukan NIK staf V3 (masih pending, belum ada NIK disetujui): pengajuan
+    // anggota keluarga di akun R juga tidak dapat diputuskan V3 (KEPUTUSAN-294 butir c).
+    let staff3 = synthetic_nik();
+    let (_v3, tv3) = f.verifier_with_nik(&staff3, 1).await;
+    let rp = new_patient(&f.env.pool).await;
+    let owner_pending = f.submit(&rp, rp.owner_care_recipient_id, &staff3).await;
+    let family = new_family_member(&f.env.pool, rp.account_id).await;
+    let fam = f.submit(&rp, family, &synthetic_nik()).await;
+    let r = f.get(&format!("{BASE}/{fam}"), &tv3).await;
+    assert_eq!(r.json()["data"]["can_decide"], false);
+    let r = f.approve(&tv3, fam).await;
+    assert_eq!(denied(&r), (409, "4090205".to_string()), "{}", r.body);
+    assert_eq!(request_status(&f, fam).await, "pending");
+    assert_eq!(f.approve(&tw, fam).await.status, 200);
+    assert_eq!(request_status(&f, owner_pending).await, "pending");
 }

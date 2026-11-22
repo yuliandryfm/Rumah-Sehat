@@ -1,7 +1,7 @@
 # Skema Fisik PostgreSQL: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
+Versi: 1.1 (2026-11-21, F1-T62, `[KEPUTUSAN-294]`: blind index NIK staf `app.account.staff_nik_bidx` + `staff_nik_bidx_key_version` di §4.3 dan §7.2; migrasi `20261123310000_identity_account_staff_nik_bidx.sql`). Versi 1.0, disetujui di gate Tahap 5, 2026-11-18 `[USER] T5-G4`
 Penyusun: Claude (persona DBA senior + Principal Engineer)
 Tingkat ketelitian: **T1 Kritis** (model data, migrasi, hak role, RLS, audit, enkripsi)
 Target: PostgreSQL 18.7, dijalankan sendiri `[SRC-118]` `[KEPUTUSAN-77]`
@@ -455,7 +455,7 @@ Tabel Master yang punya kolom "Anonimkan" (misalnya `care_recipient`) menambah h
 GRANT UPDATE (full_name, birth_date, sex, nik_bidx, nik_last4, anonymized_at, updated_at, updated_by)
   ON app.care_recipient TO rs_privacy_worker;
 ```
-`account_owner_nik_registry` menambah `deleted_at`, `deleted_by`, `delete_reason` `[DOK: DD §0.6 A]`. Pengecualian kelas Master: `order_status_transition` hanya `SELECT` untuk `rs_app` `[DOK: DD A8.13]`.
+`account_owner_nik_registry` menambah `deleted_at`, `deleted_by`, `delete_reason` `[DOK: DD §0.6 A]`. `account` menambah `staff_nik_bidx` (kolom "Anonimkan" NIK staf, `[KEPUTUSAN-294]`) di samping `email`, `full_name`, `anonymized_at`, `updated_at`, `updated_by`; `staff_nik_bidx_key_version` tidak perlu diubah pekerja privasi `[DOK: DD A1.1]`. Pengecualian kelas Master: `order_status_transition` hanya `SELECT` untuk `rs_app` `[DOK: DD A8.13]`.
 
 ### 4.4 Kelas MS (Master snapshot)
 
@@ -1192,6 +1192,7 @@ Satu DEK per wadah membuat jumlah enkripsi per kunci kecil (misalnya pesan chat 
 - Kode verifikasi resep: `verification_code_bidx = HMAC-SHA256(K_rx[v], "rs.rxcode.v1" ‖ 0x00 ‖ kode_normal)` `[DOK: DD A9.8]`.
 - **Kunci terpisah per tujuan dan per sistem**: `K_nik` Ruang Sehat, `K_rx` Ruang Sehat, `K_nik` RME (pasien dan tenaga kesehatan fasyankes). Blind index NIK tidak pernah dicocokkan lintas sistem, sehingga bocornya kunci satu sistem tidak membuka sistem lain.
 - Kunci disimpan di OpenBao KV `[KEPUTUSAN-79]` sebagai peta `{versi: kunci}` dengan nomor versi eksplisit di isi rahasia, tidak bergantung pada fitur versi bawaan KV **(V8)**. Kolom `*_key_version` = nomor versi itu `[DOK: DD §0.2]`. Panjang kunci 32 byte acak.
+- NIK staf Verifikator (`app.account.staff_nik_bidx` + `staff_nik_bidx_key_version`, `[KEPUTUSAN-294]`, US-201 AC8): rumus dan kunci `K_nik` Ruang Sehat yang sama, CHECK 32 byte dan versi ≥ 1 (diperiksa generik T-20), **tanpa** `nik_enc`. Pencocokan dengan NIK pemilik akun lintas versi kunci: NIK pemilik akun didekripsi lalu dihitung ulang dengan versi kunci staf. Akibatnya kolom ini tidak ikut ditulis ulang saat rotasi; versi kunci yang masih dirujuk `staff_nik_bidx_key_version` tidak boleh dibuang dari peta kunci sampai NIK staf dimasukkan ulang `[DOK: DD A1.1]`.
 - Rotasi kunci NIK mengikuti prosedur DD A2.8 (tulis ulang ketiga tabel dalam satu transaksi per akun) `[DOK: DD A2.8]`. Kode verifikasi resep yang sudah tercetak tetap dicari dengan versi kuncinya `[DOK: DD A9.8]`.
 
 ### 7.3 DEK terbungkus dari OpenBao Transit

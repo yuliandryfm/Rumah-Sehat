@@ -25,6 +25,7 @@ use foundation::{CorrelationId, Uuid};
 use utoipa_axum::routes;
 
 /// Pola rute untuk security log dan audit (bukan URL berisi ID).
+const SLOT_ROUTE: &str = "/patient/v1/ktp-photos/upload-slots";
 const STATUS_ROUTE: &str = "/patient/v1/care-recipients/{care_recipient_id}/identity";
 const SUBMIT_ROUTE: &str = "/patient/v1/care-recipients/{care_recipient_id}/identity-submissions";
 const CANCEL_ROUTE: &str =
@@ -95,6 +96,7 @@ fn identity_response(
         (status = 413, description = "Ukuran melebihi 5.242.880 byte.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Jenis bukan image/jpeg atau image/png, atau badan bukan JSON.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Isian tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "Kuota slot unggah per akun terlampaui (4290001).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
     )
 )]
@@ -111,6 +113,7 @@ async fn ktp_upload_slot(
     let r = create_ktp_upload_slot(
         state.identity(),
         &principal,
+        SLOT_ROUTE,
         req.content_type,
         req.size_bytes,
     )

@@ -6,6 +6,7 @@
 -- perilaku dengan role sungguhan (positif dan negatif). Satu transaksi yang di-ROLLBACK. Data sintetis.
 -- Dasar: docs/04-data-dictionary.md §0.6 A, §0.7, A19.1, A19.4-A19.7, A19.10; docs/05-physical-schema.md
 -- §4.8, §4.10, §4.12, §9.1, §9.3, §12 (T-06, T-08, T-09); ADR-009, ADR-013 §5, KEPUTUSAN-66, -155.
+-- F1-T68 (US-1504, TC-US-1504-5): matriks ubah/hapus audit_outbox x semua role non-superuser dari katalog.
 
 -- 1. Struktur.
 SELECT pg_temp.uji_nol('A19 komentar kelas: audit_outbox OH, job O, upload_slot O, stored_file M, data_key MK, data_key_retention_anchor T',
@@ -140,6 +141,77 @@ SELECT pg_temp.uji_tolak('A19.1 NEG relay UPDATE audit_outbox (tidak dapat mengu
 SELECT pg_temp.uji_boleh('A19.1 relay membaca urut (created_at, id) lalu menghapus yang terkirim', 'rs_audit_relay_login',
   'DELETE FROM app.audit_outbox WHERE id IN (SELECT id FROM app.audit_outbox ORDER BY created_at, id LIMIT 10)', 2);
 SELECT pg_temp.uji_tolak('A19.1 NEG relay membaca job (di luar haknya)', 'rs_audit_relay_login', 'SELECT * FROM app.job', '42501', 'permission denied for table job');
+
+-- US-1504 (F1-T68): matriks ubah/hapus audit_outbox untuk SEMUA role non-superuser klaster (dibaca dari
+-- katalog), termasuk role tanpa hak apa pun (mewakili PUBLIC; dibatalkan ROLLBACK). Event di outbox tidak
+-- dapat diubah siapa pun selain pemilik skema: UPDATE, TRUNCATE, dan MERGE ... UPDATE ditolak 42501;
+-- DELETE dan MERGE ... DELETE hanya relay (menghapus event terkirim, ADR-009 butir 3). Pemilik skema
+-- (rs_migration, anggota dinamis OpenBao saja) dikecualikan: kelas OH tanpa trigger penolak menurut desain
+-- (docs/05-physical-schema.md §4.1, tabel trigger "O, OH: Tanpa trigger"; DD §0.3).
+CREATE ROLE uji_f1t68_tanpa_hak NOLOGIN;
+SELECT pg_temp.uji_boleh('US-1504 rs_api INSERT audit_outbox untuk matriks', 'rs_api',
+  'INSERT INTO app.audit_outbox (id, occurred_at, payload) VALUES (''00000000-0000-7000-8000-00000000d068'', now(), ''{"event":"E-10"}'')', 1);
+SELECT pg_temp.uji_nol('US-1504 hanya relay yang punya hak ubah/hapus audit_outbox selain pemilik (DELETE saja; tanpa UPDATE/TRUNCATE)',
+  ARRAY(SELECT format('%s:%s', r.rolname, p.hak)
+          FROM pg_roles r CROSS JOIN unnest(ARRAY['UPDATE', 'DELETE', 'TRUNCATE']) AS p(hak)
+         WHERE NOT r.rolsuper AND r.rolname !~ '^pg_'
+           AND NOT pg_has_role(r.oid, (SELECT relowner FROM pg_class WHERE oid = 'app.audit_outbox'::regclass), 'USAGE')
+           AND has_table_privilege(r.oid, 'app.audit_outbox'::regclass, p.hak)
+        EXCEPT SELECT unnest(ARRAY['rs_audit_relay:DELETE', 'rs_audit_relay_login:DELETE'])));
+DO $$
+DECLARE
+  roles text[];
+  rn text;
+  s record;
+  v_state text;
+  v_msg text;
+  temuan text[];
+  n integer;
+  pemilik oid := (SELECT relowner FROM pg_class WHERE oid = 'app.audit_outbox'::regclass);
+BEGIN
+  roles := ARRAY(SELECT rolname::text FROM pg_roles WHERE NOT rolsuper AND rolname !~ '^pg_' AND NOT pg_has_role(oid, pemilik, 'USAGE') ORDER BY 1);
+  IF NOT roles @> ARRAY['rs_app', 'rs_api', 'rs_realtime', 'rs_worker', 'rs_audit_relay', 'rs_audit_relay_login', 'rs_privacy_worker',
+                        'rs_privacy_worker_login', 'rs_key_rotation', 'rs_ops_monitor', 'rs_metrics', 'keycloak', 'openbao_rs_admin', 'uji_f1t68_tanpa_hak'] THEN
+    RAISE EXCEPTION 'GAGAL US-1504 matriks outbox: role yang diharapkan tidak ada di katalog (%)', roles;
+  END IF;
+  FOR s IN SELECT * FROM (VALUES
+      (1, 'UPDATE', 'UPDATE app.audit_outbox SET payload = ''{}''', false),
+      (2, 'TRUNCATE', 'TRUNCATE app.audit_outbox', false),
+      (3, 'MERGE ... UPDATE', 'MERGE INTO app.audit_outbox AS x USING (SELECT 1) AS s ON true WHEN MATCHED THEN UPDATE SET payload = ''{}''', false),
+      (4, 'DELETE', 'DELETE FROM app.audit_outbox', true),
+      (5, 'MERGE ... DELETE', 'MERGE INTO app.audit_outbox AS x USING (SELECT 1) AS s ON true WHEN MATCHED THEN DELETE', true)) AS v(k, label, stmt, relay_boleh)
+  LOOP
+    temuan := '{}';
+    n := 0;
+    FOREACH rn IN ARRAY roles LOOP
+      v_state := NULL;
+      v_msg := NULL;
+      BEGIN
+        EXECUTE format('SET LOCAL ROLE %I', rn);
+        EXECUTE s.stmt;
+        v_state := 'sukses';
+        RAISE EXCEPTION USING ERRCODE = 'P0099', MESSAGE = 'batalkan';
+      EXCEPTION WHEN OTHERS THEN
+        IF v_state IS NULL THEN
+          v_state := SQLSTATE;
+          v_msg := SQLERRM;
+        END IF;
+      END;
+      n := n + 1;
+      IF s.relay_boleh AND rn IN ('rs_audit_relay', 'rs_audit_relay_login') THEN
+        IF v_state IS DISTINCT FROM 'sukses' THEN
+          temuan := temuan || format('relay %s %s ditolak: %s %s', rn, s.label, v_state, v_msg);
+        END IF;
+      ELSIF v_state IS DISTINCT FROM '42501' OR v_msg !~ '^permission denied for (table audit_outbox|schema app)$' THEN
+        temuan := temuan || format('%s oleh %s: %s %s', s.label, rn, v_state, coalesce(v_msg, 'BERHASIL'));
+      END IF;
+    END LOOP;
+    PERFORM pg_temp.uji_nol(format('US-1504 (TC-US-1504-5) %s audit_outbox ditolak untuk %s role non-superuser selain pemilik%s (%s percobaan)',
+                                   s.label, cardinality(roles), CASE WHEN s.relay_boleh THEN ', kecuali relay' ELSE ', termasuk relay' END, n), temuan);
+  END LOOP;
+END $$;
+SELECT pg_temp.uji_tolak('US-1504 NEG rs_api SET session_replication_role = replica', 'rs_api',
+  'SET LOCAL session_replication_role = replica', '42501', 'permission denied to set parameter "session_replication_role"');
 
 -- job (O): pengambilan dengan sewa (§9.1).
 SELECT pg_temp.uji_boleh('A19.4 rs_api menjadwalkan job', 'rs_api',

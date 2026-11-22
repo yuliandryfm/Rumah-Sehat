@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id AS document_id, d.data_key_id, d.nik_enc FROM app.identity_verification_request_state s JOIN app.identity_verification_request r ON r.id = s.identity_verification_request_id JOIN app.identity_document d ON d.id = r.identity_document_id JOIN app.care_recipient cr ON cr.id = r.care_recipient_id JOIN app.patient p ON p.id = cr.patient_id WHERE p.account_id = $1 AND cr.is_account_owner AND s.status = 'pending' AND cr.deleted_at IS NULL AND p.deleted_at IS NULL AND d.deleted_at IS NULL ORDER BY r.created_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "document_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "data_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "data_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "nik_enc",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "identity_document",
+            "name": "nik_enc"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4b23b395d04b7f3a497a737dc5f47b0fca54178c110dd32ef375d8e60bfb553f"
+}

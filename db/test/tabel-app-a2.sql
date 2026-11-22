@@ -468,8 +468,12 @@ BEGIN
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_status_event)
      OR EXISTS (SELECT 1 FROM app.identity_verification_request_state)
      OR EXISTS (SELECT 1 FROM app.account_owner_nik_registry)
-     -- reason_code berisi data acuan migrasi data F1-T62 (tujuh alasan identity_rejection); data uji = ID lain.
-     OR EXISTS (SELECT 1 FROM app.reason_code WHERE id::text LIKE '00000000-0000-7000-8000-%')
+     -- reason_code hanya boleh berisi data acuan migrasi data F1-T62: persis tujuh ID seed identity_rejection.
+     OR (SELECT coalesce(string_agg(id::text, ',' ORDER BY id), '') FROM app.reason_code)
+        <> '01a1fbb5-46b5-7438-b0a4-16ef04d0d2d7,01a1fbb5-46b6-7bc6-83f9-ba413d5ceb2f,'
+        || '01a1fbb5-46b7-7d0b-a9f6-61bfc9c84ccf,01a1fbb5-46b8-72d2-8fb4-7450e115b86a,'
+        || '01a1fbb5-46b9-725a-949e-815a005f99dd,01a1fbb5-46ba-7286-911f-b123e709f97f,'
+        || '01a1fbb5-46bb-77b7-95ec-5a099c556716'
      OR EXISTS (SELECT 1 FROM app.data_key) OR EXISTS (SELECT 1 FROM app.stored_file) OR EXISTS (SELECT 1 FROM app.account) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a2: data uji tersisa';
   END IF;

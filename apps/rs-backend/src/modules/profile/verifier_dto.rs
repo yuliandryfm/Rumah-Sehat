@@ -7,6 +7,7 @@ use super::dto::DtoError;
 use crate::modules::platform::api::DownloadTicket;
 use crate::openapi::MetaSchema;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use utoipa::{IntoParams, ToSchema};
@@ -132,7 +133,8 @@ impl RequestStatusDto {
 }
 
 /// Detail pengajuan dengan NIK lengkap (US-201 AC1; membuka detail tercatat E-05).
-#[derive(Debug, Serialize, ToSchema)]
+// `Debug` manual tanpa NIK dan data diri (KEPUTUSAN-122, ADR-005).
+#[derive(Serialize, ToSchema)]
 pub(super) struct VerificationDetailDto {
     #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
     pub(super) identity_verification_request_id: String,
@@ -163,6 +165,24 @@ pub(super) struct VerificationDetailDto {
     pub(super) decided_at: Option<String>,
     /// Setuju/tolak tersedia (masih menunggu).
     pub(super) can_decide: bool,
+}
+
+impl fmt::Debug for VerificationDetailDto {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VerificationDetailDto")
+            .field(
+                "identity_verification_request_id",
+                &self.identity_verification_request_id,
+            )
+            .field("care_recipient_id", &self.care_recipient_id)
+            .field("nik", &"[REDACTED]")
+            .field("full_name", &"[REDACTED]")
+            .field("birth_date", &"[REDACTED]")
+            .field("sex", &"[REDACTED]")
+            .field("status", &self.status)
+            .field("can_decide", &self.can_decide)
+            .finish_non_exhaustive()
+    }
 }
 
 impl VerificationDetailDto {
@@ -203,7 +223,8 @@ pub(super) struct VerificationDetailEnvelope {
 }
 
 /// URL unduh foto dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat.
-#[derive(Debug, Serialize, ToSchema)]
+// `Debug` manual menyamarkan URL (KEPUTUSAN-122).
+#[derive(Serialize, ToSchema)]
 pub(super) struct DocumentPhotoDto {
     pub(super) url: String,
     #[schema(format = DateTime)]
@@ -212,6 +233,17 @@ pub(super) struct DocumentPhotoDto {
     pub(super) mime_type: String,
     #[schema(example = 204_800)]
     pub(super) size_bytes: i32,
+}
+
+impl fmt::Debug for DocumentPhotoDto {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DocumentPhotoDto")
+            .field("url", &"[REDACTED]")
+            .field("expires_at", &self.expires_at)
+            .field("mime_type", &self.mime_type)
+            .field("size_bytes", &self.size_bytes)
+            .finish()
+    }
 }
 
 impl DocumentPhotoDto {
@@ -239,7 +271,8 @@ pub(super) struct DocumentPhotoEnvelope {
 }
 
 /// Penolakan (US-201 AC3, AC3a).
-#[derive(Debug, Deserialize, ToSchema)]
+// `Debug` manual tanpa isi keterangan (teks bebas, dapat memuat data pribadi; KEPUTUSAN-122).
+#[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub(super) struct RejectRequest {
     /// Kode alasan dari `GET /backoffice/v1/identity-verification-reasons`.
@@ -248,6 +281,15 @@ pub(super) struct RejectRequest {
     /// Keterangan tambahan yang tampil ke pasien; wajib untuk `other`; paling panjang 500 karakter.
     #[schema(example = "Sudut kanan foto terpotong", max_length = 500)]
     pub(super) note: Option<String>,
+}
+
+impl fmt::Debug for RejectRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RejectRequest")
+            .field("reason_code", &self.reason_code)
+            .field("note", &self.note.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
 }
 
 /// Hasil keputusan.
@@ -316,4 +358,66 @@ pub(super) struct RejectionReasonsEnvelope {
     data: Vec<RejectionReasonDto>,
     #[schema(nullable = false)]
     correlation_id: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // trace: KEPUTUSAN-122, ADR-005 (NIK, data diri, keterangan, dan URL foto tidak pernah ada di Debug)
+    #[test]
+    fn debug_redacts_nik_note_and_photo_url() {
+        let detail = VerificationDetailDto {
+            identity_verification_request_id: "req-id".to_string(),
+            care_recipient_id: "cr-id".to_string(),
+            is_account_owner: true,
+            full_name: "Nama Rahasia Sintetis".to_string(),
+            birth_date: "1990-01-01".to_string(),
+            sex: "female".to_string(),
+            document_type: "ktp".to_string(),
+            trigger_type: "document_submitted".to_string(),
+            nik: "9900000000000001".to_string(),
+            submitted_at: "2026-11-21T00:00:00Z".to_string(),
+            status: RequestStatusDto::Pending,
+            rejection_reason: None,
+            decided_at: None,
+            can_decide: true,
+        };
+        let d = format!("{detail:?}");
+        for secret in [
+            "9900000000000001",
+            "Nama Rahasia Sintetis",
+            "1990-01-01",
+            "female",
+        ] {
+            assert!(!d.contains(secret), "{secret} bocor di Debug: {d}");
+        }
+        assert!(d.contains("req-id"));
+
+        let req = RejectRequest {
+            reason_code: "other".to_string(),
+            note: Some("Keterangan pribadi 9900000000000001".to_string()),
+        };
+        let d = format!("{req:?}");
+        assert!(!d.contains("Keterangan pribadi"), "{d}");
+        assert!(!d.contains("9900000000000001"), "{d}");
+        assert!(d.contains("other") && d.contains("[REDACTED]"));
+        let none = format!(
+            "{:?}",
+            RejectRequest {
+                reason_code: "photo_unreadable".to_string(),
+                note: None
+            }
+        );
+        assert!(none.contains("None"));
+
+        let photo = DocumentPhotoDto {
+            url: "https://s3.example/obj?X-Amz-Signature=tandatangan".to_string(),
+            expires_at: "2026-11-21T00:05:00Z".to_string(),
+            mime_type: "image/jpeg".to_string(),
+            size_bytes: 1,
+        };
+        let d = format!("{photo:?}");
+        assert!(!d.contains("tandatangan") && !d.contains("https://"), "{d}");
+    }
 }

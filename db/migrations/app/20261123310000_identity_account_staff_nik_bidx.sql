@@ -1,4 +1,4 @@
--- db/migrations/app/20261122110000_identity_account_staff_nik_bidx.sql
+-- db/migrations/app/20261123310000_identity_account_staff_nik_bidx.sql
 -- F1-T62 (US-201 AC8, KEPUTUSAN-294 = jawaban user PT-57/T-38 opsi A): expand kolom blind index NIK
 -- staf di akun admin Ruang Sehat. Diisi saat sub-peran Verifikator diberikan (modul identity, US-208),
 -- dicocokkan dengan NIK pemilik akun pasien saat Verifikator memutuskan pengajuan identitas (pemisahan
@@ -24,8 +24,8 @@ BEGIN
   IF current_user <> 'rs_migration' THEN
     RAISE EXCEPTION 'migration must run as rs_migration, got % (session %)', current_user, session_user;
   END IF;
-  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261122110000) THEN
-    RAISE EXCEPTION 'migration order: version 20261122110000 is older than an applied migration (forward-only, ADR-019)';
+  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261123310000) THEN
+    RAISE EXCEPTION 'migration order: version 20261123310000 is older than an applied migration (forward-only, ADR-019)';
   END IF;
 END $$;
 SET LOCAL lock_timeout = '5s';

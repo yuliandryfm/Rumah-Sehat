@@ -1,36 +1,35 @@
+import type { PublicComponents } from "@rs/api-client";
+
 /**
- * Tipe konten publik yang dipakai situs. Bentuk final mengikuti endpoint `/v1/public/content/*`
- * (ADR-027 butir 2, F1-T94) dan akan diganti tipe hasil generate `@rs/api-client` setelah endpoint itu
- * masuk `openapi/`. Sampai itu, tipe ini adalah antarmuka sementara yang dapat di-mock.
- * Teks yang belum ditetapkan user bernilai `null` dan ditampilkan sebagai `[TIDAK DIKETAHUI]`.
+ * Tipe konten publik situs: langsung dari skema `openapi/public.json` (`/v1/public/content/*`, F1-T94),
+ * dengan nama field snake_case apa adanya (KEPUTUSAN-119). Teks yang belum ada di CMS tidak dikarang:
+ * halaman menampilkan penanda `[TIDAK DIKETAHUI]`.
  */
+export type Konten = PublicComponents["schemas"]["PublicContentDto"];
+export type HalamanSitus = PublicComponents["schemas"]["SitePage"];
+export type JenisKonten = PublicComponents["schemas"]["ContentType"];
 
-/** Nilai teks dari CMS; `null` = belum ada (tampil sebagai penanda `[TIDAK DIKETAHUI]`). */
-export type TeksCms = string | null;
-
-export interface KartuLayanan {
-  judul: string;
-  uraian: TeksCms;
+export interface OpsiDaftar {
+  halaman?: HalamanSitus;
+  jenis?: JenisKonten;
+  /** UUID dari `meta.next_cursor` halaman sebelumnya. */
+  kursor?: string;
+  batas?: number;
 }
 
-export interface RingkasanArtikel {
-  slug: string;
-  judul: string;
-  /** ISO 8601 tanggal tayang; `null` bila belum diketahui. */
-  tanggalTayang: string | null;
+export interface HasilDaftar {
+  item: Konten[];
+  kursorBerikut: string | null;
 }
 
-export interface KontenBeranda {
-  judulUtama: TeksCms;
-  kalimatPembuka: TeksCms;
-  layanan: KartuLayanan[];
-  ringkasanKorporat: TeksCms;
-  artikelTerbaru: RingkasanArtikel[];
-}
-
-/** Kontrak klien konten. Halaman lain (F1-T96, F1-T97) menambah metode di sini. */
+/**
+ * Kontrak klien konten. `null` = tidak ada versi tayang (404 backend: draf, terjadwal, berakhir, diarsipkan,
+ * dan terhapus tidak dibedakan, US-1801 AC3). Kegagalan lain melempar `KontenTidakTersedia`.
+ */
 export interface KlienKonten {
-  ambilBeranda(): Promise<KontenBeranda>;
+  ambilHalaman(halaman: HalamanSitus): Promise<Konten | null>;
+  ambilItem(id: string): Promise<Konten | null>;
+  daftar(opsi?: OpsiDaftar): Promise<HasilDaftar>;
 }
 
 /** Konten tidak dapat diambil (sumber belum tersambung atau backend gagal): halaman menampilkan galat umum. */

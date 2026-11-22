@@ -377,6 +377,16 @@
               }
             }
           },
+          "429": {
+            "description": "Kuota slot unggah per akun terlampaui (4290001).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Layanan tidak tersedia.",
             "content": {
@@ -566,7 +576,7 @@
       },
       "IdentitySubmissionRequest": {
         "type": "object",
-        "description": "Pengajuan NIK dan foto KTP (US-106 AC1, AC2).",
+        "description": "Pengajuan NIK dan foto KTP (US-106 AC1, AC2). `Debug` manual tanpa NIK (KEPUTUSAN-122, ADR-005).",
         "required": [
           "nik",
           "upload_slot_id"
@@ -614,7 +624,7 @@
       },
       "NameValueDto": {
         "type": "object",
-        "description": "Pasangan nama-nilai (field formulir POST atau header PUT).",
+        "description": "Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah\n(rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).",
         "required": [
           "name",
           "value"
@@ -686,7 +696,7 @@
       },
       "UploadSlotDto": {
         "type": "object",
-        "description": "Slot unggah yang diterbitkan.",
+        "description": "Slot unggah yang diterbitkan. `url`, `fields`, dan `headers` rahasia berumur pendek: `Debug` manual\nmenyamarkannya (KEPUTUSAN-122).",
         "required": [
           "upload_slot_id",
           "expires_at",

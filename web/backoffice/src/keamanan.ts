@@ -35,9 +35,11 @@ export function buatNonce(): string {
 
 /**
  * CSP. `nonce` null untuk berkas statis (tanpa dokumen HTML). `dev` menambah `'unsafe-eval'` hanya untuk
- * `next dev` (kebutuhan React di development; tidak dipakai di produksi).
+ * `next dev` (kebutuhan React di development; tidak dipakai di produksi). `originUnggah` (opsional) menambah
+ * SATU origin object storage ke `connect-src` supaya browser dapat mengunggah gambar CMS lewat URL bertanda
+ * tangan (F1-T95, ADR-018); hanya dari `originUnggahDariEnv`.
  */
-export function buatCsp(nonce: string | null, dev = false): string {
+export function buatCsp(nonce: string | null, dev = false, originUnggah: string | null = null): string {
   const nonceSumber = nonce === null ? "" : ` 'nonce-${nonce}'`;
   const arahan = [
     "default-src 'self'",
@@ -45,7 +47,7 @@ export function buatCsp(nonce: string | null, dev = false): string {
     `style-src 'self'${nonceSumber}`,
     "img-src 'self'",
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src 'self'${originUnggah === null ? "" : ` ${originUnggah}`}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -53,4 +55,22 @@ export function buatCsp(nonce: string | null, dev = false): string {
     "upgrade-insecure-requests",
   ];
   return arahan.join("; ");
+}
+
+/**
+ * Origin object storage untuk unggah gambar CMS dari env `BACKOFFICE_UPLOAD_ORIGIN` (hanya origin, tanpa
+ * path/kredensial). Nilai tidak valid atau bukan https (kecuali `http` di development) diabaikan: gagal tertutup,
+ * unggah gambar saja yang tidak jalan, CSP tidak melonggar.
+ */
+export function originUnggahDariEnv(nilai: string | undefined, dev = false): string | null {
+  if (nilai === undefined || nilai === "") return null;
+  let u: URL;
+  try {
+    u = new URL(nilai);
+  } catch {
+    return null;
+  }
+  const skemaOk = u.protocol === "https:" || (dev && u.protocol === "http:");
+  const hanyaOrigin = u.username === "" && u.password === "" && (u.pathname === "/" || u.pathname === "") && u.search === "" && u.hash === "";
+  return skemaOk && hanyaOrigin ? u.origin : null;
 }

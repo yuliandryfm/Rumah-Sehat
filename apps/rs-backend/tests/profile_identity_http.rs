@@ -395,7 +395,7 @@ async fn owner_nik_in_use_returns_general_message() {
     assert_eq!(r.status, 201, "{}", r.body);
 }
 
-// trace: US-106 AC3 (slot unggah: jenis bukan JPG/PNG → 4150001, lebih dari 5.242.880 byte → 4130001,
+// trace: US-106 AC3, review F1-T61 N3 (slot unggah: jenis bukan JPG/PNG → 4150001, > 5.242.880 byte → 4130001,
 // tepat 5.242.880 byte diterima)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ktp_upload_slot_checks_declared_type_and_size() {
@@ -455,6 +455,25 @@ async fn ktp_upload_slot_checks_declared_type_and_size() {
     )
     .await;
     assert_eq!(r.status, 422, "{}", r.body);
+
+    // Review F1-T61 N3: kuota 10 slot per akun per jam [ASUMSI]. Tiga permintaan berisi di atas sudah
+    // terhitung (termasuk yang ditolak 413/415); tujuh berikutnya diterima, yang kesebelas 429.
+    let ok = json!({ "content_type": "image/jpeg", "size_bytes": 1024 });
+    for i in 4..=10 {
+        let r = f.post(SLOT_PATH, &t, &ok).await;
+        assert_eq!(r.status, 201, "permintaan ke-{i}: {}", r.body);
+    }
+    let r = f.post(SLOT_PATH, &t, &ok).await;
+    assert_eq!(
+        (r.status, code(&r).as_str()),
+        (429, "4290001"),
+        "{}",
+        r.body
+    );
+    // Akun lain tidak terpengaruh.
+    let other = new_patient(&f.env.pool).await;
+    let r = f.post(SLOT_PATH, &f.patient_token(&other), &ok).await;
+    assert_eq!(r.status, 201, "{}", r.body);
 }
 
 // trace: coding-standards §7.3 butir 1, 2 (tanpa token; realm lain, audience salah, issuer salah,

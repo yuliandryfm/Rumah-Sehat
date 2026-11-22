@@ -646,3 +646,28 @@ pub(super) async fn approved_owner_document(
     .await
     .map_err(map_db)
 }
+
+/// Dokumen NIK pengajuan pemilik akun yang masih `pending` di akun pasien `owner_account_id` (paling banyak
+/// satu per penerima layanan, US-106 AC5; US-201 AC8, KEPUTUSAN-294). Dipakai saat Verifikator memutuskan
+/// pengajuan anggota keluarga di akun yang pemiliknya baru mengajukan NIK.
+pub(super) async fn pending_owner_document(
+    pool: &PgPool,
+    owner_account_id: Uuid,
+) -> Result<Option<OwnerDocument>, RepoError> {
+    sqlx::query_as!(
+        OwnerDocument,
+        "SELECT d.id AS document_id, d.data_key_id, d.nik_enc \
+         FROM app.identity_verification_request_state s \
+         JOIN app.identity_verification_request r ON r.id = s.identity_verification_request_id \
+         JOIN app.identity_document d ON d.id = r.identity_document_id \
+         JOIN app.care_recipient cr ON cr.id = r.care_recipient_id \
+         JOIN app.patient p ON p.id = cr.patient_id \
+         WHERE p.account_id = $1 AND cr.is_account_owner AND s.status = 'pending' \
+           AND cr.deleted_at IS NULL AND p.deleted_at IS NULL AND d.deleted_at IS NULL \
+         ORDER BY r.created_at DESC LIMIT 1",
+        owner_account_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(map_db)
+}

@@ -7,7 +7,10 @@ publish = false
 # Test arsitektur (F1-T12): pemeriksa kepemilikan tabel modul, lint larangan, dan pola log terlarang.
 # Dipakai hanya oleh test (langkah "test-arsitektur" di skrip verifikasi); tidak ikut biner produksi.
 # toml 1.2.1 (MIT OR Apache-2.0): docs/sources.md SRC-388. serde 1.0.229: SRC-167.
+# serde_json 1.0.154 [SRC-335] (sudah di Cargo.lock): urai spesifikasi openapi/*.json untuk larangan operasi
+# ubah/hapus audit (F1-T68, US-1504 AC1).
 [dependencies]
+serde_json = { version = "=1.0.154", default-features = false, features = ["std"] }
 toml = { version = "=1.2.1", default-features = false, features = ["std", "parse", "serde"] }
 serde = { version = "=1.0.229", default-features = false, features = ["std", "derive"] }
 

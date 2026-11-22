@@ -67,6 +67,8 @@ pub enum ProfileError {
     ProjectionMismatch,
     /// Galat berkas dari modul `platform` (404/413/415/422/503).
     File(FileError),
+    /// Kuota slot unggah foto KTP per akun terlampaui (429, review F1-T61 N3).
+    RateLimited,
     /// PostgreSQL, Valkey, atau OpenBao tidak tersedia (503; detail hanya di log).
     Database,
     /// Galat tak terduga (500); sumbernya hanya untuk log, tidak pernah ke respons.
@@ -89,6 +91,7 @@ impl fmt::Display for ProfileError {
             Self::SeparationOfDuties => f.write_str("pemisahan tugas Verifikator"),
             Self::ProjectionMismatch => f.write_str("proyeksi status menyimpang"),
             Self::File(e) => write!(f, "berkas: {e}"),
+            Self::RateLimited => f.write_str("terlalu banyak permintaan"),
             Self::Database => f.write_str("database tidak tersedia"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
         }
@@ -113,6 +116,7 @@ impl ApiError for ProfileError {
             Self::SeparationOfDuties => SEPARATION_OF_DUTIES,
             Self::ProjectionMismatch | Self::Internal(_) => codes::INTERNAL,
             Self::File(e) => e.response_code(),
+            Self::RateLimited => codes::RATE_LIMITED,
             Self::Database => codes::UNAVAILABLE,
         }
     }
@@ -147,6 +151,7 @@ mod tests {
             (ProfileError::ProjectionMismatch, "5000001"),
             (ProfileError::File(FileError::TooLarge), "4130001"),
             (ProfileError::File(FileError::UnsupportedType), "4150001"),
+            (ProfileError::RateLimited, "4290001"),
             (ProfileError::Database, "5030001"),
             (ProfileError::Internal("x"), "5000001"),
         ];

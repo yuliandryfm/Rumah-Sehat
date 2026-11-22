@@ -11,7 +11,9 @@
 //!    disetujui (baris registri aktif penerima layanan pemilik akun), dan (b) NIK pada pengajuan itu sendiri
 //!    bila pengajuan milik pemilik akun. Butir (b) ditambahkan karena pengajuan pertama belum punya NIK
 //!    disetujui: tanpa (b) Verifikator dapat menyetujui pengajuan pertamanya sendiri. Pengajuan anggota
-//!    keluarga tercakup karena pemeriksaan memakai akun pemilik, bukan penerima layanan.
+//!    keluarga tercakup karena pemeriksaan memakai akun pemilik, bukan penerima layanan. (c) Untuk pengajuan
+//!    anggota keluarga: NIK pengajuan pemilik akun yang masih `pending` di akun yang sama (pemilik baru
+//!    mengajukan, belum ada NIK disetujui).
 //!
 //! Pencocokan: blind index staf tersimpan di satu versi kunci, sedangkan NIK pemilik dapat tercatat di versi
 //! lain. NIK pemilik karena itu didekripsi (DEK wadah `identity_document`) lalu dihitung ulang di versi kunci
@@ -64,7 +66,21 @@ impl<'a> SelfDecisionGuard<'a> {
             Some(d) => Some(open_document_nik(s, d.document_id, d.data_key_id, &d.nik_enc).await?),
             None => None,
         };
-        for nik in owner_request_nik.into_iter().chain(approved.as_ref()) {
+        // (c) Bila pengajuan ini milik pemilik akun, pengajuan pending pemilik = pengajuan ini sendiri (b).
+        let pending = match owner_request_nik {
+            Some(_) => None,
+            None => match repo::pending_owner_document(&s.pool, owner_account_id).await? {
+                Some(d) => {
+                    Some(open_document_nik(s, d.document_id, d.data_key_id, &d.nik_enc).await?)
+                }
+                None => None,
+            },
+        };
+        for nik in owner_request_nik
+            .into_iter()
+            .chain(approved.as_ref())
+            .chain(pending.as_ref())
+        {
             let Ok(b) = s.blind_index.compute_with_version(nik, staff.key_version) else {
                 tracing::error!("staff_nik_key_version_unavailable");
                 return Ok(false);

@@ -23,10 +23,13 @@ export interface ItemNav {
 }
 
 /**
- * Daftar menu. Hanya Beranda: menu fitur (misalnya antrean Verifikator, F1-T64) ditambahkan oleh task
+ * Daftar menu (Beranda dan Konten/CMS, F1-T95): menu fitur (misalnya antrean Verifikator, F1-T64) ditambahkan oleh task
  * fiturnya bersama halamannya, supaya tidak ada tautan ke halaman yang belum ada.
  */
-export const ITEM_NAV: readonly ItemNav[] = [{ href: "/", label: "Beranda", untuk: "semua" }];
+export const ITEM_NAV: readonly ItemNav[] = [
+  { href: "/", label: "Beranda", untuk: "semua" },
+  { href: "/konten", label: "Konten", untuk: ["Konten"] },
+];
 
 /** Menu yang tampil untuk sub-peran tertentu; tanpa sub-peran yang dikenal hanya menu `"semua"`. */
 export function menuUntuk(subPeran: readonly string[], daftar: readonly ItemNav[] = ITEM_NAV): readonly ItemNav[] {

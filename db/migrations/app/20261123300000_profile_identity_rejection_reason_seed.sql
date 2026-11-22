@@ -1,4 +1,4 @@
--- db/migrations/app/20261122100000_profile_identity_rejection_reason_seed.sql
+-- db/migrations/app/20261123300000_profile_identity_rejection_reason_seed.sql
 -- F1-T62: migrasi DATA daftar alasan penolakan identitas awal (A6.7 reason_code, konteks
 -- identity_rejection). DML saja, tanpa DDL (docs/05-physical-schema.md §11.3: DDL dan DML terpisah,
 -- migrasi data idempoten). Tanpa perubahan hak role.
@@ -23,8 +23,8 @@ BEGIN
   IF current_user <> 'rs_migration' THEN
     RAISE EXCEPTION 'migration must run as rs_migration, got % (session %)', current_user, session_user;
   END IF;
-  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261122100000) THEN
-    RAISE EXCEPTION 'migration order: version 20261122100000 is older than an applied migration (forward-only, ADR-019)';
+  IF EXISTS (SELECT 1 FROM app._sqlx_migrations WHERE version > 20261123300000) THEN
+    RAISE EXCEPTION 'migration order: version 20261123300000 is older than an applied migration (forward-only, ADR-019)';
   END IF;
 END $$;
 SET LOCAL lock_timeout = '5s';

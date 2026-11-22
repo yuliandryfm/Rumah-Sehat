@@ -2,7 +2,9 @@
 //!
 //! Urutan per permintaan (ADR-012 butir 1 dan 4, coding-standards §5.4 dan §7.3):
 //! 1. Tanpa `MatchedPath` (rute tidak dikenal) atau tanpa kebijakan terdaftar → `404` (default deny;
-//!    sama dengan rute yang tidak ada).
+//!    sama dengan rute yang tidak ada). Bila permintaan itu `POST`/`PUT`/`PATCH`/`DELETE` ke jalur audit
+//!    (US-1504 AC2, F1-T68): token diperiksa (gagal → `401`), lalu `404`, dan keduanya mencatat security
+//!    log `audit_modification_attempt`.
 //! 2. Kebijakan publik → diteruskan.
 //! 3. Token divalidasi `authn` (gagal → `401`, JWKS tidak tersedia → `503`).
 //! 4. Realm token harus realm salah satu jenis akun kebijakan (realm lain → `401`).
@@ -16,6 +18,7 @@
 //!    `access_denied` (`role_not_allowed`).
 //! 8. [`AuthContext`] dan [`Principal`] dipasang di extensions, handler dijalankan.
 
+use crate::audit_guard;
 use crate::denial::ClientIp;
 use crate::policy::Policy;
 use crate::principal::Principal;
@@ -67,6 +70,41 @@ pub(crate) async fn deny_fallback() -> StatusCode {
     StatusCode::NOT_FOUND
 }
 
+/// Percobaan ubah/hapus audit log ke jalur tanpa kebijakan (US-1504 AC2, [`audit_guard`]): selalu ditolak
+/// dan dicatat security log `audit_modification_attempt`. Tanpa token atau token tidak sah → `401` (sama
+/// dengan endpoint terautentikasi lain); token sah, peran apa pun → `404` seragam dengan rute tidak ada.
+/// Handler tidak pernah dijalankan. Resolver akun hanya dipakai untuk mengisi `account_id` log; galatnya
+/// tidak mengubah jawaban.
+async fn reject_audit_modification(
+    state: &EnforcerState,
+    req: Request,
+    method: &'static str,
+    route: &str,
+) -> Response {
+    let cid = correlation(req.extensions());
+    let Some((auth, resolver, _, _)) = &state.authentication else {
+        security::audit_modification_attempt(None, method, route, false);
+        return state.renderer.render(CommonError::NotFound, cid);
+    };
+    let (parts, _body) = req.into_parts();
+    match auth.authenticate_parts(&parts).await {
+        Err(e) => {
+            security::audit_modification_attempt(None, method, route, false);
+            auth.reject(&parts, e)
+        }
+        Ok(ctx) => {
+            let account_id = match resolver.resolve(&ctx).await {
+                Ok(Some(record)) if record.account_type.realm() == ctx.realm() => {
+                    Some(record.account_id)
+                }
+                _ => None,
+            };
+            security::audit_modification_attempt(account_id, method, route, true);
+            state.renderer.render(CommonError::NotFound, cid)
+        }
+    }
+}
+
 /// Middleware penegak; dipasang [`crate::PolicyRouter::finish`].
 pub(crate) async fn enforce(
     State(state): State<Arc<EnforcerState>>,
@@ -74,14 +112,21 @@ pub(crate) async fn enforce(
     next: Next,
 ) -> Response {
     let cid = correlation(req.extensions());
+    let audit_attempt = audit_guard::modification_attempt(req.method(), req.uri().path());
     let Some(route) = req
         .extensions()
         .get::<MatchedPath>()
         .map(|m| m.as_str().to_string())
     else {
+        if let Some(method) = audit_attempt {
+            return reject_audit_modification(&state, req, method, "unmatched").await;
+        }
         return state.renderer.render(CommonError::NotFound, cid);
     };
     let Some(policy) = state.registry.get(req.method(), &route).cloned() else {
+        if let Some(method) = audit_attempt {
+            return reject_audit_modification(&state, req, method, &route).await;
+        }
         tracing::warn!(route = route.as_str(), "route_without_policy_denied");
         return state.renderer.render(CommonError::NotFound, cid);
     };
