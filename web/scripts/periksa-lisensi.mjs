@@ -7,7 +7,7 @@
 // Pemakaian: node scripts/periksa-lisensi.mjs (dari web/); keluar 1 bila ada pelanggaran.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -125,13 +125,45 @@ function daftarPnpm(webDir, dir, bendera) {
   return ratakan(JSON.parse(teks));
 }
 
-function daftarWorkspace(webDir) {
-  const dirs = [".", "backoffice", "portal", "rme", "situs", "korporat"];
-  const paketDir = join(webDir, "packages");
-  if (existsSync(paketDir)) {
-    for (const d of readdirSync(paketDir).sort()) dirs.push(`packages/${d}`);
+/**
+ * Turunkan direktori workspace dari teks pnpm-workspace.yaml (daftar `packages:`). Mendukung entri literal dan
+ * `<dir>/*`; pola lain GAGAL (throw) supaya workspace tidak terlewat diam-diam. Root "." selalu ikut.
+ */
+export function workspaceDariYaml(teks, daftarAnak) {
+  const dirs = ["."];
+  let dalam = false;
+  let jumlah = 0;
+  for (const baris of teks.split("\n")) {
+    if (/^packages:\s*$/.test(baris)) {
+      dalam = true;
+      continue;
+    }
+    if (!dalam) continue;
+    if (/^\s*(#.*)?$/.test(baris)) continue;
+    const m = baris.match(/^\s+-\s+["']?([^"'\s#]+)["']?\s*(#.*)?$/);
+    if (m === null) break; // akhir daftar packages
+    jumlah += 1;
+    const entri = m[1];
+    if (/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(entri)) dirs.push(entri);
+    else if (/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*\/\*$/.test(entri)) {
+      const induk = entri.slice(0, -2);
+      for (const a of daftarAnak(induk)) dirs.push(`${induk}/${a}`);
+    } else throw new Error(`pola workspace tidak didukung pemeriksa lisensi: ${entri}`);
   }
-  return dirs.filter((d) => existsSync(join(webDir, d, "package.json")));
+  if (jumlah === 0) throw new Error("daftar packages tidak ditemukan di pnpm-workspace.yaml");
+  return dirs;
+}
+
+function daftarWorkspace(webDir) {
+  const teks = readFileSync(join(webDir, "pnpm-workspace.yaml"), "utf8");
+  const dirs = workspaceDariYaml(teks, (induk) => {
+    const p = join(webDir, induk);
+    return existsSync(p) ? readdirSync(p).sort() : [];
+  });
+  // Workspace yang terdaftar tetapi tanpa package.json adalah galat, bukan dilewati.
+  const hilang = dirs.filter((d) => !existsSync(join(webDir, d, "package.json")));
+  if (hilang.length > 0) throw new Error(`workspace tanpa package.json: ${hilang.join(", ")}`);
+  return dirs;
 }
 
 export function jalankan(webDir) {

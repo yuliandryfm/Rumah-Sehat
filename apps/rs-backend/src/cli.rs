@@ -317,24 +317,51 @@ fn run_worker(config: WorkerConfig) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    let valkey_config = ValkeyConfig {
+        url: config.valkey_url.clone(),
+        op_timeout: Duration::from_millis(config.valkey_op_timeout_ms),
+    };
+    let directory_url = config.database_url.clone();
     let settings = PullerSettings {
         options: events.options(),
         database_url: config.database_url,
         poll_interval: events.poll_interval(),
         retry_interval: events.retry_interval(),
     };
-    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     tracing::info!(
         lock_key = RS_KEYCLOAK_EVENT_PULLER.key(),
         realms = settings.options.realms.len(),
         "worker_starting"
     );
-    runtime.block_on(async move {
+    let started = runtime.block_on(async move {
+        // Pencabutan sesi dari event LOGOUT (TD-27): PostgreSQL sumber kebenaran, Valkey salinan (F1-T33).
+        let Ok(valkey) = Valkey::connect_lazy(&valkey_config) else {
+            tracing::error!("worker_valkey_url_invalid");
+            return false;
+        };
+        let Ok(pool) = PgPoolOptions::new()
+            .max_connections(2)
+            .connect_lazy(directory_url.expose())
+        else {
+            tracing::error!("worker_database_url_invalid");
+            return false;
+        };
+        let directory = Arc::new(AccountDirectory::new(
+            pool,
+            valkey,
+            Arc::clone(&clock),
+            Duration::from_secs(crate::modules::identity::api::DEFAULT_ACCOUNT_CACHE_TTL_SECONDS),
+        ));
         tokio::select! {
-            () = run_puller(settings, client, clock) => {}
+            () = run_puller(settings, client, clock, directory) => {}
             () = shutdown_signal() => {}
         }
+        true
     });
+    if !started {
+        return ExitCode::FAILURE;
+    }
     tracing::info!("worker_stopped");
     ExitCode::SUCCESS
 }

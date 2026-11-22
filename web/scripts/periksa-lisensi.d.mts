@@ -16,4 +16,5 @@ export function uraiLisensi(ekspresi: unknown): PohonLisensi | null;
 export function komponenLisensi(ekspresi: unknown): string[] | null;
 export function periksaPaket(paket: PaketLisensi[], mode: "runtime" | "dev"): Pelanggaran[];
 export function ratakan(keluaran: Record<string, { name: string; versions?: string[] }[]>): PaketLisensi[];
+export function workspaceDariYaml(teks: string, daftarAnak: (induk: string) => string[]): string[];
 export function jalankan(webDir: string): number;

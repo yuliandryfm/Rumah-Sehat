@@ -310,23 +310,15 @@ impl AccountDirectory {
         reason: RevocationReason,
         expires_at: OffsetDateTime,
     ) -> Result<RecordedRevocation, IdentityError> {
-        if idp_session_id.is_empty() || expires_at <= self.clock.now() {
-            return Err(IdentityError::InvalidRevocation);
-        }
-        let effective = repo::insert_revocation(
+        record_revocation_in_tx(
             conn,
-            new_id(),
             account_id,
             idp_session_id,
-            reason.as_str(),
+            reason,
             expires_at,
+            self.clock.now(),
         )
         .await
-        .map_err(|_| IdentityError::Database)?;
-        Ok(RecordedRevocation {
-            idp_session_id: idp_session_id.to_string(),
-            expires_at: effective,
-        })
     }
 
     /// Menyalin pencabutan yang sudah di-commit ke Valkey. Gagal → penanda salinan lengkap dihapus supaya
@@ -385,6 +377,35 @@ impl AccountDirectory {
             .await
             .map_err(|_| IdentityError::Database)
     }
+}
+
+/// Inti [`AccountDirectory::record_revocation`] tanpa Valkey, untuk penulis di modul ini yang memegang
+/// transaksi sendiri (pengambil event Keycloak, TD-27). `now` = jam server aplikasi.
+pub(super) async fn record_revocation_in_tx(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+    idp_session_id: &str,
+    reason: RevocationReason,
+    expires_at: OffsetDateTime,
+    now: OffsetDateTime,
+) -> Result<RecordedRevocation, IdentityError> {
+    if idp_session_id.is_empty() || expires_at <= now {
+        return Err(IdentityError::InvalidRevocation);
+    }
+    let effective = repo::insert_revocation(
+        conn,
+        new_id(),
+        account_id,
+        idp_session_id,
+        reason.as_str(),
+        expires_at,
+    )
+    .await
+    .map_err(|_| IdentityError::Database)?;
+    Ok(RecordedRevocation {
+        idp_session_id: idp_session_id.to_string(),
+        expires_at: effective,
+    })
 }
 
 async fn rebuild(

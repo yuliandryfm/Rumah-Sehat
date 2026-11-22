@@ -24,6 +24,23 @@ if [ "$#" -ne 0 ]; then
   exit 2
 fi
 
+# Antrean verifikasi (KEPUTUSAN-300): paling banyak 2 verifikasi penuh berjalan bersamaan per pengguna
+# di satu mesin. Banyak worktree agent yang memverifikasi serentak membuat mesin 4 inti mencapai load
+# 20-40 sehingga test berbasis waktu gagal palsu. Ini hanya MENUNDA giliran, tidak melewati atau
+# melonggarkan langkah apa pun. Kunci dilepas otomatis saat proses selesai. Tanpa flock (macOS), tidak antre.
+if command -v flock >/dev/null 2>&1; then
+  ANTREAN_DIR="/tmp/ruang-sehat-verify-$(id -u)"
+  mkdir -p "$ANTREAN_DIR"
+  exec 8>"$ANTREAN_DIR/slot1"
+  if ! flock -n 8; then
+    exec 8>"$ANTREAN_DIR/slot2"
+    if ! flock -n 8; then
+      echo "verify.sh: menunggu giliran (paling banyak 2 verifikasi bersamaan)..." >&2
+      flock 8
+    fi
+  fi
+fi
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 

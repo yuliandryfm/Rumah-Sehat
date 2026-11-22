@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jalankan, komponenLisensi, periksaPaket, ratakan } from "./periksa-lisensi.mjs";
+import { jalankan, komponenLisensi, periksaPaket, ratakan, workspaceDariYaml } from "./periksa-lisensi.mjs";
 
 const p = (name: string, license: string | undefined) => ({ name, versions: ["1.0.0"], license });
 
@@ -67,6 +67,19 @@ describe("komponenLisensi dan ratakan", () => {
   });
   it("meratakan keluaran pnpm", () => {
     expect(ratakan({ MIT: [{ name: "a", versions: ["1"] }] })).toEqual([{ name: "a", versions: ["1"], license: "MIT" }]);
+  });
+});
+
+describe("workspaceDariYaml", () => {
+  const anak = (induk: string) => (induk === "packages" ? ["ui", "api"] : []);
+  it("menurunkan workspace dari pnpm-workspace.yaml, termasuk glob satu tingkat", () => {
+    const yaml = "# komentar\npackages:\n  - backoffice\n  - situs\n  - packages/*\n";
+    expect(workspaceDariYaml(yaml, anak)).toEqual([".", "backoffice", "situs", "packages/ui", "packages/api"]);
+  });
+  it("gagal pada pola tak didukung atau daftar kosong", () => {
+    expect(() => workspaceDariYaml("packages:\n  - '**'\n", anak)).toThrow();
+    expect(() => workspaceDariYaml("packages:\n  - '!x'\n", anak)).toThrow();
+    expect(() => workspaceDariYaml("catalog:\n  a: 1\n", anak)).toThrow();
   });
 });
 
