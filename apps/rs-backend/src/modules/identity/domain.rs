@@ -9,8 +9,10 @@
 //!
 //! Isi event Keycloak yang memuat data pribadi atau rahasia (`details.username` = email karena email sebagai
 //! username, `details.email`, `details.reason` teks bebas, `token_id`, `refresh_token_id`, `code_id`,
-//! `sessionId`, `redirect_uri`) tidak pernah dibaca ke tipe Rust: [`KcEvent`] hanya menguraikan field yang
-//! dipakai pemetaan, dan `details` hanya `credential_type` yang dipetakan ke nama aksi tertutup.
+//! `redirect_uri`) tidak pernah dibaca ke tipe Rust: [`KcEvent`] hanya menguraikan field yang dipakai pemetaan,
+//! dan `details` hanya `credential_type` yang dipetakan ke nama aksi tertutup. Pengecualian TD-27: `sessionId`
+//! (ID sesi Keycloak = klaim `sid` token, bukan rahasia pemegang) dibaca hanya untuk mencatat pencabutan sesi
+//! (`session_revocation`) dari event LOGOUT; tidak pernah masuk audit, log, atau `Debug`.
 //! Kode alasan berasal dari daftar izin [`reason_code`], bukan diteruskan dari Keycloak.
 
 use audit::{EventCode, SourceComponent};
@@ -88,6 +90,8 @@ pub const PULLED_TYPES: &[&str] = &[
 
 /// Batas panjang ID pengguna Keycloak yang diterima (UUID 36 karakter; sisa ruang untuk ID federasi).
 const MAX_USER_ID_LEN: usize = 64;
+/// Batas panjang ID sesi Keycloak yang diterima.
+const MAX_SESSION_ID_LEN: usize = 128;
 /// Batas panjang `clientId` yang dibaca.
 const MAX_CLIENT_ID_LEN: usize = 255;
 
@@ -106,6 +110,8 @@ pub struct RawEvent {
     user_id: Option<String>,
     #[serde(rename = "ipAddress")]
     ip_address: Option<String>,
+    #[serde(rename = "sessionId")]
+    session_id: Option<String>,
     error: Option<String>,
     details: Option<RawDetails>,
 }
@@ -132,6 +138,8 @@ pub struct KcEvent {
     pub ip: Option<IpAddr>,
     /// Komponen sumber dari `clientId`.
     pub component: SourceComponent,
+    /// ID sesi Keycloak (klaim `sid`), bila ada. Hanya untuk pencabutan sesi (TD-27).
+    pub session_id: Option<String>,
 }
 
 // Debug tanpa ID pengguna dan alamat IP (data pribadi, ADR-010 butir 1).
@@ -180,6 +188,12 @@ impl RawEvent {
             Some(_) => return Err(InvalidEvent("userId")),
             None => None,
         };
+        let session_id = match self.session_id {
+            Some(s) if s.is_empty() => None,
+            Some(s) if s.len() <= MAX_SESSION_ID_LEN && s.bytes().all(is_id_byte) => Some(s),
+            Some(_) => return Err(InvalidEvent("sessionId")),
+            None => None,
+        };
         let ip = match self.ip_address.as_deref() {
             None | Some("") => None,
             Some(s) => Some(IpAddr::from_str(s).map_err(|_| InvalidEvent("ipAddress"))?),
@@ -198,6 +212,7 @@ impl RawEvent {
             user_id,
             ip,
             component,
+            session_id,
         })
     }
 }
@@ -489,9 +504,13 @@ mod tests {
             Some("2924aef4-5f3c-4ab1-a8d1-c259bd6fdd6c")
         );
         assert_eq!(ev.ip, Some(IpAddr::from([172, 17, 0, 1])));
+        assert_eq!(ev.session_id.as_deref(), Some("YK9dKN5WZg0tGfmg2RvbYtzf"));
         let dbg = format!("{ev:?}");
         assert!(
-            !dbg.contains("2924aef4") && !dbg.contains("172.17") && !dbg.contains('@'),
+            !dbg.contains("2924aef4")
+                && !dbg.contains("172.17")
+                && !dbg.contains('@')
+                && !dbg.contains("YK9dKN5W"),
             "{dbg}"
         );
         let unknown_client = raw(serde_json::json!({
@@ -541,5 +560,14 @@ mod tests {
             field(&|v| v["userId"] = serde_json::json!("x".repeat(65))),
             Some("userId")
         );
+        assert_eq!(
+            field(&|v| v["sessionId"] = serde_json::json!("a b")),
+            Some("sessionId")
+        );
+        assert_eq!(
+            field(&|v| v["sessionId"] = serde_json::json!("s".repeat(129))),
+            Some("sessionId")
+        );
+        assert_eq!(field(&|v| v["sessionId"] = serde_json::json!("")), None);
     }
 }

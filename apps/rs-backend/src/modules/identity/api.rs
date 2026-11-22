@@ -36,8 +36,8 @@ pub use super::admin_service::{
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
 pub use super::error::IdentityError;
 pub use super::jobs::{
-    MAX_PAGES_PER_ROUND, PAGE_SIZE_RANGE, PullError, PullOptions, Puller, PullerSettings,
-    RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,
+    LOGOUT_REVOCATION_TTL, MAX_PAGES_PER_ROUND, PAGE_SIZE_RANGE, PullError, PullOptions, Puller,
+    PullerSettings, RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,
 };
 pub use super::keycloak::{
     ACTIVATION_ACTIONS, InvalidKeycloakAddress, KeycloakAddress, KeycloakClient, KeycloakError,

@@ -28,6 +28,7 @@ KC_CHECK_SES_CONFIG_SET. Nilai rahasia tidak pernah dicetak.
 
 import difflib
 import email
+import email.header
 import html
 import json
 import os
@@ -329,6 +330,9 @@ def cek_konfigurasi(realm):
     periksa(d.get("eventsEnabled") is True and d.get("eventsExpiration") == 604800 and d.get("adminEventsEnabled") is True
             and d.get("adminEventsDetailsEnabled") is False,
             f"[{realm}] event login dan admin disimpan 7 hari, tanpa detail representasi (ADR-011 butir 10)")
+    periksa(d.get("eventsListeners") == ["jboss-logging", "email"] and d.get("emailTheme") == TEMA,
+            f"[{realm}] listener event email aktif dengan tema email {TEMA} (pemberitahuan password diubah, TD-27)",
+            str((d.get("eventsListeners"), d.get("emailTheme"))))
     periksa((d.get("browserFlow"), d.get("resetCredentialsFlow"), d.get("directGrantFlow")) == ("rs-browser-mfa", "rs-reset-credentials-mfa", "rs-direct-grant-mfa"),
             f"[{realm}] alur browser, atur ulang, dan direct grant memakai alur MFA kustom")
 
@@ -844,11 +848,48 @@ def tautan_atur_ulang(raw):
     return None
 
 
+def klaim(token_akses):
+    import base64
+    bagian = token_akses.split(".")[1]
+    return json.loads(base64.urlsafe_b64decode(bagian + "=" * (-len(bagian) % 4)))
+
+
+def sesi_aktif(realm, user):
+    """Sesi login lengkap (password + OTP) beserta token; None bila gagal."""
+    b, verifier, r = mulai(realm)
+    r = kirim_password(b, r, user.email, user.password)
+    r = kirim_otp(b, r, user.otp())
+    code = kode_dari(r, realm)
+    if code is None:
+        return None
+    t = tukar_kode(realm, code, verifier)
+    return t.json() if t.status == 200 else None
+
+
+def teks_email(raw):
+    """(subjek terurai, gabungan bagian teks dan HTML terurai) dari pesan MIME."""
+    m = email.message_from_string(raw)
+    subjek = str(email.header.make_header(email.header.decode_header(m.get("Subject", ""))))
+    isi = []
+    for part in m.walk():
+        if part.get_content_maintype() == "text":
+            isi.append(part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8", "replace"))
+    return subjek, "\n".join(isi)
+
+
+SUBJEK_PASSWORD_DIUBAH = "Password akun Ruang Sehat Anda telah diubah"
+
+
 def cek_atur_ulang_tidak_melewati_otp(realm, user):
-    print(f"== [{realm}] atur ulang password tidak melewati OTP (US-103 AC4e)")
+    print(f"== [{realm}] atur ulang password tidak melewati OTP (US-103 AC4e) dan mengakhiri semua sesi (AC4d, TD-27)")
     # Konfigurasi relay produksi tetap diperiksa di cek_konfigurasi.
     asli = smtp_ke_penangkap(realm)
     try:
+        # TD-27: sesi yang sudah berjalan sebelum atur ulang (perangkat lain / penyerang dengan sesi curian).
+        lama = sesi_aktif(realm, user)
+        periksa(lama is not None, f"[{realm}] sesi aktif sebelum atur ulang tersedia (password + OTP)")
+        sid_lama = klaim(lama["access_token"]).get("sid") if lama else None
+        password_lama = user.password
         sebelum = daftar_email()
         b, _, r = mulai(realm)
         tautan = [h for _, h in k.Page(r.body).links if "reset-credentials" in (h or "")]
@@ -881,10 +922,43 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
         f = p.form("kc-passwd-update-form")
         periksa(f is not None, f"[{realm}] OTP benar baru membuka formulir password baru")
         if f:
+            # TD-27: formulir atur ulang selalu mengirim logout-sessions=on, tanpa kotak pilihan (bawaan keycloak.v2
+            # tidak tercentang); UpdatePassword 26.8.2 lalu mengakhiri semua sesi lain, online dan offline (SRC-770).
+            periksa(f["inputs"].get("logout-sessions") == "on" and 'type="checkbox"' not in r.body
+                    and 'id="rs-logout-info"' in r.body,
+                    f"[{realm}] formulir password baru mengirim logout-sessions=on tanpa pilihan dan memberi tahu semua sesi diakhiri",
+                    str(f["inputs"].get("logout-sessions")))
             baru = "Baru-" + secrets.token_urlsafe(12)
+            mulai_ms = int(time.time() * 1000) - 5000
+            email_sebelum_simpan = daftar_email()
             time.sleep(JEDA)
             r = ikuti(b2, b2.open(f["action"], dict(f["inputs"], **{"password-new": baru, "password-confirm": baru})))
             user.password = baru
+            if lama:
+                rs_ = segarkan(realm, lama["refresh_token"])
+                periksa(rs_.status == 400 and (rs_.json() or {}).get("error") == "invalid_grant",
+                        f"[{realm}] token penyegar sesi lama ditolak seketika setelah atur ulang: sesi Keycloak berakhir (US-103 AC4d)",
+                        f"HTTP {rs_.status}")
+            ev = ADMIN.get(f"{realm}/events?user={user.id}&dateFrom={mulai_ms}&max=50")
+            jenis = sorted({e.get("type") for e in ev})
+            print(f"  INFO [{realm}] event Keycloak saat atur ulang: {jenis}")
+            keluar = [e for e in ev if e.get("type") == "LOGOUT" and e.get("sessionId") == sid_lama
+                      and (e.get("details") or {}).get("logout_triggered_by_required_action") == "UPDATE_PASSWORD"]
+            periksa(sid_lama is not None and len(keluar) == 1 and keluar[0].get("ipAddress"),
+                    f"[{realm}] event LOGOUT untuk sesi lama (sessionId = klaim sid, beralamat IP) tercatat: dasar pencabutan "
+                    f"session_revocation oleh rs-backend worker (TD-27)", str(jenis))
+            ganti = [e for e in ev if e.get("type") == "UPDATE_CREDENTIAL" and (e.get("details") or {}).get("credential_type") == "password"
+                     and not e.get("error")]
+            periksa(len(ganti) == 1, f"[{realm}] event UPDATE_CREDENTIAL password tercatat sekali (E-04 lewat pengambil event)", str(jenis))
+            nama, raw = baca_email(email_sebelum_simpan)
+            subjek, isi = teks_email(raw) if raw else ("", "")
+            periksa(subjek == SUBJEK_PASSWORD_DIUBAH and "Layanan Pelanggan" in isi,
+                    f"[{realm}] email pemberitahuan 'password diubah' terkirim ke email akun lewat SMTP realm (US-103 AC4d, KEPUTUSAN-200)",
+                    subjek)
+            if raw:
+                periksa(not re.search(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", isi) and "http" not in isi.lower()
+                        and baru not in raw and password_lama not in raw and "action-token" not in raw,
+                        f"[{realm}] email pemberitahuan tanpa alamat IP, tautan, atau password")
             periksa(kode_dari(r, realm) is None,
                     f"[{realm}] setelah password baru tersimpan, atur ulang TIDAK menerbitkan kode otorisasi (US-103 AC4d, TD-16)",
                     (r.location or "")[:80])
@@ -895,6 +969,14 @@ def cek_atur_ulang_tidak_melewati_otp(realm, user):
             r3 = kirim_password(b3, r3, user.email, baru)
             periksa(k.Page(r3.body).form("kc-otp-login-form") is not None and kode_dari(r3, realm) is None,
                     f"[{realm}] setelah atur ulang, login dengan password baru tetap meminta OTP")
+            b4, _, r4 = mulai(realm)
+            sebelum_gagal = daftar_email()
+            r4 = kirim_password(b4, r4, user.email, password_lama)
+            periksa(k.Page(r4.body).form("kc-otp-login-form") is None and kode_dari(r4, realm) is None
+                    and pesan_galat(r4) == PESAN_SERAGAM,
+                    f"[{realm}] password lama tidak dapat dipakai setelah atur ulang (pesan seragam)")
+            periksa(tunggu_tanpa_email_baru(sebelum_gagal),
+                    f"[{realm}] login gagal tidak mengirim email (listener email hanya UPDATE_PASSWORD, PRD §2.2)")
         r = ikuti(k.Browser(BASE), k.Browser(BASE).open(link))
         periksa(k.Page(r.body).form("kc-passwd-update-form") is None and k.Page(r.body).form("kc-otp-login-form") is None,
                 f"[{realm}] tautan atur ulang yang sudah dipakai ditolak")
