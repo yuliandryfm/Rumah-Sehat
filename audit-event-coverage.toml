@@ -40,6 +40,15 @@ tests = [
   "apps/rs-backend/tests/identity_keycloak_events.rs::first_admin_login_activates_pending_admin_account",
 ]
 
+# E-10/E-11 penonaktifan anggota HR perusahaan (F1-T107, US-1904 AC2, AC5), termasuk penolakan aturan (E-10 gagal).
+[[emitter]]
+file = "apps/rs-backend/src/modules/identity/corporate_hr_service.rs"
+codes = ["E10", "E11"]
+tests = [
+  "apps/rs-backend/tests/corporate_hr_members.rs::deactivating_another_hr_revokes_access_immediately_and_is_audited",
+  "apps/rs-backend/tests/corporate_hr_members.rs::self_deactivation_is_rejected_without_side_effects",
+]
+
 # E-10/E-11 akun dan sub-peran admin (F1-T65, US-208), termasuk undangan aktivasi berhasil dan gagal.
 [[emitter]]
 file = "apps/rs-backend/src/modules/identity/admin_service.rs"

@@ -9,6 +9,10 @@
 //! admin beserta undangan aktivasi sekali pakai 24 jam, perubahan sub-peran, dan penonaktifan, semuanya
 //! dengan E-10/E-11 lewat `audit::in_audited_tx`.
 //!
+//! F1-T107 (US-1904 AC2, AC5): [`CorporateHrAccounts`] daftar dan penonaktifan anggota HR perusahaan
+//! (invarian HR aktif terakhir, E-10/E-11), dengan antarmuka penyedia realm `korporat`
+//! [`CorporateIdentityProvisioner`] yang belum punya implementasi produksi ([`ProvisionerNotConfigured`]).
+//!
 //! F1-T33: resolver akun dan penjaga sesi yang dicabut untuk perakitan aplikasi dan modul lain:
 //! - [`AccountDirectory`]: dipasang ke `authz::Enforcement::new(auth, directory.clone(), directory, denials)`
 //!   sebagai resolver akun dan penjaga sesi yang dicabut.
@@ -32,6 +36,11 @@ pub use super::admin_service::{
     AccountChangeListener, AdminAccounts, AdminActor, AdminIdentityProvider, BootstrapApproval,
     CreatedAdmin, Deactivated, IdpFailure, IdpFuture, InviteDelivery, KeycloakAdminUsers,
     NewAdminInput, NoAccountCache, StaffNikIndex, staff_nik_index,
+};
+pub use super::corporate_hr_domain::HrRuleViolation;
+pub use super::corporate_hr_service::{
+    CorporateHrAccounts, CorporateIdentityProvisioner, HrDeactivated, HrIdpFailure, HrIdpFuture,
+    HrMemberView, ProvisionerNotConfigured,
 };
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
 pub use super::error::IdentityError;

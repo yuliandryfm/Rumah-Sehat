@@ -61,6 +61,7 @@ impl Fixture {
                 identity: Arc::new(env.services()),
                 public_content_limit: common::roomy_limiter(),
                 public_image_limit: common::roomy_limiter(),
+                corporate_hr: common::corporate_hr(common::unreachable_pool()),
             },
         );
         let auth = common::auth_state(&keys, Arc::new(SystemClock));

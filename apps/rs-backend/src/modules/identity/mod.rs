@@ -12,16 +12,33 @@
 //!   `admin_repo`, use case `admin_service` (bootstrap Super Admin pertama dengan persetujuan orang kedua,
 //!   buat akun + undangan, ubah sub-peran, nonaktifkan), dan aktivasi pertama di pengambil event.
 //!
-//! Endpoint HTTP modul ini (registrasi, keluar, kelola akun) menyusul di task masing-masing.
+//! - F1-T107: kelola anggota HR perusahaan (US-1904 AC2, AC5): aturan murni `corporate_hr_domain`, query
+//!   akun `corporate_hr_repo` (keanggotaan lewat `corporate::api`), use case `corporate_hr_service`, dan
+//!   endpoint `/v1/corporate/members` (`corporate_hr_http`).
+//!
+//! Endpoint HTTP lain modul ini (registrasi, keluar, kelola akun admin) menyusul di task masing-masing.
 
 mod admin_domain;
 mod admin_repo;
 mod admin_service;
 pub mod api;
 mod cache;
+mod corporate_hr_domain;
+mod corporate_hr_http;
+mod corporate_hr_repo;
+mod corporate_hr_service;
 mod domain;
 mod error;
 mod jobs;
 mod keycloak;
 mod repo;
 mod service;
+
+use crate::app::AppState;
+use authz::PolicyRouter;
+
+/// Rute API korporat modul ini (`openapi/korporat.json`, `/v1/corporate/members`, F1-T107), masing-masing
+/// dengan kebijakannya (KEPUTUSAN-127).
+pub(crate) fn corporate_router() -> PolicyRouter<AppState> {
+    corporate_hr_http::router()
+}

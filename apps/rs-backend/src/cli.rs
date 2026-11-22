@@ -10,7 +10,9 @@ use crate::config::{
     ApiConfig, AuditRelayConfig, AuditVerifyConfig, EmailRelayConfig, WorkerConfig,
 };
 use crate::http_support::EnvelopeRenderer;
-use crate::modules::identity::api::AccountDirectory;
+use crate::modules::identity::api::{
+    AccountDirectory, CorporateHrAccounts, ProvisionerNotConfigured,
+};
 use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
 use crate::modules::profile::api::IdentityServices;
 use crate::rate_limit::RateLimiter;
@@ -518,6 +520,14 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         ))),
     )
     .map_err(|_| setup_failed("denial_sink"))?;
+    // Kelola anggota HR (F1-T107). Penyedia realm `korporat` belum dipasang (ADR-030: klien
+    // `manage-users` hanya di worker, pemasangan task terpisah): tanpa Admin REST.
+    let corporate_hr = Arc::new(CorporateHrAccounts::new(
+        pool.clone(),
+        Arc::clone(&clock),
+        Arc::clone(&directory),
+        Arc::new(ProvisionerNotConfigured),
+    ));
     let readiness: Vec<Arc<dyn ReadinessCheck>> =
         vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
     let state = AppState::new(
@@ -530,6 +540,7 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             identity: Arc::new(identity),
             public_content_limit: Arc::new(RateLimiter::new(config.public_rate)),
             public_image_limit: Arc::new(RateLimiter::new(config.public_rate)),
+            corporate_hr,
         },
     );
     let router = build_router(state, auth, directory.clone(), directory, denials).map_err(|e| {

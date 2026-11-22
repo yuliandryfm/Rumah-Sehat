@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM app.corporate_member m\n               JOIN app.account a ON a.id = m.account_id\n               WHERE m.corporate_client_id = $1 AND m.deleted_at IS NULL AND a.status = 'active'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fd4355b22f01800f3e2f9f043dabf7f928b59b5aa6f928beb4fce9b28087e5e7"
+}

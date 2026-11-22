@@ -85,10 +85,23 @@ struct Case {
     probe: Probe,
 }
 
-/// Semua endpoint `/v1/corporate/*` proses `api`. Belum ada endpoint produksi sampai F1-T101/F1-T107;
-/// task yang menambah endpoint WAJIB menambah kasusnya di sini (dan objek fixture untuk parameter path
-/// barunya di [`seed_tenant`]), atau test cakupan di bawah gagal.
-const PRODUCTION_CASES: &[Case] = &[];
+/// Semua endpoint `/v1/corporate/*` proses `api`. Task yang menambah endpoint WAJIB menambah kasusnya di
+/// sini (dan objek fixture untuk parameter path barunya di [`seed_tenant`]), atau test cakupan di bawah gagal.
+///
+/// F1-T107: anggota HR. Pembanding positif penonaktifan (HR B atas keanggotaannya sendiri) dijawab `409`
+/// (diri sendiri ditolak), cukup membuktikan objek B ada tanpa mengubah data B.
+const PRODUCTION_CASES: &[Case] = &[
+    Case {
+        method: "GET",
+        path: "/v1/corporate/members",
+        probe: Probe::Hr { body: None },
+    },
+    Case {
+        method: "POST",
+        path: "/v1/corporate/members/{corporate_member_id}/deactivate",
+        probe: Probe::Hr { body: None },
+    },
+];
 
 /// Pelanggaran cakupan harness terhadap endpoint terdaftar.
 fn coverage_violations(registered: &[(EndpointKey, Policy)], cases: &[Case]) -> Vec<String> {
@@ -344,7 +357,9 @@ fn leaked(resp: &Resp, tenant: &Tenant) -> Vec<String> {
 }
 
 /// Sidik data perusahaan `client_id` di semua tabel `app` yang punya kolom `corporate_client_id`, ditambah
-/// baris `corporate_client`-nya. Tabel dicari dinamis sehingga tabel korporat baru ikut terjaga.
+/// baris `corporate_client`-nya dan baris `account` semua HR yang pernah menjadi anggotanya (TD-34, F1-T107:
+/// penulisan lintas tenant ke akun HR perusahaan lain, mis. penonaktifan, ikut terdeteksi). Tabel dicari
+/// dinamis sehingga tabel korporat baru ikut terjaga.
 async fn fingerprint(pool: &PgPool, client_id: Uuid) -> Vec<(String, String)> {
     let tables = sqlx::query_scalar!(
         r#"SELECT table_name AS "table_name!" FROM information_schema.columns
@@ -384,6 +399,16 @@ async fn fingerprint(pool: &PgPool, client_id: Uuid) -> Vec<(String, String)> {
     .await
     .unwrap();
     out.push(("corporate_client".into(), own));
+    let accounts = sqlx::query_scalar!(
+        r#"SELECT coalesce(md5(string_agg(a::text, '|' ORDER BY a.id)), '') AS "h!"
+           FROM app.account a
+           WHERE a.id IN (SELECT m.account_id FROM app.corporate_member m WHERE m.corporate_client_id = $1)"#,
+        client_id
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    out.push(("account (HR perusahaan)".into(), accounts));
     out
 }
 
@@ -525,6 +550,7 @@ fn app_state(pool: &PgPool) -> AppState {
             files,
             public_content_limit: common::roomy_limiter(),
             public_image_limit: common::roomy_limiter(),
+            corporate_hr: common::corporate_hr(pool.clone()),
         },
     )
 }
@@ -948,6 +974,30 @@ async fn harness_detects_leaky_sample_endpoints() {
             .any(|x| x.starts_with("GET /v1/corporate/company:")),
         "{v:#?}"
     );
+}
+
+// trace: TD-34, US-1904 AC3 (sidik data mencakup akun HR perusahaan korban, termasuk keanggotaan dicabut)
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn fingerprint_detects_writes_to_victim_hr_accounts() {
+    let pool = pool("RS_TEST_DB_APP_URL").await;
+    let b = seed_tenant(&pool, "B").await;
+    let before = fingerprint(&pool, b.client_id).await;
+    sqlx::query!(
+        "UPDATE app.account SET status = 'inactive', status_reason = 'uji_harness', updated_at = now() \
+         WHERE id = $1",
+        b.account_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let after = fingerprint(&pool, b.client_id).await;
+    let changed: Vec<&str> = before
+        .iter()
+        .zip(after.iter())
+        .filter(|(x, y)| x != y)
+        .map(|((t, _), _)| t.as_str())
+        .collect();
+    assert_eq!(changed, vec!["account (HR perusahaan)"]);
 }
 
 // trace: US-1904 AC5, US-1916 AC2, US-1901 AC6, M-51 (pembaca keanggotaan sungguhan di PostgreSQL)

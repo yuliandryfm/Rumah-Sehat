@@ -1,12 +1,14 @@
 import createClient, { type ClientOptions } from "openapi-fetch";
 import type { paths as BackofficePaths } from "./generated/backoffice.ts";
+import type { paths as KorporatPaths } from "./generated/korporat.ts";
 import type { paths as OpsPaths } from "./generated/ops.ts";
 
 import type { paths as PublicPaths } from "./generated/public.ts";
 
 export type { BackofficePaths };
 export type { components as BackofficeComponents } from "./generated/backoffice.ts";
-export type { OpsPaths, PublicPaths };
+export type { KorporatPaths, OpsPaths, PublicPaths };
+export type { components as KorporatComponents } from "./generated/korporat.ts";
 export type { components as PublicComponents } from "./generated/public.ts";
 export type { components as OpsComponents } from "./generated/ops.ts";
 
@@ -30,4 +32,13 @@ export function createBackofficeClient(options: ClientOptions) {
 /** Klien bertipe untuk API publik tanpa sesi (`openapi/public.json`, `/v1/public/*`): dipakai situs publik. */
 export function createPublicClient(options: ClientOptions) {
   return createClient<PublicPaths>(options);
+}
+
+/**
+ * Klien bertipe untuk API korporat HR perusahaan (`openapi/korporat.json`, `/v1/corporate/*`, realm
+ * `korporat`). Hanya dipanggil server BFF `web/korporat` dengan token akses di sisi server; dari browser,
+ * `baseUrl` harus Route Handler BFF dan mutasi membawa `X-CSRF-Token` (coding-standards §1.5).
+ */
+export function createKorporatClient(options: ClientOptions) {
+  return createClient<KorporatPaths>(options);
 }
