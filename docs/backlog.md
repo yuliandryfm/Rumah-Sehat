@@ -583,6 +583,13 @@ Isi: (1) prototipe klik HTML statis dari wireframe yang ada (pasien, nakes, back
 Ketergantungan: domain dan merek (PT-46), konten situs (Tentang Kami, layanan, rekanan; `[TIDAK DIKETAHUI]`), staging (EN-15, PT-39 Biznet Gio) — tanpa staging, situs hanya bisa didemokan di server pengembangan.
 Status: disetujui; prototipe klik dikerjakan 2026-11-20; task situs/CMS dijadwalkan di pemanggilan /runbook auto berikutnya (batas 45 task sesi ini tercapai)
 
+### CR-026: Aksi Keycloak berhak tinggi lewat worker; pendaftaran tanpa password di formulir
+
+Diajukan dan diputuskan: 2026-11-22, `[USER]` Telegram "A" (KEPUTUSAN-302) dan "R1" (KEPUTUSAN-303); rincian ADR-030.
+Isi: semua aksi Keycloak Admin REST ber-`manage-users` (realm pasien, admin, korporat) dipindah dari proses `api` ke `worker` (niat + job tertutup, akun `pending_provisioning`, alarm admin event); formulir pendaftaran mandiri pasien (US-101) dan HR (US-1901) tanpa password — password dibuat lewat tautan aktivasi email; undangan HR ke email terdaftar ditampilkan seragam.
+**Mengubah keputusan lama:** KEPUTUSAN-201 dan klarifikasi §2.7 butir 4 (pembuatan akun sinkron); AC PRD US-101, US-208, US-1901, US-1903, US-1904 perlu revisi (tabel dampak di ADR-030); menutup TD-26 dan TD-30 setelah implementasi langkah 1–8 ADR-030.
+Status: disetujui; implementasi dijadwalkan setelah registrasi F1-T49–T51 masuk branch utama
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
@@ -621,5 +628,7 @@ Status: disetujui; prototipe klik dikerjakan 2026-11-20; task situs/CMS dijadwal
 | TD-32 | Pemeriksa lisensi npm otomatis di `web/` belum ada (review F1-T96): lisensi di luar daftar izin (KEPUTUSAN-136/297) tidak tertangkap verifikasi; tambah langkah pemeriksa lisensi dependensi pnpm (runtime vs dev dibedakan) — memerlukan perubahan skrip verifikasi (menambah, bukan melonggarkan) | Review F1-T96 | Sebelum penutupan Fase 1 |
 | TD-33 | Sesi setelah reset (review TD-27, Medium/Low): pencabutan sesi hanya dipicu event LOGOUT dari Keycloak; bila pemegang tautan reset membuang `logout-sessions=on` dari form, sesi lain tetap hidup sampai token refresh habis. Tambah pertahanan sisi server: cabut semua sesi akun berdasarkan E-04 password (not-before per akun = waktu event) atau logout Admin REST saat klien berhak minimal tersedia (TD-26/TD-30). Jendela AC4d bergantung pada worker event (poll 60 s; alarm `idp_event_pull_delayed` 5 menit) | Review TD-27 | Sebelum production |
 | TD-34 | Harness isolasi korporat (review F1-T100, Low): sidik data penulisan hanya mencakup tabel `app` ber-`corporate_client_id` + `corporate_client`; penulisan lintas tenant ke tabel turunan tanpa kolom itu atau ke `app.account` HR perusahaan lain tidak terdeteksi — perluas sidik saat F1-T101/F1-T107 menambah tabel/endpoint; DD belum menyebut member area korporat sebagai `source_component` tersendiri (`corporate_portal`) | Review F1-T100 | Bersama F1-T101/F1-T107 |
+| TD-35 | Foto KTP via URL bertanda tangan (review F1-T64, Low): pastikan object storage mengirim `Cache-Control: no-store`/`private` untuk URL unduh dokumen identitas (ADR-018) agar tidak tersimpan di cache HTTP browser; isi `BACKOFFICE_DOCUMENT_ORIGIN` di konfigurasi deploy | Review F1-T64 | Sebelum staging |
+| TD-36 | Field audit (review F1-T69): before/after "bila ada nilai yang berubah" belum ditegakkan untuk E-08 refund, E-09, E-13, E-15 — wajibkan saat pemancarnya dibuat; pengecualian ID objek dipersempit ke E-01..E-04 gagal; inventaris pemancar bisa dilewati lewat alias/helper lintas berkas; `record_invite_failure` bisa mencatat dobel bila balasan commit hilang dan jejak audit tidak memuat kegagalan akhir setelah 3 percobaan; doc `admin_service.rs` masih menyebut urutan lama; ekspor `audit_write_failures_total` ke metrik menunggu agen metrik | Review F1-T69 | Saat pemancar E-08/E-09/E-13/E-15 dibuat |
 
 _Belum ada._

@@ -2,6 +2,7 @@
 
 Status: Diterima (2026-11-19, `[USER]` Telegram "1S3 2Y 3Y 4aV 4bY4cT"; review keamanan dan kepatuhan CR-021 LULUS DENGAN CATATAN; fact-check menyusul)
 Merevisi bila diterima: ADR-006 butir 5, ADR-011 butir 3, butir 5, dan butir 7, ADR-018 butir 1 (izin bucket CMS publik dicabut), ADR-024 butir 2
+Diubah oleh: ADR-030 (2026-11-22, `[USER]` KEPUTUSAN-302) untuk butir 3 — klien Admin REST realm `korporat` hanya dipegang proses `worker`; pendaftaran mandiri HR (kompensasi) dan undangan aktivasi HR dijalankan worker dari niat + job tertutup, sehingga asinkron. Teks butir 3 tidak ditulis ulang.
 Tanggal: 2026-11-19
 
 ## Konteks
