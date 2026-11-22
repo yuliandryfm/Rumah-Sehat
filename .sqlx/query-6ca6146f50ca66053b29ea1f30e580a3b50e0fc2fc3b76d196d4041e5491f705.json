@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deleted_at IS NOT NULL AS \"deleted!\", delete_reason, deleted_by, is_default FROM app.address WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deleted!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "delete_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "delete_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "deleted_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "deleted_by"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "is_default",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "is_default"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "6ca6146f50ca66053b29ea1f30e580a3b50e0fc2fc3b76d196d4041e5491f705"
+}

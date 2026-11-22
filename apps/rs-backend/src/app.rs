@@ -240,7 +240,7 @@ mod tests {
     fn every_patient_route_requires_patient_account_only() {
         let router = patient_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 4);
+        assert_eq!(entries.len(), 10); // 4 identitas (US-106) + 6 profil dan alamat (US-105)
         for ((_method, path), policy) in entries {
             assert!(path.starts_with("/patient/v1/"), "{path}");
             assert_eq!(policy, &Policy::patient(), "{path}");

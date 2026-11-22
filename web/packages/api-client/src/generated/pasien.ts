@@ -4,6 +4,53 @@
  */
 
 export interface paths {
+    "/patient/v1/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Daftar alamat aktif (US-105 AC2): alamat utama pertama; alamat terhapus tidak tampil (KU-04). */
+        get: operations["address_list"];
+        put?: never;
+        /**
+         * Tambah alamat (US-105 AC1a, AC2). Alamat pertama otomatis utama; `is_default = true` melepas utama
+         *     yang lama. Jumlah alamat aktif paling banyak 20 (batas teknis awal). Respons memuat daftar alamat
+         *     sesudahnya.
+         */
+        post: operations["address_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patient/v1/addresses/{address_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ubah alamat milik pemanggil (penggantian penuh). `is_default = true` menjadikannya utama; `false` pada
+         *     alamat utama ditolak (`4220001`, field `is_default`). ID alamat yang tidak ada dan milik pasien lain
+         *     dijawab `404` yang sama (KU-03) dan dicatat sebagai event E-10 gagal.
+         */
+        put: operations["address_update"];
+        post?: never;
+        /**
+         * Hapus alamat milik pemanggil (soft delete, ADR-003). Bila yang dihapus alamat utama, alamat aktif
+         *     tertua berikutnya menjadi utama. Respons memuat daftar alamat sesudahnya.
+         */
+        delete: operations["address_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patient/v1/care-recipients/{care_recipient_id}/identity": {
         parameters: {
             query?: never;
@@ -81,10 +128,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patient/v1/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profil data diri pemilik akun (US-105 AC1) beserta status identitas (AB-05). */
+        get: operations["profile_get"];
+        /**
+         * Simpan profil (US-105 AC1, AC1a, AC1b, AC3). Mengubah nama atau tanggal lahir saat identitas
+         *     `approved` mengembalikan status ke `pending` (menunggu verifikasi ulang); perubahan lain tidak
+         *     memengaruhi status. Simpan tanpa perubahan tidak mencatat event.
+         */
+        put: operations["profile_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Satu alamat. */
+        AddressDto: {
+            address_line: string;
+            city_name: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            id: string;
+            is_default: boolean;
+            label?: string | null;
+            notes?: string | null;
+            postal_code?: string | null;
+            province_name: string;
+            recipient_name: string;
+            /** @example +6281234567890 */
+            recipient_phone: string;
+            /** @example Asia/Jakarta */
+            time_zone: string;
+        };
+        /** @description Bentuk dokumentasi respons daftar alamat setelah tambah (201). */
+        AddressListCreatedEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["AddressListDto"];
+            /** @example 2010000 */
+            response_code: string;
+            /** @example Berhasil dibuat */
+            response_description: string;
+        };
+        /**
+         * @description Daftar alamat aktif: alamat utama pertama, lalu urutan dibuat. Tepat satu `is_default` bila tidak
+         *     kosong.
+         */
+        AddressListDto: {
+            items: components["schemas"]["AddressDto"][];
+        };
+        /** @description Bentuk dokumentasi respons daftar alamat (200). */
+        AddressListEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["AddressListDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /** @description Tambah atau ubah alamat (US-105 AC1a, AC2). Pada ubah (`PUT`) semua field dikirim ulang. */
+        AddressRequest: {
+            /**
+             * @description 5-500 karakter.
+             * @example Jl. Contoh No. 1, RT 01/RW 02
+             */
+            address_line: string;
+            /**
+             * @description 2-100 karakter (sampai sistem kode wilayah ditetapkan).
+             * @example Jakarta Selatan
+             */
+            city_name: string;
+            /**
+             * @description `true` menjadikan alamat ini utama (yang lama dilepas). Alamat pertama selalu utama. `false` pada
+             *     alamat utama ditolak: pilih alamat lain sebagai utama.
+             */
+            is_default?: boolean | null;
+            /**
+             * @description Paling banyak 30 karakter, mis. "Rumah".
+             * @example Rumah
+             */
+            label?: string | null;
+            /**
+             * @description Patokan alamat, paling banyak 200 karakter.
+             * @example Sebelah warung biru
+             */
+            notes?: string | null;
+            /**
+             * @description Hanya angka.
+             * @example 12345
+             */
+            postal_code?: string | null;
+            /**
+             * @description 2-100 karakter (sampai sistem kode wilayah ditetapkan).
+             * @example DKI Jakarta
+             */
+            province_name: string;
+            /**
+             * @description Aturan nama seperti nama lengkap.
+             * @example Siti Aminah
+             */
+            recipient_name: string;
+            /**
+             * @description Aturan nomor HP seperti profil.
+             * @example 081234567890
+             */
+            recipient_phone: string;
+            /**
+             * @description Nama zona waktu IANA; bawaan `Asia/Jakarta`.
+             * @example Asia/Jakarta
+             */
+            time_zone?: string | null;
+        };
         /**
          * @description Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya
          *     dibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.
@@ -216,6 +380,40 @@ export interface components {
             name: string;
             value: string;
         };
+        /** @description Profil pemilik akun. */
+        ProfileDto: {
+            /**
+             * Format: date
+             * @example 1990-01-31
+             */
+            birth_date: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            care_recipient_id: string;
+            /** @example Budi Santoso */
+            full_name: string;
+            /**
+             * @description Status identitas (AB-05). Berubah ke `pending` bila nama atau tanggal lahir diubah saat `approved`
+             *     (US-105 AC3).
+             */
+            identity_status: components["schemas"]["IdentityStatusDto"];
+            /** @example +6281234567890 */
+            phone?: string | null;
+            sex: components["schemas"]["SexDto"];
+        };
+        /** @description Bentuk dokumentasi respons profil. */
+        ProfileEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["ProfileDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /**
+         * @description Jenis kelamin (CHECK `ck_care_recipient_sex`).
+         * @enum {string}
+         */
+        SexDto: "male" | "female";
         /** @description Pengajuan yang diterima. */
         SubmissionDto: {
             /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c */
@@ -233,6 +431,31 @@ export interface components {
             response_code: string;
             /** @example Berhasil dibuat */
             response_description: string;
+        };
+        /**
+         * @description Simpan profil (US-105 AC1, AC1a, AC1b). Penggantian penuh: `phone` yang tidak dikirim atau `null`
+         *     mengosongkan nomor HP. Perubahan NIK bukan lewat sini (US-106).
+         */
+        UpdateProfileRequest: {
+            /**
+             * Format: date
+             * @description Tanggal sah `TTTT-BB-HH`; tidak di masa depan (tanggal WIB), tidak lebih dari 120 tahun lalu, usia
+             *     minimum pemilik akun (PB-22, nilai uji Fase 1).
+             * @example 1990-01-31
+             */
+            birth_date: string;
+            /**
+             * @description 1-100 karakter setelah dipangkas; huruf, spasi, titik, koma, apostrof, tanda hubung.
+             * @example Budi Santoso
+             */
+            full_name: string;
+            /**
+             * @description Spasi dan tanda hubung dibuang; awalan `+62` atau `0`; 8-13 digit setelah kode negara; disimpan
+             *     sebagai `+62...`.
+             * @example 0812-3456-7890
+             */
+            phone?: string | null;
+            sex: components["schemas"]["SexDto"];
         };
         /**
          * @description Cara unggah langsung ke object storage (rahasia berumur pendek; tidak boleh dicatat di log).
@@ -273,6 +496,262 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    address_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daftar alamat. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressListEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun belum memiliki profil. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    address_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressRequest"];
+            };
+        };
+        responses: {
+            /** @description Alamat ditambahkan; daftar alamat sesudahnya. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressListCreatedEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun belum memiliki profil. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid per field (4220001), atau jumlah alamat melebihi batas. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    address_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID alamat (UUID). */
+                address_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressRequest"];
+            };
+        };
+        responses: {
+            /** @description Alamat tersimpan; daftar alamat sesudahnya. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressListEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Alamat tidak ada atau bukan milik akun ini (KU-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid per field (4220001). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    address_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID alamat (UUID). */
+                address_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Alamat dihapus; daftar alamat sesudahnya. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressListEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Alamat tidak ada atau bukan milik akun ini (KU-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     identity_status_get: {
         parameters: {
             query?: never;
@@ -550,6 +1029,140 @@ export interface operations {
             };
             /** @description Kuota slot unggah per akun terlampaui (4290001). */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun belum memiliki profil. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    profile_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Profil tersimpan; status identitas sesudahnya. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun belum memiliki profil. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Transisi status identitas kalah oleh keputusan lain yang tersimpan lebih dulu (4090001). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid per field (4220001): nama, tanggal lahir (sah, rentang, usia minimum), jenis kelamin, nomor HP. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

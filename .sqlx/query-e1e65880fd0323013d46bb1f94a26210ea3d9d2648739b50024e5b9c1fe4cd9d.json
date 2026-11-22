@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.address SET is_default = true, updated_at = now(), updated_by = $2 WHERE id = (SELECT id FROM app.address WHERE patient_id = $1 AND deleted_at IS NULL ORDER BY created_at, id LIMIT 1) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e1e65880fd0323013d46bb1f94a26210ea3d9d2648739b50024e5b9c1fe4cd9d"
+}

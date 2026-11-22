@@ -39,7 +39,7 @@ pub(super) fn router() -> PolicyRouter<AppState> {
         .routes(policy::patient(), routes!(cancel))
 }
 
-fn fail(state: &AppState, cid: CorrelationId, e: ProfileError) -> Response {
+pub(super) fn fail(state: &AppState, cid: CorrelationId, e: ProfileError) -> Response {
     match &e {
         ProfileError::Internal(what) => tracing::error!(error = *what, "identity_request_failed"),
         ProfileError::ProjectionMismatch => tracing::error!("identity_projection_mismatch"),
@@ -49,12 +49,12 @@ fn fail(state: &AppState, cid: CorrelationId, e: ProfileError) -> Response {
 }
 
 /// ID penerima layanan di path yang bukan UUID = tidak ada (404, sama dengan milik orang lain, KU-03).
-fn care_recipient_id(raw: &str) -> Result<Uuid, ProfileError> {
+pub(super) fn care_recipient_id(raw: &str) -> Result<Uuid, ProfileError> {
     Uuid::parse_str(raw).map_err(|_| ProfileError::NotFound)
 }
 
 /// Galat pembacaan badan JSON. Teks galat serde tidak diteruskan (dapat memuat NIK).
-fn body_error(e: &JsonRejection) -> ProfileError {
+pub(super) fn body_error(e: &JsonRejection) -> ProfileError {
     match e {
         JsonRejection::MissingJsonContentType(_) => ProfileError::UnsupportedMediaType,
         JsonRejection::JsonDataError(_) => ProfileError::Validation(vec![FieldError::new(

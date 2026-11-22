@@ -1,0 +1,149 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, label, recipient_name, recipient_phone, address_line, province_name, city_name, postal_code, notes, time_zone, is_default FROM app.address WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "recipient_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "recipient_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "recipient_phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "recipient_phone"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "address_line",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "address_line"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "province_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "province_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "city_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "city_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "postal_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "postal_code"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "notes",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "notes"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "time_zone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "is_default",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "address",
+            "name": "is_default"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "dbc158241b40063c114c6d46427291d1d7f281054d88bb9ba66319286ad26fd7"
+}
