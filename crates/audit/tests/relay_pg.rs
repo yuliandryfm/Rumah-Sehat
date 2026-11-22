@@ -36,6 +36,20 @@ use tokio::sync::Mutex;
 
 static SERIAL: Mutex<()> = Mutex::const_new(());
 
+/// Jaring pengaman penantian kondisi relay (bukan sinkronisasinya; lihat test dua relay).
+const RELAY_WAIT: Duration = Duration::from_secs(60);
+
+/// Jumlah sesi yang memegang kunci advisory relay 7001001.
+async fn relay_lock_holders(relay: &PgPool) -> i64 {
+    sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM pg_locks
+               WHERE locktype = 'advisory' AND classid = 0 AND objid = 7001001 AND objsubid = 1 AND granted"#
+    )
+    .fetch_one(relay)
+    .await
+    .unwrap()
+}
+
 fn clock() -> FixedClock {
     FixedClock::new(datetime!(2027-03-01 10:00:00 UTC))
 }
@@ -424,30 +438,50 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
     let r2 = tokio::spawn(run_relay(settings, clock));
 
     // Selama keduanya hidup, kunci advisory 7001001 dipegang tepat satu sesi.
-    let mut holders = 0;
-    for _ in 0..100 {
-        holders = sqlx::query_scalar!(
-            r#"SELECT count(*) AS "n!" FROM pg_locks
-               WHERE locktype = 'advisory' AND classid = 0 AND objid = 7001001 AND objsubid = 1 AND granted"#
-        )
-        .fetch_one(&relay)
-        .await
-        .unwrap();
-        if holders >= 1 {
-            break;
-        }
+    let deadline = tokio::time::Instant::now() + RELAY_WAIT;
+    let mut holders = relay_lock_holders(&relay).await;
+    while holders == 0 && tokio::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(20)).await;
+        holders = relay_lock_holders(&relay).await;
     }
     assert_eq!(holders, 1, "kunci relay harus dipegang tepat satu sesi");
 
-    for _ in 0..500 {
-        let n = sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM app.audit_outbox"#)
+    // TD-21: relay baru selesai satu putaran setelah DELETE outbox (terlihat sebagai outbox kosong) DAN
+    // jangkar kepala rantai tertulis (berkas WORM lalu baris audit_chain_anchor). Menghentikan relay begitu
+    // outbox kosong memotong putaran terakhir sebelum jangkarnya tertulis (test dulu gagal sesekali saat mesin
+    // sibuk: jangkar tertinggal satu batch dari kepala). Maka relay dihentikan hanya setelah kondisi selesai itu
+    // teramati; batas waktu hanya jaring pengaman agar test tidak menggantung bila relay rusak.
+    let store = FileAnchorStore::new(&anchor_dir).unwrap();
+    let mut w = writer().await;
+    let mut v = verifier.acquire().await.unwrap();
+    loop {
+        let holders = relay_lock_holders(&relay).await;
+        assert!(holders <= 1, "kunci relay dipegang {holders} sesi");
+        let pending = sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM app.audit_outbox"#)
             .fetch_one(&relay)
             .await
             .unwrap();
-        if n == 0 {
-            break;
+        let mut state = format!("outbox {pending}");
+        if pending == 0 {
+            let head = chain_head(&mut w).await.unwrap().unwrap();
+            let last_worm = store.list().await.unwrap().last().map(|a| a.seq);
+            let report = verify_chain(&mut v, &store, &SystemClock).await;
+            if last_worm == Some(head.seq)
+                && report.outcome == VerifyOutcome::Match
+                && report.to_seq == head.seq
+                && report.audit_chain_anchor_id.is_some()
+            {
+                break;
+            }
+            state = format!(
+                "kepala {} jangkar WORM {last_worm:?} verifikasi {:?}/{} baris jangkar {:?}",
+                head.seq, report.outcome, report.to_seq, report.audit_chain_anchor_id
+            );
         }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "relay tidak menyelesaikan putaran dalam {RELAY_WAIT:?}: {state}"
+        );
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     r1.abort();
@@ -456,7 +490,6 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
     let _ = r2.await;
 
     // Setiap event tepat satu kali (PK audit_event_key) dan tidak tersisa di outbox; rantai utuh.
-    let mut v = verifier.acquire().await.unwrap();
     let mut seqs = Vec::new();
     for id in &ids {
         assert!(!outbox_contains(&relay, *id).await, "event masih di outbox");
@@ -484,9 +517,7 @@ async fn two_relays_running_together_keep_one_active_and_chain_intact() {
 
     // F1-T25: relay menjangkarkan kepala rantai ke WORM (berkas) dan tabel audit_chain_anchor; verifikasi
     // terhadap jangkar itu lulus dan merujuk baris jangkarnya.
-    let store = FileAnchorStore::new(&anchor_dir).unwrap();
     let anchors = store.list().await.unwrap();
-    let mut w = writer().await;
     let head = chain_head(&mut w).await.unwrap().unwrap();
     assert_eq!(
         anchors.last().map(|a| (a.seq, a.event_hash)),

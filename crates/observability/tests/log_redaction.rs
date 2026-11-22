@@ -213,9 +213,31 @@ fn app_level_filter_applies_but_security_stream_is_unfiltered_and_separate() {
     let first = sec.first().unwrap();
     assert!(
         first.contains("\"event_type\":\"login_failed\"")
-            && first.contains(&actor.hyphenated().to_string())
+            && first.contains(&actor.hyphenated().to_string()),
+        "{first}"
     );
     assert!(sec.get(1).unwrap().contains("foreign_resource_id"));
+}
+
+#[test]
+fn account_id_with_all_digit_groups_is_emitted_intact() {
+    // TD-21: dulu ~1% UUID acak (kelompok ke-3..5 semuanya digit) tersamar sebagian sebagai kartu 4-4-4-4
+    // atau HP, sehingga account_id di security log rusak dan test di atas gagal sesekali.
+    for raw in [
+        "01a20164-f5ec-7123-8456-123456789012",
+        "01a20164-f5ec-7123-9456-081234567890",
+        "01a20164-f5ec-7123-8456-628123456789",
+    ] {
+        let actor = Uuid::parse_str(raw).unwrap();
+        let c = capture(LogLevel::Info, || {
+            security::login_failed(Some(actor), LoginFailure::BadCredentials);
+            tracing::info!(actor_id = %actor, "x");
+        });
+        let sec = c.security.text();
+        assert!(sec.contains(&format!("\"account_id\":\"{raw}\"")), "{sec}");
+        let app = c.app.text();
+        assert!(app.contains(&format!("\"actor_id\":\"{raw}\"")), "{app}");
+    }
 }
 
 #[test]

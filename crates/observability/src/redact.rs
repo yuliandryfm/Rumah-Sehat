@@ -17,6 +17,9 @@
 //! - Nomor HP bersekat (`0812-3456-7890`) dan rekening 10-12 digit di teks bebas tanpa kunci sensitif
 //!   TIDAK dikenali; yang dikenali: deret 13 digit ke atas, kelompok 4-4-4-4, HP `08`/`628` tanpa sekat.
 //!   Lindungi lewat nama field (`no_rek`, `phone`) dan `Sensitive<T>`.
+//! - UUID kanonik berdiri sendiri (8-4-4-4-12 heksadesimal, tidak menempel pada karakter identifier) disalin
+//!   utuh dan tidak dipindai pola digit (TD-21), sehingga angka yang sengaja diformat menyerupai UUID tidak
+//!   tersamar. Email dengan bagian lokal berbentuk UUID tetap tersamar.
 //! - Lainnya: ini jaring pengaman, bukan izin. Kode tetap dilarang mencatat data terlarang
 //!   (nama, alamat, isi klinis, objek domain utuh) dan memakai `Sensitive<T>`; deteksi pola tidak dapat
 //!   mengenali nama orang atau alamat dalam teks bebas. Deretan digit sepanjang 13 atau lebih (mis. epoch
@@ -290,6 +293,31 @@ fn digit_run(chars: &[char], at: usize) -> usize {
     run_end(chars, at, |c| c.is_ascii_digit()) - at
 }
 
+/// Akhir (eksklusif) UUID kanonik (8-4-4-4-12 heksadesimal) yang berdiri sendiri mulai `at`, bila ada.
+/// Pemanggil menjamin `at` di batas token; karakter sesudahnya tidak boleh karakter identifier (termasuk
+/// `-`), sehingga deret yang hanya menyerupai UUID di tengah token lain tidak dikecualikan.
+fn canonical_uuid_end(chars: &[char], at: usize) -> Option<usize> {
+    const GROUPS: [usize; 5] = [8, 4, 4, 4, 12];
+    let mut pos = at;
+    for (n, len) in GROUPS.iter().enumerate() {
+        if n > 0 {
+            if chars.get(pos) != Some(&'-') {
+                return None;
+            }
+            pos += 1;
+        }
+        let end = run_end(chars, pos, |c| c.is_ascii_hexdigit());
+        if end - pos != *len {
+            return None;
+        }
+        pos = end;
+    }
+    if chars.get(pos).is_some_and(|&c| is_ident(c)) {
+        return None;
+    }
+    Some(pos)
+}
+
 /// Akhir (eksklusif) deret digit yang harus disamarkan mulai `at`, bila ada.
 fn sensitive_digits_end(chars: &[char], at: usize, out_ends_plus: bool) -> Option<usize> {
     let first = digit_run(chars, at);
@@ -454,6 +482,15 @@ pub fn scrub_text(input: &str) -> String {
     let mut i = 0;
     while let Some(&c) = chars.get(i) {
         let at_boundary = i == 0 || chars.get(i - 1).is_some_and(|&p| !is_ident(p));
+
+        // UUID kanonik (ID akun, korelasi, objek) disalin utuh: kelompok heksadesimal yang kebetulan semuanya
+        // digit tidak boleh terbaca sebagai kartu 4-4-4-4 atau nomor HP (TD-21). Bentuk 8-4-4-4-12 tidak
+        // dapat memuat deret 13 digit maupun kelompok kartu 4-4-4-4 yang lengkap di luar susunan UUID itu.
+        if at_boundary && let Some(end) = canonical_uuid_end(&chars, i) {
+            out.push_str(&slice(&chars, i, end));
+            i = end;
+            continue;
+        }
 
         // JWT: tiga bagian base64url berawalan "eyJ".
         if at_boundary && c == 'e' && slice(&chars, i, i + 3) == "eyJ" {
@@ -711,6 +748,47 @@ mod tests {
         ] {
             assert_eq!(scrub_text(s), s);
         }
+    }
+
+    #[test]
+    fn uuids_with_all_digit_groups_are_kept() {
+        // TD-21: UUIDv7 acak dengan kelompok ke-3..5 kebetulan semuanya digit (~1% ID) dulu tersamar sebagian
+        // sebagai kartu 4-4-4-4 (atau HP 08/628 di kelompok terakhir), merusak account_id di security log.
+        for s in [
+            "01a20164-f5ec-7123-8456-123456789012",
+            "01a20164-f5ec-7123-8456-081234567890",
+            "01a20164-f5ec-7123-8456-628123456789",
+            "12345678-1234-1234-1234-123456789012",
+            "ABCDEF01-1234-7123-9456-123456789012",
+        ] {
+            assert_eq!(scrub_text(s), s);
+            let framed = format!("account_id=\"{s}\" route /x/{s}/y ({s})");
+            assert_eq!(scrub_text(&framed), framed);
+        }
+    }
+
+    #[test]
+    fn uuid_exemption_does_not_shield_neighbouring_numbers() {
+        for (input, secret) in [
+            // Kartu tetap tersamar walau berdampingan dengan UUID.
+            (
+                "01a20164-f5ec-7123-8456-123456789012 4111-1111-1111-1111",
+                "4111-1111",
+            ),
+            // Bukan UUID kanonik (kelompok terakhir terlalu panjang / disambung): pola kartu tetap berlaku.
+            ("01a20164-f5ec-4111-1111-1111111111119", "4111-1111"),
+            ("01a20164-f5ec-4111-1111-111111111111-1111", "4111-1111"),
+            ("x01a20164-f5ec-4111-1111-111111111111", "4111-1111"),
+            // Kelompok kartu tanpa awalan UUID.
+            ("f5ec-4111-1111-1111-1111", "4111-1111"),
+        ] {
+            let out = scrub_text(input);
+            assert!(!out.contains(secret), "{input} -> {out}");
+            assert!(out.contains(REDACTED), "{input} -> {out}");
+        }
+        // Email dengan bagian lokal berbentuk UUID tetap tersamar.
+        let out = scrub_text("01a20164-f5ec-7123-8456-123456789012@example.com");
+        assert!(!out.contains("example.com"), "{out}");
     }
 
     #[test]
