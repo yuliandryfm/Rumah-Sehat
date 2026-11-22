@@ -260,7 +260,8 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
   fi
   # API_VALKEY_URL menunjuk loopback yang tidak melayani: resolver akun memakai cadangan PostgreSQL (RT-18).
   # Realm pasien (F1-T61) sama seperti realm admin: JWKS di loopback yang tidak melayani, jadi endpoint
-  # /patient/v1 selalu dijawab 401 di sini; skenario bertoken diuji test integrasi.
+  # /patient/v1 selalu dijawab 401 di sini; skenario bertoken diuji test integrasi. Realm korporat (F1-T100)
+  # sama: endpoint /v1/corporate selalu 401 di sini; isolasi tenant diuji tests/corporate_isolation.rs.
   API_DATABASE_URL="$RS_TEST_DB_APP_URL" \
     API_VALKEY_URL="redis://127.0.0.1:9" API_VALKEY_OP_TIMEOUT_MS=50 \
     AUTH_ADMIN_ISSUER="https://auth.ruang-sehat.invalid/realms/admin" \
@@ -269,6 +270,9 @@ schemathesis_run() { # contract test: backend efemeral di 127.0.0.1 (port acak) 
     AUTH_PATIENT_ISSUER="https://auth.ruang-sehat.invalid/realms/pasien" \
     AUTH_PATIENT_JWKS_URL="http://127.0.0.1:9/realms/pasien/protocol/openid-connect/certs" \
     AUTH_PATIENT_AUDIENCE="rs-patient-api" \
+    AUTH_CORPORATE_ISSUER="https://auth.ruang-sehat.invalid/realms/korporat" \
+    AUTH_CORPORATE_JWKS_URL="http://127.0.0.1:9/realms/korporat/protocol/openid-connect/certs" \
+    AUTH_CORPORATE_AUDIENCE="rs-corporate-api" \
     OPENBAO_ADDR="$ST_BAO_ADDR" OPENBAO_TOKEN="$ST_BAO_TOKEN" \
     NIK_BLIND_INDEX_KV_PATH=ruang-sehat/blind-index/nik \
     API_DEK_CACHE_TTL_SECONDS=300 API_DEK_CACHE_CAPACITY=64 \
