@@ -75,4 +75,4 @@ Nama perintah final dikunci di reference implementation Tahap 8 Fase 1. Kalau be
 - Coding standards: `docs/coding-standards.md` (dibuat di Tahap 5)
 - Stack, hosting, CI/CD, observability, secrets: `docs/05-stack.md`; model data fisik: `docs/05-physical-schema.md`; kode respons API: `docs/05-response-codes.md`; checklist ASVS L2: `docs/05-asvs-checklist.md`
 - Keputusan arsitektur: `docs/adr/`
-- Reference implementation: <lokasi modul, diisi di Tahap 8 Fase 1>
+- Reference implementation (verifikasi identitas pasien, US-106 → US-201): `docs/reference-implementation.md` (pola dan checklist); kode di `apps/rs-backend/src/modules/profile/`, crate `crates/status-flow`, test `apps/rs-backend/tests/profile_identity_*.rs`
