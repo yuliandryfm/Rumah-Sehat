@@ -1458,16 +1458,12 @@ def main():
                 jalankan(f"[{realm}] grant password", cek_grant_password, realm, user)
                 jalankan(f"[{realm}] konsol akun", cek_konsol_akun, realm, user)
                 jalankan(f"[{realm}] kode pemulihan", cek_kode_pemulihan, realm, user)
-                if realm != "korporat":  # F1-T88
-                    jalankan(f"[{realm}] atur ulang password", cek_atur_ulang_tidak_melewati_otp, realm, user)
+                jalankan(f"[{realm}] atur ulang password", cek_atur_ulang_tidak_melewati_otp, realm, user)
             else:
                 periksa(False, f"[{realm}] skenario kode pemulihan dan atur ulang password dijalankan",
                         "butuh user MFA dari skenario sebelumnya")
-            if realm != "korporat":  # F1-T88
-                jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
-            if realm == "korporat":
-                pass
-            elif EMAIL_MODE == "relay":
+            jalankan(f"[{realm}] verifikasi email dulu", cek_verifikasi_email_dulu, realm)
+            if EMAIL_MODE == "relay":
                 jalankan(f"[{realm}] relay email", cek_relay_email, realm)
             else:
                 print(f"== [{realm}] relay email end-to-end: hanya mode ephemeral (mode ini memakai penangkap SMTP)")
