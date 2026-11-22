@@ -1,4 +1,4 @@
-"""Test realm `pasien` dan `admin` sebagai kode terhadap Keycloak sungguhan (F1-T31, modul kritis T1).
+"""Test realm `pasien`, `admin`, dan `korporat` sebagai kode (korporat: F1-T85, F1-T87, F1-T88) terhadap Keycloak sungguhan (F1-T31, modul kritis T1).
 
 Dijalankan oleh scripts/keycloak-check.sh setelah konfigurasi diterapkan dengan keycloak-config-cli.
 Hanya pustaka standar Python 3. Semua user uji sintetis (domain .invalid) dan dihapus di akhir.
@@ -83,12 +83,19 @@ KLIEN = {
         "redirect": env("RS_KC_BACKOFFICE_BFF_REDIRECT_URI"),
         "secret": env("RS_KC_BACKOFFICE_BFF_SECRET"),
     },
+    "korporat": {
+        "client_id": "rs-korporat-bff",
+        "redirect": env("RS_KC_KORPORAT_BFF_REDIRECT_URI"),
+        "secret": env("RS_KC_KORPORAT_BFF_SECRET"),
+    },
 }
 KLIEN_LAIN = {
     "admin": [("rs-portal-bff", env("RS_KC_PORTAL_BFF_REDIRECT_URI"), False)],
     "pasien": [],
+    "korporat": [],
 }
-SESI = {"pasien": (2592000, 7776000), "admin": (1800, 43200)}
+# korporat: idle 30 menit (US-1904 AC6, NFR-SEC-04), mutlak 12 jam (F1-T85)
+SESI = {"pasien": (2592000, 7776000), "admin": (1800, 43200), "korporat": (1800, 43200)}
 
 LULUS = 0
 GAGAL = 0
@@ -1517,7 +1524,7 @@ def main():
         print(f"Keycloak tidak siap di {BASE}: HTTP {r.status}", file=sys.stderr)
         return 1
     try:
-        for realm in ("pasien", "admin"):
+        for realm in ("pasien", "admin", "korporat"):
             r = k.request("GET", f"{BASE}/realms/{realm}")
             if not periksa(r.status == 200, f"[{realm}] realm ada"):
                 continue

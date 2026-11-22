@@ -71,7 +71,7 @@ for alat in docker python3; do
     exit 1
   fi
 done
-for f in "$COMPOSE_FILE" infra/keycloak/keycloak.conf infra/keycloak/realms/pasien.json infra/keycloak/realms/admin.json \
+for f in "$COMPOSE_FILE" infra/keycloak/keycloak.conf infra/keycloak/realms/pasien.json infra/keycloak/realms/admin.json infra/keycloak/realms/korporat.json \
   infra/keycloak/test/keycloak_check.py infra/keycloak/test/kc_http.py infra/keycloak/test/SmtpSink.java \
   infra/keycloak/test/SesTiruan.java \
   infra/keycloak/themes/ruang-sehat/login/theme.properties infra/keycloak/themes/ruang-sehat/login/login.ftl; do
@@ -107,7 +107,8 @@ baca_env() { # baca_env <NAMA> [bawaan]
 
 VAR_REALM="RS_KC_SMTP_HOST RS_KC_SMTP_PORT RS_KC_SMTP_FROM RS_KC_PASIEN_MOBILE_REDIRECT_URI \
 RS_KC_BACKOFFICE_BFF_REDIRECT_URI RS_KC_BACKOFFICE_BFF_SECRET RS_KC_PORTAL_BFF_REDIRECT_URI RS_KC_PORTAL_BFF_SECRET \
-RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET RS_KC_ADMIN_MANAGER_SECRET"
+RS_KC_KORPORAT_BFF_REDIRECT_URI RS_KC_KORPORAT_BFF_SECRET \
+RS_KC_EVENT_READER_PASIEN_SECRET RS_KC_EVENT_READER_ADMIN_SECRET RS_KC_EVENT_READER_KORPORAT_SECRET RS_KC_ADMIN_MANAGER_SECRET"
 
 acak() { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
 
@@ -152,6 +153,10 @@ else
   export RS_KC_PASIEN_MOBILE_REDIRECT_URI="com.example.ruangsehat.pasien:/oauth2redirect"
   export RS_KC_BACKOFFICE_BFF_REDIRECT_URI="http://127.0.0.1:3000/auth/callback"
   export RS_KC_PORTAL_BFF_REDIRECT_URI="http://127.0.0.1:3001/auth/callback"
+  export RS_KC_KORPORAT_BFF_REDIRECT_URI="http://127.0.0.1:3002/auth/callback"
+  RS_KC_KORPORAT_BFF_SECRET="$(acak)"
+  RS_KC_EVENT_READER_KORPORAT_SECRET="$(acak)"
+  export RS_KC_KORPORAT_BFF_SECRET RS_KC_EVENT_READER_KORPORAT_SECRET
   RS_KC_BACKOFFICE_BFF_SECRET="$(acak)"
   RS_KC_PORTAL_BFF_SECRET="$(acak)"
   # Klien layanan pengambil event rs-backend worker (F1-T34), satu rahasia per realm.

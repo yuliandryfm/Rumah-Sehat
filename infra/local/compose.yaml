@@ -128,7 +128,7 @@ services:
       retries: 30
       start_period: 60s
 
-  # Realm `pasien` dan `admin` sebagai kode (F1-T31, KEPUTUSAN-85): keycloak-config-cli 6.5.1, build untuk
+  # Realm `pasien`, `admin`, dan `korporat` sebagai kode (F1-T31, KEPUTUSAN-85): keycloak-config-cli 6.5.1, build untuk
   # klien Keycloak 26.5.5 (tag terbaru rilis 6.5.1; Keycloak server 26.8.2 tidak tercantum resmi, kecocokan
   # dibuktikan scripts/keycloak-check.sh). Bukan layanan tetap (profil `alat`); jalankan:
   #   docker compose -f infra/local/compose.yaml --profile alat run --rm keycloak-config
@@ -162,9 +162,13 @@ services:
       RS_KC_BACKOFFICE_BFF_SECRET: ${RS_KC_BACKOFFICE_BFF_SECRET:?isi di infra/local/.env}
       RS_KC_PORTAL_BFF_REDIRECT_URI: ${RS_KC_PORTAL_BFF_REDIRECT_URI:?isi di infra/local/.env}
       RS_KC_PORTAL_BFF_SECRET: ${RS_KC_PORTAL_BFF_SECRET:?isi di infra/local/.env}
+      # Realm `korporat` (F1-T85, ADR-027 butir 3): klien rahasia BFF web/korporat.
+      RS_KC_KORPORAT_BFF_REDIRECT_URI: ${RS_KC_KORPORAT_BFF_REDIRECT_URI:?isi di infra/local/.env}
+      RS_KC_KORPORAT_BFF_SECRET: ${RS_KC_KORPORAT_BFF_SECRET:?isi di infra/local/.env}
       # Klien layanan pengambil event rs-backend worker (F1-T34, ADR-011 butir 10), satu rahasia per realm.
       RS_KC_EVENT_READER_PASIEN_SECRET: ${RS_KC_EVENT_READER_PASIEN_SECRET:?isi di infra/local/.env}
       RS_KC_EVENT_READER_ADMIN_SECRET: ${RS_KC_EVENT_READER_ADMIN_SECRET:?isi di infra/local/.env}
+      RS_KC_EVENT_READER_KORPORAT_SECRET: ${RS_KC_EVENT_READER_KORPORAT_SECRET:?isi di infra/local/.env}
       # Klien layanan pengelola pengguna admin (F1-T65, US-208): manage-users realm `admin` saja.
       RS_KC_ADMIN_MANAGER_SECRET: ${RS_KC_ADMIN_MANAGER_SECRET:?isi di infra/local/.env}
     volumes:
