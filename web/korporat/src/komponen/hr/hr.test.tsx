@@ -185,6 +185,15 @@ describe("KelolaHr", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
+  test("negatif: 403 4030101 (CSRF/Origin ditolak BFF) saat aksi → pesan muat ulang, bukan layar perusahaan belum aktif", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan: () => gagal(403, "4030101") })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Permintaan tidak dapat diverifikasi");
+    expect(screen.queryByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeNull();
+    expect(screen.getByRole("table")).toBeDefined();
+  });
+
   test("403 saat memuat → layar akses ditolak; 503 → pesan galat dan tabel tidak tampil", async () => {
     render(<KelolaHr csrfToken="t" klien={klien({ daftar: () => gagal(403) })} />);
     expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();

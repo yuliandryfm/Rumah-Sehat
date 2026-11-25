@@ -2,7 +2,7 @@
 
 import { Alert } from "@rs/ui";
 import { useEffect } from "react";
-import { KODE_AKUN_NONAKTIF, type Gagal } from "../../lib/hr/klien.ts";
+import { KODE_AKUN_NONAKTIF, KODE_CSRF_DITOLAK, type Gagal } from "../../lib/hr/klien.ts";
 
 /** Kontak Layanan Pelanggan belum ditetapkan `[TIDAK DIKETAHUI]` (brief web korporat §3); tidak dikarang. */
 const KONTAK_BELUM_ADA = "Hubungi Layanan Pelanggan Ruang Sehat.";
@@ -60,13 +60,14 @@ const arahkanBawaan = (url: string): void => {
 
 /**
  * Memetakan galat akses ke layar: 401 `4010002` → akun nonaktif, 401 lain → alihkan ke login, 403 → perusahaan
- * belum aktif. Galat lain: `null` (pemanggil menampilkan pesan sendiri). Bukan kontrol akses (ADR-012).
+ * belum aktif, kecuali 403 `4030101` (penolakan CSRF/Origin oleh BFF) yang ditampilkan pemanggil sebagai pesan biasa. Galat lain: `null` (pemanggil menampilkan pesan sendiri). Bukan kontrol akses (ADR-012).
  */
 export function GalatAkses({ galat, arahkan = arahkanBawaan }: { galat: Gagal | null; arahkan?: (url: string) => void }) {
   if (galat === null) return null;
   if (galat.status === 401) return galat.kode === KODE_AKUN_NONAKTIF ? <LayarAkunNonaktif /> : <Sesi401 arahkan={arahkan} />;
-  if (galat.status === 403) return <LayarPerusahaanBelumAktif />;
+  if (galat.status === 403 && galat.kode !== KODE_CSRF_DITOLAK) return <LayarPerusahaanBelumAktif />;
   return null;
 }
 
-export const adalahGalatAkses = (g: Gagal | null): boolean => g !== null && (g.status === 401 || g.status === 403);
+export const adalahGalatAkses = (g: Gagal | null): boolean =>
+  g !== null && (g.status === 401 || (g.status === 403 && g.kode !== KODE_CSRF_DITOLAK));

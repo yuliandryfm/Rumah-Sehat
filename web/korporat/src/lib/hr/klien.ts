@@ -23,12 +23,15 @@ export const KODE_AKUN_NONAKTIF = "4010002";
 export const KODE_HR_DIRI_SENDIRI = "4090101";
 export const KODE_HR_AKTIF_TERAKHIR = "4090105";
 export const KODE_SUDAH_NONAKTIF = "4090001";
+/** Kode 403 BFF untuk penolakan CSRF/Origin (`web/packages/bff-auth/src/http.ts`): bukan status perusahaan. */
+export const KODE_CSRF_DITOLAK = "4030101";
 
-/** Teks per `response_code` 409; dipilih dari kode, bukan dari isi respons mentah. */
+/** Teks per `response_code` (409, dan 403 CSRF dari BFF); dipilih dari kode, bukan dari isi respons mentah. */
 const PESAN_KODE: Record<string, string> = {
   [KODE_HR_AKTIF_TERAKHIR]: "HR aktif terakhir tidak dapat dinonaktifkan.",
   [KODE_HR_DIRI_SENDIRI]: "Anda tidak dapat menonaktifkan akun Anda sendiri.",
   [KODE_SUDAH_NONAKTIF]: "Akun HR ini sudah nonaktif.",
+  [KODE_CSRF_DITOLAK]: "Permintaan tidak dapat diverifikasi. Muat ulang halaman lalu coba lagi.",
 };
 
 const PESAN_STATUS: Record<number, string> = {

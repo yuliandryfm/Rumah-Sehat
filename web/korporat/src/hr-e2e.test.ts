@@ -11,7 +11,7 @@ import { buatKlienHr, type KlienHr } from "./lib/hr/klien.ts";
  * F1-T108 e2e sisi server: klien HR yang sama dengan yang dipakai browser (openapi-fetch dari
  * `@rs/api-client`) memanggil `/bff/v1/corporate/members...` lewat Route Handler BFF `korporat`
  * (cookie sesi, CSRF, proxy, kebijakan sesi) ke API Rust tiruan. Tanpa browser sungguhan dan tanpa
- * Keycloak realm `korporat` sungguhan (menunggu F1-T85/F1-T110); layar yang memetakan galat ke tampilan
+ * Keycloak sungguhan (realm `korporat` sudah diuji F1-T85 di keycloak_check.py; login browser end-to-end di F1-T110); layar yang memetakan galat ke tampilan
  * diuji di `komponen/hr/hr.test.tsx`. Jam virtual, jadi idle 30 menit diuji tanpa menunggu.
  */
 const MENIT = 60_000;
