@@ -8,7 +8,11 @@ database = "app"
 
 # idp_event_cursor, idp_event_receipt (F1-T34): posisi baca dan tanda terima pengambil event Keycloak.
 [modules.identity]
-tables = ["account", "rs_admin_role", "session_revocation", "idp_event_cursor", "idp_event_receipt"]
+tables = [
+  "account", "rs_admin_role", "session_revocation", "idp_event_cursor", "idp_event_receipt",
+  # ADR-030 langkah 1 (CR-026): niat penyediaan identitas worker IdP.
+  "idp_provisioning_intent", "idp_provisioning_intent_status_event", "idp_provisioning_intent_state",
+]
 
 [modules.profile]
 tables = [

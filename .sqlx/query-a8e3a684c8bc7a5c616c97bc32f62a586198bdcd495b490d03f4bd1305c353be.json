@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.idp_provisioning_intent (id, created_by, account_id, idp_realm, operation, purpose, origin_intent_id, correlation_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a8e3a684c8bc7a5c616c97bc32f62a586198bdcd495b490d03f4bd1305c353be"
+}

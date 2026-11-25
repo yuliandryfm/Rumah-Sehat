@@ -157,11 +157,11 @@ enum Body {
     Json(Vec<u8>),
 }
 
-/// Jawaban HTTP mentah.
-struct Reply {
-    status: StatusCode,
-    location: Option<String>,
-    body: Bytes,
+/// Jawaban HTTP mentah (dibaca juga klien pekerja IdP `idp_worker_client`, ADR-030).
+pub(super) struct Reply {
+    pub(super) status: StatusCode,
+    pub(super) location: Option<String>,
+    pub(super) body: Bytes,
 }
 
 /// Batas ukuran jawaban Admin REST pengguna (byte).
@@ -247,7 +247,9 @@ impl KeycloakClient {
     }
 
     /// Permintaan Admin REST dengan token klien layanan realm; token dicoba ulang sekali bila ditolak (401).
-    async fn admin_call(
+    /// Selain berkas ini hanya dipanggil klien pekerja IdP (`idp_worker_client`, ADR-030; dijaga arch-check
+    /// `idp-admin-client`).
+    pub(super) async fn admin_call(
         &self,
         realm: IdpRealm,
         method: Method,

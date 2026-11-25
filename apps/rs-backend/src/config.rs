@@ -1,6 +1,6 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
-use crate::modules::identity::api::KeycloakEventConfig;
+use crate::modules::identity::api::{IdpWorkerConfig, KeycloakEventConfig};
 use crate::modules::platform::api::FileStorageConfig;
 use crate::rate_limit::RateBudget;
 use foundation::Sensitive;
@@ -478,6 +478,9 @@ pub struct WorkerConfig {
     pub valkey_url: Sensitive<String>,
     /// `WORKER_VALKEY_OP_TIMEOUT_MS` (bawaan `valkey::DEFAULT_OP_TIMEOUT_MS`).
     pub valkey_op_timeout_ms: u64,
+    /// Worker IdP (ADR-030): realm `IDP_WORKER_REALMS`; rahasia klien `manage-users` dibaca dari OpenBao KV saat
+    /// start, tidak dari lingkungan. `ApiConfig` tidak punya padanannya (KEPUTUSAN-305).
+    pub idp: IdpWorkerConfig,
 }
 
 impl WorkerConfig {
@@ -490,6 +493,7 @@ impl WorkerConfig {
             valkey_url: env.required_secret("WORKER_VALKEY_URL")?,
             valkey_op_timeout_ms: env
                 .optional_or("WORKER_VALKEY_OP_TIMEOUT_MS", valkey::DEFAULT_OP_TIMEOUT_MS)?,
+            idp: IdpWorkerConfig::load(env)?,
         })
     }
 }
@@ -649,6 +653,53 @@ mod tests {
             all.push((k, v));
         }
         EnvSource::from_pairs(all)
+    }
+
+    // trace: ADR-030 langkah 3 (api tanpa rahasia manage-users)
+    #[test]
+    fn api_config_never_carries_idp_worker_secret() {
+        let c = ApiConfig::load(&api_env(&[
+            ("IDP_WORKER_REALMS", "korporat"),
+            (
+                "IDP_WORKER_KV_PATH_KORPORAT",
+                "rs/keycloak/korporat/idp-worker",
+            ),
+            ("IDP_WORKER_CLIENT_SECRET", "rahasia-sintetis-manage-users"),
+        ]))
+        .unwrap();
+        let dump = format!("{c:?}");
+        assert!(!dump.contains("rahasia-sintetis-manage-users"));
+        assert!(!dump.contains("idp-worker"));
+        assert!(!dump.contains("IdpWorker"));
+    }
+
+    #[test]
+    fn worker_idp_is_disabled_unless_configured_and_then_fails_closed() {
+        let base = [
+            (
+                "WORKER_DATABASE_URL",
+                "postgres://rs_worker@127.0.0.1/ruang_sehat",
+            ),
+            ("WORKER_VALKEY_URL", "redis://127.0.0.1:16379"),
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18080"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "s1"),
+            ("KEYCLOAK_EVENT_SECRET_ADMIN", "s2"),
+        ];
+        let c = WorkerConfig::load(&EnvSource::from_pairs(base)).unwrap();
+        assert!(!c.idp.enabled());
+        let mut with_realm: Vec<(&str, &str)> = base.to_vec();
+        with_realm.push(("IDP_WORKER_REALMS", "korporat"));
+        let e = WorkerConfig::load(&EnvSource::from_pairs(with_realm.clone())).unwrap_err();
+        assert_eq!(e.kind(), ConfigErrorKind::Missing);
+        with_realm.push((
+            "IDP_WORKER_KV_PATH_KORPORAT",
+            "rs/keycloak/korporat/idp-worker",
+        ));
+        with_realm.push(("OPENBAO_ADDR", "http://127.0.0.1:18200"));
+        with_realm.push(("OPENBAO_TOKEN", "token-uji-sintetis-worker"));
+        let c = WorkerConfig::load(&EnvSource::from_pairs(with_realm)).unwrap();
+        assert!(c.idp.enabled());
+        assert!(!format!("{c:?}").contains("token-uji-sintetis-worker"));
     }
 
     fn email_relay_env(extra: &[(&'static str, &'static str)]) -> EnvSource {

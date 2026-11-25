@@ -37,6 +37,7 @@ import secrets
 import subprocess
 import sys
 import time
+import uuid
 import urllib.parse
 
 sys.dont_write_bytecode = True  # tanpa __pycache__ di repo
@@ -1509,6 +1510,175 @@ def cek_pasca_kunci():
         ADMIN.call("DELETE", nama)
 
 
+PEKERJA_IDP = "rs-backend-idp-worker"
+
+
+def cek_pekerja_idp(realm):
+    """ADR-030 langkah 4 (CR-026): klien worker IdP realm korporat berhak minimum; atribut user profile
+    `rs_intent_id` hanya Admin dan tidak masuk token; siklus job IdP (apps/rs-backend modul identity,
+    idp_worker_client.rs) berjalan di Keycloak sungguhan: buat pengguna tanpa kredensial beratribut, cari menurut
+    atribut, baca kredensial, email aksi, nonaktifkan, akhiri sesi, hapus. Admin event setiap panggilan dicatat
+    (operationType/resourcePath/authDetails.clientId DIAMATI, dicetak untuk docs, ADR-030 butir 9)."""
+    print(f"== [{realm}] klien worker IdP rs-backend (ADR-030)")
+    klien = {c["clientId"]: c for c in ADMIN.get(f"{realm}/clients")}
+    c = klien.get(PEKERJA_IDP)
+    if realm != "korporat":
+        periksa(c is None, f"[{realm}] klien {PEKERJA_IDP} hanya ada di realm korporat (langkah ini)")
+        return
+    if not periksa(c is not None, f"[{realm}] klien {PEKERJA_IDP} ada"):
+        return
+    periksa(c.get("publicClient") is False and c.get("serviceAccountsEnabled") is True
+            and c.get("standardFlowEnabled") is False and c.get("implicitFlowEnabled") is False
+            and c.get("directAccessGrantsEnabled") is False and c.get("fullScopeAllowed") is False
+            and not c.get("redirectUris"),
+            f"[{realm}] {PEKERJA_IDP}: rahasia, hanya client credentials, tanpa redirect, fullScopeAllowed mati")
+    cakupan = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/default-client-scopes"))
+    periksa(set(cakupan) - {"service_account"} == {"kc-admin-api"},
+            f"[{realm}] {PEKERJA_IDP}: hanya cakupan kc-admin-api (+ service_account bawaan)", str(cakupan))
+    rahasia = os.environ.get("RS_KC_IDP_WORKER_KORPORAT_SECRET")
+    s = ADMIN.get(f"{realm}/clients/{c['id']}/client-secret")
+    periksa(rahasia and s.get("value") == rahasia, f"[{realm}] {PEKERJA_IDP}: secret berasal dari variabel lingkungan saat penerapan")
+    rm = ADMIN.get(f"{realm}/clients?clientId=realm-management")
+    sa = ADMIN.get(f"{realm}/clients/{c['id']}/service-account-user")
+    efektif = sorted(x["name"] for x in ADMIN.get(f"{realm}/users/{sa['id']}/role-mappings/clients/{rm[0]['id']}/composite"))
+    periksa(efektif == ["manage-users"], f"[{realm}] service account worker IdP hanya realm-management/manage-users", str(efektif))
+    peta = sorted(x["name"] for x in ADMIN.get(f"{realm}/clients/{c['id']}/scope-mappings/clients/{rm[0]['id']}"))
+    periksa(peta == ["manage-users"], f"[{realm}] cakupan peran token worker IdP hanya manage-users", str(peta))
+
+    # Atribut rs_intent_id: dideklarasikan, hanya Admin (lihat/ubah), tanpa mapper token.
+    profil = ADMIN.get(f"{realm}/users/profile")
+    atr = next((a for a in profil.get("attributes", []) if a.get("name") == "rs_intent_id"), None)
+    periksa(atr is not None and (atr.get("permissions") or {}).get("view") == ["admin"]
+            and (atr.get("permissions") or {}).get("edit") == ["admin"] and not atr.get("multivalued"),
+            f"[{realm}] user profile: rs_intent_id hanya Admin (view/edit admin), tunggal", str(atr))
+    mapper = [m for kl in ADMIN.get(f"{realm}/clients") for m in (kl.get("protocolMappers") or [])
+              if (m.get("config") or {}).get("user.attribute") == "rs_intent_id"]
+    mapper += [m for sc in ADMIN.get(f"{realm}/client-scopes") for m in (sc.get("protocolMappers") or [])
+               if (m.get("config") or {}).get("user.attribute") == "rs_intent_id"]
+    periksa(mapper == [], f"[{realm}] tidak ada protocol mapper untuk rs_intent_id", str([m.get("name") for m in mapper]))
+
+    r = k.request("POST", f"{BASE}/realms/{realm}/protocol/openid-connect/token",
+                  form={"grant_type": "client_credentials", "client_id": PEKERJA_IDP, "client_secret": rahasia or ""})
+    if not periksa(r.status == 200, f"[{realm}] token client credentials worker IdP terbit", f"HTTP {r.status}"):
+        return
+    tok_worker = r.json()["access_token"]
+    periksa("rs_intent_id" not in klaim(tok_worker), f"[{realm}] token worker tanpa klaim rs_intent_id")
+    h = {"Authorization": "Bearer " + tok_worker}
+
+    def panggil(metode, path, body=None):
+        return k.request(metode, f"{BASE}/admin/realms/{path}", headers=h, data=body)
+
+    asli = smtp_ke_penangkap(realm)
+    uid = None
+    try:
+        niat = str(uuid.uuid4())
+        surel = f"a30-{secrets.token_hex(4)}@uji.invalid"
+        r = panggil("POST", f"{realm}/users", {"username": surel, "email": surel, "enabled": True, "emailVerified": False,
+                                               "attributes": {"rs_intent_id": [niat]}})
+        lokasi = r.location or ""
+        periksa(r.status == 201 and "/users/" in lokasi, f"[{realm}] worker membuat pengguna beratribut rs_intent_id (201 + Location)", f"HTTP {r.status}")
+        if r.status != 201:
+            return
+        uid = lokasi.rsplit("/", 1)[1]
+        USER_UJI.append((realm, uid))
+        r = panggil("POST", f"{realm}/users", {"username": f"x{surel}", "email": f"x{surel}", "enabled": True,
+                                               "attributes": {"rs_intent_id": ["bukan-uuid"]}})
+        periksa(r.status == 400, f"[{realm}] rs_intent_id bukan UUID ditolak validasi user profile (400)", f"HTTP {r.status}")
+        r = panggil("POST", f"{realm}/users", {"username": surel, "email": surel, "enabled": True,
+                                               "attributes": {"rs_intent_id": [str(uuid.uuid4())]}})
+        periksa(r.status == 409, f"[{realm}] email sama ditolak 409 (worker lalu mencari menurut atribut)", f"HTTP {r.status}")
+        r = panggil("GET", f"{realm}/users?q=rs_intent_id:{niat}&briefRepresentation=false&first=0&max=2")
+        hasil = r.json() if r.status == 200 else []
+        periksa(r.status == 200 and [u.get("id") for u in hasil] == [uid]
+                and (hasil[0].get("attributes") or {}).get("rs_intent_id") == [niat],
+                f"[{realm}] pencarian q=rs_intent_id:<niat> mengembalikan tepat pengguna itu beserta atributnya (adopsi)",
+                f"HTTP {r.status}, {len(hasil)} pengguna")
+        r = panggil("GET", f"{realm}/users?q=rs_intent_id:{uuid.uuid4()}&briefRepresentation=false&first=0&max=2")
+        periksa(r.status == 200 and r.json() == [], f"[{realm}] pencarian atribut niat lain kosong", f"HTTP {r.status}")
+        r = panggil("GET", f"{realm}/users/{uid}/credentials")
+        periksa(r.status == 200 and r.json() == [], f"[{realm}] worker membaca kredensial: pengguna baru tanpa kredensial", f"HTTP {r.status}")
+
+        manage_realm = [x for x in ADMIN.get(f"{realm}/clients/{rm[0]['id']}/roles") if x["name"] == "manage-realm"]
+        hasil = {
+            "baca-klien": panggil("GET", f"{realm}/clients").status,
+            "peta-manage-realm": panggil("POST", f"{realm}/users/{uid}/role-mappings/clients/{rm[0]['id']}", manage_realm).status,
+            "impersonasi": panggil("POST", f"{realm}/users/{uid}/impersonation").status,
+            "realm-admin": panggil("GET", "admin/users").status,
+            "realm-pasien": panggil("GET", "pasien/users").status,
+            "baca-event": panggil("GET", f"{realm}/events").status,
+            "baca-admin-event": panggil("GET", f"{realm}/admin-events").status,
+        }
+        periksa(all(v == 403 for v in hasil.values()),
+                f"[{realm}] worker IdP tidak dapat membaca klien, memetakan peran admin Keycloak, impersonasi, realm lain, atau event",
+                str(hasil))
+
+        sebelum = daftar_email()
+        r = panggil("PUT", f"{realm}/users/{uid}/execute-actions-email?lifespan=86400",
+                    ["VERIFY_EMAIL", "UPDATE_PASSWORD", "CONFIGURE_TOTP"])
+        periksa(r.status == 204, f"[{realm}] worker: execute-actions-email lifespan 86400 diterima (204)", f"HTTP {r.status}")
+        nama, raw = baca_email(sebelum)
+        periksa(raw is not None and tautan_atur_ulang(raw) is not None, f"[{realm}] email aktivasi HR terkirim dengan tautan token aksi")
+
+        # Atribut tidak masuk token pengguna: pengguna yang sama diaktifkan oleh admin uji lalu masuk.
+        rep = ADMIN.get(f"{realm}/users/{uid}")
+        rep["emailVerified"] = True
+        rep["requiredActions"] = []
+        ADMIN.call("PUT", f"{realm}/users/{uid}", rep)
+        user = UserUji.__new__(UserUji)
+        user.realm, user.email, user.otp_key, user.recovery, user._dipakai = realm, surel, None, [], set()
+        user.id = uid
+        user.password = "Uji-" + secrets.token_urlsafe(12)
+        ADMIN.call("PUT", f"{realm}/users/{uid}/reset-password", {"type": "password", "value": user.password, "temporary": False})
+        periksa((ADMIN.get(f"{realm}/users/{uid}").get("attributes") or {}).get("rs_intent_id") == [niat],
+                f"[{realm}] atribut rs_intent_id tetap setelah perubahan oleh admin")
+        tok = login_mfa_lengkap(realm, user)
+        if tok is not None:
+            semua = {}
+            semua.update(klaim(tok["access_token"]))
+            if tok.get("id_token"):
+                semua.update(klaim(tok["id_token"]))
+            ui = k.request("GET", f"{BASE}/realms/{realm}/protocol/openid-connect/userinfo",
+                           headers={"Authorization": "Bearer " + tok["access_token"]})
+            if ui.status == 200:
+                semua.update(ui.json() or {})
+            periksa("rs_intent_id" not in semua and niat not in json.dumps(semua),
+                    f"[{realm}] rs_intent_id tidak ada di token akses, ID token, maupun userinfo", str(sorted(semua)))
+        r = panggil("GET", f"{realm}/users/{uid}/credentials")
+        jenis = sorted(x.get("type") for x in (r.json() if r.status == 200 else []))
+        periksa(r.status == 200 and "password" in jenis,
+                f"[{realm}] worker melihat pengguna berkredensial (prasyarat penolakan email aktivasi/hapus yatim)", str(jenis))
+
+        r = panggil("PUT", f"{realm}/users/{uid}", {"enabled": False})
+        periksa(r.status == 204 and ADMIN.get(f"{realm}/users/{uid}").get("enabled") is False,
+                f"[{realm}] worker menonaktifkan pengguna (204)", f"HTTP {r.status}")
+        periksa((ADMIN.get(f"{realm}/users/{uid}").get("attributes") or {}).get("rs_intent_id") == [niat],
+                f"[{realm}] PUT enabled=false tidak menghapus atribut rs_intent_id")
+        r = panggil("POST", f"{realm}/users/{uid}/logout")
+        periksa(r.status == 204, f"[{realm}] worker mengakhiri sesi pengguna (204)", f"HTTP {r.status}")
+        r = panggil("DELETE", f"{realm}/users/{uid}")
+        periksa(r.status == 204, f"[{realm}] worker menghapus pengguna (204)", f"HTTP {r.status}")
+        r = panggil("DELETE", f"{realm}/users/{uid}")
+        periksa(r.status == 404, f"[{realm}] hapus ulang 404 (worker menganggap sukses)", f"HTTP {r.status}")
+
+        # Admin event per panggilan worker: nilai DIAMATI dan dicetak (ADR-030 butir 9, langkah 4).
+        ev = ADMIN.get(f"{realm}/admin-events?first=0&max=200")
+        milik = [e for e in ev if (e.get("authDetails") or {}).get("clientId") == c["id"]
+                 and uid in (e.get("resourcePath") or "")]
+        for e in sorted(milik, key=lambda x: x.get("time", 0)):
+            jalur = (e.get("resourcePath") or "").replace(uid, "{id}")
+            print(f"  INFO [{realm}] admin event worker: operationType={e.get('operationType')} "
+                  f"resourceType={e.get('resourceType')} resourcePath={jalur} "
+                  f"authDetails.clientId=<id internal {PEKERJA_IDP}> authDetails.userId=<service account>"
+                  f"{' (sama)' if (e.get('authDetails') or {}).get('userId') == sa['id'] else ' (BEDA)'}")
+        jenis_op = {(e.get("operationType"), (e.get("resourcePath") or "").replace(uid, "{id}")) for e in milik}
+        periksa(("CREATE", "users/{id}") in jenis_op and ("DELETE", "users/{id}") in jenis_op
+                and all((e.get("authDetails") or {}).get("userId") == sa["id"] for e in milik),
+                f"[{realm}] admin event mencatat panggilan worker dengan authDetails klien worker dan service account-nya",
+                str(sorted(jenis_op, key=str)))
+    finally:
+        pulihkan_smtp(realm, asli)
+
+
 def jalankan(nama, fungsi, *args):
     """Satu skenario; galat tak terduga dihitung GAGAL tanpa menghentikan skenario lain."""
     try:
@@ -1532,6 +1702,7 @@ def main():
             jalankan(f"[{realm}] drift", cek_drift, realm)
             jalankan(f"[{realm}] pembaca event", cek_pembaca_event, realm)
             jalankan(f"[{realm}] pengelola pengguna admin", cek_pengelola_admin, realm)
+            jalankan(f"[{realm}] worker IdP", cek_pekerja_idp, realm)
             print(f"== [{realm}] pendaftaran, PKCE")
             jalankan(f"[{realm}] pendaftaran mati", cek_pendaftaran_mati, realm)
             jalankan(f"[{realm}] PKCE wajib", cek_pkce_wajib, realm)

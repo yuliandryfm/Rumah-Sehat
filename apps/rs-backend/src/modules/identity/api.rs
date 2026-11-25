@@ -44,6 +44,25 @@ pub use super::corporate_hr_service::{
 };
 pub use super::domain::{IdpRealm, Mapped, PULLED_TYPES, map_event, reason_code};
 pub use super::error::IdentityError;
+pub use super::idp_config::{
+    DEFAULT_IDP_WORKER_CLIENT_ID, IDP_WORKER_ALLOWED_REALMS, IDP_WORKER_KV_FIELD, IdpRealms,
+    IdpSecretError, IdpWorkerConfig, load_idp_credentials,
+};
+pub use super::idp_domain::{
+    HR_ACTIVATION_ACTIONS, HR_ACTIVATION_LIFESPAN_SECONDS, INTENT_ATTRIBUTE, IdpJobKind,
+    IntentPurpose, IntentStatus, PAYLOAD_INTENT_KEY, Refusal,
+};
+pub use super::idp_repo::RepoError as IntentRepoError;
+pub use super::idp_service::{
+    IDP_JOB_DEDUPE_PURPOSE, IDP_JOB_MAX_ATTEMPTS, IntentActor, IntentError, IntentRequest,
+    PendingAccount, PendingAccountRequest, record_intent, register_pending_account,
+};
+pub use super::idp_worker::{
+    IdpWorker, InvalidIdpWorkerConfig, PROVISIONING_FAILED_REASON, idp_job_types, run_idp_worker,
+};
+pub use super::idp_worker_client::{
+    CreateOutcome, HTTP_SENDS_PER_ADMIN_CALL, IdpUserAdmin, MAX_ADMIN_CALLS_PER_JOB,
+};
 pub use super::jobs::{
     LOGOUT_REVOCATION_TTL, MAX_PAGES_PER_ROUND, PAGE_SIZE_RANGE, PullError, PullOptions, Puller,
     PullerSettings, RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,

@@ -359,6 +359,45 @@ pub async fn fail<'e, E: PgExecutor<'e>>(
     Ok(outcome(done.rows_affected()))
 }
 
+/// Menggagalkan job `queued` yang `job_type`-nya berawalan `prefix` tetapi tidak ada di `known` (ADR-030
+/// butir 3: jenis job IdP adalah daftar tertutup; job jenis lain yang disisipkan langsung ke tabel tidak
+/// pernah diambil [`claim`], dan di sini ditandai `failed` dengan `last_error = error` supaya terlihat dan
+/// memicu peringatan). Mengembalikan `(id, job_type)` job yang digagalkan. `prefix` wajib kode
+/// `^[a-z][a-z0-9_]*_$` supaya tidak menjadi pola `LIKE` (garis bawah di-escape).
+pub async fn fail_unknown_types<'e, E: PgExecutor<'e>>(
+    executor: E,
+    prefix: &str,
+    known: &[JobType],
+    error: &ErrorCode,
+    clock: &dyn Clock,
+) -> Result<Vec<(JobId, String)>, JobError> {
+    let valid_prefix = prefix.ends_with('_')
+        && crate::types::is_code(prefix.trim_end_matches('_'))
+        && prefix.len() <= crate::types::MAX_CODE_LEN;
+    if !valid_prefix || known.is_empty() {
+        return Err(JobError::new(JobErrorKind::InvalidConfig));
+    }
+    // `_` adalah wildcard LIKE: di-escape supaya awalan dicocokkan apa adanya.
+    let pattern = format!("{}%", prefix.replace('_', "\\_"));
+    let types: Vec<String> = known.iter().map(|t| t.as_str().to_string()).collect();
+    let rows = sqlx::query!(
+        "UPDATE app.job \
+            SET status = 'failed', finished_at = $1, locked_until = NULL, last_error = $4 \
+          WHERE status = 'queued' AND job_type LIKE $2 AND job_type <> ALL($3::text[]) \
+         RETURNING id, job_type",
+        clock.now(),
+        pattern,
+        &types,
+        error.as_str(),
+    )
+    .fetch_all(executor)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| (JobId::from_uuid(r.id), r.job_type))
+        .collect())
+}
+
 /// Hasil [`sweep_expired`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SweepReport {

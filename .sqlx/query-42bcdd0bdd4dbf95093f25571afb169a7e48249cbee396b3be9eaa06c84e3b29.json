@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.idp_provisioning_intent_state SET status = $2, version = $3, updated_at = now() WHERE idp_provisioning_intent_id = $1 AND version = $3 - 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "42bcdd0bdd4dbf95093f25571afb169a7e48249cbee396b3be9eaa06c84e3b29"
+}

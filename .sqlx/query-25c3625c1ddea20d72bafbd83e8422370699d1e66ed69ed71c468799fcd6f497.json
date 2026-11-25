@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET deleted_at = now(), delete_reason = $2, updated_at = now() WHERE id = $1 AND status = 'pending_provisioning' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25c3625c1ddea20d72bafbd83e8422370699d1e66ed69ed71c468799fcd6f497"
+}

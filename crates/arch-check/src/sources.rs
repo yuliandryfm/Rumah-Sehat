@@ -188,11 +188,82 @@ pub fn check_source_text(file: &str, src: &str) -> Vec<Finding> {
         }
     }
     if !test {
+        out.extend(idp_admin_client_findings(file, code));
+    }
+    if !test {
         out.extend(attribute_findings(file, &sc));
         out.extend(macro_findings(file, &sc));
         if !file.starts_with("crates/arch-check/") {
             out.extend(audit_outbox_findings(file, &sc));
             out.extend(tx_control_findings(file, &sc));
+        }
+    }
+    out
+}
+
+/// Token klien pengguna Admin REST Keycloak ber-`manage-users` milik worker IdP (ADR-030 butir 1, langkah 3).
+const IDP_ADMIN_CLIENT_TOKENS: &[&str] = &["IdpUserAdmin", "IdpWorker", "load_idp_credentials"];
+
+/// Berkas modul worker IdP yang boleh memakai token di atas.
+const IDP_ADMIN_CLIENT_FILES: &[&str] = &[
+    "apps/rs-backend/src/modules/identity/idp_worker.rs",
+    "apps/rs-backend/src/modules/identity/idp_worker_client.rs",
+    "apps/rs-backend/src/modules/identity/idp_config.rs",
+    "apps/rs-backend/src/modules/identity/api.rs",
+];
+
+/// Fungsi di `cli.rs` yang merakit worker IdP (subcommand `worker`).
+const IDP_ADMIN_CLIENT_CLI_FNS: &[&str] = &["idp_worker", "run_worker"];
+
+/// Pemanggil `admin_call` (permintaan Admin REST mentah) yang sah.
+const ADMIN_CALL_FILES: &[&str] = &[
+    "apps/rs-backend/src/modules/identity/keycloak.rs",
+    "apps/rs-backend/src/modules/identity/idp_worker_client.rs",
+];
+
+/// ADR-030 langkah 3: klien pengguna Admin REST worker IdP (dan pemuat rahasianya dari OpenBao) hanya dirakit di
+/// modul worker IdP dan fungsi subcommand `worker` di `cli.rs`; proses `api` tidak pernah memegangnya.
+/// Permintaan Admin REST mentah (`admin_call`) hanya dari klien Keycloak dan klien worker IdP.
+fn idp_admin_client_findings(file: &str, code: &str) -> Vec<Finding> {
+    let mut out = Vec::new();
+    if file.starts_with("crates/arch-check/") {
+        return out;
+    }
+    if !IDP_ADMIN_CLIENT_FILES.contains(&file) {
+        for tok in IDP_ADMIN_CLIENT_TOKENS {
+            for off in find_tokens(code, tok) {
+                let func = enclosing_fn(code, off, false);
+                if file == "apps/rs-backend/src/cli.rs"
+                    && func
+                        .as_deref()
+                        .is_some_and(|f| IDP_ADMIN_CLIENT_CLI_FNS.contains(&f))
+                {
+                    continue;
+                }
+                let mut f = Finding::new(
+                    "idp-admin-client",
+                    file,
+                    line_of(code, off),
+                    tok,
+                    format!(
+                        "`{tok}` (klien manage-users Keycloak) hanya di modul worker IdP dan subcommand \
+                         worker (ADR-030)"
+                    ),
+                );
+                f.func = func;
+                out.push(f);
+            }
+        }
+    }
+    if !ADMIN_CALL_FILES.contains(&file) {
+        for off in find_tokens(code, "admin_call") {
+            out.push(Finding::new(
+                "idp-admin-client",
+                file,
+                line_of(code, off),
+                "admin_call",
+                "permintaan Admin REST mentah hanya dari klien Keycloak dan klien worker IdP (ADR-030)",
+            ));
         }
     }
     out

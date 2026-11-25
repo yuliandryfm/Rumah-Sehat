@@ -32,6 +32,8 @@ pub enum IdpRealm {
     Nakes,
     /// Realm admin Ruang Sehat dan admin rekanan.
     Admin,
+    /// Realm HR perusahaan (ADR-027 butir 3; F1-T85). Pengguna realm ini disediakan worker IdP (ADR-030).
+    Korporat,
 }
 
 impl IdpRealm {
@@ -41,6 +43,7 @@ impl IdpRealm {
             Self::Pasien => "pasien",
             Self::Nakes => "nakes",
             Self::Admin => "admin",
+            Self::Korporat => "korporat",
         }
     }
 
@@ -50,6 +53,7 @@ impl IdpRealm {
             Self::Pasien => SourceComponent::PatientApp,
             Self::Nakes => SourceComponent::PractitionerApp,
             Self::Admin => SourceComponent::Backoffice,
+            Self::Korporat => SourceComponent::CorporatePortal,
         }
     }
 }
@@ -62,6 +66,7 @@ impl FromStr for IdpRealm {
             "pasien" => Ok(Self::Pasien),
             "nakes" => Ok(Self::Nakes),
             "admin" => Ok(Self::Admin),
+            "korporat" => Ok(Self::Korporat),
             _ => Err(()),
         }
     }

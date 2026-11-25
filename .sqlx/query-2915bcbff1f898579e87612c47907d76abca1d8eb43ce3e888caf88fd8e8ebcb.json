@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, idp_subject, email, full_name, status FROM app.account WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat' AND deleted_at IS NULL",
+  "query": "SELECT id, idp_subject AS \"idp_subject!\", email, full_name, status FROM app.account\n         WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat'\n           AND deleted_at IS NULL AND status <> 'pending_provisioning'",
   "describe": {
     "columns": [
       {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "idp_subject",
+        "name": "idp_subject!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -66,11 +66,11 @@
     },
     "nullable": [
       false,
-      false,
+      true,
       false,
       true,
       false
     ]
   },
-  "hash": "98750d6b1201530a02ebd4897c0becb180297611e8362689b403b0e46d37b04a"
+  "hash": "2915bcbff1f898579e87612c47907d76abca1d8eb43ce3e888caf88fd8e8ebcb"
 }

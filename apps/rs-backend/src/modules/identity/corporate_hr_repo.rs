@@ -16,16 +16,19 @@ pub(super) struct HrAccountRow {
 }
 
 /// Akun HR `ids` (hanya jenis `corporate_admin`, belum dihapus lunak). Akun yang tidak memenuhi tidak
-/// dikembalikan (pemanggil menganggapnya bukan HR).
+/// dikembalikan (pemanggil menganggapnya bukan HR). Akun `pending_provisioning` (ADR-030 butir 5, belum punya
+/// pengguna Keycloak) juga tidak dikembalikan sampai worker IdP mengadopsi pengguna Keycloak-nya; tampilannya di
+/// daftar HR ditetapkan task undangan (F1-T105/F1-T107 undangan). Dengan saringan itu `idp_subject` pasti terisi
+/// (`ck_account_idp_subject`).
 pub(super) async fn hr_accounts(
     conn: &mut PgConnection,
     ids: &[Uuid],
 ) -> Result<Vec<HrAccountRow>, sqlx::Error> {
     sqlx::query_as!(
         HrAccountRow,
-        "SELECT id, idp_subject, email, full_name, status FROM app.account \
-         WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat' \
-           AND deleted_at IS NULL",
+        r#"SELECT id, idp_subject AS "idp_subject!", email, full_name, status FROM app.account
+         WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat'
+           AND deleted_at IS NULL AND status <> 'pending_provisioning'"#,
         ids,
     )
     .fetch_all(conn)

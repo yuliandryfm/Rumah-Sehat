@@ -112,6 +112,29 @@
           ]
         },
         "multivalued": false
+      },
+      {
+        "name": "rs_intent_id",
+        "displayName": "rs_intent_id",
+        "validations": {
+          "length": {
+            "min": 36,
+            "max": 36
+          },
+          "pattern": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "error-message": "rs_intent_id harus UUID huruf kecil"
+          }
+        },
+        "permissions": {
+          "view": [
+            "admin"
+          ],
+          "edit": [
+            "admin"
+          ]
+        },
+        "multivalued": false
       }
     ],
     "groups": [
@@ -554,6 +577,33 @@
       "optionalClientScopes": []
     },
     {
+      "clientId": "rs-backend-idp-worker",
+      "name": "Worker IdP (rs-backend worker)",
+      "description": "Klien layanan rs-backend worker: client credentials saja, realm-management/manage-users dan cakupan kc-admin-api untuk job IdP daftar tertutup; rahasia hanya di KV OpenBao identitas worker (ADR-030, CR-026)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "$(env:RS_KC_IDP_WORKER_KORPORAT_SECRET)",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "consentRequired": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "kc-admin-api"
+      ],
+      "optionalClientScopes": []
+    },
+    {
       "clientId": "admin-cli",
       "directAccessGrantsEnabled": false
     },
@@ -569,6 +619,12 @@
         "roles": [
           "view-events"
         ]
+      },
+      {
+        "client": "rs-backend-idp-worker",
+        "roles": [
+          "manage-users"
+        ]
       }
     ]
   },
@@ -580,6 +636,16 @@
       "clientRoles": {
         "realm-management": [
           "view-events"
+        ]
+      }
+    },
+    {
+      "username": "service-account-rs-backend-idp-worker",
+      "enabled": true,
+      "serviceAccountClientId": "rs-backend-idp-worker",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
         ]
       }
     }

@@ -69,7 +69,8 @@ pub async fn admin_subject(
     )
     .fetch_optional(conn)
     .await?;
-    Ok(row.map(|r| r.idp_subject))
+    // `idp_subject` kosong hanya pada `pending_provisioning` (ADR-030), yang tidak dipakai realm admin.
+    Ok(row.and_then(|r| r.idp_subject))
 }
 
 /// Akun admin baru berstatus menunggu aktivasi.

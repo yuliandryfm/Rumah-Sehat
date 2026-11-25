@@ -62,6 +62,7 @@ export class EphemeralKeycloak {
         RS_KC_EVENT_READER_KORPORAT_SECRET: randomSecret(),
         RS_KC_KORPORAT_BFF_SECRET: randomSecret(),
         RS_KC_ADMIN_MANAGER_SECRET: randomSecret(),
+        RS_KC_IDP_WORKER_KORPORAT_SECRET: randomSecret(),
       };
       const args = ["run", "--rm", "--network", `container:${container.id}`, "-v", `${REPO_ROOT}infra/keycloak/realms:/config:ro`];
       for (const [k, v] of Object.entries({
