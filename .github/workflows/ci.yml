@@ -86,7 +86,11 @@ jobs:
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh
 
+      # KEPUTUSAN-301: CI selalu tanpa cache sidik. verify.sh sudah mematikan cache bila CI/GITHUB_ACTIONS
+      # diset (keduanya diset GitHub Actions, SRC-795); RS_VERIFY_TANPA_CACHE ditambahkan eksplisit.
       - name: scripts/verify.sh
+        env:
+          RS_VERIFY_TANPA_CACHE: "1"
         run: bash scripts/verify.sh
 
       - name: Test skrip verifikasi (fixture merah harus MERAH)

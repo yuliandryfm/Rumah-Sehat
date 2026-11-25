@@ -506,10 +506,11 @@ periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau
 # mengubah apa pun); untuk migrasi-db juga merge-base basis git yang dipakai penjaga urutan migrasi.
 # - GAGAL tidak pernah di-cache. LULUS hanya disimpan bila sidik sesudah langkah sama dengan sebelumnya.
 # - Kelas masukan: "semua" (seluruh isi repo) untuk langkah lintas area; "rust" = seluruh repo kecuali web/
-#   dan kecuali berkas docs/ yang tidak disebut di berkas *.rs mana pun; "web" = seluruh repo kecuali area
-#   Rust (crates/, apps/, db/, .sqlx/, Cargo.toml, Cargo.lock), .claude/, dan berkas docs/ yang tidak disebut
-#   di bawah web/. Daftar docs/ yang disebut dihitung ulang setiap run; penyebutan docs/ dinamis (tanpa nama
-#   berkas) memasukkan seluruh docs/.
+#   dan kecuali berkas docs/ yang tidak disebut di berkas *.rs mana pun (atau scripts/db-ephemeral.sh);
+#   "web" = seluruh repo kecuali area Rust (crates/, apps/, db/, .sqlx/, Cargo.toml, Cargo.lock), .claude/,
+#   dan berkas docs/ yang tidak disebut di bawah web/, ditambah keadaan pemasangan web/node_modules (salinan
+#   lockfile terpasang dan daftar paket .pnpm). Daftar docs/ yang disebut dihitung ulang setiap run;
+#   penyebutan docs/ dinamis (tanpa nama berkas) memasukkan seluruh docs/.
 # - Tidak pernah di-cache: pemindai dengan basis data advisory jaringan (cargo-deny, cargo-audit,
 #   osv-scanner), gitleaks (membaca riwayat git dan index), serta langkah yang memeriksa keadaan di luar repo
 #   atau berefek samping (rust-toolchain, web-alat, web-install, web-dependensi-segar, web-lisensi).
@@ -532,7 +533,7 @@ MANIFEST_SEGAR=0
 SIDIK=""
 SIDIK_ALAT=""
 SIDIK_ALAT_ADA=0
-SIDIK_ENV="$(env | LC_ALL=C grep -E '^(CARGO|RUST|PROPTEST|SQLX|DATABASE_URL|RS_|API_|AUTH_|OPENBAO|BAO_|VAULT_|DOCKER|TESTCONTAINERS|PG|NODE|NPM_|npm_|PNPM|COREPACK|NEXT_|VITE|VITEST|TS_|TZ|LANG|LC_|HOME|TMPDIR|XDG_CONFIG|OBJECT_STORAGE|DEPLOY_ENV|HTTP_BIND|LOG_LEVEL|GITLEAKS|OSV|KEYCLOAK|KC_|VALKEY|REDIS|LIVEKIT|SES_|AWS_|CC|CXX|AR|CFLAGS|CXXFLAGS|CPPFLAGS|LDFLAGS|LIBRARY_PATH|LD_|DYLD_|CPATH|C_INCLUDE_PATH|PKG_CONFIG|OPENSSL|SSL_CERT|BINDGEN|HOST_|TARGET_|SOURCE_DATE_EPOCH|FORCE_COLOR|NO_COLOR|BROWSERSLIST|http_proxy|https_proxy|no_proxy|HTTP_PROXY|HTTPS_PROXY|NO_PROXY|ALL_PROXY|all_proxy)[A-Za-z0-9_]*=' | LC_ALL=C grep -v '^RS_VERIFY_TANPA_CACHE=' | LC_ALL=C sort || true)"
+SIDIK_ENV="$(env | LC_ALL=C grep -E '^(CARGO|RUST|PROPTEST|SQLX|DATABASE_URL|RS_|API_|AUTH_|OPENBAO|BAO_|VAULT_|DOCKER|TESTCONTAINERS|PG|NODE|NPM_|npm_|PNPM|COREPACK|NEXT_|VITE|VITEST|TS_|TZ|LANG|LC_|HOME|TMPDIR|XDG_CONFIG|OBJECT_STORAGE|DEPLOY_ENV|HTTP_BIND|LOG_LEVEL|GITLEAKS|OSV|KEYCLOAK|KC_|VALKEY|REDIS|LIVEKIT|SES_|AWS_|CC|CXX|AR|CFLAGS|CXXFLAGS|CPPFLAGS|LDFLAGS|LIBRARY_PATH|LD_|DYLD_|CPATH|C_INCLUDE_PATH|PKG_CONFIG|OPENSSL|SSL_CERT|BINDGEN|HOST_|TARGET_|SOURCE_DATE_EPOCH|FORCE_COLOR|NO_COLOR|BROWSERSLIST|http_proxy|https_proxy|no_proxy|HTTP_PROXY|HTTPS_PROXY|NO_PROXY|ALL_PROXY|all_proxy|INSTA_|TRYBUILD|UPDATE_EXPECT|UPDATE_SNAPSHOTS|SNAPSHOT|NEXTEST|CLIPPY|MIRI|LLVM|PLAYWRIGHT|PUPPETEER|CHROME|BROWSER|ESLINT|TSC_|TSX_|TURBO|JEST|BUN_|DENO_|UV_|PIP_|PYTHON|JAVA|MAKEFLAGS)[A-Za-z0-9_]*=' | LC_ALL=C grep -v '^RS_VERIFY_TANPA_CACHE=' | LC_ALL=C sort || true)"
 
 sha256_alir() { # sha256_alir [-- berkas...]: keluaran "<64 hex>  <nama>" (sha256sum, atau shasum di macOS)
   if command -v sha256sum >/dev/null 2>&1; then
@@ -708,7 +709,9 @@ saring_kelas() { # saring_kelas <kelas>: cetak baris manifest yang termasuk kela
       ;;
     rust | web)
       if [ "$1" = rust ]; then
-        docs_dirujuk '[.]rs$' >"$rujukan" || return 1
+        # Langkah kelas rust hanya menjalankan cargo (kode .rs, termasuk build.rs dan test) dan
+        # scripts/db-ephemeral.sh; hanya berkas yang dieksekusi yang dapat membaca docs/.
+        docs_dirujuk '[.]rs$|^scripts/db-ephemeral[.]sh$' >"$rujukan" || return 1
       else
         docs_dirujuk '^web/' >"$rujukan" || return 1
       fi
@@ -750,6 +753,22 @@ sidik_hitung() { # sidik_hitung <nama> <kelas> <perintah...>: cetak sidik 64 hex
           printf '%s=tidak-ada\n' "$ref"
         fi
       done
+    fi
+    if [ "$kelas" = web ]; then
+      # node_modules diabaikan git sehingga tidak ada di manifest. Keadaan pemasangannya ikut sidik: salinan
+      # lockfile terpasang dan daftar paket di web/node_modules/.pnpm (nama@versi). web-install
+      # (--frozen-lockfile) dan web-dependensi-segar tetap dijalankan setiap kali, tanpa cache.
+      printf -- '--node-modules--\n'
+      if [ -f web/node_modules/.pnpm/lock.yaml ]; then
+        printf 'lock=%s\n' "$(sha256_alir <web/node_modules/.pnpm/lock.yaml | cut -c1-64)"
+      else
+        printf 'lock=-\n'
+      fi
+      if [ -d web/node_modules/.pnpm ]; then
+        printf 'paket=%s\n' "$(LC_ALL=C ls -1A web/node_modules/.pnpm | sha256_alir | cut -c1-64)"
+      else
+        printf 'paket=-\n'
+      fi
     fi
     printf -- '--berkas--\n'
     saring_kelas "$kelas"
