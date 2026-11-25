@@ -241,6 +241,9 @@ importers:
 
   korporat:
     dependencies:
+      '@rs/api-client':
+        specifier: workspace:*
+        version: link:../packages/api-client
       '@rs/bff-auth':
         specifier: workspace:*
         version: link:../packages/bff-auth
