@@ -30,6 +30,7 @@ export const ITEM_NAV: readonly ItemNav[] = [
   { href: "/", label: "Beranda", untuk: "semua" },
   { href: "/konten", label: "Konten", untuk: ["Konten"] },
   { href: "/verifikasi", label: "Verifikasi identitas", untuk: ["Verifikator"] },
+  { href: "/verifikasi-perusahaan", label: "Verifikasi perusahaan", untuk: ["Verifikator"] },
 ];
 
 /** Menu yang tampil untuk sub-peran tertentu; tanpa sub-peran yang dikenal hanya menu `"semua"`. */

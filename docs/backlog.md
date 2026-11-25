@@ -235,9 +235,9 @@ Sumber: PRD v1.3 EP-19; fase dari phase plan v0.3 (skenario S3 `[USER] C21-P4`).
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
 | US-1901 | Pendaftaran perusahaan mandiri | BR-136 | Must | 1 (F1-T101–F1-T103; bentuk bukti kewenangan G-27) | Backlog |
-| US-1902 | Verifikasi perusahaan oleh Verifikator | BR-136 | Must | 1 (F1-T104, F1-T106) | Backlog |
-| US-1903 | Perusahaan dibuatkan Verifikator | BR-136 | Must | 1 (F1-T105, F1-T106; persetujuan orang kedua G-27) | Backlog |
-| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must | 1 (F1-T85–F1-T88, F1-T90, F1-T100, F1-T107, F1-T108); AC7–AC9 (daftar ulang TOTP dan reset MFA HR) di Fase 2 | Backlog |
+| US-1902 | Verifikasi perusahaan oleh Verifikator | BR-136 | Must | 1 (F1-T104, F1-T106) | Sebagian: backend F1-T104 dan antrean/panel backoffice F1-T106 selesai (AC1–AC4 dan layar akses ditolak AC5 di backoffice; AC5 ditegakkan backend) |
+| US-1903 | Perusahaan dibuatkan Verifikator | BR-136 | Must | 1 (F1-T105, F1-T106; persetujuan orang kedua G-27) | Backlog (UI F1-T106 menunggu backend F1-T105/ADR-030) |
+| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must | 1 (F1-T85–F1-T88, F1-T90, F1-T100, F1-T107, F1-T108; F1-T108 di-merge 4be14d5, review T2 LULUS DENGAN CATATAN (tanpa alur undang HR, tombol nonaktif bertanda belum tersedia): AC2 sebagian, sisa menunggu ADR-030/CR-026); AC7–AC9 (daftar ulang TOTP dan reset MFA HR) di Fase 2 | Backlog |
 | US-1905 | Katalog paket korporat | BR-133, BR-137, BR-138 | Must | 3 (setelah EN-21) | Backlog |
 | US-1906 | Pesan layanan korporat | BR-135, BR-137, BR-142 | Must | 3 | Backlog |
 | US-1907 | Unggah daftar peserta | BR-139, BR-145 | Must | 3 (G-26 untuk data nyata) | Backlog |
@@ -249,7 +249,7 @@ Sumber: PRD v1.3 EP-19; fase dari phase plan v0.3 (skenario S3 `[USER] C21-P4`).
 | US-1913 | Persetujuan berbagi ringkasan oleh peserta | BR-144, BR-145 | Must | 3 (teks L-18) | Backlog |
 | US-1914 | Ringkasan hasil untuk HR dengan persetujuan | BR-144 | Must | 3 (PT-65) | Backlog |
 | US-1915 | Hasil lengkap untuk peserta | BR-143 | Must | 3 (setelah US-901) | Backlog |
-| US-1916 | Pengelolaan perusahaan di backoffice | BR-136, BR-060 | Must | 1 (bagian K1, F1-T106); pesanan dan invoice di Fase 3 | Backlog |
+| US-1916 | Pengelolaan perusahaan di backoffice | BR-136, BR-060 | Must | 1 (bagian K1, F1-T106); pesanan dan invoice di Fase 3 | Sebagian: antrean verifikasi di F1-T106; daftar perusahaan/anggota HR menunggu endpoint backoffice |
 | US-1917 | Penerusan pesanan korporat ke rekanan pelaksana | BR-134, BR-070 | Must | 3 (setelah EN-21; PT-74) | Backlog |
 
 ## Enabler (Tahap 4–5)
@@ -637,5 +637,6 @@ Review T1 gabungan (keamanan + DBA + kode) langkah 1–4: LULUS DENGAN CATATAN; 
 | TD-36 | Field audit (review F1-T69): before/after "bila ada nilai yang berubah" belum ditegakkan untuk E-08 refund, E-09, E-13, E-15 — wajibkan saat pemancarnya dibuat; pengecualian ID objek dipersempit ke E-01..E-04 gagal; inventaris pemancar bisa dilewati lewat alias/helper lintas berkas; `record_invite_failure` bisa mencatat dobel bila balasan commit hilang dan jejak audit tidak memuat kegagalan akhir setelah 3 percobaan; doc `admin_service.rs` masih menyebut urutan lama; ekspor `audit_write_failures_total` ke metrik menunggu agen metrik | Review F1-T69 | Saat pemancar E-08/E-09/E-13/E-15 dibuat |
 | TD-37 | Verifikasi perusahaan (review F1-T104, Low): arch-check membatasi pemakaian `CORPORATE_DOCUMENT_OBJECT_TYPE` ke `platform/service.rs`; job rekonsiliasi status `corporate_client` vs keputusan terakhir (ADR-008 butir 4, opsional Master); test bahwa penolakan 401/403 tercatat di security log (US-1902 AC5); 3 dari 4 kode alasan penolakan perusahaan masih draf — konfirmasi user sebelum go-live; bucket `license_document` untuk dokumen perusahaan dikonfirmasi di F1-T102 (ADR-018); PRD US-1902 AC5 menyebut 404 untuk HR, implementasi 401 (penolakan realm seragam di `/backoffice`) — selaraskan PRD lewat CR-026 | Review F1-T104 | Sebelum F1-T110 |
 | TD-38 | Profil pasien (review F1-T56): asumsi yang perlu dikonfirmasi user/legal — usia minimum 17 tahun (nilai uji; PB-22/L-08), maksimal 20 alamat aktif (tanpa sumber), T-42: alamat pertama otomatis utama, alamat utama yang dihapus diganti alamat aktif tertua, alamat utama tidak bisa dijadikan bukan-utama; perjelas TC-US-105-1 ("nama field; before/after hanya untuk nilai bertipe"); HR yang dinonaktifkan masih bisa login Keycloak sampai worker ADR-030 aktif (review F1-T107) — gerbang sebelum production | Review F1-T56, F1-T107 | Sebelum penutupan Fase 1 |
+| TD-39 | Backoffice F1-T106 (sisa): UI "buat perusahaan" (US-1903) dan daftar perusahaan serta anggota HR (US-1916 K1) belum dibuat karena endpoint backoffice-nya belum ada di `openapi/` (F1-T105 menunggu ADR-030); panel verifikasi menandai fitur ini belum tersedia. Juga: `openapi/backoffice.json` memakai nama skema sama (`QueueItemDto`, `DecisionDto`, dll.) untuk modul identitas dan perusahaan sehingga tipe hasil generator untuk antrean/keputusan perusahaan keliru; `web/backoffice/src/lib/perusahaan/model.ts` menulis dua tipe lokal sampai spesifikasi diberi nama unik (di luar kepemilikan web) | F1-T106 | Setelah F1-T105 |
 
 _Belum ada._

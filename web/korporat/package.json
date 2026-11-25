@@ -9,6 +9,7 @@
     "build": "next build && node scripts/periksa-build.mjs"
   },
   "dependencies": {
+    "@rs/api-client": "workspace:*",
     "@rs/bff-auth": "workspace:*",
     "@rs/ui": "workspace:*",
     "next": "16.4.6",
