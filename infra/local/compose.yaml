@@ -171,6 +171,8 @@ services:
       RS_KC_EVENT_READER_KORPORAT_SECRET: ${RS_KC_EVENT_READER_KORPORAT_SECRET:?isi di infra/local/.env}
       # Klien layanan pengelola pengguna admin (F1-T65, US-208): manage-users realm `admin` saja.
       RS_KC_ADMIN_MANAGER_SECRET: ${RS_KC_ADMIN_MANAGER_SECRET:?isi di infra/local/.env}
+      # Klien layanan worker IdP realm korporat (ADR-030, CR-026): manage-users, rahasia di KV OpenBao worker.
+      RS_KC_IDP_WORKER_KORPORAT_SECRET: ${RS_KC_IDP_WORKER_KORPORAT_SECRET:?isi di infra/local/.env}
     volumes:
       - ../keycloak/realms:/config:ro
 

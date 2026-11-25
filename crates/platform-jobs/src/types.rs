@@ -159,6 +159,15 @@ impl ErrorCode {
         code(s).map(Self)
     }
 
+    /// Kode `s` bila valid; selain itu [`Self::INVALID_CODE`]. Untuk pemanggil yang memakai kode konstanta dan
+    /// tidak boleh panik (lint `panic`/`expect_used`), misalnya worker IdP ADR-030.
+    pub fn or_invalid(s: &str) -> Self {
+        Self(code(s).unwrap_or_else(|_| Self::INVALID_CODE.to_string()))
+    }
+
+    /// Pengganti kode yang tidak valid di [`Self::or_invalid`].
+    pub const INVALID_CODE: &'static str = "invalid_error_code";
+
     /// Teks kode.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -208,6 +217,17 @@ impl JobPayload {
     pub fn with_code(self, key: &str, value: &str) -> Result<Self, JobError> {
         let value = code(value).map_err(|_| JobError::new(JobErrorKind::InvalidPayload))?;
         self.insert(key, PayloadValue::Code(value))
+    }
+
+    /// Jumlah entri (dipakai penangan yang menerima daftar kunci persis, misalnya job IdP ADR-030 yang hanya
+    /// menerima ID niat).
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Payload tanpa entri.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// ID pada `key`, bila ada dan berupa ID.
@@ -282,6 +302,19 @@ impl MaxAttempts {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn or_invalid_keeps_valid_codes_and_replaces_others() {
+        assert_eq!(
+            ErrorCode::or_invalid("keycloak_auth").as_str(),
+            "keycloak_auth"
+        );
+        assert_eq!(
+            ErrorCode::or_invalid("Bukan Kode").as_str(),
+            ErrorCode::INVALID_CODE
+        );
+        assert!(ErrorCode::new(ErrorCode::INVALID_CODE).is_ok());
+    }
 
     #[test]
     fn code_accepts_snake_case_only() {

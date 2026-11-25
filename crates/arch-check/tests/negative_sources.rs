@@ -621,3 +621,50 @@ fn failed_access_audit_path_is_limited_to_access_audit_module() {
         );
     }
 }
+
+// trace: ADR-030 langkah 3 (klien manage-users hanya di worker)
+#[test]
+fn idp_admin_client_is_confined_to_the_worker_module_and_worker_subcommand() {
+    let api_side = "apps/rs-backend/src/app.rs";
+    for tok in ["IdpUserAdmin", "IdpWorker", "load_idp_credentials"] {
+        let src = format!("fn build() {{ let _ = {tok}::new(); }}");
+        assert!(
+            has(api_side, &src, &format!("idp-admin-client:{tok}")),
+            "lolos di app.rs: {tok}"
+        );
+        assert!(
+            has(
+                "apps/rs-backend/src/modules/identity/corporate_hr_service.rs",
+                &src,
+                &format!("idp-admin-client:{tok}")
+            ),
+            "lolos di use case: {tok}"
+        );
+        // Subcommand api di cli.rs juga ditolak; hanya fungsi perakit worker yang sah.
+        let cli_api = format!("fn run_api() {{ let _ = {tok}::new(); }}");
+        assert!(has(
+            "apps/rs-backend/src/cli.rs",
+            &cli_api,
+            &format!("idp-admin-client:{tok}")
+        ));
+        let cli_worker = format!("fn idp_worker() {{ let _ = {tok}::new(); }}");
+        assert!(rules("apps/rs-backend/src/cli.rs", &cli_worker).is_empty());
+        assert!(rules("apps/rs-backend/src/modules/identity/idp_worker.rs", &src).is_empty());
+        assert!(rules("apps/rs-backend/tests/identity_idp_worker.rs", &src).is_empty());
+    }
+    // Nama yang hanya mirip tidak tertangkap; konfigurasi tanpa rahasia boleh di mana saja.
+    assert!(rules(api_side, "fn f() { let _ = IdpWorkerConfig::load(); }").is_empty());
+    // Permintaan Admin REST mentah di luar klien Keycloak/klien worker ditolak.
+    assert!(has(
+        "apps/rs-backend/src/modules/identity/admin_service.rs",
+        "fn f() { c.admin_call(); }",
+        "idp-admin-client:admin_call"
+    ));
+    assert!(
+        rules(
+            "apps/rs-backend/src/modules/identity/idp_worker_client.rs",
+            "fn f() { c.admin_call(); }"
+        )
+        .is_empty()
+    );
+}

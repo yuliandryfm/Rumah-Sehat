@@ -49,6 +49,15 @@ tests = [
   "apps/rs-backend/tests/corporate_hr_members.rs::self_deactivation_is_rejected_without_side_effects",
 ]
 
+# E-10 hasil job worker IdP (ADR-030 langkah 2, CR-026): penyediaan, email aktivasi, kompensasi; berhasil dan ditolak.
+[[emitter]]
+file = "apps/rs-backend/src/modules/identity/idp_worker.rs"
+codes = ["E10"]
+tests = [
+  "apps/rs-backend/tests/identity_idp_worker.rs::create_user_adopts_after_crash_and_lease_loss_without_duplicates",
+  "apps/rs-backend/tests/identity_idp_worker.rs::activation_and_orphan_deletion_refuse_credentialed_or_foreign_users",
+]
+
 # E-10/E-11 akun dan sub-peran admin (F1-T65, US-208), termasuk undangan aktivasi berhasil dan gagal.
 [[emitter]]
 file = "apps/rs-backend/src/modules/identity/admin_service.rs"

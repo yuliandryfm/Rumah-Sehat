@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.idp_provisioning_intent_state (idp_provisioning_intent_id, status, version) VALUES ($1, $2, 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f9f1233fefd53f5b110d53ea622f7bde2a4dcff0839ab5cc1a7a35de38272c9f"
+}

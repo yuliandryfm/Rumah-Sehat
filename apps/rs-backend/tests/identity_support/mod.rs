@@ -201,7 +201,7 @@ pub struct Patient {
 pub async fn new_patient(pool: &PgPool) -> Patient {
     let account_id = files::new_account(pool).await;
     let subject: String = sqlx::query_scalar!(
-        "SELECT idp_subject FROM app.account WHERE id = $1",
+        r#"SELECT idp_subject AS "idp_subject!" FROM app.account WHERE id = $1"#,
         account_id
     )
     .fetch_one(pool)

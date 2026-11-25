@@ -319,9 +319,9 @@ Akun aplikasi untuk semua jenis pengguna Ruang Sehat, dipetakan ke pengguna Keyc
 | *STD-M* | | | | | |
 | account_type | text | tidak | | — | CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`, `corporate_admin`); `corporate_admin` = HR perusahaan (ADR-027 butir 3, F1-T99) |
 | idp_realm | text | tidak | UQp | — | CHECK (`pasien`, `nakes`, `admin`, `korporat`). CHECK pasangan: `patient`→`pasien`, `health_worker`→`nakes`, `rs_admin`/`partner_admin`→`admin`, `corporate_admin`→`korporat` (F1-T99) |
-| idp_subject | text | tidak | UQp | PII | ID pengguna Keycloak di realm itu |
+| idp_subject | text | ya | UQp | PII | ID pengguna Keycloak di realm itu. Kosong **hanya** pada status `pending_provisioning` (CHECK `ck_account_idp_subject`): akun dibuat api lebih dulu, pengguna Keycloak dibuat worker IdP lalu ID-nya diadopsi (ADR-030 butir 5) `[KEPUTUSAN-305]` |
 | email | text | tidak | | PII | Salinan untuk notifikasi; sumber kebenaran email dan verifikasinya di Keycloak. Perubahan email mandiri di konsol akun Keycloak dinonaktifkan; perubahan hanya lewat API aplikasi (US-105 AC4), yang memperbarui Keycloak dan kolom ini setelah email baru terverifikasi, sehingga salinan tidak menyimpang (review DBA S04, dicatat orkestrator di ADR-011) `[KEPUTUSAN-46]`. Anonimkan |
-| status | text | tidak | | — | CHECK (`pending_activation`, `active`, `inactive`). Status ini yang menentukan otorisasi di setiap permintaan (KU-10); cache di Redis (§0.10) |
+| status | text | tidak | | — | CHECK (`pending_provisioning`, `pending_activation`, `active`, `inactive`). Status ini yang menentukan otorisasi di setiap permintaan (KU-10); cache di Redis (§0.10). `pending_provisioning` = pengguna Keycloak belum dibuat worker IdP; berpindah ke `pending_activation` saat `idp_subject` diadopsi, atau dihapus lunak dengan `delete_reason = idp_provisioning_failed` bila penyediaan gagal (ADR-030 butir 5, realm `korporat` lebih dulu, CR-026) |
 | status_reason | text | ya | | — | Alasan penonaktifan atau pengaktifan (US-207 AC1, AC4); tanpa data pribadi |
 | status_changed_at | timestamptz | tidak | | — | |
 | full_name | text | ya | | PII | Wajib untuk `rs_admin` dan `partner_admin` (CHECK); pasien dan tenaga kesehatan memakai tabel profil. Tidak diwajibkan untuk `corporate_admin`, karena nama HR undangan belum tentu diketahui saat akun dibuat (US-1903 AC1, F1-T99). Anonimkan |
@@ -334,6 +334,7 @@ Index dan constraint:
 - `UQp (idp_realm, idp_subject) WHERE deleted_at IS NULL` `[SRC-33]`.
 - `ck_account_staff_nik_bidx` (32 byte), `ck_account_staff_nik_bidx_key_version` (≥ 1), `ck_account_staff_nik_bidx_rs_admin` (hanya `rs_admin`), `ck_account_staff_nik_bidx_version_present` (versi wajib bila blind index ada). Tanpa index dan tanpa keunikan: pencarian selalu per akun (PK), dan dua akun admin milik satu orang tidak dicegah di sini (di luar ruang lingkup US-201 AC8) `[KEPUTUSAN-294]`.
 - `ix (status) WHERE deleted_at IS NULL`.
+- `ix (idp_realm, lower(email)) WHERE deleted_at IS NULL`: pemeriksaan "belum ada akun dengan email yang sama di realm itu" oleh api di bawah kunci advisory transaksi per (realm, email ternormalisasi) sebelum akun `pending_provisioning` dibuat (ADR-030 butir 5). Bukan constraint unik: keunikan email tetap di Keycloak per realm `[KEPUTUSAN-46]` `[KEPUTUSAN-305]`.
 - Penonaktifan (US-207) mengubah `status`, menonaktifkan pengguna di Keycloak, dan mencatat pencabutan sesi di Redis dalam satu alur; urutan dan penanganan kegagalannya ditetapkan di revisi ADR-011.
 
 #### A1.2 `rs_admin_role` (M)
@@ -376,6 +377,30 @@ Sesi Keycloak yang dicabut karena keluar atau pencabutan oleh admin, agar token 
 | expires_at | timestamptz | tidak | | — | Saat token terakhir sesi itu pasti kedaluwarsa |
 
 Index: `ix (expires_at)` untuk pembersihan.
+
+#### A1.5 `idp_provisioning_intent` (T)
+
+Niat penyediaan identitas di Keycloak yang dijalankan worker IdP (ADR-030 butir 2, 3). Satu baris per aksi Keycloak berhak `manage-users`; dicatat api di transaksi use case bersama job `app.job` yang muatannya hanya ID niat. Tanpa email, nama, password, atau data pribadi lain: email dibaca worker dari `account` saat dibutuhkan. Sumber: ADR-030, CR-026, `[KEPUTUSAN-302]`, `[KEPUTUSAN-305]`.
+
+| Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
+| --- | --- | --- | --- | --- | --- |
+| *STD-T* | | | | | `created_by` = akun pelaku (NULL bila sistem atau pendaftar mandiri) |
+| account_id | uuid | tidak | FK→account | — | Akun sasaran |
+| idp_realm | text | tidak | | — | CHECK (`pasien`, `nakes`, `admin`, `korporat`) |
+| operation | text | tidak | | — | CHECK (`create_user`, `send_activation`, `disable_user`, `logout_user`, `delete_orphan`, `reconcile`), sama dengan daftar tertutup jenis job ADR-030 butir 3 (`idp_<operation>`) |
+| purpose | text | tidak | | — | CHECK pasangan dengan `operation`: `create_user`/`send_activation` → `hr_self_registration` atau `hr_invitation` (hanya realm `korporat`); `disable_user` → `account_deactivation`; `logout_user` → `session_revocation`; `delete_orphan` → `provisioning_compensation`; `reconcile` → `reconciliation`. Susunan required action dan `lifespan` email aksi ditetapkan kode per realm dan tujuan, tidak disimpan |
+| origin_intent_id | uuid | ya | FK komposit | — | Niat `create_user` yang ID-nya menjadi atribut Keycloak `rs_intent_id`; wajib tepat untuk `send_activation`, `delete_orphan`, `reconcile` (CHECK). FK komposit `(origin_intent_id, account_id)` → `(id, account_id)`: niat asal milik akun yang sama |
+| correlation_id | uuid | tidak | | — | ID korelasi permintaan pemicu; dipakai event audit hasil worker |
+
+Index: `UQ (id, account_id)` (sasaran FK komposit); `ix (account_id, created_at)`. Hak: kelas T (rs_app S+I, trigger tolak UPDATE/DELETE/TRUNCATE); pekerja privasi SELECT hanya `id`, `created_at`, `account_id`.
+
+#### A1.6 `idp_provisioning_intent_status_event` (R)
+
+*STD-R* dengan `idp_provisioning_intent_id`, **tanpa** `note_enc`/`note_data_key_id`/`actor_partner_id`: hasil worker hanya kode alasan, tanpa teks bebas dan tanpa pelaku rekanan `[KEPUTUSAN-305]`. `to_status` CHECK (`pending`, `succeeded`, `rejected`, `failed`); `reason_code` wajib tepat untuk `rejected`/`failed` dan berbentuk kode `^[a-z][a-z0-9_]{0,63}$` (daftar tertutup `identity::idp_domain::Refusal`). `actor_type` CHECK (`patient`, `health_worker`, `rs_admin`, `partner_admin`, `corporate_admin`, `system`). `UQ (niat, version)` membuat hasil pertama yang tersimpan berlaku, sehingga sewa job yang hilang tidak mencatat hasil dua kali (ADR-030 butir 6, AB-36). Sumber: ADR-030, ADR-008.
+
+#### A1.7 `idp_provisioning_intent_state` (P)
+
+*STD-P*, FK komposit ke riwayat `(niat, version, status)`. Index `ix (status, updated_at) WHERE status = 'pending'` untuk rekonsiliasi niat yang tertahan (ADR-030 butir 9 (c), langkah 8).
 
 ### A2. Pasien, penerima layanan, dan identitas
 

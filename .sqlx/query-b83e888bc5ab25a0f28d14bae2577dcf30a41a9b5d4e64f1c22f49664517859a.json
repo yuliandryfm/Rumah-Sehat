@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.idp_provisioning_intent_status_event (id, idp_provisioning_intent_id, version, from_status, to_status, reason_code, actor_type, actor_account_id, correlation_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT ON CONSTRAINT uq_idp_intent_event_intent_id_version DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b83e888bc5ab25a0f28d14bae2577dcf30a41a9b5d4e64f1c22f49664517859a"
+}

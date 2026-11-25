@@ -23,7 +23,7 @@ pub use error::{JobError, JobErrorKind};
 pub use lock::{LockAttempt, LockKey, SingletonLock};
 pub use queue::{
     ClaimRequest, ClaimedJob, EnqueueOutcome, Lease, LeaseOutcome, NewJob, RetryOutcome,
-    SweepReport, claim, complete, enqueue, fail, retry_or_fail, sweep_expired,
+    SweepReport, claim, complete, enqueue, fail, fail_unknown_types, retry_or_fail, sweep_expired,
 };
 pub use runner::{BatchReport, JobOutcome, MAX_BATCH_SIZE, WorkerConfig, run_batch};
 pub use types::{

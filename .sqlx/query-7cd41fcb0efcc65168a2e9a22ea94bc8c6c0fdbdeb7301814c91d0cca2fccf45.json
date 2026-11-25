@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.operation, s.status AS \"status?\"\n             FROM app.idp_provisioning_intent i\n             LEFT JOIN app.idp_provisioning_intent_state s ON s.idp_provisioning_intent_id = i.id\n            WHERE i.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "operation",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "operation"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent_state",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "7cd41fcb0efcc65168a2e9a22ea94bc8c6c0fdbdeb7301814c91d0cca2fccf45"
+}

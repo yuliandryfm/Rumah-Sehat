@@ -1,6 +1,7 @@
 -- db/test/tabel-app-a1.sql: test tabel A1 identitas dan akun (F1-T16) di database ruang_sehat:
 -- account, rs_admin_role, session_revocation, ditambah idp_event_cursor dan idp_event_receipt (F1-T34,
--- pengambil event Keycloak; rancangan task, belum di DD). Didahului db/test/lib.sql; dijalankan superuser setelah
+-- pengambil event Keycloak; rancangan task, belum di DD), serta sejak ADR-030 langkah 1 status akun
+-- pending_provisioning dan tabel niat penyediaan identitas (A1.5-A1.7). Didahului db/test/lib.sql; dijalankan superuser setelah
 -- migrasi. Aturan kelas generik (T-06/T-07/T-08) diperiksa db/test/kelas-app.sql bagian A; berkas ini
 -- menambah (1) ketentuan DDL umum §4.1 atas seluruh skema app beserta test negatif pemeriksanya,
 -- (2) struktur per tabel yang tidak tertangkap aturan kelas (index, kolom anonymize, komentar kelas),
@@ -31,11 +32,11 @@ SELECT pg_temp.uji_nol('A1 tabel lain tanpa kolom anonymize (rs_admin_role, sess
          WHERE attrelid IN ('app.rs_admin_role'::regclass, 'app.session_revocation'::regclass,
                             'app.idp_event_cursor'::regclass, 'app.idp_event_receipt'::regclass)
            AND attnum > 0 AND col_description(attrelid, attnum) IS NOT NULL));
-SELECT pg_temp.uji_nol('A1.1 account: index persis pk, uqp (idp_realm, idp_subject) aktif, ix status aktif',
+SELECT pg_temp.uji_nol('A1.1 account: index persis pk, uqp (idp_realm, idp_subject) aktif, ix status aktif, ix (realm, lower(email)) aktif (ADR-030)',
   ARRAY(SELECT pg_temp.uji_indeks('app.account', ARRAY[
     'CREATE UNIQUE INDEX pk_account ON app.account USING btree (id)',
     'CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account USING btree (idp_realm, idp_subject) WHERE (deleted_at IS NULL)',
-    'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)'])));
+    'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_idp_realm_lower_email ON app.account USING btree (idp_realm, lower(email)) WHERE (deleted_at IS NULL)'])));
 SELECT pg_temp.uji_nol('A1.2 rs_admin_role: index persis pk, uqp (account_id, sub_role) aktif, ix sub_role aktif',
   ARRAY(SELECT pg_temp.uji_indeks('app.rs_admin_role', ARRAY[
     'CREATE UNIQUE INDEX pk_rs_admin_role ON app.rs_admin_role USING btree (id)',
@@ -68,6 +69,43 @@ SELECT pg_temp.uji_nol('A1 tanpa hak untuk rs_audit_relay dan rs_key_rotation (t
                                 'app.idp_event_cursor'::regclass, 'app.idp_event_receipt'::regclass)
            AND pg_get_userbyid(a.grantee) <> 'rs_privacy_worker'));
 
+-- 2b. ADR-030 langkah 1 (CR-026, migrasi 20261125100000): niat penyediaan identitas (T), riwayat status (R),
+-- proyeksi (P). Hak per kelas diperiksa db/test/kelas-app.sql bagian A (uji_kelas_app); di sini komentar, index,
+-- dan CHECK akun yang berubah.
+SELECT pg_temp.uji_nol('ADR-030 komentar kelas: idp_provisioning_intent T, _status_event R, _state P (modul identitas)',
+  ARRAY(SELECT format('%s: %s', t, coalesce(obj_description(to_regclass('app.' || t), 'pg_class'), '<tidak ada>'))
+          FROM (VALUES ('idp_provisioning_intent', 'class:T module:identitas alias:idp_intent'),
+                       ('idp_provisioning_intent_status_event', 'class:R module:identitas alias:idp_intent_event'),
+                       ('idp_provisioning_intent_state', 'class:P module:identitas alias:idp_intent_state')) v(t, k)
+         WHERE obj_description(to_regclass('app.' || t), 'pg_class') IS DISTINCT FROM k));
+SELECT pg_temp.uji_nol('ADR-030 idp_provisioning_intent: index persis pk, uq (id, account_id), ix (account_id, created_at)',
+  ARRAY(SELECT pg_temp.uji_indeks('app.idp_provisioning_intent', ARRAY[
+    'CREATE UNIQUE INDEX pk_idp_provisioning_intent ON app.idp_provisioning_intent USING btree (id)',
+    'CREATE UNIQUE INDEX uq_idp_provisioning_intent_id_account_id ON app.idp_provisioning_intent USING btree (id, account_id)',
+    'CREATE INDEX ix_idp_provisioning_intent_account_id_created_at ON app.idp_provisioning_intent USING btree (account_id, created_at)'])));
+SELECT pg_temp.uji_nol('ADR-030 idp_provisioning_intent_status_event: index persis pk, uq (niat, versi), uq (niat, versi, to_status)',
+  ARRAY(SELECT pg_temp.uji_indeks('app.idp_provisioning_intent_status_event', ARRAY[
+    'CREATE UNIQUE INDEX pk_idp_provisioning_intent_status_event ON app.idp_provisioning_intent_status_event USING btree (id)',
+    'CREATE UNIQUE INDEX uq_idp_intent_event_intent_id_version ON app.idp_provisioning_intent_status_event USING btree (idp_provisioning_intent_id, version)',
+    'CREATE UNIQUE INDEX uq_idp_intent_event_intent_id_version_to_status ON app.idp_provisioning_intent_status_event USING btree (idp_provisioning_intent_id, version, to_status)'])));
+SELECT pg_temp.uji_nol('ADR-030 idp_provisioning_intent_state: index persis pk, ix pending (rekonsiliasi)',
+  ARRAY(SELECT pg_temp.uji_indeks('app.idp_provisioning_intent_state', ARRAY[
+    'CREATE UNIQUE INDEX pk_idp_provisioning_intent_state ON app.idp_provisioning_intent_state USING btree (idp_provisioning_intent_id)',
+    'CREATE INDEX ix_idp_intent_state_status_updated_at_pending ON app.idp_provisioning_intent_state USING btree (status, updated_at) WHERE (status = ''pending''::text)'])));
+SELECT pg_temp.uji_nol('ADR-030 tabel niat tanpa kolom anonymize dan tanpa kolom email/nama/password',
+  ARRAY(SELECT format('%s.%s', attrelid::regclass, attname) FROM pg_attribute
+         WHERE attrelid IN ('app.idp_provisioning_intent'::regclass, 'app.idp_provisioning_intent_status_event'::regclass,
+                            'app.idp_provisioning_intent_state'::regclass)
+           AND attnum > 0 AND NOT attisdropped
+           AND (col_description(attrelid, attnum) IS NOT NULL
+                OR attname ~ '(email|name|password|secret|token|credential|redirect)')));
+SELECT pg_temp.uji_nol('ADR-030 tabel niat tanpa hak untuk rs_audit_relay dan rs_key_rotation',
+  ARRAY(SELECT format('%s: %s', c.relname, pg_get_userbyid(a.grantee))
+          FROM pg_class c, aclexplode(c.relacl) a
+         WHERE c.oid IN ('app.idp_provisioning_intent'::regclass, 'app.idp_provisioning_intent_status_event'::regclass,
+                         'app.idp_provisioning_intent_state'::regclass)
+           AND pg_get_userbyid(a.grantee) IN ('rs_audit_relay', 'rs_key_rotation')));
+
 -- 3. Test negatif atas pemeriksa DDL umum dan pemeriksa index, lalu perilaku. Semua di-ROLLBACK.
 BEGIN;
 DO $$
@@ -81,8 +119,8 @@ BEGIN
       ('KEPUTUSAN-93 created_at boleh NULL', 'ALTER TABLE app.rs_admin_role ALTER COLUMN created_at DROP NOT NULL', ddl, 'rs_admin_role.created_at: bukan NOT NULL'),
       ('KEPUTUSAN-93 FK ON DELETE CASCADE', 'ALTER TABLE app.session_revocation DROP CONSTRAINT fk_session_revocation_account_id; ALTER TABLE app.session_revocation ADD CONSTRAINT fk_session_revocation_account_id FOREIGN KEY (account_id) REFERENCES app.account (id) ON DELETE CASCADE', ddl, 'FK fk_session_revocation_account_id ON DELETE/UPDATE bukan NO ACTION'),
       ('KEPUTUSAN-93 FK ON UPDATE SET NULL', 'ALTER TABLE app.rs_admin_role DROP CONSTRAINT fk_rs_admin_role_updated_by; ALTER TABLE app.rs_admin_role ADD CONSTRAINT fk_rs_admin_role_updated_by FOREIGN KEY (updated_by) REFERENCES app.account (id) ON UPDATE SET NULL', ddl, 'fk_rs_admin_role_updated_by ON DELETE/UPDATE bukan NO ACTION'),
-      ('index tambahan terdeteksi', 'CREATE INDEX ix_account_email ON app.account (email)', $q$SELECT pg_temp.uji_indeks('app.account', ARRAY['CREATE UNIQUE INDEX pk_account ON app.account USING btree (id)', 'CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account USING btree (idp_realm, idp_subject) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)'])$q$, 'index app.account lebih: CREATE INDEX ix_account_email'),
-      ('uqp tanpa WHERE deleted_at terdeteksi', 'DROP INDEX app.uqp_account_idp_realm_idp_subject; CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account (idp_realm, idp_subject)', $q$SELECT pg_temp.uji_indeks('app.account', ARRAY['CREATE UNIQUE INDEX pk_account ON app.account USING btree (id)', 'CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account USING btree (idp_realm, idp_subject) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)'])$q$, 'index app.account kurang: .*WHERE \(deleted_at IS NULL\)'),
+      ('index tambahan terdeteksi', 'CREATE INDEX ix_account_email ON app.account (email)', $q$SELECT pg_temp.uji_indeks('app.account', ARRAY['CREATE UNIQUE INDEX pk_account ON app.account USING btree (id)', 'CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account USING btree (idp_realm, idp_subject) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_idp_realm_lower_email ON app.account USING btree (idp_realm, lower(email)) WHERE (deleted_at IS NULL)'])$q$, 'index app.account lebih: CREATE INDEX ix_account_email'),
+      ('uqp tanpa WHERE deleted_at terdeteksi', 'DROP INDEX app.uqp_account_idp_realm_idp_subject; CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account (idp_realm, idp_subject)', $q$SELECT pg_temp.uji_indeks('app.account', ARRAY['CREATE UNIQUE INDEX pk_account ON app.account USING btree (id)', 'CREATE UNIQUE INDEX uqp_account_idp_realm_idp_subject ON app.account USING btree (idp_realm, idp_subject) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_status ON app.account USING btree (status) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_account_idp_realm_lower_email ON app.account USING btree (idp_realm, lower(email)) WHERE (deleted_at IS NULL)'])$q$, 'index app.account kurang: .*WHERE \(deleted_at IS NULL\)'),
       ('T-07 UPDATE kolom non-anonymize account untuk pekerja privasi', 'GRANT UPDATE (status) ON app.account TO rs_privacy_worker', $q$SELECT pg_temp.uji_kelas_app('app', '{}')$q$, 'T-07 account'),
       ('T-06 DELETE account untuk rs_app', 'GRANT DELETE ON app.account TO rs_app', $q$SELECT pg_temp.uji_kelas_app('app', '{}')$q$, 'T-06 account .*lebih rs_app:DELETE'),
       ('T-06 SELECT session_revocation untuk pekerja privasi (O tanpa data pribadi)', 'GRANT SELECT ON app.session_revocation TO rs_privacy_worker', $q$SELECT pg_temp.uji_kelas_app('app', '{}')$q$, 'T-06 session_revocation .*lebih rs_privacy_worker:SELECT')
@@ -218,12 +256,77 @@ SELECT pg_temp.uji_boleh('F1-T34 rs_worker memangkas tanda terima di luar jendel
 SELECT pg_temp.uji_tolak('F1-T34 NEG pekerja privasi membaca idp_event_receipt', 'rs_privacy_worker_login', 'SELECT * FROM app.idp_event_receipt', '42501', 'permission denied for table idp_event_receipt');
 SELECT pg_temp.uji_tolak('F1-T34 NEG relay audit membaca idp_event_cursor', 'rs_audit_relay_login', 'SELECT * FROM app.idp_event_cursor', '42501', 'permission denied for table idp_event_cursor');
 SELECT pg_temp.uji_tolak('F1-T34 NEG rs_api TRUNCATE idp_event_receipt', 'rs_api', 'TRUNCATE app.idp_event_receipt', '42501', 'permission denied for table idp_event_receipt');
+
+-- ADR-030 langkah 1: akun pending_provisioning dan niat penyediaan identitas.
+SELECT pg_temp.uji_boleh('ADR-030 rs_api INSERT akun HR pending_provisioning tanpa idp_subject', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-00000000a010'', ''corporate_admin'', ''korporat'', NULL, ''hr1@contoh.invalid'', ''pending_provisioning'', now())', 1);
+SELECT pg_temp.uji_boleh('ADR-030 akun kedua pending_provisioning tanpa subjek di realm sama (NULL tidak bentrok uqp)', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-00000000a011'', ''corporate_admin'', ''korporat'', NULL, ''hr2@contoh.invalid'', ''pending_provisioning'', now())', 1);
+SELECT pg_temp.uji_tolak('ADR-030 NEG idp_subject kosong di luar pending_provisioning', 'rs_api',
+  'INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) VALUES (''00000000-0000-7000-8000-00000000a012'', ''corporate_admin'', ''korporat'', NULL, ''hr3@contoh.invalid'', ''pending_activation'', now())',
+  '23514', 'ck_account_idp_subject');
+SELECT pg_temp.uji_tolak('ADR-030 NEG akun pending_provisioning naik status tanpa idp_subject', 'rs_api',
+  'UPDATE app.account SET status = ''pending_activation'' WHERE id = ''00000000-0000-7000-8000-00000000a011''',
+  '23514', 'ck_account_idp_subject');
+SELECT pg_temp.uji_boleh('ADR-030 adopsi idp_subject dan naik ke pending_activation', 'rs_api',
+  'UPDATE app.account SET idp_subject = ''sub-hr-2'', status = ''pending_activation'', status_changed_at = now() WHERE id = ''00000000-0000-7000-8000-00000000a011'' AND status = ''pending_provisioning''', 1);
+SELECT pg_temp.uji_boleh('ADR-030 rs_api INSERT niat create_user (hr_self_registration, korporat)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b001'', ''00000000-0000-7000-8000-00000000a010'', ''korporat'', ''create_user'', ''hr_self_registration'', ''00000000-0000-7000-8000-00000000c001'')', 1);
+SELECT pg_temp.uji_boleh('ADR-030 niat send_activation dengan niat asal akun yang sama', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, origin_intent_id, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b002'', ''00000000-0000-7000-8000-00000000a010'', ''korporat'', ''send_activation'', ''hr_self_registration'', ''00000000-0000-7000-8000-00000000b001'', ''00000000-0000-7000-8000-00000000c001'')', 1);
+SELECT pg_temp.uji_tolak('ADR-030 NEG niat asal milik akun lain (FK komposit)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, origin_intent_id, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b003'', ''00000000-0000-7000-8000-00000000a011'', ''korporat'', ''delete_orphan'', ''provisioning_compensation'', ''00000000-0000-7000-8000-00000000b001'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23503', 'fk_idp_intent_origin_intent_id_account_id');
+SELECT pg_temp.uji_tolak('ADR-030 NEG send_activation tanpa niat asal', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b004'', ''00000000-0000-7000-8000-00000000a010'', ''korporat'', ''send_activation'', ''hr_invitation'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_provisioning_intent_origin');
+SELECT pg_temp.uji_tolak('ADR-030 NEG operasi di luar daftar tertutup (reset_password)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b005'', ''00000000-0000-7000-8000-00000000a010'', ''korporat'', ''reset_password'', ''hr_invitation'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_provisioning_intent_(operation|purpose)');
+SELECT pg_temp.uji_tolak('ADR-030 NEG pasangan operasi/tujuan tidak sah (delete_orphan untuk undangan)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, origin_intent_id, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b006'', ''00000000-0000-7000-8000-00000000a010'', ''korporat'', ''delete_orphan'', ''hr_invitation'', ''00000000-0000-7000-8000-00000000b001'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_provisioning_intent_purpose');
+SELECT pg_temp.uji_tolak('ADR-030 NEG tujuan HR di realm pasien', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent (id, account_id, idp_realm, operation, purpose, correlation_id) VALUES (''00000000-0000-7000-8000-00000000b007'', ''00000000-0000-7000-8000-00000000a002'', ''pasien'', ''create_user'', ''hr_invitation'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_provisioning_intent_purpose_realm');
+SELECT pg_temp.uji_tolak('ADR-030 NEG rs_api UPDATE niat (T, trigger)', 'rs_api',
+  'UPDATE app.idp_provisioning_intent SET purpose = ''hr_invitation''', '42501', 'permission denied for table idp_provisioning_intent');
+SELECT pg_temp.uji_tolak('ADR-030 NEG rs_worker DELETE niat (T)', 'rs_worker',
+  'DELETE FROM app.idp_provisioning_intent', '42501', 'permission denied for table idp_provisioning_intent');
+SELECT pg_temp.uji_boleh('ADR-030 riwayat status v1 pending', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent_status_event (id, idp_provisioning_intent_id, version, from_status, to_status, actor_type, correlation_id) VALUES (''00000000-0000-7000-8000-00000000d001'', ''00000000-0000-7000-8000-00000000b001'', 1, NULL, ''pending'', ''system'', ''00000000-0000-7000-8000-00000000c001'')', 1);
+SELECT pg_temp.uji_boleh('ADR-030 proyeksi v1 pending', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent_state (idp_provisioning_intent_id, status, version) VALUES (''00000000-0000-7000-8000-00000000b001'', ''pending'', 1)', 1);
+SELECT pg_temp.uji_tolak('ADR-030 NEG versi sama tercatat dua kali (hasil ganda, AB-36)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent_status_event (id, idp_provisioning_intent_id, version, from_status, to_status, actor_type, correlation_id) VALUES (''00000000-0000-7000-8000-00000000d002'', ''00000000-0000-7000-8000-00000000b001'', 1, NULL, ''pending'', ''system'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23505', 'uq_idp_intent_event_intent_id_version');
+SELECT pg_temp.uji_tolak('ADR-030 NEG rejected tanpa reason_code', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent_status_event (id, idp_provisioning_intent_id, version, from_status, to_status, actor_type, correlation_id) VALUES (''00000000-0000-7000-8000-00000000d003'', ''00000000-0000-7000-8000-00000000b001'', 2, ''pending'', ''rejected'', ''system'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_intent_event_reason_code');
+SELECT pg_temp.uji_tolak('ADR-030 NEG reason_code teks bebas (bukan kode)', 'rs_api',
+  'INSERT INTO app.idp_provisioning_intent_status_event (id, idp_provisioning_intent_id, version, from_status, to_status, reason_code, actor_type, correlation_id) VALUES (''00000000-0000-7000-8000-00000000d004'', ''00000000-0000-7000-8000-00000000b001'', 2, ''pending'', ''failed'', ''Email hr1@contoh.invalid dipakai'', ''system'', ''00000000-0000-7000-8000-00000000c001'')',
+  '23514', 'ck_idp_intent_event_reason_code');
+SELECT pg_temp.uji_tolak('ADR-030 NEG proyeksi ke status tanpa riwayat (FK komposit)', 'rs_api',
+  'UPDATE app.idp_provisioning_intent_state SET status = ''succeeded'', version = 2 WHERE idp_provisioning_intent_id = ''00000000-0000-7000-8000-00000000b001''',
+  '23503', 'fk_idp_intent_state_intent_id_version_status');
+SELECT pg_temp.uji_tolak('ADR-030 NEG rs_api UPDATE riwayat status (R)', 'rs_api',
+  'UPDATE app.idp_provisioning_intent_status_event SET to_status = ''succeeded''', '42501', 'permission denied for table idp_provisioning_intent_status_event');
+SELECT pg_temp.uji_tolak('ADR-030 NEG rs_api DELETE proyeksi (P tanpa DELETE)', 'rs_api',
+  'DELETE FROM app.idp_provisioning_intent_state', '42501', 'permission denied for table idp_provisioning_intent_state');
+SELECT pg_temp.uji_boleh('ADR-030 pekerja privasi membaca ID/akun/waktu niat', 'rs_privacy_worker_login',
+  'SELECT id, created_at, account_id FROM app.idp_provisioning_intent', 2);
+SELECT pg_temp.uji_tolak('ADR-030 NEG pekerja privasi membaca operasi niat', 'rs_privacy_worker_login',
+  'SELECT operation FROM app.idp_provisioning_intent', '42501', 'permission denied for table idp_provisioning_intent');
+SELECT pg_temp.uji_tolak('ADR-030 NEG pekerja privasi membaca riwayat status niat', 'rs_privacy_worker_login',
+  'SELECT * FROM app.idp_provisioning_intent_status_event', '42501', 'permission denied for table idp_provisioning_intent_status_event');
 ROLLBACK;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM app.account) OR EXISTS (SELECT 1 FROM app.rs_admin_role) OR EXISTS (SELECT 1 FROM app.session_revocation)
-     OR EXISTS (SELECT 1 FROM app.idp_event_cursor) OR EXISTS (SELECT 1 FROM app.idp_event_receipt) THEN
+     OR EXISTS (SELECT 1 FROM app.idp_event_cursor) OR EXISTS (SELECT 1 FROM app.idp_event_receipt)
+     OR EXISTS (SELECT 1 FROM app.idp_provisioning_intent) OR EXISTS (SELECT 1 FROM app.idp_provisioning_intent_status_event)
+     OR EXISTS (SELECT 1 FROM app.idp_provisioning_intent_state) THEN
     RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a1: data uji tersisa';
   END IF;
   RAISE NOTICE 'LULUS pembersihan tabel-app-a1: tidak ada data uji tersisa (ROLLBACK)';

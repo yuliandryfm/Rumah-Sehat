@@ -16,6 +16,10 @@
 //!   akun `corporate_hr_repo` (keanggotaan lewat `corporate::api`), use case `corporate_hr_service`, dan
 //!   endpoint `/v1/corporate/members` (`corporate_hr_http`).
 //!
+//! - ADR-030 langkah 1-4 (CR-026, KEPUTUSAN-302/305): penyediaan identitas lewat worker. Aturan murni
+//!   `idp_domain`, query niat `idp_repo`, API internal pencatatan niat `idp_service` (dipanggil use case di
+//!   transaksinya), klien pengguna Keycloak `idp_worker_client` (hanya worker), dan worker `idp_worker`.
+//!
 //! Endpoint HTTP lain modul ini (registrasi, keluar, kelola akun admin) menyusul di task masing-masing.
 
 mod admin_domain;
@@ -29,6 +33,12 @@ mod corporate_hr_repo;
 mod corporate_hr_service;
 mod domain;
 mod error;
+mod idp_config;
+mod idp_domain;
+mod idp_repo;
+mod idp_service;
+mod idp_worker;
+mod idp_worker_client;
 mod jobs;
 mod keycloak;
 mod repo;

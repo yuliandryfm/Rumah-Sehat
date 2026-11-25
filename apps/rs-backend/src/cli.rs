@@ -26,7 +26,7 @@ use crypto::{
     DataKeyring, KeyEncryptionKey, Keyring, KeyringConfig, System, TransitConfig, TransitKek,
     constant_time_eq,
 };
-use foundation::{Clock, SystemClock};
+use foundation::{Clock, Sensitive, SystemClock};
 use observability::{BaseConfig, Component, ConfigError, EnvSource, JsonLogLayer, install};
 use platform_jobs::lock::RS_KEYCLOAK_EVENT_PULLER;
 use sqlx::postgres::PgPoolOptions;
@@ -115,7 +115,7 @@ impl Command {
 /// Konfigurasi bertipe per subcommand (KEPUTUSAN-132): setiap proses hanya memuat yang dibutuhkannya.
 enum Loaded {
     Api(Box<ApiConfig>),
-    Worker(WorkerConfig),
+    Worker(Box<WorkerConfig>),
     AuditRelay(AuditRelayConfig),
     AuditVerify(AuditVerifyConfig),
     EmailRelay(Box<EmailRelayConfig>),
@@ -126,7 +126,7 @@ impl Loaded {
     fn load(command: Command, env: &EnvSource) -> Result<Self, ConfigError> {
         Ok(match command {
             Command::Api => Self::Api(Box::new(ApiConfig::load(env)?)),
-            Command::Worker => Self::Worker(WorkerConfig::load(env)?),
+            Command::Worker => Self::Worker(Box::new(WorkerConfig::load(env)?)),
             Command::AuditRelay => Self::AuditRelay(AuditRelayConfig::load(env)?),
             Command::AuditVerify => Self::AuditVerify(AuditVerifyConfig::load(env)?),
             Command::EmailRelay => Self::EmailRelay(Box::new(EmailRelayConfig::load(env)?)),
@@ -176,7 +176,7 @@ pub fn run(args: &[String], env: &EnvSource) -> ExitCode {
     }
     match loaded {
         Loaded::Api(config) => run_api(*config),
-        Loaded::Worker(config) => run_worker(config),
+        Loaded::Worker(config) => run_worker(*config),
         Loaded::AuditRelay(config) => run_audit_relay(config),
         Loaded::AuditVerify(config) => run_audit_verify(config),
         Loaded::EmailRelay(config) => run_email_relay(*config),
@@ -307,7 +307,7 @@ fn run_email_relay(config: EmailRelayConfig) -> ExitCode {
 /// `worker`: pengambil event Keycloak E-01–E-04 ke `audit_outbox`, satu aktif (kunci 7001002), instans lain
 /// siaga; berhenti pada SIGINT/SIGTERM (ADR-011 butir 10, F1-T34).
 fn run_worker(config: WorkerConfig) -> ExitCode {
-    use crate::modules::identity::api::{PullerSettings, run_puller};
+    use crate::modules::identity::api::{PullerSettings, run_idp_worker, run_puller};
     let Some(runtime) = runtime() else {
         return ExitCode::FAILURE;
     };
@@ -325,6 +325,7 @@ fn run_worker(config: WorkerConfig) -> ExitCode {
         op_timeout: Duration::from_millis(config.valkey_op_timeout_ms),
     };
     let directory_url = config.database_url.clone();
+    let idp_config = config.idp.clone();
     let settings = PullerSettings {
         options: events.options(),
         database_url: config.database_url,
@@ -355,8 +356,24 @@ fn run_worker(config: WorkerConfig) -> ExitCode {
             Arc::clone(&clock),
             Duration::from_secs(crate::modules::identity::api::DEFAULT_ACCOUNT_CACHE_TTL_SECONDS),
         ));
+        // Worker IdP (ADR-030): rahasia klien manage-users dibaca dari OpenBao KV di sini, gagal-tertutup.
+        let idp = match idp_worker(&idp_config, &directory_url, Arc::clone(&clock)).await {
+            Ok(w) => w,
+            Err(stage) => {
+                tracing::error!(stage, "idp_worker_start_failed");
+                return false;
+            }
+        };
+        let poll = idp_config.poll_interval();
+        let idp_loop = async move {
+            match idp {
+                Some(w) => run_idp_worker(w, poll).await,
+                None => std::future::pending::<()>().await,
+            }
+        };
         tokio::select! {
-            () = run_puller(settings, client, clock, directory) => {}
+            () = run_puller(settings, client, Arc::clone(&clock), directory) => {}
+            () = idp_loop => {}
             () = shutdown_signal() => {}
         }
         true
@@ -366,6 +383,45 @@ fn run_worker(config: WorkerConfig) -> ExitCode {
     }
     tracing::info!("worker_stopped");
     ExitCode::SUCCESS
+}
+
+/// Merakit worker IdP (ADR-030) bila `IDP_WORKER_REALMS` diisi; `Ok(None)` = tidak dikonfigurasi. Galat = tahap
+/// (tanpa nilai rahasia).
+async fn idp_worker(
+    cfg: &crate::modules::identity::api::IdpWorkerConfig,
+    database_url: &Sensitive<String>,
+    clock: Arc<dyn Clock>,
+) -> Result<Option<crate::modules::identity::api::IdpWorker>, &'static str> {
+    use crate::modules::identity::api::{
+        IdpUserAdmin, IdpWorker, idp_job_types, load_idp_credentials,
+    };
+    if !cfg.enabled() {
+        tracing::info!("idp_worker_disabled");
+        return Ok(None);
+    }
+    let credentials = load_idp_credentials(cfg)
+        .await
+        .map_err(|_| "idp_worker_credentials")?;
+    let addr = cfg.keycloak_url.ok_or("idp_worker_keycloak_url")?;
+    let admin = IdpUserAdmin::new(addr, cfg.timeout(), credentials)
+        .map_err(|_| "idp_worker_keycloak_url")?;
+    let pool = PgPoolOptions::new()
+        .max_connections(4)
+        .connect_lazy(database_url.expose())
+        .map_err(|_| "idp_worker_database_url")?;
+    let jobs = platform_jobs::WorkerConfig::new(
+        platform_jobs::WorkerId::new("idp_worker").map_err(|_| "idp_worker_config")?,
+        idp_job_types().map_err(|_| "idp_worker_config")?,
+        cfg.batch_size(),
+        time::Duration::seconds(i64::from(cfg.lease_secs)),
+        platform_jobs::Backoff::new(time::Duration::seconds(5), time::Duration::minutes(10))
+            .map_err(|_| "idp_worker_config")?,
+    )
+    .map_err(|_| "idp_worker_config")?;
+    let worker =
+        IdpWorker::new(pool, clock, Arc::new(admin), jobs).map_err(|_| "idp_worker_config")?;
+    tracing::info!(realms = cfg.realms.realms().len(), "idp_worker_starting");
+    Ok(Some(worker))
 }
 
 /// `audit-verify`: verifikasi rantai harian (kunci 7001003) atau sekali (`AUDIT_VERIFY_ONCE`).

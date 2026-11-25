@@ -1,0 +1,143 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.id, i.account_id, i.idp_realm AS realm, i.operation, i.purpose, i.origin_intent_id,\n                  i.correlation_id, s.status AS \"status?\", a.status AS account_status,\n                  (a.deleted_at IS NOT NULL) AS \"account_deleted!\", a.idp_subject\n             FROM app.idp_provisioning_intent i\n             JOIN app.account a ON a.id = i.account_id\n             LEFT JOIN app.idp_provisioning_intent_state s ON s.idp_provisioning_intent_id = i.id\n            WHERE i.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "account_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "account_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "realm",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "idp_realm"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "operation",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "operation"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "purpose",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "origin_intent_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "origin_intent_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "correlation_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "correlation_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "status?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent_state",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "account_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "account_deleted!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "idp_subject",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "idp_subject"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      null,
+      true
+    ]
+  },
+  "hash": "dbb180acde7ed188b94e68f49eda8c1ba9a23c803c54ed7054a8966405732e9e"
+}

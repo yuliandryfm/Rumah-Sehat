@@ -1074,6 +1074,13 @@ Registri kunci advisory (konstanta di crate `platform-jobs`, tidak pernah dipaka
 | 7002003 | `rme_audit` | `rme-backend audit-verify` |
 | 7002004 | `rme` | `rme-backend privacy-worker` |
 
+Kunci advisory **tingkat transaksi** (`pg_advisory_xact_lock(int4, int4)`, dilepas saat transaksi selesai) memakai ruang kunci dua-int4 yang terpisah dari kunci bigint di atas `[SRC-851]`. Kunci pertama = namespace `<kode modul><nomor kunci>`, kunci kedua = nilai per objek:
+
+| Namespace | Modul | Kunci kedua | Dipakai |
+| --- | --- | --- | --- |
+| 101 | 01 identitas | 4 byte pertama SHA-256 dari `<realm>:<email ternormalisasi>` (tabrakan hanya membuat dua pendaftaran berjalan berurutan) | pendaftaran/undangan akun `pending_provisioning`: periksa email belum dipakai akun belum terhapus di realm itu lalu sisipkan akun (ADR-030 butir 5) `[KEPUTUSAN-305]` |
+| 1101 | 11 konten | nomor halaman tetap | penayangan halaman situs (US-1802 AC2) |
+
 ### 6.5 Detach dan arsip (ADR-009 butir 9)
 
 Jendela daring awal 24 bulan; tidak ada pemusnahan sebelum PT-24 `[DOK: ADR-009 butir 9]`. Prosedur `[KEPUTUSAN-101]` `[KEPUTUSAN-157]`:

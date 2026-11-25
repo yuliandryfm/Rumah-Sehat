@@ -89,6 +89,9 @@ pub enum JobOutcome {
     Succeeded,
     /// Handler sudah memanggil [`complete`](crate::complete) di transaksinya sendiri; ini hasilnya.
     Completed(LeaseOutcome),
+    /// Handler sudah memanggil [`fail`](crate::fail) di transaksinya sendiri bersama pencatatan kegagalannya
+    /// (misalnya hasil akhir niat IdP ADR-030 saat percobaan habis); ini hasilnya beserta kodenya.
+    FailedInTx(LeaseOutcome, ErrorCode),
     /// Gagal sementara: dicoba ulang dengan backoff sampai `max_attempts`.
     Retry(ErrorCode),
     /// Gagal permanen: langsung `failed`.
@@ -141,6 +144,8 @@ where
             },
             JobOutcome::Completed(LeaseOutcome::Applied) => ("succeeded", None),
             JobOutcome::Completed(LeaseOutcome::LeaseLost) => ("lease_lost", None),
+            JobOutcome::FailedInTx(LeaseOutcome::Applied, code) => ("failed", Some(code)),
+            JobOutcome::FailedInTx(LeaseOutcome::LeaseLost, code) => ("lease_lost", Some(code)),
             JobOutcome::Retry(code) => {
                 match retry_or_fail(pool, &lease, code, &cfg.backoff, clock).await? {
                     RetryOutcome::Requeued { .. } => ("requeued", Some(code)),
