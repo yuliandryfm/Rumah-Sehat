@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT actor_type AS \"t!\" FROM app.idp_provisioning_intent_status_event\n           WHERE idp_provisioning_intent_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "t!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent_status_event",
+            "name": "actor_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "06573f7f80effe6e1e29336813ceafa070632f3c66538bce182b231e88316531"
+}

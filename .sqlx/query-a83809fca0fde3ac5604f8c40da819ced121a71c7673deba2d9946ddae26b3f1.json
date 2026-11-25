@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET idp_subject = $2, status = 'active' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a83809fca0fde3ac5604f8c40da819ced121a71c7673deba2d9946ddae26b3f1"
+}

@@ -6,6 +6,112 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/v1/corporate/member-invitations": {
+      "post": {
+        "tags": [
+          "corporate-hr"
+        ],
+        "summary": "Mengundang HR lain ke perusahaan pemanggil (US-1904 AC2). Akun baru terikat ke perusahaan pemanggil;\ntautan aktivasi (password dan TOTP) berlaku 24 jam dan sekali pakai. Jawaban sama untuk email baru dan email\nyang sudah terdaftar.",
+        "operationId": "corporate_member_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HrInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Undangan diterima untuk diproses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrInvitationAcceptedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut (termasuk pemanggil yang baru saja dinonaktifkan HR lain).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perusahaan belum Aktif (menunggu verifikasi atau ditolak).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Email tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/corporate/members": {
       "get": {
         "tags": [
@@ -278,6 +384,61 @@
           }
         }
       },
+      "HrInvitationAcceptedDto": {
+        "type": "object",
+        "description": "Undangan diterima. Isi selalu sama, juga untuk email yang sudah terdaftar (anti-enumerasi).",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Selalu `processing`: pengguna dibuat dan email dikirim beberapa saat kemudian; pantau di daftar anggota.",
+            "example": "processing"
+          }
+        }
+      },
+      "HrInvitationAcceptedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons undangan HR.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/HrInvitationAcceptedDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2020000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Diterima untuk diproses"
+          }
+        }
+      },
+      "HrInvitationRequest": {
+        "type": "object",
+        "description": "Undangan HR (US-1904 AC2).",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email HR yang diundang (penerima tautan aktivasi: password dan TOTP, berlaku 24 jam, sekali pakai).",
+            "example": "hr.baru@perusahaan.example",
+            "maxLength": 254
+          }
+        },
+        "additionalProperties": false
+      },
       "HrMemberDto": {
         "type": "object",
         "description": "Satu anggota HR perusahaan pemanggil.",
@@ -352,6 +513,7 @@
         "description": "Status akun HR.",
         "enum": [
           "pending_activation",
+          "invitation_processing",
           "active",
           "inactive"
         ]

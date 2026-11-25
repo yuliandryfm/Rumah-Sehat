@@ -10,7 +10,7 @@
 //! F1-T107: operasi keanggotaan HR untuk use case kelola anggota HR di modul `identity` (pemilik akun):
 //! kunci tabel, daftar keanggotaan aktif per perusahaan, pemilik keanggotaan, dan pencabutan (hapus lunak).
 
-use super::{repo, verification};
+use super::{admin_create, repo, verification};
 use crate::modules::platform::api::{DownloadTicket, FileStorage};
 use authz::{
     CorporateClientStatus, CorporateMembership, CorporateScopeResolver, MembershipFuture,
@@ -21,6 +21,7 @@ use sqlx::{PgConnection, PgPool};
 use std::fmt;
 use time::OffsetDateTime;
 
+pub use super::admin_create::{CreatedCorporateClientView, NewCorporateClientInput};
 pub use super::error::CorporateError;
 
 /// Pembaca keanggotaan aktif HR di atas pool role `rs_app`.
@@ -125,6 +126,20 @@ pub async fn revoke_member(
         now,
     )
     .await
+}
+
+/// Menambah keanggotaan HR di transaksi pemanggil setelah [`lock_members`] (undangan HR, F1-T107): satu
+/// keanggotaan aktif per akun. Mengembalikan `corporate_member.id`.
+pub async fn add_member(
+    conn: &mut PgConnection,
+    corporate_client_id: Uuid,
+    account_id: Uuid,
+    by: Uuid,
+    now: OffsetDateTime,
+) -> Result<Uuid, sqlx::Error> {
+    let id = foundation::new_id();
+    repo::insert_member(conn, id, corporate_client_id, account_id, by, now).await?;
+    Ok(id)
 }
 
 impl CorporateScopeResolver for CorporateDirectory {
@@ -294,4 +309,16 @@ pub async fn corporate_rejection_reasons(
     deps: &CorporateVerification<'_>,
 ) -> Result<Vec<RejectionReasonView>, CorporateError> {
     verification::rejection_reasons(deps).await
+}
+
+/// US-1903 AC1-AC4 (F1-T105): Verifikator membuat perusahaan langsung Aktif dan mengundang HR pertama
+/// (akun `pending_provisioning` + niat penyediaan; email aktivasi dikirim worker IdP, ADR-030). NIB atau
+/// email HR ganda = `409` tanpa efek, tercatat E-10 hasil gagal.
+pub async fn create_corporate_client_by_admin(
+    deps: &CorporateVerification<'_>,
+    principal: &Principal,
+    route: &str,
+    input: &NewCorporateClientInput,
+) -> Result<CreatedCorporateClientView, CorporateError> {
+    admin_create::create(deps, principal, route, input).await
 }

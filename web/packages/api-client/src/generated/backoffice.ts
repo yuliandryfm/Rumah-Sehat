@@ -148,6 +148,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backoffice/v1/corporate-clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Membuat perusahaan Aktif dan mengundang HR pertama (US-1903 AC1-AC4). Perusahaan langsung Aktif tanpa
+         *     antrean verifikasi; HR menerima tautan aktivasi (password dan TOTP) berlaku 24 jam dan sekali pakai.
+         */
+        post: operations["corporate_client_create_by_admin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/backoffice/v1/corporate-verification-reasons": {
         parameters: {
             query?: never;
@@ -460,6 +480,68 @@ export interface components {
          * @enum {string}
          */
         ContentType: "banner" | "info_page" | "article" | "promo";
+        /** @description Perusahaan baru dari Verifikator (US-1903 AC1). */
+        CorporateClientCreateRequest: {
+            /**
+             * @description Email HR pertama: penerima undangan aktivasi (password dan TOTP) di realm `korporat`.
+             * @example hr@perusahaan.example
+             */
+            hr_email: string;
+            /**
+             * @description Nama badan usaha (maks 200 karakter).
+             * @example PT Contoh Sintetis
+             */
+            legal_name: string;
+            /**
+             * @description NIB (maks 64 karakter, tanpa spasi; format resmi belum ditetapkan).
+             * @example 1234567890123
+             */
+            nib: string;
+            /**
+             * @description NPWP (Terbatas; maks 64 karakter, tanpa spasi).
+             * @example 012345678901234
+             */
+            npwp: string;
+            /**
+             * @description Alamat kantor (maks 500 karakter).
+             * @example Jl. Contoh No. 1, Jakarta
+             */
+            office_address: string;
+            /**
+             * @description Telepon kantor (maks 32 karakter).
+             * @example 021-0000000
+             */
+            office_phone: string;
+        };
+        /** @description Hasil pembuatan perusahaan. */
+        CorporateClientCreatedDto: {
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            corporate_client_id: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c */
+            corporate_member_id: string;
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2d */
+            hr_account_id: string;
+            /**
+             * @description Selalu `processing`: pengguna HR dibuat dan email aktivasi dikirim worker beberapa saat setelah respons
+             *     (ADR-030 butir 7-8); tautan berlaku 24 jam dan sekali pakai.
+             * @example processing
+             */
+            hr_invitation: string;
+            /**
+             * @description Selalu `active`: perusahaan dibuat Verifikator langsung Aktif (US-1903 AC1).
+             * @example active
+             */
+            status: string;
+        };
+        /** @description Bentuk dokumentasi respons pembuatan perusahaan. */
+        CorporateClientCreatedEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["CorporateClientCreatedDto"];
+            /** @example 2010000 */
+            response_code: string;
+            /** @example Berhasil dibuat */
+            response_description: string;
+        };
         /**
          * @description Status perusahaan.
          * @enum {string}
@@ -1694,6 +1776,102 @@ export interface operations {
             };
             /** @description Jadwal atau teks alternatif tidak valid. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_client_create_by_admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateClientCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Perusahaan Aktif dibuat; undangan HR diproses. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorporateClientCreatedEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Akun tanpa sub-peran Verifikator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan). */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

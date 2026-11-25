@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT account_type AS \"t!\", idp_realm AS \"realm!\", idp_subject, status AS \"status!\",\n                  email AS \"email!\", created_by\n           FROM app.account WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "t!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "account_type"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "realm!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "idp_realm"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "idp_subject",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "idp_subject"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "email!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "created_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "70ec45cfd284124542ac2894a5afbcaa9a418585d4b95e2d599d80858b2021a0"
+}

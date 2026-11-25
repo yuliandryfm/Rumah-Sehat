@@ -22,17 +22,35 @@
 //! Keycloak, dan sesi milik HR **lain** tidak diketahui backend (hanya sesi pemanggil yang ada di token).
 //! Pengakhiran sesi Keycloak menyusul lewat penyedia (butir 3).
 //!
-//! **Penyedia identitas belum dipasang.** Undangan HR baru (pembuatan pengguna realm `korporat` dan email
-//! aktivasi sekali pakai) dan penonaktifan pengguna Keycloak membutuhkan hak setara `manage-users` atas
-//! seluruh realm `korporat` (Keycloak 26.8.2, SRC-674; FGAP v2 tidak mempersempitnya berarti, SRC-830).
-//! Menurut TD-26/TD-30 klien itu tidak boleh dipegang proses `api`; ADR-030 (KEPUTUSAN-302) menetapkan
-//! aksi itu hanya dijalankan proses `worker` lewat niat dan job outbox berjenis tertutup. Pemasangannya
-//! task terpisah: sampai itu [`CorporateIdentityProvisioner`] hanya antarmuka, implementasi yang dipasang
-//! ([`ProvisionerNotConfigured`]) tidak memanggil Admin REST, dan endpoint undangan belum dibuat.
+//! **Undang HR lain** (F1-T107 sisa, US-1904 AC2; ADR-030 butir 2, 5, 7; KEPUTUSAN-303 P30-2, KEPUTUSAN-329),
+//! satu transaksi `audit::in_audited_tx`:
+//! 1. Email divalidasi (ASCII ternormalisasi) sebelum transaksi; IP klien wajib (gagal-tertutup).
+//! 2. Di transaksi, **kunci advisory email lebih dulu** (`register_hr_invitation` -> `register_pending_account`:
+//!    akun `pending_provisioning` jenis `corporate_admin` + niat `create_user` + job `idp_create_user`), baru
+//!    `corporate::api::lock_members` (kunci tabel; urutan tetap advisory -> tabel, tidak pernah sebaliknya,
+//!    review T1 ADR-030 catatan 5), baca ulang daftar HR, [`check_invite`] (pemanggil masih HR aktif),
+//!    tambah keanggotaan perusahaan **pemanggil** (cakupan selalu dari keanggotaan, tidak dari permintaan),
+//!    lalu E-10 (`corporate_admin_account_invited`) dan E-11 (`corporate_membership_granted`) dengan tenant =
+//!    perusahaan.
+//! 3. Email sudah dipakai akun belum terhapus di realm `korporat`: tidak ada efek (transaksi dibatalkan),
+//!    jawaban SERAGAM dengan undangan baru (`202`, tanpa ID), tercatat E-10 hasil gagal `email_in_use` di
+//!    transaksi tersendiri (anti-enumerasi, P30-2). Pemberitahuan "Anda sudah punya akun" ke alamat itu
+//!    BELUM ada: jalur email aplikasi (outbox, K2) belum dibangun `[TIDAK DIKETAHUI]`.
+//! 4. Email aktivasi (password + TOTP, 24 jam, sekali pakai, KEPUTUSAN-306) dikirim worker IdP setelah pengguna
+//!    dibuat (`idp_worker.rs` mencatat niat `idp_send_activation` sendiri); backend tidak punya jalur "undang
+//!    ulang", jadi tidak ada akun atau niat ganda. Proses `api` tidak pernah memanggil Keycloak (TD-26/TD-30).
+//!
+//! **Penonaktifan pengguna Keycloak** belum lewat niat `idp_disable_user`: [`CorporateIdentityProvisioner`]
+//! hanya antarmuka dan implementasi yang dipasang ([`ProvisionerNotConfigured`]) tidak memanggil Admin REST
+//! (akses backend sudah tertutup oleh PostgreSQL, TD-38).
 
-use super::corporate_hr_domain::{HrMember, HrRoster, HrRuleViolation, check_deactivation};
+use super::corporate_hr_domain::{
+    HrMember, HrRoster, HrRuleViolation, check_deactivation, check_invite,
+};
+use super::corporate_hr_invite::{HrInviteError, normalize_hr_email, register_hr_invitation};
 use super::corporate_hr_repo;
 use super::error::IdentityError;
+use super::idp_service::IntentActor;
 use super::service::AccountDirectory;
 use crate::modules::corporate::api as corporate;
 use audit::{
@@ -41,7 +59,7 @@ use audit::{
 };
 use authn::Realm;
 use authz::{AccountStatus, CorporateScope, corporate_object};
-use foundation::{Clock, Uuid};
+use foundation::{Clock, FixedClock, Uuid};
 use sqlx::{PgConnection, PgPool};
 use std::convert::Infallible;
 use std::future::Future;
@@ -111,8 +129,10 @@ pub struct HrMemberView {
     pub full_name: Option<String>,
     /// Jabatan.
     pub job_title: Option<String>,
-    /// Status akun.
+    /// Status akun (akun `pending_provisioning` = `PendingActivation` dengan [`Self::invitation_processing`]).
     pub status: AccountStatus,
+    /// Undangan masih diproses: pengguna Keycloak belum dibuat worker (ADR-030 butir 5, 7).
+    pub invitation_processing: bool,
     /// Anggota ini adalah pemanggil.
     pub is_self: bool,
 }
@@ -132,6 +152,7 @@ static CORPORATE_ADMIN_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical
     "account",
     &[
         FieldRule::value("status"),
+        FieldRule::value("account_type"),
         FieldRule::name_only("status_reason"),
         FieldRule::value("corporate_member_id"),
         FieldRule::value("corporate_client_id"),
@@ -140,6 +161,12 @@ static CORPORATE_ADMIN_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical
 
 /// Alasan penonaktifan (`account.status_reason`, `corporate_member.delete_reason`).
 const DEACTIVATION_REASON: &str = "deactivated_by_corporate_hr";
+
+const DEACTIVATE_ACTION: &str = "corporate_admin_account_deactivated";
+const INVITE_ACTION: &str = "corporate_admin_account_invited";
+const GRANT_ACTION: &str = "corporate_membership_granted";
+/// Alasan E-10 hasil gagal undangan ke email yang sudah dipakai (jawaban ke HR tetap seragam).
+const EMAIL_IN_USE_REASON: &str = "email_in_use";
 
 /// Percobaan menulis event hasil gagal (coding-standards §4.4 butir 3).
 const FAILED_AUDIT_ATTEMPTS: u32 = 3;
@@ -154,6 +181,8 @@ pub struct CorporateHrAccounts {
 
 enum Work {
     Rule(HrRuleViolation, Uuid),
+    /// Email undangan sudah dipakai akun lain di realm `korporat` (jawaban seragam, tanpa efek).
+    EmailInUse,
     Db,
     Audit,
 }
@@ -189,6 +218,15 @@ async fn roster(
     Ok((members, accounts))
 }
 
+/// Status akun dan penanda `pending_provisioning` (ADR-030 butir 5); nilai lain tidak dikenal = `None`.
+fn account_status(raw: &str) -> Option<(AccountStatus, bool)> {
+    if raw == "pending_provisioning" {
+        Some((AccountStatus::PendingActivation, true))
+    } else {
+        AccountStatus::parse(raw).map(|s| (s, false))
+    }
+}
+
 /// Status tidak dikenal = galat (CHECK constraint menjamin tidak terjadi); akun yang bukan HR diabaikan.
 fn to_roster(
     members: &[corporate::MemberRef],
@@ -200,11 +238,12 @@ fn to_roster(
             tracing::error!("corporate_member_without_hr_account");
             continue;
         };
-        let status = AccountStatus::parse(&a.status).ok_or(Work::Db)?;
+        let (status, provisioning) = account_status(&a.status).ok_or(Work::Db)?;
         out.push(HrMember {
             member_id: m.corporate_member_id,
             account_id: a.id,
             status,
+            provisioning,
         });
     }
     Ok(HrRoster { members: out })
@@ -287,13 +326,15 @@ impl CorporateHrAccounts {
                 tracing::error!("corporate_member_without_hr_account");
                 continue;
             };
-            let status = AccountStatus::parse(&a.status).ok_or(IdentityError::Database)?;
+            let (status, provisioning) =
+                account_status(&a.status).ok_or(IdentityError::Database)?;
             out.push(HrMemberView {
                 corporate_member_id: m.corporate_member_id,
                 email: a.email.clone(),
                 full_name: a.full_name.clone(),
                 job_title: m.job_title,
                 status,
+                invitation_processing: provisioning,
                 is_self: a.id == scope.account_id(),
             });
         }
@@ -387,10 +428,11 @@ impl CorporateHrAccounts {
                     Some(Value::Uuid(client)),
                     None,
                 ));
+                // Sasaran `pending_provisioning` sudah ditolak aturan, jadi `idp_subject` pasti terisi.
                 let subject = accounts
                     .iter()
                     .find(|a| a.id == target.account_id)
-                    .map(|a| a.idp_subject.clone())
+                    .and_then(|a| a.idp_subject.clone())
                     .ok_or(Work::Db)?;
                 Ok((subject, vec![e10, e11]))
             })
@@ -402,7 +444,9 @@ impl CorporateHrAccounts {
                 self.record_rejected(scope, &ctx, v, target_account).await;
                 return Err(IdentityError::HrRule(v));
             }
-            Err(AuditedTxError::Work(Work::Db) | AuditedTxError::Database { .. }) => {
+            Err(
+                AuditedTxError::Work(Work::Db | Work::EmailInUse) | AuditedTxError::Database { .. },
+            ) => {
                 return Err(IdentityError::Database);
             }
             Err(AuditedTxError::Work(Work::Audit) | AuditedTxError::Audit(_)) => {
@@ -429,8 +473,124 @@ impl CorporateHrAccounts {
         })
     }
 
-    /// E-10 hasil gagal untuk penolakan aturan, di transaksi tersendiri dan dicoba ulang; kegagalan tidak
-    /// mengubah jawaban (coding-standards §4.4 butir 3). Sasaran tidak ditemukan tidak dicatat di sini
+    /// Mengundang HR lain ke perusahaan pemanggil (US-1904 AC2). Lihat dokumentasi modul. Email yang sudah
+    /// dipakai di realm `korporat` menghasilkan `Ok(())` yang sama tanpa efek (P30-2).
+    pub async fn invite_member(
+        &self,
+        scope: &CorporateScope,
+        route: &str,
+        raw_email: &str,
+    ) -> Result<(), IdentityError> {
+        let ip = client_ip(scope, route)?;
+        let email = normalize_hr_email(raw_email).ok_or_else(|| {
+            IdentityError::field(
+                "email",
+                "invalid",
+                "Email harus berupa alamat email yang sah",
+            )
+        })?;
+        let ctx = context(scope, ip);
+        let now = self.clock.now();
+        let client = scope.corporate_client_id();
+        let actor_id = scope.account_id();
+        let correlation = scope.principal().correlation_id();
+        let tx_scope = scope.clone();
+        let tx_ctx = ctx.clone();
+        let result = in_audited_tx(&self.pool, self.clock.as_ref(), move |conn| {
+            Box::pin(async move {
+                // Urutan kunci: advisory email PERTAMA, lalu kunci tabel keanggotaan (ADR-030 catatan 5).
+                let invitee = register_hr_invitation(
+                    conn,
+                    &email,
+                    IntentActor {
+                        actor_type: "corporate_admin",
+                        account_id: Some(actor_id),
+                    },
+                    correlation,
+                    &FixedClock::new(now),
+                )
+                .await
+                .map_err(|e| match e {
+                    HrInviteError::EmailInUse => Work::EmailInUse,
+                    HrInviteError::InvalidEmail
+                    | HrInviteError::Database
+                    | HrInviteError::Queue => Work::Db,
+                })?;
+                corporate::lock_members(conn).await?;
+                let (members, accounts) = roster(conn, client).await?;
+                let r = to_roster(&members, &accounts)?;
+                check_invite(&r, actor_id).map_err(|v| Work::Rule(v, actor_id))?;
+                let member_id =
+                    corporate::add_member(conn, client, invitee.account_id, actor_id, now).await?;
+                let invited = event(
+                    EventCode::E10,
+                    INVITE_ACTION,
+                    &tx_scope,
+                    invitee.account_id,
+                    Outcome::success(),
+                    &tx_ctx,
+                )?
+                .change(FieldChange::new(
+                    "account_type",
+                    None,
+                    Some(Value::code("corporate_admin").map_err(|_| Work::Audit)?),
+                ))
+                .change(FieldChange::new(
+                    "status",
+                    None,
+                    Some(Value::code("pending_provisioning").map_err(|_| Work::Audit)?),
+                ));
+                let granted = event(
+                    EventCode::E11,
+                    GRANT_ACTION,
+                    &tx_scope,
+                    invitee.account_id,
+                    Outcome::success(),
+                    &tx_ctx,
+                )?
+                .change(FieldChange::new(
+                    "corporate_member_id",
+                    None,
+                    Some(Value::Uuid(member_id)),
+                ))
+                .change(FieldChange::new(
+                    "corporate_client_id",
+                    None,
+                    Some(Value::Uuid(client)),
+                ));
+                Ok(((), vec![invited, granted]))
+            })
+        })
+        .await;
+        match result {
+            Ok(()) => Ok(()),
+            Err(AuditedTxError::Work(Work::EmailInUse)) => {
+                // Jawaban seragam dengan undangan baru; jejaknya hanya di audit internal.
+                self.record_failed(
+                    scope,
+                    &ctx,
+                    INVITE_ACTION,
+                    EMAIL_IN_USE_REASON,
+                    scope.account_id(),
+                )
+                .await;
+                Ok(())
+            }
+            Err(AuditedTxError::Work(Work::Rule(v, account))) => {
+                self.record_failed(scope, &ctx, INVITE_ACTION, v.reason_code(), account)
+                    .await;
+                Err(IdentityError::HrRule(v))
+            }
+            Err(AuditedTxError::Work(Work::Db) | AuditedTxError::Database { .. }) => {
+                Err(IdentityError::Database)
+            }
+            Err(AuditedTxError::Work(Work::Audit) | AuditedTxError::Audit(_)) => {
+                Err(IdentityError::Audit)
+            }
+        }
+    }
+
+    /// E-10 hasil gagal untuk penolakan aturan penonaktifan. Sasaran tidak ditemukan tidak dicatat di sini
     /// (sudah tercatat di security log oleh `corporate_object`).
     async fn record_rejected(
         &self,
@@ -442,12 +602,32 @@ impl CorporateHrAccounts {
         if v == HrRuleViolation::TargetNotFound || target_account.is_nil() {
             return;
         }
-        let Ok(ev) = code(v.reason_code()).and_then(|reason| {
+        self.record_failed(
+            scope,
+            ctx,
+            DEACTIVATE_ACTION,
+            v.reason_code(),
+            target_account,
+        )
+        .await;
+    }
+
+    /// E-10 hasil gagal di transaksi tersendiri dan dicoba ulang; kegagalan tidak mengubah jawaban
+    /// (coding-standards §4.4 butir 3).
+    async fn record_failed(
+        &self,
+        scope: &CorporateScope,
+        ctx: &AuditContext,
+        action: &str,
+        reason: &str,
+        object_account: Uuid,
+    ) {
+        let Ok(ev) = code(reason).and_then(|reason| {
             event(
                 EventCode::E10,
-                "corporate_admin_account_deactivated",
+                action,
                 scope,
-                target_account,
+                object_account,
                 Outcome::failure(reason),
                 ctx,
             )

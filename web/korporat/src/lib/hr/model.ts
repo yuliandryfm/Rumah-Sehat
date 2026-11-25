@@ -5,6 +5,7 @@ import type { AnggotaHr, StatusHr } from "./klien.ts";
 export const LABEL_STATUS: Record<StatusHr, { readonly label: string; readonly tone: BadgeTone }> = {
   active: { label: "Aktif", tone: "success" },
   pending_activation: { label: "Menunggu aktivasi", tone: "warning" },
+  invitation_processing: { label: "Undangan diproses", tone: "warning" },
   inactive: { label: "Nonaktif", tone: "neutral" },
 };
 
@@ -12,13 +13,14 @@ export const LABEL_STATUS: Record<StatusHr, { readonly label: string; readonly t
 export function ringkas(anggota: readonly AnggotaHr[]): { readonly aktif: number; readonly menunggu: number } {
   return {
     aktif: anggota.filter((a) => a.status === "active").length,
-    menunggu: anggota.filter((a) => a.status === "pending_activation").length,
+    menunggu: anggota.filter((a) => a.status === "pending_activation" || a.status === "invitation_processing").length,
   };
 }
 
 /** HR dapat dinonaktifkan dari UI bila bukan diri sendiri dan belum nonaktif (server tetap memvalidasi). */
 export function dapatDinonaktifkan(a: AnggotaHr): boolean {
-  return !a.is_self && a.status !== "inactive";
+  // Undangan yang masih diproses belum dapat dinonaktifkan (server menolak 409).
+  return !a.is_self && a.status !== "inactive" && a.status !== "invitation_processing";
 }
 
 export function namaTampil(a: AnggotaHr): string {

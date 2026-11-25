@@ -236,11 +236,12 @@ mod tests {
     fn every_backoffice_route_requires_exactly_one_sub_role() {
         let router = backoffice_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 22);
+        assert_eq!(entries.len(), 23);
         for ((_method, path), policy) in entries {
             assert!(path.starts_with("/backoffice/v1/"), "{path}");
             let role = if path.starts_with("/backoffice/v1/identity-verification")
                 || path.starts_with("/backoffice/v1/corporate-verification")
+                || path.starts_with("/backoffice/v1/corporate-clients")
             {
                 authz::AdminSubRole::Verifier
             } else {
@@ -284,7 +285,7 @@ mod tests {
     fn every_corporate_route_requires_corporate_hr_under_v1_corporate() {
         let router = corporate_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 3);
         for ((_method, path), policy) in entries {
             assert!(is_corporate_path(path), "{path}");
             assert!(
@@ -292,7 +293,7 @@ mod tests {
                 "{path}"
             );
         }
-        assert_eq!(corporate_endpoints().len(), 2);
+        assert_eq!(corporate_endpoints().len(), 3);
     }
 
     #[test]

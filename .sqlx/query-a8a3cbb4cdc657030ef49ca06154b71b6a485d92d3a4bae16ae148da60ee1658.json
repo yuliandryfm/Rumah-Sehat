@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.account SET idp_subject = $2, status = 'pending_activation', status_changed_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a8a3cbb4cdc657030ef49ca06154b71b6a485d92d3a4bae16ae148da60ee1658"
+}

@@ -7,6 +7,19 @@ use crate::modules::platform::api::FileError;
 use envelope::{ApiError, FieldError, ResponseCode, codes};
 use std::fmt;
 
+/// `4090110`: NIB sudah terdaftar pada perusahaan lain (US-1903 AC4, seperti US-1901 AC7). Pesan umum: tidak
+/// memuat nama atau data perusahaan lain.
+pub const NIB_ALREADY_REGISTERED: ResponseCode = ResponseCode::new(
+    "4090110",
+    "NIB sudah terdaftar. Hubungi Layanan Pelanggan bila perusahaan ini belum pernah didaftarkan",
+);
+/// `4090111`: email HR pertama sudah dipakai akun lain di realm `korporat` (US-1903 AC1). Hanya untuk
+/// Verifikator (staf berwenang); undangan HR oleh HR memakai respons seragam (ADR-030 butir 7, P30-2).
+pub const HR_EMAIL_ALREADY_REGISTERED: ResponseCode = ResponseCode::new(
+    "4090111",
+    "Email HR sudah dipakai akun lain di realm korporat",
+);
+
 /// Galat use case modul Korporat. Pesan dan isi tidak pernah memuat NPWP (klasifikasi Terbatas, DD A20).
 #[derive(Debug)]
 pub enum CorporateError {
@@ -21,6 +34,10 @@ pub enum CorporateError {
     /// Keputusan atas pengajuan yang sudah diputuskan atau tidak lagi menunggu verifikasi (409,
     /// US-1902 AC4).
     AlreadyDecided,
+    /// NIB sudah dipakai perusahaan lain yang belum terhapus (409, US-1903 AC4).
+    NibAlreadyRegistered,
+    /// Email HR pertama sudah dipakai akun di realm `korporat` (409, US-1903 AC1).
+    HrEmailAlreadyRegistered,
     /// Galat berkas dari modul `platform`.
     File(FileError),
     /// PostgreSQL tidak tersedia (503; detail hanya di log).
@@ -37,6 +54,8 @@ impl fmt::Display for CorporateError {
             Self::NotFound => f.write_str("data tidak ditemukan"),
             Self::Validation(_) => f.write_str("data tidak valid"),
             Self::AlreadyDecided => f.write_str("pengajuan sudah diputuskan"),
+            Self::NibAlreadyRegistered => f.write_str("NIB sudah terdaftar"),
+            Self::HrEmailAlreadyRegistered => f.write_str("email HR sudah dipakai"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::Database => f.write_str("database tidak tersedia"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
@@ -54,6 +73,8 @@ impl ApiError for CorporateError {
             Self::NotFound => codes::NOT_FOUND,
             Self::Validation(_) => codes::INVALID,
             Self::AlreadyDecided => codes::STATUS_CONFLICT,
+            Self::NibAlreadyRegistered => NIB_ALREADY_REGISTERED,
+            Self::HrEmailAlreadyRegistered => HR_EMAIL_ALREADY_REGISTERED,
             Self::File(e) => e.response_code(),
             Self::Database => codes::UNAVAILABLE,
             Self::Internal(_) => codes::INTERNAL,
@@ -81,6 +102,8 @@ mod tests {
             (CorporateError::NotFound, "4040001"),
             (CorporateError::Validation(vec![]), "4220001"),
             (CorporateError::AlreadyDecided, "4090001"),
+            (CorporateError::NibAlreadyRegistered, "4090110"),
+            (CorporateError::HrEmailAlreadyRegistered, "4090111"),
             (CorporateError::File(FileError::NotFound), "4040001"),
             (CorporateError::Database, "5030001"),
             (CorporateError::Internal("x"), "5000001"),

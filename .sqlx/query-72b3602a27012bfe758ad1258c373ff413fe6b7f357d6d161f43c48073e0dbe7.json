@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id AS \"id!\" FROM app.idp_provisioning_intent WHERE account_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "72b3602a27012bfe758ad1258c373ff413fe6b7f357d6d161f43c48073e0dbe7"
+}

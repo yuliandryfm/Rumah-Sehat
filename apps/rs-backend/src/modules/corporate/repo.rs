@@ -306,3 +306,82 @@ pub(super) async fn revoke_member(
     .await?;
     Ok(done.rows_affected() == 1)
 }
+
+// ----- F1-T105 / F1-T107: perusahaan dibuatkan Verifikator dan undangan HR -----
+
+/// Perusahaan baru yang dibuat Verifikator (langsung Aktif, US-1903 AC1).
+pub(super) struct NewAdminClient<'a> {
+    pub(super) id: Uuid,
+    pub(super) created_by: Uuid,
+    pub(super) legal_name: &'a str,
+    pub(super) nib: &'a str,
+    pub(super) npwp: &'a str,
+    pub(super) office_address: &'a str,
+    pub(super) office_phone: &'a str,
+    pub(super) now: OffsetDateTime,
+}
+
+/// ID perusahaan belum terhapus dengan NIB yang sama (`uqp_corporate_client_nib`); pemeriksaan awal supaya
+/// penolakan NIB ganda tidak bergantung pada galat constraint.
+pub(super) async fn client_with_nib(
+    conn: &mut PgConnection,
+    nib: &str,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT id FROM app.corporate_client WHERE nib = $1 AND deleted_at IS NULL",
+        nib,
+    )
+    .fetch_optional(conn)
+    .await
+}
+
+/// Menyisipkan perusahaan Aktif berasal `created_by_admin`. `false` bila NIB bentrok dengan perusahaan lain
+/// yang belum terhapus (`uqp_corporate_client_nib`, balapan dengan pembuatan lain). `ON CONFLICT DO NOTHING`
+/// supaya transaksi pemanggil tetap dapat dipakai.
+pub(super) async fn insert_admin_client(
+    conn: &mut PgConnection,
+    c: &NewAdminClient<'_>,
+) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query!(
+        "INSERT INTO app.corporate_client \
+           (id, created_at, created_by, updated_at, updated_by, legal_name, nib, npwp, office_address, \
+            office_phone, status, origin, submission_round, submitted_at) \
+         VALUES ($1, $8, $2, $8, $2, $3, $4, $5, $6, $7, 'active', 'created_by_admin', 1, $8) \
+         ON CONFLICT (nib) WHERE deleted_at IS NULL DO NOTHING",
+        c.id,
+        c.created_by,
+        c.legal_name,
+        c.nib,
+        c.npwp,
+        c.office_address,
+        c.office_phone,
+        c.now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(r.rows_affected() == 1)
+}
+
+/// Menyisipkan keanggotaan HR (satu keanggotaan aktif per akun, `uqp_corporate_member_account_id`).
+pub(super) async fn insert_member(
+    conn: &mut PgConnection,
+    id: Uuid,
+    corporate_client_id: Uuid,
+    account_id: Uuid,
+    by: Uuid,
+    now: OffsetDateTime,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO app.corporate_member \
+           (id, created_at, created_by, updated_at, updated_by, account_id, corporate_client_id) \
+         VALUES ($1, $5, $4, $5, $4, $3, $2)",
+        id,
+        corporate_client_id,
+        account_id,
+        by,
+        now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
