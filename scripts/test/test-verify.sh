@@ -37,6 +37,10 @@ export CARGO_TARGET_DIR="$KERJA/target"
 # Tanpa kompilasi inkremental: setiap fixture dikompilasi ulang penuh, jadi cache inkremental hanya
 # memakan ruang (kuota /tmp habis saat diuji). Tidak mengubah hasil lint atau test.
 export CARGO_INCREMENTAL=0
+# Cache sidik isi verify.sh (KEPUTUSAN-301) diarahkan ke direktori kerja test, tidak pernah ke cache
+# developer. Di CI (CI=true) cache mati untuk semua fixture; bagian "Cache sidik isi" di bawah menyalakannya
+# secara eksplisit dengan direktori cache sendiri.
+export XDG_CACHE_HOME="$KERJA/cache"
 
 LULUS=0
 GAGAL=0
@@ -386,6 +390,99 @@ printf -- '-- fixture\n' >"$r/db/migrations/app/99990101000000_uji.sql"
 commit_semua "$r" "fixture: migrasi tanpa penjaga"
 k="$(verify_di "$r" "$KERJA/migrasi.log")"
 merah "migrasi-tanpa-penjaga" "$k" "$KERJA/migrasi.log" "migrasi-db"
+
+# --- Cache sidik isi (KEPUTUSAN-301) ---
+# Cache dinyalakan eksplisit (CI dan GITHUB_ACTIONS dikosongkan) dengan direktori cache baru, supaya hasilnya
+# sama di lokal dan CI. Langkah yang dapat di-cache: 16 (lihat jalankan_sidik di verify.sh).
+CACHE_UJI="$KERJA/cache-uji"
+rm -rf "$CACHE_UJI"
+NYALA=("CI=" "GITHUB_ACTIONS=" "RS_VERIFY_TANPA_CACHE=" "XDG_CACHE_HOME=$CACHE_UJI")
+JUMLAH_CACHE=16
+
+tandai_cache() { # tandai_cache <log> <label> <ERE>: tambahkan "<label>: ADA/TIDAK ADA" ke log
+  if grep -Eq -- "$3" "$1"; then
+    echo "$2: ADA" >>"$1"
+  else
+    echo "$2: TIDAK ADA" >>"$1"
+  fi
+}
+
+# Run pertama: semua langkah berjalan, cache masih kosong.
+r="$(fixture_baru cache-awal)"
+k="$(verify_di "$r" "$KERJA/cache-awal.log" "${NYALA[@]}")"
+nilai "cache-run-pertama-jalan-penuh" 0 "$k" "$KERJA/cache-awal.log" "HASIL: HIJAU" "^cache sidik: aktif" \
+  "dari cache sidik: 0\)" "^  LULUS +cargo-test$" "^  LULUS +web-build$"
+
+# Run kedua: pada salinan segar, run pertama membuat berkas yang diabaikan tetapi ikut sidik (next-env.d.ts dari
+# next build, dibaca typecheck), jadi langkah yang sidiknya dihitung sebelum berkas itu ada berjalan lagi.
+k="$(verify_di "$r" "$KERJA/cache-kedua.log" "${NYALA[@]}")"
+nilai "cache-run-kedua-hijau" 0 "$k" "$KERJA/cache-kedua.log" "HASIL: HIJAU" "^  LULUS +cargo-fmt \(cache, sidik [0-9a-f]{8}\)$"
+
+# Run ketiga tanpa perubahan: semua langkah yang dapat di-cache diambil dari cache; pemindai jaringan,
+# gitleaks, dan pemeriksaan lingkungan tetap jalan.
+k="$(verify_di "$r" "$KERJA/cache-ketiga.log" "${NYALA[@]}")"
+nilai "cache-run-ketiga-dari-cache" 0 "$k" "$KERJA/cache-ketiga.log" "HASIL: HIJAU" \
+  "dari cache sidik: ${JUMLAH_CACHE}\)" "^==> \[cargo-test\] LULUS \(cache, sidik [0-9a-f]{8}\)$" \
+  "^  LULUS +schemathesis \(cache, sidik [0-9a-f]{8}\)$" "^  LULUS +web-build \(cache, sidik [0-9a-f]{8}\)$" \
+  "^  LULUS +cargo-deny$" "^  LULUS +cargo-audit$" "^  LULUS +gitleaks$" "^  LULUS +osv-scanner$" "^  LULUS +web-install$"
+
+# Catatan cache rusak atau dibuat tangan dianggap tidak ada: cargo-fmt dikosongkan (terpotong), web-lint
+# diganti berkas tulisan tangan berformat benar tetapi MAC salah, web-test diganti berkas kosong hasil touch
+# (nama = sidik). Ketiganya dijalankan lagi; langkah lain tetap dari cache.
+for f in "$CACHE_UJI"/v1/cargo-fmt/*; do : >"$f"; done
+for f in "$CACHE_UJI"/v1/web-lint/*; do
+  printf 'ruang-sehat-verify-cache v1\nlangkah web-lint\nsidik %s\nwaktu %s\nmac %064d\n' "$(basename "$f")" "$(date +%s)" 0 >"$f"
+done
+for f in "$CACHE_UJI"/v1/web-test/*; do rm -f "$f" && touch "$f"; done
+k="$(verify_di "$r" "$KERJA/cache-rusak.log" "${NYALA[@]}")"
+nilai "cache-rusak-atau-palsu-diabaikan" 0 "$k" "$KERJA/cache-rusak.log" "HASIL: HIJAU" \
+  "dari cache sidik: $((JUMLAH_CACHE - 3))\)" "^==> \[cargo-fmt\] cargo fmt --all --check$" \
+  "^==> \[web-lint\] di_web pnpm run lint$" "^==> \[web-test\] di_web pnpm run test$" \
+  "^  LULUS +cargo-test \(cache, sidik [0-9a-f]{8}\)$"
+
+# CI=true: cache mati walau catatan lulus untuk isi yang sama ada.
+k="$(verify_di "$r" "$KERJA/cache-ci.log" "CI=true" "GITHUB_ACTIONS=" "RS_VERIFY_TANPA_CACHE=" "XDG_CACHE_HOME=$CACHE_UJI")"
+tandai_cache "$KERJA/cache-ci.log" "CACHE-DIPAKAI" "\(cache, sidik"
+nilai "cache-CI-true-tanpa-cache" 0 "$k" "$KERJA/cache-ci.log" "HASIL: HIJAU" "^cache sidik: mati \(CI" \
+  "dari cache sidik: 0\)" "^  LULUS +cargo-test$" "^CACHE-DIPAKAI: TIDAK ADA$"
+
+# scripts/verify-penuh.sh: cache mati, semua langkah berjalan.
+k=0
+(cd "$r" && env "${NYALA[@]}" bash scripts/verify-penuh.sh) >"$KERJA/cache-penuh.log" 2>&1 || k=$?
+tandai_cache "$KERJA/cache-penuh.log" "CACHE-DIPAKAI" "\(cache, sidik"
+nilai "verify-penuh-tanpa-cache" 0 "$k" "$KERJA/cache-penuh.log" "HASIL: HIJAU" \
+  "^cache sidik: mati \(RS_VERIFY_TANPA_CACHE" "dari cache sidik: 0\)" "^CACHE-DIPAKAI: TIDAK ADA$"
+k=0
+(cd "$r" && bash scripts/verify-penuh.sh --tanpa-langkah) >"$KERJA/cache-penuh-arg.log" 2>&1 || k=$?
+nilai "verify-penuh-argumen-ditolak" 2 "$k" "$KERJA/cache-penuh-arg.log" "tidak menerima argumen"
+
+# Perubahan 1 byte (spasi menjadi tab, belum di-commit) di masukan langkah yang sudah di-cache lulus:
+# cache batal, cargo-fmt dijalankan dan MERAH. Langkah kelas web tidak terpengaruh (tetap dari cache).
+r="$(fixture_baru cache-1-byte)"
+tab="$(printf '\t')"
+cp "$r/crates/foundation/src/lib.rs" "$KERJA/lib.rs.asli"
+sed "s/^pub use sensitive::Sensitive;\$/pub${tab}use sensitive::Sensitive;/" "$KERJA/lib.rs.asli" >"$r/crates/foundation/src/lib.rs"
+echo "BYTE-BERBEDA: $(cmp -l "$KERJA/lib.rs.asli" "$r/crates/foundation/src/lib.rs" | wc -l | tr -d ' ')" >"$KERJA/cache-1-byte.log.pra"
+k="$(verify_di "$r" "$KERJA/cache-1-byte.log" "${NYALA[@]}")"
+cat "$KERJA/cache-1-byte.log.pra" >>"$KERJA/cache-1-byte.log"
+merah "cache-batal-perubahan-1-byte" "$k" "$KERJA/cache-1-byte.log" "cargo-fmt"
+nilai "cache-batal-perubahan-1-byte-cakupan" 1 "$k" "$KERJA/cache-1-byte.log" "^BYTE-BERBEDA: 1$" \
+  "^==> \[cargo-fmt\] cargo fmt --all --check$" "^  LULUS +web-lint \(cache, sidik [0-9a-f]{8}\)$"
+
+# Fixture merah dengan cache lulus dari isi lain: tetap MERAH (langkah kelas Rust boleh dari cache).
+r="$(fixture_baru cache-merah)"
+sed 's/--c-text-secondary: #5c6b6f;/--c-text-secondary: #aaaaaa;/' "$r/web/packages/ui/src/tokens.css" >"$r/web/packages/ui/src/tokens.css.baru"
+mv "$r/web/packages/ui/src/tokens.css.baru" "$r/web/packages/ui/src/tokens.css"
+k="$(verify_di "$r" "$KERJA/cache-merah.log" "${NYALA[@]}")"
+merah "cache-fixture-merah-tetap-merah" "$k" "$KERJA/cache-merah.log" "web-kontras"
+nilai "cache-fixture-merah-rust-dari-cache" 1 "$k" "$KERJA/cache-merah.log" "^  LULUS +cargo-clippy \(cache, sidik [0-9a-f]{8}\)$"
+
+# GAGAL tidak di-cache: isi merah yang sama dijalankan lagi, web-kontras berjalan lagi dan tetap GAGAL.
+k="$(verify_di "$r" "$KERJA/cache-merah-2.log" "${NYALA[@]}")"
+tandai_cache "$KERJA/cache-merah-2.log" "CACHE-KONTRAS" "web-kontras.*\(cache, sidik"
+merah "cache-gagal-tidak-di-cache" "$k" "$KERJA/cache-merah-2.log" "web-kontras"
+nilai "cache-gagal-tidak-di-cache-dijalankan" 1 "$k" "$KERJA/cache-merah-2.log" \
+  "^==> \[web-kontras\] di_web pnpm run kontras$" "^CACHE-KONTRAS: TIDAK ADA$"
 
 echo ""
 echo "== Ringkasan test-verify.sh =="

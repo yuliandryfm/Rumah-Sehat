@@ -566,6 +566,8 @@ Rancangan saja. Skrip dibuat sungguhan di Tahap 8 Fase 1 `[KEPUTUSAN-82]`.
 
 Nama lint clippy untuk larangan `unwrap()`, perintah validasi spesifikasi OpenAPI, dan perintah ESLint diverifikasi saat skrip ditulis di Tahap 8 Fase 1.
 
+**Cache berbasis sidik isi** (Tahap 8, `[KEPUTUSAN-301]`): langkah yang sidiknya sama persis dengan run sebelumnya yang LULUS dicatat `LULUS (cache, sidik <8 hex>)` dan tidak dijalankan ulang; ini bukan mode cepat yang melewati langkah, karena setiap langkah tetap dinilai atas isi yang sama persis dengan yang pernah lulus. Sidik = SHA-256 atas isi pohon kerja untuk kelas masukan langkah, isi `scripts/verify.sh`, identitas dan versi alat, serta variabel lingkungan dan berkas konfigurasi luar repo yang relevan (`~/.cargo/config*`, `.npmrc`, gitconfig); catatan cache diikat ke isinya dengan MAC berkunci lokal sehingga catatan rusak, terpotong, atau dibuat tangan dianggap tidak ada; rincian kelas masukan dan langkah yang tidak pernah di-cache (pemindai berbasis advisory jaringan, gitleaks, pemeriksaan lingkungan) ada di komentar `scripts/verify.sh`. GAGAL tidak di-cache, catatan berlaku paling lama 24 jam, cache hanya lokal per pengguna (`${XDG_CACHE_HOME:-$HOME/.cache}/ruang-sehat-verify/`). CI selalu tanpa cache (variabel `CI`/`GITHUB_ACTIONS` yang diset GitHub Actions `[SRC-795]`), dan `scripts/verify-penuh.sh` (verify tanpa cache) dijadwalkan tiap malam di mesin developer; contoh crontab ada di kepala skrip itu.
+
 ---
 
 ## 7. Konfigurasi Keycloak
