@@ -1,0 +1,104 @@
+import { createBackofficeClient } from "@rs/api-client";
+import { galat, BASIS_BFF, type Gagal, type Hasil, type OpsiKlien } from "../verifikasi/klien.ts";
+import type {
+  AlasanTolakPerusahaan,
+  DetailPerusahaan,
+  DokumenUrl,
+  ItemAntreanPerusahaan,
+  JenisDokumen,
+  KeputusanPerusahaan,
+} from "./model.ts";
+
+export type { Gagal, Hasil };
+
+/** Teks per `response_code` 409 (docs/05-response-codes.md `4090001`, US-1902 AC4). */
+const PESAN_KODE: Record<string, string> = {
+  "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
+};
+
+const PESAN_STATUS: Record<number, string> = {
+  401: "Sesi Anda berakhir. Masuk lagi untuk melanjutkan.",
+  403: "Akun Anda tidak memiliki sub-peran Verifikator.",
+  404: "Perusahaan atau dokumen tidak ditemukan.",
+  422: "Alasan tidak valid. Periksa isian lalu coba lagi.",
+  429: "Terlalu banyak permintaan. Coba lagi sebentar lagi.",
+  503: "Layanan sedang tidak tersedia. Coba lagi nanti.",
+};
+
+/** Teks dipilih dari kode, bukan dari isi respons mentah (isi dan NPWP tidak pernah dicatat ke console). */
+export function galatPerusahaan(status: number, badan: unknown): Gagal {
+  const dasar = galat(status, badan);
+  const pesan = (dasar.kode === null ? undefined : PESAN_KODE[dasar.kode]) ?? PESAN_STATUS[status] ?? "Permintaan gagal. Coba lagi.";
+  return { ...dasar, pesan };
+}
+
+export interface HalamanPerusahaan {
+  readonly items: readonly ItemAntreanPerusahaan[];
+  readonly hasMore: boolean;
+  readonly nextCursor: string | null;
+}
+
+export interface KlienPerusahaan {
+  antrean(cursor?: string): Promise<Hasil<HalamanPerusahaan>>;
+  alasan(): Promise<Hasil<readonly AlasanTolakPerusahaan[]>>;
+  /** Membuka detail (NIB dan NPWP lengkap untuk Verifikator). */
+  detail(id: string): Promise<Hasil<DetailPerusahaan>>;
+  /** URL unduh berumur pendek; E-05 tercatat di server sebelum URL terbit. */
+  dokumenUrl(id: string, jenis: JenisDokumen): Promise<Hasil<DokumenUrl>>;
+  setujui(id: string): Promise<Hasil<KeputusanPerusahaan>>;
+  tolak(id: string, kodeAlasan: string): Promise<Hasil<KeputusanPerusahaan>>;
+}
+
+interface Respons {
+  readonly data?: unknown;
+  readonly error?: unknown;
+  readonly response: Response;
+}
+
+/** Klien dari browser lewat BFF; token CSRF sesi di `X-CSRF-Token` (token OIDC tidak ada di browser). */
+export function buatKlienPerusahaan(csrfToken: string, opsi: OpsiKlien = {}): KlienPerusahaan {
+  const fetchBff = opsi.fetch;
+  const c = createBackofficeClient({
+    baseUrl: opsi.basis ?? BASIS_BFF,
+    headers: { "x-csrf-token": csrfToken },
+    ...(fetchBff === undefined ? {} : { fetch: (r: Request) => fetchBff(r) }),
+  });
+  const kerjakan = async <T>(p: Promise<Respons>, ambil: (data: unknown, r: Respons) => T): Promise<Hasil<T>> => {
+    let r: Respons;
+    try {
+      r = await p;
+    } catch {
+      return galatPerusahaan(503, null);
+    }
+    if (!r.response.ok) return galatPerusahaan(r.response.status, r.error);
+    const amplop = (typeof r.data === "object" && r.data !== null ? r.data : {}) as { data?: unknown };
+    return { ok: true, data: ambil(amplop.data, r) };
+  };
+  const path = (id: string) => ({ params: { path: { corporate_client_id: id } } });
+  return {
+    antrean: (cursor) =>
+      kerjakan(
+        c.GET("/backoffice/v1/corporate-verifications", { params: { query: { limit: 20, ...(cursor === undefined ? {} : { cursor }) } } }),
+        (d, r) => {
+          const meta = (r.data as { meta?: { has_more: boolean; next_cursor?: string | null } }).meta ?? { has_more: false };
+          return { items: (d ?? []) as ItemAntreanPerusahaan[], hasMore: meta.has_more, nextCursor: meta.next_cursor ?? null };
+        },
+      ),
+    alasan: () => kerjakan(c.GET("/backoffice/v1/corporate-verification-reasons"), (d) => (d ?? []) as AlasanTolakPerusahaan[]),
+    detail: (id) => kerjakan(c.GET("/backoffice/v1/corporate-verifications/{corporate_client_id}", path(id)), (d) => d as DetailPerusahaan),
+    dokumenUrl: (id, jenis) =>
+      kerjakan(
+        c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/documents/{document_kind}/download-url", {
+          params: { path: { corporate_client_id: id, document_kind: jenis } },
+        }),
+        (d) => d as DokumenUrl,
+      ),
+    setujui: (id) =>
+      kerjakan(c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/approve", path(id)), (d) => d as KeputusanPerusahaan),
+    tolak: (id, kodeAlasan) =>
+      kerjakan(
+        c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/reject", { ...path(id), body: { reason_code: kodeAlasan } }),
+        (d) => d as KeputusanPerusahaan,
+      ),
+  };
+}
