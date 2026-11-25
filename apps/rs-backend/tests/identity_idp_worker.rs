@@ -28,9 +28,9 @@ use platform_jobs::{
     NewJob, WorkerConfig, WorkerId, claim, enqueue, sweep_expired,
 };
 use rs_backend::modules::identity::api::{
-    CreateOutcome, IdpRealm, IdpUserAdmin, IdpWorker, IntentActor, IntentPurpose, KeycloakAddress,
-    PendingAccount, PendingAccountRequest, RealmCredential, idp_job_types,
-    register_pending_account,
+    CreateOutcome, IdpJobKind, IdpRealm, IdpUserAdmin, IdpWorker, IntentActor, IntentError,
+    IntentPurpose, IntentRepoError, IntentRequest, KeycloakAddress, PendingAccount,
+    PendingAccountRequest, RealmCredential, idp_job_types, record_intent, register_pending_account,
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -424,6 +424,44 @@ impl Env {
         .unwrap()
     }
 
+    /// Niat tanpa niat asal (nonaktifkan/akhiri sesi) di transaksi sendiri, seperti pemanggil API.
+    async fn record(
+        &self,
+        account_id: Uuid,
+        realm: IdpRealm,
+        kind: IdpJobKind,
+        purpose: IntentPurpose,
+    ) -> Result<Uuid, IntentError> {
+        let mut tx = self.pool.begin().await.unwrap();
+        let id = record_intent(
+            &mut tx,
+            &IntentRequest {
+                account_id,
+                realm,
+                kind,
+                purpose,
+                origin_intent_id: None,
+                actor: IntentActor::SYSTEM,
+                correlation_id: CorrelationId::new(),
+            },
+            &SystemClock,
+        )
+        .await?;
+        tx.commit().await.unwrap();
+        Ok(id)
+    }
+
+    /// Job IdP yang masih antre disingkirkan supaya hanya job berikutnya yang jatuh tempo.
+    async fn cancel_queued_idp_jobs(&self) {
+        sqlx::query(
+            "UPDATE app.job SET status = 'cancelled', finished_at = now() \
+             WHERE job_type LIKE 'idp\\_%' AND status = 'queued'",
+        )
+        .execute(&self.pool)
+        .await
+        .unwrap();
+    }
+
     /// Menjalankan job `create_user` akun sampai pengguna diadopsi; mengembalikan ID pengguna Keycloak.
     async fn provision(&self, p: &PendingAccount) -> String {
         let job = self.claim().await;
@@ -733,6 +771,115 @@ async fn activation_and_orphan_deletion_refuse_credentialed_or_foreign_users() {
         }
     }
     env.assert_no_email_in_job_or_intent(&mail3).await;
+}
+
+// trace: ADR-030 butir 3 (prasyarat lapis kedua di database aplikasi), review T1 ADR-030 catatan 2
+#[tokio::test]
+async fn disable_requires_inactive_account_and_intent_realm_must_match_account() {
+    let _g = SERIAL.lock().await;
+    let env = start().await;
+    let p = env
+        .register(&email("nonaktif"), IntentPurpose::HrInvitation)
+        .await;
+    let kc = env.provision(&p).await;
+    env.cancel_queued_idp_jobs().await;
+
+    // (a) NEG: akun masih pending_activation (belum inactive) -> niat disable ditolak tanpa panggilan Keycloak.
+    let calls_before = env.kc.calls().len();
+    let refused = env
+        .record(
+            p.account_id,
+            IdpRealm::Korporat,
+            IdpJobKind::DisableUser,
+            IntentPurpose::AccountDeactivation,
+        )
+        .await
+        .unwrap();
+    let job = env.claim().await;
+    let job_id = job.id().as_uuid();
+    let out = env.worker.handle(job).await;
+    assert!(
+        matches!(out, JobOutcome::FailedInTx(LeaseOutcome::Applied, ref c) if c.as_str() == "account_state"),
+        "{out:?}"
+    );
+    assert_eq!(env.kc.calls().len(), calls_before, "{:?}", env.kc.calls());
+    assert!(env.kc.user(&kc).unwrap().enabled);
+    assert_eq!(
+        env.status_events(refused).await.last().unwrap(),
+        &("rejected".to_string(), Some("account_state".to_string()))
+    );
+    assert_eq!(
+        env.job_error(job_id).await,
+        ("failed".to_string(), Some("account_state".to_string()))
+    );
+    let audit = env.audit(p.account_id).await;
+    let last = audit.last().unwrap();
+    assert_event_complete(last, "e_10");
+    assert_eq!(last["action_name"], "idp_user_disable_failed");
+    assert_eq!(last["outcome_reason_code"], "account_state");
+
+    // (b) NEG: niat realm korporat untuk akun realm pasien ditolak database (FK komposit realm); tidak ada niat
+    // maupun job yang tersisa.
+    let patient = new_id();
+    sqlx::query(
+        "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) \
+         VALUES ($1, 'patient', 'pasien', $2, $3, 'active', now())",
+    )
+    .bind(patient)
+    .bind(new_id().hyphenated().to_string())
+    .bind(email("pasien"))
+    .execute(&env.pool)
+    .await
+    .unwrap();
+    let err = env
+        .record(
+            patient,
+            IdpRealm::Korporat,
+            IdpJobKind::DisableUser,
+            IntentPurpose::AccountDeactivation,
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, IntentError::Repo(IntentRepoError::Database(Some(ref s))) if s == "23503"),
+        "{err}"
+    );
+    let left: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM app.idp_provisioning_intent WHERE account_id = $1",
+    )
+    .bind(patient)
+    .fetch_one(&env.pool)
+    .await
+    .unwrap();
+    assert_eq!(left, 0);
+    assert!(
+        env.claim_as(&WorkerId::new("idp_worker").unwrap(), &env.claim_clock)
+            .await
+            .is_none()
+    );
+    assert_eq!(env.kc.calls().len(), calls_before);
+
+    // (c) Akun sudah inactive di database aplikasi: pengguna Keycloak dinonaktifkan lalu sesinya diakhiri.
+    sqlx::query(
+        "UPDATE app.account SET status = 'inactive', status_changed_at = now() WHERE id = $1",
+    )
+    .bind(p.account_id)
+    .execute(&env.pool)
+    .await
+    .unwrap();
+    env.record(
+        p.account_id,
+        IdpRealm::Korporat,
+        IdpJobKind::DisableUser,
+        IntentPurpose::AccountDeactivation,
+    )
+    .await
+    .unwrap();
+    let job = env.claim().await;
+    let out = env.worker.handle(job).await;
+    assert_eq!(out, JobOutcome::Completed(LeaseOutcome::Applied));
+    assert!(!env.kc.user(&kc).unwrap().enabled);
+    assert_eq!(env.kc.count("POST", "/logout"), 1, "{:?}", env.kc.calls());
 }
 
 // trace: ADR-030 butir 3 (daftar tertutup), butir 2 (muatan hanya ID niat)

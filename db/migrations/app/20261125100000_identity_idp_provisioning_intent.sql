@@ -23,6 +23,9 @@
 --   kedua di belakang enum tertutup di kode (ADR-030 butir 3). origin_intent_id (niat pembuat pengguna yang
 --   ID-nya disimpan di atribut Keycloak `rs_intent_id`) wajib untuk operasi yang memeriksa atribut itu, dan FK
 --   komposit (origin_intent_id, account_id) memastikan niat asal milik akun yang sama (pola KEPUTUSAN-142).
+--   FK komposit (account_id, idp_realm) → account (id, idp_realm) mengikat realm niat ke realm akun, sehingga
+--   worker tidak pernah memanggil realm Keycloak yang bukan milik akun (review T1 catatan 2); sasarannya
+--   uq_account_id_idp_realm (redundan secara logika dengan pk_account, dibutuhkan sebagai sasaran FK).
 -- - idp_provisioning_intent_status_event (R) + idp_provisioning_intent_state (P): jalur tulis status ADR-008
 --   butir 2-3 (crate status-flow), status pending → succeeded | rejected | failed. reason_code wajib untuk
 --   rejected/failed, berupa kode (bukan teks bebas).
@@ -53,7 +56,8 @@ ALTER TABLE app.account
   ADD CONSTRAINT ck_account_status CHECK (status IN
     ('pending_provisioning','pending_activation','active','inactive')),
   ALTER COLUMN idp_subject DROP NOT NULL,
-  ADD CONSTRAINT ck_account_idp_subject CHECK (idp_subject IS NOT NULL OR status = 'pending_provisioning');
+  ADD CONSTRAINT ck_account_idp_subject CHECK (idp_subject IS NOT NULL OR status = 'pending_provisioning'),
+  ADD CONSTRAINT uq_account_id_idp_realm UNIQUE (id, idp_realm);   -- sasaran FK komposit niat (realm niat = realm akun)
 CREATE INDEX ix_account_idp_realm_lower_email
   ON app.account (idp_realm, lower(email)) WHERE deleted_at IS NULL;
 -- Hak account tidak berubah (F1-T16): rs_app S, I, U; pekerja privasi S + U per kolom anonymize.
@@ -71,7 +75,8 @@ CREATE TABLE app.idp_provisioning_intent (
   correlation_id   uuid        NOT NULL,
   CONSTRAINT pk_idp_provisioning_intent PRIMARY KEY (id),
   CONSTRAINT fk_idp_provisioning_intent_created_by FOREIGN KEY (created_by) REFERENCES app.account (id),
-  CONSTRAINT fk_idp_provisioning_intent_account_id FOREIGN KEY (account_id) REFERENCES app.account (id),
+  CONSTRAINT fk_idp_intent_account_id_idp_realm FOREIGN KEY (account_id, idp_realm)
+    REFERENCES app.account (id, idp_realm),
   CONSTRAINT uq_idp_provisioning_intent_id_account_id UNIQUE (id, account_id),   -- sasaran FK niat asal
   CONSTRAINT fk_idp_intent_origin_intent_id_account_id FOREIGN KEY (origin_intent_id, account_id)
     REFERENCES app.idp_provisioning_intent (id, account_id),

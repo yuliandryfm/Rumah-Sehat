@@ -382,6 +382,11 @@ impl IdpWorker {
     }
 
     async fn disable_user(&self, i: &Intent) -> Result<Finish, &'static str> {
+        // ADR-030 butir 3: akun di database aplikasi sudah `inactive` (KU-10 sudah menolak akses) sebelum pengguna
+        // Keycloak dinonaktifkan; selain itu ditolak tanpa panggilan Keycloak.
+        if i.account_status != "inactive" {
+            return Ok(Finish::Rejected(Refusal::AccountState));
+        }
         let Some(subject) = i.idp_subject.as_deref() else {
             return Ok(Finish::Rejected(Refusal::AccountState));
         };
@@ -544,6 +549,8 @@ fn validate(row: IntentRow, kind: IdpJobKind) -> Result<Intent, (Option<Box<Inte
     let (Some(realm), Some(purpose), Some(correlation)) = (realm, purpose, correlation) else {
         return Err((None, Refusal::InvalidIntent));
     };
+    // Lapis kedua di belakang FK komposit (account_id, idp_realm): realm Keycloak yang dipanggil selalu realm akun.
+    let realm_matches = row.account_realm == row.realm;
     let intent = Intent {
         id: row.id,
         account_id: row.account_id,
@@ -556,7 +563,10 @@ fn validate(row: IntentRow, kind: IdpJobKind) -> Result<Intent, (Option<Box<Inte
         account_deleted: row.account_deleted,
         idp_subject: row.idp_subject,
     };
-    if !valid_combination(kind, purpose, realm) || kind.needs_origin() != intent.origin.is_some() {
+    if !realm_matches
+        || !valid_combination(kind, purpose, realm)
+        || kind.needs_origin() != intent.origin.is_some()
+    {
         return Err((Some(Box::new(intent)), Refusal::InvalidIntent));
     }
     Ok(intent)

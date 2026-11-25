@@ -32,6 +32,15 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::time::Duration;
 
+/// Panggilan Admin REST terbanyak dalam satu job IdP: `idp_delete_orphan` = cari menurut atribut + pengguna +
+/// kredensial + hapus (`idp_create_user` 3, `idp_send_activation` 3, `idp_disable_user` 2). Dipakai validasi sewa
+/// saat start ([`super::idp_config::IdpWorkerConfig::load`]).
+pub const MAX_ADMIN_CALLS_PER_JOB: u64 = 4;
+
+/// Pengiriman HTTP terbanyak per panggilan Admin REST (`KeycloakClient::admin_call`): token + panggilan, diulang
+/// sekali bila 401; masing-masing dibatasi batas waktu klien.
+pub const HTTP_SENDS_PER_ADMIN_CALL: u64 = 4;
+
 /// Hasil `POST users`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CreateOutcome {

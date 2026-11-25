@@ -192,6 +192,14 @@ pub struct PendingAccount {
 /// Kunci advisory transaksi per (realm, email ternormalisasi), periksa tidak ada akun belum terhapus dengan
 /// email itu, sisipkan akun `pending_provisioning` tanpa `idp_subject`, lalu catat niat `create_user`
 /// (ADR-030 butir 5). Semua di transaksi pemanggil.
+///
+/// Kewajiban pemanggil (F1-T101/F1-T105, review T1 ADR-030 catatan 5):
+/// - `email` sudah divalidasi sebagai alamat ASCII yang ternormalisasi (tanpa spasi tepi, huruf kecil).
+///   `normalize_email` di sini memakai trim + huruf kecil Unicode, sedangkan pemeriksaan database memakai
+///   `lower(email)` PostgreSQL tanpa trim; keduanya hanya sama untuk masukan ASCII yang sudah ternormalisasi.
+/// - Urutan kunci: kunci advisory email adalah kunci PERTAMA di transaksi ini. Pemanggil tidak boleh memegang
+///   kunci baris lain (misalnya `SELECT ... FOR UPDATE` perusahaan) sebelum memanggil fungsi ini, supaya tidak
+///   terjadi deadlock dengan transaksi pendaftaran lain untuk email yang sama.
 pub async fn register_pending_account(
     conn: &mut PgConnection,
     req: &PendingAccountRequest<'_>,

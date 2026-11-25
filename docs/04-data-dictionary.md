@@ -335,6 +335,7 @@ Index dan constraint:
 - `ck_account_staff_nik_bidx` (32 byte), `ck_account_staff_nik_bidx_key_version` (≥ 1), `ck_account_staff_nik_bidx_rs_admin` (hanya `rs_admin`), `ck_account_staff_nik_bidx_version_present` (versi wajib bila blind index ada). Tanpa index dan tanpa keunikan: pencarian selalu per akun (PK), dan dua akun admin milik satu orang tidak dicegah di sini (di luar ruang lingkup US-201 AC8) `[KEPUTUSAN-294]`.
 - `ix (status) WHERE deleted_at IS NULL`.
 - `ix (idp_realm, lower(email)) WHERE deleted_at IS NULL`: pemeriksaan "belum ada akun dengan email yang sama di realm itu" oleh api di bawah kunci advisory transaksi per (realm, email ternormalisasi) sebelum akun `pending_provisioning` dibuat (ADR-030 butir 5). Bukan constraint unik: keunikan email tetap di Keycloak per realm `[KEPUTUSAN-46]` `[KEPUTUSAN-305]`.
+- `UQ (id, idp_realm)` (`uq_account_id_idp_realm`): sasaran FK komposit `idp_provisioning_intent (account_id, idp_realm)` (A1.5), mengikat realm niat ke realm akun (ADR-030, review T1).
 - Penonaktifan (US-207) mengubah `status`, menonaktifkan pengguna di Keycloak, dan mencatat pencabutan sesi di Redis dalam satu alur; urutan dan penanganan kegagalannya ditetapkan di revisi ADR-011.
 
 #### A1.2 `rs_admin_role` (M)
@@ -386,7 +387,7 @@ Niat penyediaan identitas di Keycloak yang dijalankan worker IdP (ADR-030 butir 
 | --- | --- | --- | --- | --- | --- |
 | *STD-T* | | | | | `created_by` = akun pelaku (NULL bila sistem atau pendaftar mandiri) |
 | account_id | uuid | tidak | FK→account | — | Akun sasaran |
-| idp_realm | text | tidak | | — | CHECK (`pasien`, `nakes`, `admin`, `korporat`) |
+| idp_realm | text | tidak | FK komposit | — | CHECK (`pasien`, `nakes`, `admin`, `korporat`). FK komposit `(account_id, idp_realm)` → `account (id, idp_realm)`: realm niat selalu realm akun (review T1 ADR-030) |
 | operation | text | tidak | | — | CHECK (`create_user`, `send_activation`, `disable_user`, `logout_user`, `delete_orphan`, `reconcile`), sama dengan daftar tertutup jenis job ADR-030 butir 3 (`idp_<operation>`) |
 | purpose | text | tidak | | — | CHECK pasangan dengan `operation`: `create_user`/`send_activation` → `hr_self_registration` atau `hr_invitation` (hanya realm `korporat`); `disable_user` → `account_deactivation`; `logout_user` → `session_revocation`; `delete_orphan` → `provisioning_compensation`; `reconcile` → `reconciliation`. Susunan required action dan `lifespan` email aksi ditetapkan kode per realm dan tujuan, tidak disimpan |
 | origin_intent_id | uuid | ya | FK komposit | — | Niat `create_user` yang ID-nya menjadi atribut Keycloak `rs_intent_id`; wajib tepat untuk `send_activation`, `delete_orphan`, `reconcile` (CHECK). FK komposit `(origin_intent_id, account_id)` → `(id, account_id)`: niat asal milik akun yang sama |

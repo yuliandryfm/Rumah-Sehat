@@ -9,6 +9,7 @@
 //! Realm yang diisi wajib lengkap (OpenBao, path KV); kekurangan menggagalkan start tanpa mencetak nilai.
 
 use super::domain::IdpRealm;
+use super::idp_worker_client::{HTTP_SENDS_PER_ADMIN_CALL, MAX_ADMIN_CALLS_PER_JOB};
 use super::keycloak::{KeycloakAddress, RealmCredential};
 use foundation::Sensitive;
 use observability::{ConfigError, EnvSource};
@@ -107,10 +108,22 @@ pub struct IdpWorkerConfig {
     pub timeout_secs: u64,
     /// `IDP_WORKER_POLL_MS` (bawaan 2000).
     pub poll_ms: u64,
-    /// `IDP_WORKER_BATCH_SIZE` (bawaan 10).
+    /// `IDP_WORKER_BATCH_SIZE` (bawaan 1: platform-jobs memberi satu sewa untuk seluruh batch, TD-14).
     pub batch_size: IdpBatchSize,
-    /// `IDP_WORKER_LEASE_SECS` (bawaan 120; > batas waktu Keycloak x jumlah panggilan per job).
+    /// `IDP_WORKER_LEASE_SECS` (bawaan 300); wajib ≥ batch × [`MAX_ADMIN_CALLS_PER_JOB`] ×
+    /// [`HTTP_SENDS_PER_ADMIN_CALL`] × batas waktu, selain itu start gagal (review T1 ADR-030 catatan 3).
     pub lease_secs: u32,
+}
+
+/// Satu sewa platform-jobs menutup seluruh batch: sewa harus lebih lama dari batch × panggilan Admin REST
+/// terbanyak per job × pengiriman HTTP per panggilan × batas waktu, supaya job tidak diambil worker lain
+/// selagi panggilan Keycloak-nya masih berjalan.
+fn lease_covers_batch(lease_secs: u32, batch_size: u16, timeout_secs: u64) -> bool {
+    let worst = u64::from(batch_size)
+        .saturating_mul(MAX_ADMIN_CALLS_PER_JOB)
+        .saturating_mul(HTTP_SENDS_PER_ADMIN_CALL)
+        .saturating_mul(timeout_secs);
+    u64::from(lease_secs) >= worst
 }
 
 impl IdpWorkerConfig {
@@ -133,13 +146,17 @@ impl IdpWorkerConfig {
         } else {
             None
         };
-        let lease_secs: u32 = env.optional_or("IDP_WORKER_LEASE_SECS", 120)?;
+        let lease_secs: u32 = env.optional_or("IDP_WORKER_LEASE_SECS", 300)?;
         if !(30..=3_600).contains(&lease_secs) {
             return Err(ConfigError::invalid("IDP_WORKER_LEASE_SECS"));
         }
         let timeout_secs: u64 = env.optional_or("IDP_WORKER_TIMEOUT_SECS", 10)?;
         if !(1..=30).contains(&timeout_secs) {
             return Err(ConfigError::invalid("IDP_WORKER_TIMEOUT_SECS"));
+        }
+        let batch_size: IdpBatchSize = env.optional_or("IDP_WORKER_BATCH_SIZE", IdpBatchSize(1))?;
+        if !lease_covers_batch(lease_secs, batch_size.0, timeout_secs) {
+            return Err(ConfigError::invalid("IDP_WORKER_LEASE_SECS"));
         }
         let poll_ms: u64 = env.optional_or("IDP_WORKER_POLL_MS", 2_000)?;
         if !(100..=60_000).contains(&poll_ms) {
@@ -159,7 +176,7 @@ impl IdpWorkerConfig {
             secrets,
             timeout_secs,
             poll_ms,
-            batch_size: env.optional_or("IDP_WORKER_BATCH_SIZE", IdpBatchSize(10))?,
+            batch_size,
             lease_secs,
         })
     }
@@ -285,6 +302,49 @@ mod tests {
                 "{missing}"
             );
         }
+    }
+
+    // trace: review T1 ADR-030 catatan 3 (satu sewa untuk seluruh batch, gagal-tertutup saat start)
+    #[test]
+    fn lease_must_cover_the_whole_batch_of_keycloak_calls() {
+        let defaults = IdpWorkerConfig::load(&EnvSource::from_pairs([])).unwrap();
+        assert_eq!(defaults.batch_size(), 1);
+        assert!(lease_covers_batch(
+            defaults.lease_secs,
+            defaults.batch_size(),
+            defaults.timeout_secs
+        ));
+        for (batch, lease, timeout) in [
+            ("10", None, None),
+            ("1", None, Some("30")),
+            ("2", Some("300"), None),
+        ] {
+            let mut pairs = vec![("IDP_WORKER_BATCH_SIZE", batch)];
+            if let Some(l) = lease {
+                pairs.push(("IDP_WORKER_LEASE_SECS", l));
+            }
+            if let Some(t) = timeout {
+                pairs.push(("IDP_WORKER_TIMEOUT_SECS", t));
+            }
+            assert!(
+                IdpWorkerConfig::load(&EnvSource::from_pairs(pairs.clone())).is_err(),
+                "{pairs:?}"
+            );
+        }
+        // Batas tepat: 10 job x 4 panggilan x 4 pengiriman x 10 detik = 1600 detik.
+        let ok = IdpWorkerConfig::load(&EnvSource::from_pairs([
+            ("IDP_WORKER_BATCH_SIZE", "10"),
+            ("IDP_WORKER_LEASE_SECS", "1600"),
+        ]))
+        .unwrap();
+        assert_eq!(ok.batch_size(), 10);
+        assert!(
+            IdpWorkerConfig::load(&EnvSource::from_pairs([
+                ("IDP_WORKER_BATCH_SIZE", "10"),
+                ("IDP_WORKER_LEASE_SECS", "1599"),
+            ]))
+            .is_err()
+        );
     }
 
     #[test]

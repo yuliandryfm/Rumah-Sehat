@@ -60,7 +60,9 @@ pub use super::idp_service::{
 pub use super::idp_worker::{
     IdpWorker, InvalidIdpWorkerConfig, PROVISIONING_FAILED_REASON, idp_job_types, run_idp_worker,
 };
-pub use super::idp_worker_client::{CreateOutcome, IdpUserAdmin};
+pub use super::idp_worker_client::{
+    CreateOutcome, HTTP_SENDS_PER_ADMIN_CALL, IdpUserAdmin, MAX_ADMIN_CALLS_PER_JOB,
+};
 pub use super::jobs::{
     LOGOUT_REVOCATION_TTL, MAX_PAGES_PER_ROUND, PAGE_SIZE_RANGE, PullError, PullOptions, Puller,
     PullerSettings, RoundReport, SAME_MS_LIMIT, pull_realm, run_puller,

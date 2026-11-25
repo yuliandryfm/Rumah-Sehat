@@ -153,6 +153,8 @@ pub(super) struct IntentRow {
     pub(super) correlation_id: Uuid,
     pub(super) status: Option<String>,
     pub(super) account_status: String,
+    /// Realm akun; sama dengan `realm` niat menurut FK komposit, diperiksa lagi worker sebelum memanggil Keycloak.
+    pub(super) account_realm: String,
     pub(super) account_deleted: bool,
     pub(super) idp_subject: Option<String>,
 }
@@ -165,6 +167,7 @@ pub(super) async fn load_intent(
         IntentRow,
         r#"SELECT i.id, i.account_id, i.idp_realm AS realm, i.operation, i.purpose, i.origin_intent_id,
                   i.correlation_id, s.status AS "status?", a.status AS account_status,
+                  a.idp_realm AS account_realm,
                   (a.deleted_at IS NOT NULL) AS "account_deleted!", a.idp_subject
              FROM app.idp_provisioning_intent i
              JOIN app.account a ON a.id = i.account_id
