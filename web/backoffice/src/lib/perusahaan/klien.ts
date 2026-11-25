@@ -11,8 +11,12 @@ import type {
 
 export type { Gagal, Hasil };
 
-/** Teks per `response_code` 409 (docs/05-response-codes.md `4090001`, US-1902 AC4). */
+/** Kode 403 BFF untuk penolakan CSRF/Origin (`web/packages/bff-auth/src/http.ts`): bukan soal sub-peran. */
+export const KODE_CSRF_DITOLAK = "4030101";
+
+/** Teks per `response_code` (409 `4090001` US-1902 AC4; 403 `4030101` dari BFF). */
 const PESAN_KODE: Record<string, string> = {
+  [KODE_CSRF_DITOLAK]: "Permintaan tidak dapat diverifikasi. Muat ulang halaman lalu coba lagi.",
   "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
 };
 

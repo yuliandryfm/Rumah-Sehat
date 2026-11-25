@@ -155,6 +155,20 @@ describe("panel detail dan dokumen", () => {
 });
 
 describe("keputusan", () => {
+  test("negatif: 403 4030101 (CSRF/Origin ditolak BFF) saat setujui → pesan muat ulang, bukan tuduhan tanpa sub-peran", async () => {
+    await bukaPanel(klienUji({ setujui: () => gagal(403, "4030101") }));
+    fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+    expect(await screen.findByText(/Permintaan tidak dapat diverifikasi/)).toBeTruthy();
+    expect(screen.queryByText(/tidak memiliki sub-peran Verifikator/)).toBeNull();
+    expect(screen.queryByText("Tidak ada akses")).toBeNull();
+  });
+
+  test("negatif: 403 4030101 saat memuat antrean → bukan layar Tidak ada akses", async () => {
+    render(<PanelPerusahaan csrfToken="t" klien={klienUji({ antrean: () => gagal(403, "4030101") })} />);
+    expect(await screen.findByText(/Permintaan tidak dapat diverifikasi/)).toBeTruthy();
+    expect(screen.queryByText("Tidak ada akses")).toBeNull();
+  });
+
   test("setujui memanggil API dan menyegarkan antrean", async () => {
     const setujui = vi.fn(() => ok({ corporate_client_id: ID, status: "active" as const, submission_round: 1 }));
     const antrean = vi.fn(() => ok({ items: [item()], hasMore: false, nextCursor: null }));

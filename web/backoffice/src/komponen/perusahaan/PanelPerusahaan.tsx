@@ -2,9 +2,10 @@
 
 import { Alert, Badge, Button, Card } from "@rs/ui";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { buatKlienPerusahaan, type Gagal, type KlienPerusahaan } from "../../lib/perusahaan/klien.ts";
+import { buatKlienPerusahaan, KODE_CSRF_DITOLAK, type Gagal, type KlienPerusahaan } from "../../lib/perusahaan/klien.ts";
 import {
   LABEL_DOKUMEN_PERUSAHAAN,
+  LABEL_ORIGIN,
   LABEL_STATUS_PERUSAHAAN,
   nibTermasking,
   sumber,
@@ -14,7 +15,6 @@ import {
   type ItemAntreanPerusahaan,
   type JenisDokumen,
 } from "../../lib/perusahaan/model.ts";
-import { LABEL_ORIGIN } from "../../lib/perusahaan/model.ts";
 import { formatWib } from "../../lib/verifikasi/model.ts";
 
 export interface PanelPerusahaanProps {
@@ -121,7 +121,7 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
     });
   }, [api, muat]);
 
-  if (galat?.status === 403) {
+  if (galat?.status === 403 && galat.kode !== KODE_CSRF_DITOLAK) {
     return (
       <>
         <h1>Antrean verifikasi perusahaan</h1>
