@@ -18,8 +18,8 @@ use foundation::{Clock, CorrelationId, Uuid, new_id};
 use platform_jobs::{DedupeKey, JobPayload, JobType, MaxAttempts, NewJob, enqueue};
 use sqlx::PgConnection;
 
-/// Percobaan maksimum job IdP (backoff `platform_jobs::Backoff` pekerja). Angka belum ditetapkan dokumen
-/// `[TIDAK DIKETAHUI]`; usulan teknis KEPUTUSAN-306 (Keycloak tidak tersedia beberapa menit tetap tertangani).
+/// Percobaan maksimum job IdP (backoff `platform_jobs::Backoff` pekerja). Keputusan teknis KEPUTUSAN-306 (final):
+/// Keycloak yang tidak tersedia beberapa menit tetap tertangani.
 pub const IDP_JOB_MAX_ATTEMPTS: i16 = 8;
 
 /// Tujuan kunci deduplikasi job IdP (`idp_intent:<id niat>`): satu job aktif per niat.

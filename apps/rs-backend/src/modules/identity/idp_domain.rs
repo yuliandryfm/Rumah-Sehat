@@ -173,9 +173,8 @@ pub struct ActivationPlan {
 pub const HR_ACTIVATION_ACTIONS: &[&str] = &["VERIFY_EMAIL", "UPDATE_PASSWORD", "CONFIGURE_TOTP"];
 
 /// Masa berlaku tautan aktivasi HR: 24 jam, sama dengan undangan admin US-208 AC1
-/// (`ACTIVATION_INVITE_LIFESPAN_SECONDS`). PRD US-1901/US-1903/US-1904 tidak menyebut angka
-/// `[TIDAK DIKETAHUI]`: nilai ini usulan teknis KEPUTUSAN-306 yang dikonfirmasi saat F1-T101/F1-T105 memakai
-/// jalur ini.
+/// (`ACTIVATION_INVITE_LIFESPAN_SECONDS`). PRD US-1901/US-1903/US-1904 tidak menyebut angka; nilai dikonfirmasi
+/// user 2026-11-25 (KEPUTUSAN-306).
 pub const HR_ACTIVATION_LIFESPAN_SECONDS: u32 = 86_400;
 
 /// Rencana email aksi; `None` = realm/tujuan tidak punya email aktivasi (job ditolak).
