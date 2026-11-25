@@ -237,7 +237,7 @@ Sumber: PRD v1.3 EP-19; fase dari phase plan v0.3 (skenario S3 `[USER] C21-P4`).
 | US-1901 | Pendaftaran perusahaan mandiri | BR-136 | Must | 1 (F1-T101–F1-T103; bentuk bukti kewenangan G-27) | Backlog |
 | US-1902 | Verifikasi perusahaan oleh Verifikator | BR-136 | Must | 1 (F1-T104, F1-T106) | Backlog |
 | US-1903 | Perusahaan dibuatkan Verifikator | BR-136 | Must | 1 (F1-T105, F1-T106; persetujuan orang kedua G-27) | Backlog |
-| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must | 1 (F1-T85–F1-T88, F1-T90, F1-T100, F1-T107, F1-T108); AC7–AC9 (daftar ulang TOTP dan reset MFA HR) di Fase 2 | Backlog |
+| US-1904 | Akun HR: masuk, MFA, pemulihan MFA, kelola anggota HR | BR-132, BR-145 | Must | 1 (F1-T85–F1-T88, F1-T90, F1-T100, F1-T107, F1-T108; F1-T108 tanpa alur undang HR: AC2 sebagian, sisa menunggu ADR-030/CR-026); AC7–AC9 (daftar ulang TOTP dan reset MFA HR) di Fase 2 | Backlog |
 | US-1905 | Katalog paket korporat | BR-133, BR-137, BR-138 | Must | 3 (setelah EN-21) | Backlog |
 | US-1906 | Pesan layanan korporat | BR-135, BR-137, BR-142 | Must | 3 | Backlog |
 | US-1907 | Unggah daftar peserta | BR-139, BR-145 | Must | 3 (G-26 untuk data nyata) | Backlog |

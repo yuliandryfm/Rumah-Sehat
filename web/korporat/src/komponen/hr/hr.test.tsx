@@ -1,0 +1,238 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import * as halamanDasbor from "../../app/(terautentikasi)/page.tsx";
+import * as halamanKelola from "../../app/(terautentikasi)/kelola-hr/page.tsx";
+import { buatKlienHr, galat, type AnggotaHr, type KlienHr } from "../../lib/hr/klien.ts";
+import { DasborHr } from "./DasborHr.tsx";
+import { KelolaHr } from "./KelolaHr.tsx";
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+
+const ID_A = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b";
+const ID_B = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c";
+const ID_C = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2d";
+
+const hr = (o: Partial<AnggotaHr> & Pick<AnggotaHr, "corporate_member_id">): AnggotaHr => ({
+  email: "hr@perusahaan.example",
+  full_name: "Sari",
+  job_title: null,
+  status: "active",
+  is_self: false,
+  ...o,
+});
+const DAFTAR: AnggotaHr[] = [
+  hr({ corporate_member_id: ID_A, full_name: "Sari", is_self: true }),
+  hr({ corporate_member_id: ID_B, full_name: "Budi", email: "budi@perusahaan.example" }),
+  hr({ corporate_member_id: ID_C, full_name: null, email: "rina@perusahaan.example", status: "pending_activation" }),
+  hr({ corporate_member_id: "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2e", full_name: "Dewi", email: "dewi@perusahaan.example", status: "inactive" }),
+];
+
+const ok = <T,>(data: T) => Promise.resolve({ ok: true as const, data });
+const gagal = (status: number, kode?: string) => Promise.resolve(galat(status, kode === undefined ? {} : { response_code: kode }));
+
+function klien(o: Partial<KlienHr> = {}): KlienHr {
+  return {
+    daftar: () => ok(DAFTAR),
+    nonaktifkan: (id) => ok({ corporate_member_id: id, status: "inactive" as const, identity_provider_synced: true }),
+    ...o,
+  };
+}
+
+afterEach(() => {
+  cleanup();
+});
+
+describe("DasborHr", () => {
+  test("perusahaan Aktif: status, jumlah HR aktif, tautan Kelola HR; layanan korporat belum tersedia", async () => {
+    render(<DasborHr csrfToken="t" klien={klien()} />);
+    expect(await screen.findByText("Perusahaan terverifikasi")).toBeDefined();
+    expect(screen.getByTestId("jumlah-hr-aktif").textContent).toBe("2");
+    expect(screen.getByRole("link", { name: "Kelola HR" }).getAttribute("href")).toBe("/kelola-hr");
+    expect(screen.getByText(/Belum tersedia/)).toBeDefined();
+    expect(document.body.textContent).not.toMatch(/hasil pemeriksaan|diagnosis/i);
+  });
+
+  test("403 perusahaan belum Aktif → layar akses ditolak tanpa menebak status verifikasi", async () => {
+    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(403) })} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();
+    expect(screen.queryByText("Perusahaan terverifikasi")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/ditolak karena|alasan penolakan/i);
+  });
+
+  test("401 4010002 → layar akun nonaktif (hanya pemegang sesi sah), tanpa data HR", async () => {
+    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(401, "4010002") })} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Akun nonaktif" })).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Layanan Pelanggan");
+    expect(screen.queryByTestId("jumlah-hr-aktif")).toBeNull();
+  });
+
+  test("401 lain (sesi berakhir) → dialihkan ke /auth/login", async () => {
+    const arahkan = vi.fn();
+    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(401, "4010001") })} arahkan={arahkan} />);
+    await waitFor(() => { expect(arahkan).toHaveBeenCalledWith("/auth/login"); });
+    expect(screen.getByRole("link", { name: "Masuk lagi" }).getAttribute("href")).toBe("/auth/login");
+  });
+
+  test("503 → pesan galat umum, bukan layar akses", async () => {
+    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(503) })} />);
+    expect(await screen.findByText("Dasbor tidak dapat dimuat")).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Layanan sedang tidak tersedia");
+  });
+});
+
+describe("KelolaHr", () => {
+  test("daftar: status dengan teks, diri sendiri tanpa tombol, nonaktif tanpa tombol, Undang HR ditandai belum tersedia", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien()} />);
+    const tabel = await screen.findByRole("table");
+    const baris = within(tabel).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+    expect(baris).toHaveLength(4);
+    expect(within(baris[0]).getByText("Sari (Anda)")).toBeDefined();
+    expect(within(baris[0]).queryByRole("button")).toBeNull();
+    expect(within(baris[0]).getByText("Tidak dapat menonaktifkan akun sendiri")).toBeDefined();
+    expect(within(baris[1]).getByRole("button", { name: "Nonaktifkan Budi" })).toBeDefined();
+    expect(within(baris[2]).getAllByText("rina@perusahaan.example")).toHaveLength(2); // tanpa nama: email jadi nama tampil
+    expect(within(baris[2]).getByText("Menunggu aktivasi")).toBeDefined();
+    expect(within(baris[3]).getByText("Nonaktif")).toBeDefined();
+    expect(within(baris[3]).queryByRole("button")).toBeNull();
+    const undang = screen.getByRole("button", { name: "Undang HR" });
+    expect(undang.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/Belum tersedia: undangan HR baru/)).toBeDefined();
+  });
+
+  test("nonaktifkan: konfirmasi dampak, Batal mengembalikan fokus ke tombol pemicu dan tidak memanggil API", async () => {
+    const nonaktifkan = vi.fn();
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan })} />);
+    const tombol = await screen.findByRole("button", { name: "Nonaktifkan Budi" });
+    tombol.focus();
+    fireEvent.click(tombol);
+    const grup = await screen.findByRole("group", { name: "Nonaktifkan Budi?" });
+    await waitFor(() => { expect(document.activeElement).toBe(grup); });
+    expect(within(grup).getByText(/tidak dapat masuk lagi/)).toBeDefined();
+    fireEvent.click(within(grup).getByRole("button", { name: "Batal" }));
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(document.activeElement).toBe(tombol);
+    expect(nonaktifkan).not.toHaveBeenCalled();
+  });
+
+  test("nonaktifkan berhasil: memanggil API dengan ID anggota, memuat ulang daftar, mengumumkan hasil", async () => {
+    let sudah = false;
+    const nonaktifkan = vi.fn((id: string) => {
+      sudah = true;
+      return ok({ corporate_member_id: id, status: "inactive" as const, identity_provider_synced: true });
+    });
+    const daftar = vi.fn(() =>
+      ok(DAFTAR.map((a) => (sudah && a.corporate_member_id === ID_B ? { ...a, status: "inactive" as const } : a))),
+    );
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan, daftar })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    const grup = await screen.findByRole("group");
+    fireEvent.click(within(grup).getByRole("button", { name: "Nonaktifkan" }));
+    expect(await screen.findByText("Budi dinonaktifkan dan tidak dapat masuk lagi.")).toBeDefined();
+    expect(nonaktifkan).toHaveBeenCalledWith(ID_B);
+    expect(daftar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: "Nonaktifkan Budi" })).toBeNull();
+  });
+
+  test("identity_provider_synced=false: pesan jujur bahwa sesi diakhiri menyusul", async () => {
+    const nonaktifkan = (id: string) => ok({ corporate_member_id: id, status: "inactive" as const, identity_provider_synced: false });
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+    expect(await screen.findByText(/Akses sudah ditutup; sesi masuknya diakhiri menyusul/)).toBeDefined();
+  });
+
+  test("negatif: HR aktif terakhir (409 4090105) → galat tampil, daftar tetap, tidak ada pesan berhasil", async () => {
+    const nonaktifkan = () => gagal(409, "4090105");
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Tidak dapat dinonaktifkan");
+    expect(alert.textContent).toContain("HR aktif terakhir tidak dapat dinonaktifkan.");
+    expect(screen.queryByText("Berhasil")).toBeNull();
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.getByRole("button", { name: "Nonaktifkan Budi" })).toBeDefined();
+  });
+
+  test("negatif: 409 4090101 (diri sendiri) dan 4090001 (sudah nonaktif) punya pesan sendiri; 4090001 memuat ulang daftar", async () => {
+    const daftar = vi.fn(() => ok(DAFTAR));
+    const kode = ["4090101", "4090001"];
+    const pesan = ["Anda tidak dapat menonaktifkan akun Anda sendiri.", "Akun HR ini sudah nonaktif."];
+    for (const [i, k] of kode.entries()) {
+      render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan: () => gagal(409, k), daftar })} />);
+      fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+      fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+      expect((await screen.findByRole("alert")).textContent).toContain(pesan[i]);
+      cleanup();
+    }
+    // 2 render awal + 1 muat ulang pada 4090001.
+    expect(daftar).toHaveBeenCalledTimes(3);
+  });
+
+  test("negatif: 404 (anggota perusahaan lain/tidak ada) → 'Data tidak ditemukan' tanpa membocorkan alasan", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan: () => gagal(404, "4040001") })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Data tidak ditemukan.");
+    expect(document.body.textContent).not.toMatch(/perusahaan lain|bukan milik/i);
+  });
+
+  test("negatif: sesi dicabut atau akun dinonaktifkan HR lain saat aksi (401 4010002) → layar akun nonaktif", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ nonaktifkan: () => gagal(401, "4010002") })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nonaktifkan Budi" }));
+    fireEvent.click(within(await screen.findByRole("group")).getByRole("button", { name: "Nonaktifkan" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Akun nonaktif" })).toBeDefined();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  test("403 saat memuat → layar akses ditolak; 503 → pesan galat dan tabel tidak tampil", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ daftar: () => gagal(403) })} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();
+    cleanup();
+    render(<KelolaHr csrfToken="t" klien={klien({ daftar: () => gagal(503) })} />);
+    expect((await screen.findByText("Daftar HR tidak dapat dimuat"))).toBeDefined();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+});
+
+describe("klien HR", () => {
+  const respons = (status: number, badan: unknown) =>
+    new Response(JSON.stringify(badan), { status, headers: { "content-type": "application/json" } });
+
+  test("memanggil /bff/v1/corporate/members dengan X-CSRF-Token; deactivate memakai POST dan ID di path", async () => {
+    const dipanggil: Request[] = [];
+    const fetchTiruan = vi.fn((r: Request) => {
+      dipanggil.push(r);
+      return Promise.resolve(
+        r.method === "GET"
+          ? respons(200, { response_code: "2000000", data: DAFTAR })
+          : respons(200, { response_code: "2000000", data: { corporate_member_id: ID_B, status: "inactive", identity_provider_synced: true } }),
+      );
+    });
+    const api = buatKlienHr("csrf-uji", { basis: "http://localhost/bff", fetch: fetchTiruan as unknown as typeof fetch });
+    const d = await api.daftar();
+    expect(d.ok && d.data.length).toBe(4);
+    const n = await api.nonaktifkan(ID_B);
+    expect(n.ok).toBe(true);
+    expect(dipanggil[0]?.url).toBe("http://localhost/bff/v1/corporate/members");
+    expect(dipanggil[1]?.method).toBe("POST");
+    expect(dipanggil[1]?.url).toBe(`http://localhost/bff/v1/corporate/members/${ID_B}/deactivate`);
+    expect(dipanggil.every((r) => r.headers.get("x-csrf-token") === "csrf-uji")).toBe(true);
+  });
+
+  test("galat jaringan → 503 tanpa membocorkan isi galat; teks dipilih dari kode, bukan dari isi respons", async () => {
+    const api = buatKlienHr("t", { basis: "http://localhost/bff", fetch: (() => Promise.reject(new Error("ECONNREFUSED 10.0.0.5"))) as unknown as typeof fetch });
+    const h = await api.daftar();
+    expect(h).toMatchObject({ ok: false, status: 503 });
+    expect(JSON.stringify(h)).not.toContain("10.0.0.5");
+    expect(galat(409, { response_code: "4090105", response_description: "<script>x</script>" }).pesan).toBe("HR aktif terakhir tidak dapat dinonaktifkan.");
+    expect(galat(418, {}).pesan).toBe("Permintaan gagal. Coba lagi.");
+  });
+});
+
+describe("halaman", () => {
+  test("rute dasbor dan kelola HR mengekspor halaman server (tanpa sesi → login lewat wajibSesi)", () => {
+    expect(typeof halamanDasbor.default).toBe("function");
+    expect(typeof halamanKelola.default).toBe("function");
+  });
+});
