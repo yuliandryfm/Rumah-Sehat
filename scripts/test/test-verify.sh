@@ -190,6 +190,12 @@ path_tanpa() { # path_tanpa <alat ...>: cetak PATH baru tanpa alat-alat itu (dir
 }
 
 echo "test-verify.sh: menguji $ROOT/scripts/verify.sh (direktori kerja $KERJA)"
+
+# --- Test unit penyaringan kelas sidik (cepat, tanpa Docker; review T1 KEPUTUSAN-301, B-1) ---
+k=0
+bash "$ROOT/scripts/test/test-verify-sidik.sh" >"$KERJA/sidik-unit.log" 2>&1 || k=$?
+nilai "unit-saring-kelas-sidik" 0 "$k" "$KERJA/sidik-unit.log" "^HASIL: HIJAU$"
+
 siapkan_murni
 
 # --- Fixture bersih: harus HIJAU, keempat pemindai berjalan dan lulus ---
@@ -483,6 +489,41 @@ tandai_cache "$KERJA/cache-merah-2.log" "CACHE-KONTRAS" "web-kontras.*\(cache, s
 merah "cache-gagal-tidak-di-cache" "$k" "$KERJA/cache-merah-2.log" "web-kontras"
 nilai "cache-gagal-tidak-di-cache-dijalankan" 1 "$k" "$KERJA/cache-merah-2.log" \
   "^==> \[web-kontras\] di_web pnpm run kontras$" "^CACHE-KONTRAS: TIDAK ADA$"
+
+# Tanpa rujukan docs/ (review T1 B-1): di salinan ini setiap "docs" di berkas .rs, scripts/db-ephemeral.sh, dan
+# web/ diganti "dokx" (panjang sama, format tidak berubah), sehingga rujukan docs kelas rust dan web kosong.
+# Test yang membaca docs/ ikut gagal (verify MERAH, kode 1); yang dinilai hanya cargo-fmt dan web-lint.
+# Run 1-3 mengisi cache (run 3: web-lint dari cache setelah next-env.d.ts dibuat web-build), lalu satu berkas
+# .rs dan satu berkas web diubah: kedua langkah wajib dijalankan ulang, bukan dari cache.
+r="$(fixture_baru cache-tanpa-rujukan)"
+(cd "$r" && git ls-files -z -- '*.rs' scripts/db-ephemeral.sh web) | while IFS= read -r -d '' berkas; do
+  if [ -f "$r/$berkas" ] && grep -Iq 'docs' "$r/$berkas"; then
+    sed 's/docs/dokx/g' "$r/$berkas" >"$r/$berkas.baru"
+    cat "$r/$berkas.baru" >"$r/$berkas"
+    rm -f "$r/$berkas.baru"
+  fi
+done
+if (cd "$r" && git ls-files -z -- '*.rs' scripts/db-ephemeral.sh web | xargs -0 grep -Il 'docs' >/dev/null 2>&1); then
+  echo "RUJUKAN-DOCS: MASIH ADA" >"$KERJA/cache-tanpa-rujukan.pra"
+else
+  echo "RUJUKAN-DOCS: KOSONG" >"$KERJA/cache-tanpa-rujukan.pra"
+fi
+for i in 1 2; do
+  verify_di "$r" "$KERJA/cache-tanpa-rujukan-$i.log" "${NYALA[@]}" >/dev/null
+done
+k="$(verify_di "$r" "$KERJA/cache-tanpa-rujukan-3.log" "${NYALA[@]}")"
+cat "$KERJA/cache-tanpa-rujukan.pra" >>"$KERJA/cache-tanpa-rujukan-3.log"
+# Kode keluar tidak dinilai (verify MERAH karena test yang membaca docs/ gagal); yang dinilai pola keluaran.
+nilai "cache-tanpa-rujukan-docs-dapat-di-cache" "$k" "$k" "$KERJA/cache-tanpa-rujukan-3.log" "^RUJUKAN-DOCS: KOSONG$" \
+  "^  LULUS +cargo-fmt \(cache, sidik [0-9a-f]{8}\)$" "^  LULUS +web-lint \(cache, sidik [0-9a-f]{8}\)$"
+printf '// ubah sidik\n' >>"$r/crates/foundation/src/lib.rs"
+printf '// ubah sidik\n' >>"$r/web/eslint.config.js"
+k="$(verify_di "$r" "$KERJA/cache-tanpa-rujukan-4.log" "${NYALA[@]}")"
+tandai_cache "$KERJA/cache-tanpa-rujukan-4.log" "CACHE-FMT" "cargo-fmt \(cache, sidik"
+tandai_cache "$KERJA/cache-tanpa-rujukan-4.log" "CACHE-LINT" "web-lint \(cache, sidik"
+nilai "cache-tanpa-rujukan-docs-ubah-berkas-jalan-ulang" "$k" "$k" "$KERJA/cache-tanpa-rujukan-4.log" \
+  "^==> \[cargo-fmt\] cargo fmt --all --check$" "^==> \[web-lint\] di_web pnpm run lint$" \
+  "^CACHE-FMT: TIDAK ADA$" "^CACHE-LINT: TIDAK ADA$"
 
 echo ""
 echo "== Ringkasan test-verify.sh =="

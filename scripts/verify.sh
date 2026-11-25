@@ -502,7 +502,7 @@ periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau
 # POHON KERJA (bukan commit) untuk kelas masukan langkah: path, SHA-256 isi, bit eksekusi, target symlink,
 # dan berkas dilacak yang hilang, dari berkas dilacak git + belum dilacak yang tidak diabaikan + berkas yang
 # diabaikan di luar direktori yang diabaikan (mis. .env*, *.pem; tanpa target/, node_modules/, .claude/);
-# identitas dan versi alat; variabel lingkungan yang dapat memengaruhi hasil (diambil sebelum verify.sh
+# identitas dan versi alat; seluruh variabel lingkungan kecuali daftar tolak per sesi (diambil sebelum verify.sh
 # mengubah apa pun); untuk migrasi-db juga merge-base basis git yang dipakai penjaga urutan migrasi.
 # - GAGAL tidak pernah di-cache. LULUS hanya disimpan bila sidik sesudah langkah sama dengan sebelumnya.
 # - Kelas masukan: "semua" (seluruh isi repo) untuk langkah lintas area; "rust" = seluruh repo kecuali web/
@@ -533,7 +533,19 @@ MANIFEST_SEGAR=0
 SIDIK=""
 SIDIK_ALAT=""
 SIDIK_ALAT_ADA=0
-SIDIK_ENV="$(env | LC_ALL=C grep -E '^(CARGO|RUST|PROPTEST|SQLX|DATABASE_URL|RS_|API_|AUTH_|OPENBAO|BAO_|VAULT_|DOCKER|TESTCONTAINERS|PG|NODE|NPM_|npm_|PNPM|COREPACK|NEXT_|VITE|VITEST|TS_|TZ|LANG|LC_|HOME|TMPDIR|XDG_CONFIG|OBJECT_STORAGE|DEPLOY_ENV|HTTP_BIND|LOG_LEVEL|GITLEAKS|OSV|KEYCLOAK|KC_|VALKEY|REDIS|LIVEKIT|SES_|AWS_|CC|CXX|AR|CFLAGS|CXXFLAGS|CPPFLAGS|LDFLAGS|LIBRARY_PATH|LD_|DYLD_|CPATH|C_INCLUDE_PATH|PKG_CONFIG|OPENSSL|SSL_CERT|BINDGEN|HOST_|TARGET_|SOURCE_DATE_EPOCH|FORCE_COLOR|NO_COLOR|BROWSERSLIST|http_proxy|https_proxy|no_proxy|HTTP_PROXY|HTTPS_PROXY|NO_PROXY|ALL_PROXY|all_proxy|INSTA_|TRYBUILD|UPDATE_EXPECT|UPDATE_SNAPSHOTS|SNAPSHOT|NEXTEST|CLIPPY|MIRI|LLVM|PLAYWRIGHT|PUPPETEER|CHROME|BROWSER|ESLINT|TSC_|TSX_|TURBO|JEST|BUN_|DENO_|UV_|PIP_|PYTHON|JAVA|MAKEFLAGS)[A-Za-z0-9_]*=' | LC_ALL=C grep -v '^RS_VERIFY_TANPA_CACHE=' | LC_ALL=C sort || true)"
+# Lingkungan masuk sidik dengan pola daftar tolak (review T1 KEPUTUSAN-301, N-2): SELURUH `env` ikut, kecuali
+# variabel yang berubah per sesi/terminal dan tidak dibaca langkah mana pun. Nilai hanya di memori dan hanya
+# di-hash (variabel rahasia tidak pernah ditulis ke berkas atau dicetak). GIT_* dikecualikan karena langkah
+# menjalankan alat lewat tanpa_env_git; PATH ikut setelah direktori exec-path git (ditaruh git hook di depan
+# PATH) dibuang. Ragu = ikut sidik (hanya mengurangi hit, tidak pernah melewati langkah).
+SIDIK_ENV_TOLAK='^(PWD|OLDPWD|SHLVL|_|PATH|COLUMNS|LINES|COLORTERM|LS_COLORS|LESSOPEN|LESSCLOSE|MAIL|DISPLAY|WINDOWID|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|XDG_SESSION_[A-Za-z0-9_]*|TERM|TERM_[A-Za-z0-9_]*|SSH_[A-Za-z0-9_]*|TMUX|TMUX_[A-Za-z0-9_]*|WAYLAND_[A-Za-z0-9_]*|GIT_[A-Za-z0-9_]*|CLAUDE[A-Za-z0-9_]*|AI_AGENT|TELEGRAM_[A-Za-z0-9_]*|RS_VERIFY_TANPA_CACHE|RS_ANTRE_[A-Za-z0-9_]*)='
+SIDIK_ENV="$(
+  env | LC_ALL=C grep -vE "$SIDIK_ENV_TOLAK" | LC_ALL=C sort || true
+  gitexec="$(git --exec-path 2>/dev/null || true)"
+  printf 'PATH(tanpa exec-path git)='
+  printf '%s' "${PATH:-}" | tr ':' '\n' | { if [ -n "$gitexec" ]; then grep -vxF "$gitexec"; else cat; fi; } | tr '\n' ':' || true
+  echo
+)"
 
 sha256_alir() { # sha256_alir [-- berkas...]: keluaran "<64 hex>  <nama>" (sha256sum, atau shasum di macOS)
   if command -v sha256sum >/dev/null 2>&1; then
@@ -645,7 +657,8 @@ konfigurasi_luar_repo() { # cetak "path=sha256" (atau "path=-") berkas konfigura
   local d f
   d="$(dirname "$ROOT")"
   while :; do
-    for f in "$d/.cargo/config" "$d/.cargo/config.toml" "$d/.npmrc"; do
+    # rustfmt mencari rustfmt.toml/.rustfmt.toml ke direktori induk (review T1 KEPUTUSAN-301, N-4).
+    for f in "$d/.cargo/config" "$d/.cargo/config.toml" "$d/.npmrc" "$d/rustfmt.toml" "$d/.rustfmt.toml"; do
       [ -e "$f" ] && printf '%s=%s\n' "$f" "$(sha256_alir <"$f" 2>/dev/null | cut -c1-64 || echo tidak-terbaca)"
     done
     [ "$d" = "/" ] && break
@@ -654,7 +667,9 @@ konfigurasi_luar_repo() { # cetak "path=sha256" (atau "path=-") berkas konfigura
   for f in "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/config" "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/config.toml" \
     "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/audit.toml" "${HOME:-/nonexistent}/.npmrc" \
     "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/pnpm/rc" "${HOME:-/nonexistent}/.gitconfig" \
-    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/git/config"; do
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/git/config" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/rustfmt/rustfmt.toml" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/rustfmt/.rustfmt.toml"; do
     if [ -e "$f" ]; then
       printf '%s=%s\n' "$f" "$(sha256_alir <"$f" 2>/dev/null | cut -c1-64 || echo tidak-terbaca)"
     else
@@ -669,7 +684,7 @@ alat_sidik_siapkan() { # identitas dan versi alat yang dipakai langkah-langkah, 
   SIDIK_ALAT="$(
     # Path git tidak dicatat: git hook menaruh direktori exec-path git di depan PATH.
     for b in bash sh cargo rustc rustfmt cargo-clippy cargo-fmt cargo-sqlx sqlx node pnpm docker gitleaks \
-      osv-scanner cargo-deny cargo-audit psql sed awk grep sort tr cmp tee mktemp od base64; do
+      osv-scanner cargo-deny cargo-audit psql sed awk grep sort tr cmp tee mktemp od base64 openssl curl; do
       printf '%s=%s\n' "$b" "$(command -v "$b" 2>/dev/null || echo -)"
     done
     echo "bash: $BASH_VERSION"
@@ -682,6 +697,8 @@ alat_sidik_siapkan() { # identitas dan versi alat yang dipakai langkah-langkah, 
     node --version 2>&1 || echo "node: -"
     if [ -d web ]; then (cd web && pnpm --version 2>&1) || echo "pnpm: -"; fi
     docker version --format 'docker {{.Client.Version}} {{.Server.Version}}' 2>&1 || echo "docker: -"
+    openssl version 2>&1 || echo "openssl: -"
+    curl --version 2>&1 | sed -n '1p' || echo "curl: -"
     # Konfigurasi di luar repo yang dimuat otomatis oleh cargo, npm/pnpm, dan git: isinya ikut sidik
     # (konservatif; CI menolak keberadaannya lewat runner bersih). Direktori induk repo ditelusuri sampai /.
     konfigurasi_luar_repo
@@ -697,7 +714,7 @@ docs_dirujuk() { # docs_dirujuk <ERE-path-sumber>: path docs/ yang disebut di be
     return 0
   fi
   xargs -0 sh -c 'grep -aohE -- "$0" "$@"; s=$?; [ "$s" -le 1 ]' \
-    "docs(/[A-Za-z0-9._/-]*[A-Za-z0-9_-]|/?[\"'\`\$}])" <"$CACHE_TMP/sumber.z" >"$CACHE_TMP/rujukan.mentah" || return 1
+    "docs(/[A-Za-z0-9._/-]*[A-Za-z0-9_-]|/?[\"'\`\$}{(])" <"$CACHE_TMP/sumber.z" >"$CACHE_TMP/rujukan.mentah" || return 1
   sed 's|^docs/*[^A-Za-z0-9._-]*$|docs|' "$CACHE_TMP/rujukan.mentah" | LC_ALL=C sort -u
 }
 
@@ -715,8 +732,12 @@ saring_kelas() { # saring_kelas <kelas>: cetak baris manifest yang termasuk kela
       else
         docs_dirujuk '^web/' >"$rujukan" || return 1
       fi
+      # Berkas rujukan dikenali lewat FILENAME, bukan NR == FNR: bila rujukan kosong, NR == FNR juga benar
+      # untuk seluruh manifest sehingga semua berkas tertelan ke R[] dan kelas menjadi kosong (review T1
+      # KEPUTUSAN-301, B-1). Penjaga gagal-tertutupnya ada di saring_kelas_aman.
+      # ARGV[1] (bukan -v) karena nilai -v diproses escape-nya oleh awk.
       awk -F'\t' -v kelas="$1" '
-        NR == FNR { if ($0 != "") R[++n] = $0; next }
+        FILENAME == ARGV[1] { if ($0 != "") R[++n] = $0; next }
         function dirujuk(p,   i) {
           for (i = 1; i <= n; i++) {
             # Awalan apa adanya (bukan hanya per direktori): rujukan potongan nama yang disambung saat
@@ -736,9 +757,19 @@ saring_kelas() { # saring_kelas <kelas>: cetak baris manifest yang termasuk kela
   esac
 }
 
+saring_kelas_aman() { # saring_kelas_aman <kelas> <berkas-keluaran>: saring_kelas dengan penjaga gagal-tertutup
+  # Setiap kelas pasti memuat scripts/verify.sh (tidak ada kelas yang mengecualikan scripts/). Keluaran kosong,
+  # galat, atau tanpa baris scripts/verify.sh berarti penyaringan rusak: sidik tidak dapat dihitung dan langkah
+  # dijalankan penuh (review T1 KEPUTUSAN-301, B-1).
+  saring_kelas "$1" >"$2" || return 1
+  [ -s "$2" ] || return 1
+  LC_ALL=C grep -q "^scripts/verify\.sh$(printf '\t')" "$2" || return 1
+}
+
 sidik_hitung() { # sidik_hitung <nama> <kelas> <perintah...>: cetak sidik 64 hex (manifest dan alat sudah siap)
   local nama="$1" kelas="$2" ref
   shift 2
+  saring_kelas_aman "$kelas" "$CACHE_TMP/kelas" || return 1
   {
     printf 'skema=1\nlangkah=%s\nkelas=%s\nperintah=%s\n' "$nama" "$kelas" "$*"
     printf 'verify.sh=%s\n' "$(sha256_alir <"$ROOT/scripts/verify.sh" | cut -c1-64)"
@@ -771,7 +802,7 @@ sidik_hitung() { # sidik_hitung <nama> <kelas> <perintah...>: cetak sidik 64 hex
       fi
     fi
     printf -- '--berkas--\n'
-    saring_kelas "$kelas"
+    cat "$CACHE_TMP/kelas"
   } | sha256_alir | cut -c1-64
 }
 
@@ -1038,7 +1069,9 @@ web_dependensi_segar() { # hijau palsu karena node_modules basi (pola npm ci di 
     return 1
   fi
   if ! git ls-files --error-unmatch web/pnpm-lock.yaml >/dev/null 2>&1; then
-    # Sebelum commit pertama lockfile boleh baru di-stage atau belum dilacak; hook commit memverifikasi index.
+    # Sebelum commit pertama lockfile boleh baru di-stage atau belum dilacak. verify.sh selalu memeriksa pohon
+    # kerja, bukan index; hook pre-commit menolak perubahan belum di-stage/belum dilacak di luar docs/, jadi
+    # untuk berkas di luar docs/ pohon kerja = index saat commit (docs/ boleh berbeda; lihat CR di backlog).
     if [ -z "$(git ls-files --others --exclude-standard web/pnpm-lock.yaml)" ]; then
       echo "web/pnpm-lock.yaml tidak dilacak git" >&2
       return 1

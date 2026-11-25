@@ -590,6 +590,15 @@ Isi: semua aksi Keycloak Admin REST ber-`manage-users` (realm pasien, admin, kor
 **Mengubah keputusan lama:** KEPUTUSAN-201 dan klarifikasi §2.7 butir 4 (pembuatan akun sinkron); AC PRD US-101, US-208, US-1901, US-1903, US-1904 perlu revisi (tabel dampak di ADR-030); menutup TD-26 dan TD-30 setelah implementasi langkah 1–8 ADR-030.
 Status: disetujui; implementasi dijadwalkan setelah registrasi F1-T49–T51 masuk branch utama
 
+### CR-027: Hook pre-commit mengizinkan docs/ belum di-stage padahal langkah verifikasi membaca docs/
+
+Diajukan: 2026-11-25 (Tahap 8 Fase 1, review T1 KEPUTUSAN-301, catatan non-blokir N-5)
+Deskripsi: `.githooks/pre-commit` menolak perubahan belum di-stage/belum dilacak di luar `docs/`, tetapi `scripts/verify.sh` memeriksa pohon kerja, dan beberapa langkah membaca berkas `docs/` (mis. registry `docs/05-response-codes.md` di test Rust dan web, data dictionary). Akibatnya commit dapat diverifikasi terhadap isi `docs/` di pohon kerja yang berbeda dari yang di-commit: hijau di lokal, tetapi isi yang ter-commit tidak pernah diverifikasi lokal (CI tetap memverifikasi isi commit). Ini sudah ada sebelum KEPUTUSAN-301; cache sidik tidak memperburuknya karena sidik dihitung dari pohon kerja yang sama dengan yang diperiksa.
+Usulan: hook menolak juga perubahan `docs/` yang belum di-stage bila commit memuat kode (atau verifikasi dijalankan atas salinan index). Mengubah `.githooks/` memerlukan persetujuan user (CLAUDE.md, aturan nomor dua).
+Alasan: integritas gerbang "hanya commit hijau"; tidak mengubah scope bisnis.
+Keputusan: menunggu user
+Status: diajukan; `.githooks/` tidak diubah
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
