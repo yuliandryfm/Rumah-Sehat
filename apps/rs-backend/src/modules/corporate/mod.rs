@@ -7,6 +7,8 @@
 //! F1-T104: verifikasi perusahaan oleh Verifikator (US-1902) di `/backoffice/v1`
 //! (`openapi/backoffice.json`): antrean, detail, URL dokumen, setujui/tolak, daftar alasan penolakan.
 //! F1-T105: perusahaan dibuatkan Verifikator (US-1903, `admin_create.rs`): langsung Aktif + undangan HR pertama.
+//! F1-T101: pendaftaran perusahaan mandiri oleh calon HR tanpa login (US-1901, `registration.rs`): perusahaan
+//! Menunggu verifikasi + akun HR `pending_provisioning` + bukti persetujuan; jawaban seragam.
 
 mod admin_create;
 mod admin_create_http;
@@ -16,11 +18,19 @@ mod dto;
 mod error;
 mod http;
 mod policy;
+mod registration;
+mod registration_http;
 mod repo;
 mod verification;
 
 use crate::app::AppState;
 use authz::PolicyRouter;
+
+/// Rute publik pendaftaran perusahaan mandiri (`/v1/public/corporate-registrations`, `openapi/public.json`,
+/// F1-T101): tanpa login, jawaban seragam, batas laju.
+pub(crate) fn public_router() -> PolicyRouter<AppState> {
+    registration_http::router()
+}
 
 /// Rute backoffice verifikasi perusahaan (`/backoffice/v1`, realm `admin`, sub-peran Verifikator).
 pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {

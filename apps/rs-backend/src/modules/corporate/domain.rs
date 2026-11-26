@@ -108,6 +108,30 @@ impl DocumentKind {
     }
 }
 
+/// Panjang NIB: tiga belas digit angka `[SRC-854]` (Peraturan BKPM 3/2021, KEPUTUSAN-325). Angka pengaman
+/// (digit ke-13) dan tanggal (enam digit pertama) TIDAK divalidasi: algoritma angka pengaman tidak
+/// dipublikasikan; keaslian diperiksa Verifikator.
+pub(super) const NIB_DIGITS: usize = 13;
+/// Panjang NPWP Wajib Pajak Badan: enam belas digit `[SRC-855]` (PMK 112/PMK.03/2022 Pasal 2 ayat (1) huruf b;
+/// KEPUTUSAN-325). NPWP 15 digit lama tidak diterima dan tidak diberi angka 0 di depan secara diam-diam.
+pub(super) const NPWP_DIGITS: usize = 16;
+
+/// `raw` dipangkas lalu harus tepat `n` angka ASCII (angka Unicode lain, spasi di tengah, dan pemisah ditolak).
+fn exact_digits(raw: &str, n: usize) -> Option<String> {
+    let t = raw.trim();
+    (t.len() == n && t.bytes().all(|b| b.is_ascii_digit())).then(|| t.to_string())
+}
+
+/// NIB sah secara format: tepat 13 angka.
+pub(super) fn nib_format(raw: &str) -> Option<String> {
+    exact_digits(raw, NIB_DIGITS)
+}
+
+/// NPWP badan sah secara format: tepat 16 angka.
+pub(super) fn npwp_format(raw: &str) -> Option<String> {
+    exact_digits(raw, NPWP_DIGITS)
+}
+
 /// Asal perusahaan (`corporate_client.origin`).
 pub(super) fn parse_origin(code: &str) -> Option<&'static str> {
     match code {
@@ -155,6 +179,50 @@ mod tests {
         );
         for bad in ["", "other", "photo_unreadable", "NIB_DOCUMENT_INVALID"] {
             assert_eq!(RejectionReason::parse(bad), None, "{bad}");
+        }
+    }
+
+    // trace: US-1901 AC3 (NIB 13 angka, NPWP badan 16 angka; KEPUTUSAN-325)
+    #[test]
+    fn nib_is_exactly_thirteen_digits() {
+        assert_eq!(
+            nib_format("1234567890123").as_deref(),
+            Some("1234567890123")
+        );
+        assert_eq!(
+            nib_format(" 1234567890123\n").as_deref(),
+            Some("1234567890123")
+        );
+        for bad in [
+            "",
+            "123456789012",
+            "12345678901234",
+            "12345678901a3",
+            "12345 7890123",
+            "1234567890-23",
+            "\u{0661}\u{0662}\u{0663}\u{0664}\u{0665}\u{0666}\u{0667}\u{0668}\u{0669}\u{0660}\u{0661}\u{0662}\u{0663}",
+            "1234567890123\u{0}",
+        ] {
+            assert_eq!(nib_format(bad), None, "{bad:?}");
+        }
+    }
+
+    // trace: US-1901 AC3 (NPWP badan 16 angka; 15 angka lama ditolak tanpa diubah diam-diam)
+    #[test]
+    fn npwp_is_exactly_sixteen_digits_and_fifteen_is_not_padded() {
+        assert_eq!(
+            npwp_format("0123456789012345").as_deref(),
+            Some("0123456789012345")
+        );
+        for bad in [
+            "",
+            "012345678901234",
+            "01234567890123456",
+            "01.234.567.8-901.234",
+            "012345678901234x",
+            "012345678901 345",
+        ] {
+            assert_eq!(npwp_format(bad), None, "{bad:?}");
         }
     }
 

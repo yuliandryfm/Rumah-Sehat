@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient_id, care_recipient_id, channel AS \"channel!\", action AS \"action!\",\n                  consent_text_version_id AS \"v!\", consent_item_id AS \"i!\"\n           FROM app.consent_record WHERE account_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "patient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "patient_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "care_recipient_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "care_recipient_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "channel!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "channel"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "action!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "action"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "v!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "consent_text_version_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "i!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "consent_record",
+            "name": "consent_item_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "48ead7b52958ae8c2d30927db22ade1c1d2b0a29d734cf0a452c5d9a9afd5f3d"
+}

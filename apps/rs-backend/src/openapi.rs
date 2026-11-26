@@ -136,7 +136,10 @@ pub struct PatientApiDoc;
         description = "Konten situs yang sedang tayang tanpa login (ADR-012 butir 3, ADR-027 butir 5), dengan batas laju. Format respons: ADR-023.",
         version = env!("CARGO_PKG_VERSION")
     ),
-    tags((name = "public-content", description = "Konten situs yang sedang tayang"))
+    tags(
+        (name = "public-content", description = "Konten situs yang sedang tayang"),
+        (name = "corporate-registration", description = "Pendaftaran perusahaan mandiri oleh calon HR (US-1901)")
+    )
 )]
 pub struct PublicApiDoc;
 

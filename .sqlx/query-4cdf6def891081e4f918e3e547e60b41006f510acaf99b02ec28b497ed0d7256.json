@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_member (id, created_at, created_by, updated_at, updated_by, account_id, corporate_client_id, job_title) VALUES ($1, $5, $3, $5, $3, $3, $2, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4cdf6def891081e4f918e3e547e60b41006f510acaf99b02ec28b497ed0d7256"
+}

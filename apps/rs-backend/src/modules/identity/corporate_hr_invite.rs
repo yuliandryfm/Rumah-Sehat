@@ -78,6 +78,42 @@ pub async fn register_hr_invitation(
     })
 }
 
+/// Mencatat pendaftaran mandiri HR (F1-T101, US-1901; tujuan `hr_self_registration`) di transaksi pemanggil, dengan
+/// aturan yang sama dengan [`register_hr_invitation`] (email ASCII ternormalisasi, kunci advisory email PERTAMA,
+/// `EmailInUse` bila email sudah dipakai akun belum terhapus). Pelaku niat = `corporate_admin` tanpa ID akun
+/// (pendaftar belum punya akun sebelum fungsi ini). `full_name` disimpan di `account.full_name` (anonimkan).
+pub async fn register_hr_self_registration(
+    conn: &mut PgConnection,
+    raw_email: &str,
+    full_name: &str,
+    correlation_id: CorrelationId,
+    clock: &dyn Clock,
+) -> Result<PendingAccount, HrInviteError> {
+    let email = normalize_hr_email(raw_email).ok_or(HrInviteError::InvalidEmail)?;
+    register_pending_account(
+        conn,
+        &PendingAccountRequest {
+            account_type: CORPORATE_ADMIN_ACCOUNT_TYPE,
+            realm: IdpRealm::Korporat,
+            email: &email,
+            full_name: Some(full_name),
+            purpose: IntentPurpose::HrSelfRegistration,
+            actor: IntentActor {
+                actor_type: CORPORATE_ADMIN_ACCOUNT_TYPE,
+                account_id: None,
+            },
+            correlation_id,
+        },
+        clock,
+    )
+    .await
+    .map_err(|e| match e {
+        IntentError::EmailInUse => HrInviteError::EmailInUse,
+        IntentError::Queue => HrInviteError::Queue,
+        IntentError::InvalidIntent | IntentError::Repo(_) => HrInviteError::Database,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

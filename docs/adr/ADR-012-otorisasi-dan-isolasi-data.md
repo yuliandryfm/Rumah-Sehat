@@ -2,6 +2,7 @@
 
 Status: Diterima (gate Tahap 4, 2026-11-18 `[USER] T4-G5`)
 Tanggal: 2026-11-18
+Diamandemen: butir 3 (2026-11-26, F1-T101, `[KEPUTUSAN-323]`): alasan publik `CorporateRegistration` untuk pendaftaran perusahaan mandiri.
 
 ## Konteks
 
@@ -23,6 +24,7 @@ Tanggal: 2026-11-18
    - batas laju per sumber dan batas laju global;
    - kode tidak masuk log;
    - halaman tidak di-cache dan tidak diindeks mesin pencari.
+   - **Amandemen 2026-11-26 (F1-T101, `[KEPUTUSAN-323]`)**: ditambah satu alasan publik, `PublicReason::CorporateRegistration`: pendaftaran perusahaan mandiri oleh calon HR yang belum punya akun (US-1901) dan teks persetujuannya, di `POST /v1/public/corporate-registrations` dan `GET /v1/public/corporate-registrations/consent-text`. Alasannya: pendaftar belum punya akun di realm `korporat`, sehingga tidak ada token yang dapat diperiksa. Pengamannya: (a) jawaban `202` seragam untuk pendaftaran baru, NIB terdaftar, dan email terdaftar, tanpa membocorkan keberadaan perusahaan atau akun; (b) waktu respons disamakan ke batas bawah yang sama (ADR-030 butir 7); (c) batas laju per sumber dan global dengan anggaran terpisah dari konten publik (M-47); (d) persetujuan teks versi berlaku wajib, dan teks draf ditolak di production (KEPUTUSAN-289); (e) tanpa password di isian (KEPUTUSAN-303); (f) setiap penolakan NIB atau email terdaftar tercatat sebagai E-10 hasil gagal tanpa NIB, email, atau ID perusahaan lain. Endpoint ini bukan di namespace `/v1/corporate/` (yang wajib HR bersesi, ADR-027 butir 2).
 4. **Respons penolakan**: objek yang tidak boleh diakses dijawab seperti objek yang tidak ada (HTTP 404), sehingga keberadaannya tidak bocor (KU-03). Aksi yang dikenal tetapi tidak diizinkan untuk peran itu dijawab 403 `[KEPUTUSAN-27]`.
 5. **Isolasi di database Ruang Sehat**: skema bersama. Setiap query portal rekanan wajib melewati lapisan repository yang meminta `partner_id` dari sesi, bukan dari parameter permintaan. Kepatuhan diperiksa dengan test isolasi otomatis yang mencoba mengakses data rekanan lain lewat ID untuk setiap endpoint portal (NFR-SEC-06). Row Level Security tidak dipakai di database ini, karena hanya sedikit endpoint yang bersifat per tenant (laporan, profil, keluhan, pengaturan konsultasi) `[KEPUTUSAN-27]`.
 6. **Isolasi di database RME minimalis**: skema bersama, dengan kolom `fasyankes_id` di setiap tabel milik tenant, dan **Row Level Security** sebagai lapisan kedua di bawah pemeriksaan aplikasi `[KEPUTUSAN-27]`:

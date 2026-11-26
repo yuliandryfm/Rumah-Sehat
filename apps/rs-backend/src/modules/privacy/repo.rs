@@ -86,7 +86,10 @@ pub(super) async fn count_items_of_version(
 /// (`tg_consent_record_server_time`).
 pub(super) struct NewConsentRecord {
     pub(super) id: Uuid,
-    pub(super) patient_id: Uuid,
+    /// Subjek pasien; tepat salah satu dari `patient_id` dan `account_id` terisi (CHECK `ck_consent_record_subject`).
+    pub(super) patient_id: Option<Uuid>,
+    /// Subjek akun HR perusahaan (F1-T101; kanal `corporate_portal`).
+    pub(super) account_id: Option<Uuid>,
     pub(super) consent_text_version_id: Uuid,
     pub(super) consent_item_id: Uuid,
     pub(super) action: &'static str,
@@ -101,9 +104,9 @@ pub(super) async fn insert_record(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO app.consent_record \
-           (id, patient_id, care_recipient_id, consent_text_version_id, consent_item_id, action, channel, \
-            correlation_id) \
-         VALUES ($1, $2, NULL, $3, $4, $5, $6, $7)",
+           (id, patient_id, account_id, care_recipient_id, consent_text_version_id, consent_item_id, action, \
+            channel, correlation_id) \
+         VALUES ($1, $2, $8, NULL, $3, $4, $5, $6, $7)",
         r.id,
         r.patient_id,
         r.consent_text_version_id,
@@ -111,6 +114,7 @@ pub(super) async fn insert_record(
         r.action,
         r.channel,
         r.correlation_id,
+        r.account_id,
     )
     .execute(conn)
     .await?;

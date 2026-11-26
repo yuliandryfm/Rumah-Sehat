@@ -385,3 +385,69 @@ pub(super) async fn insert_member(
     .await?;
     Ok(())
 }
+
+// ----- F1-T101: pendaftaran perusahaan mandiri oleh HR (US-1901) -----
+
+/// Perusahaan baru dari pendaftaran mandiri (status Menunggu verifikasi, putaran 1).
+pub(super) struct NewSelfRegisteredClient<'a> {
+    pub(super) id: Uuid,
+    /// Akun HR pendaftar (dibuat di transaksi yang sama).
+    pub(super) created_by: Uuid,
+    pub(super) legal_name: &'a str,
+    pub(super) nib: &'a str,
+    pub(super) npwp: &'a str,
+    pub(super) office_address: &'a str,
+    pub(super) office_phone: &'a str,
+    pub(super) now: OffsetDateTime,
+}
+
+/// Menyisipkan perusahaan `pending_verification` berasal `self_registered`. `false` bila NIB bentrok dengan
+/// perusahaan lain yang belum terhapus (`uqp_corporate_client_nib`, termasuk balapan); `ON CONFLICT DO NOTHING`
+/// supaya transaksi pemanggil tetap dapat dipakai.
+pub(super) async fn insert_self_registered_client(
+    conn: &mut PgConnection,
+    c: &NewSelfRegisteredClient<'_>,
+) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query!(
+        "INSERT INTO app.corporate_client \
+           (id, created_at, created_by, updated_at, updated_by, legal_name, nib, npwp, office_address, \
+            office_phone, status, origin, submission_round, submitted_at) \
+         VALUES ($1, $8, $2, $8, $2, $3, $4, $5, $6, $7, 'pending_verification', 'self_registered', 1, $8) \
+         ON CONFLICT (nib) WHERE deleted_at IS NULL DO NOTHING",
+        c.id,
+        c.created_by,
+        c.legal_name,
+        c.nib,
+        c.npwp,
+        c.office_address,
+        c.office_phone,
+        c.now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(r.rows_affected() == 1)
+}
+
+/// Menyisipkan keanggotaan HR pendaftar beserta jabatannya (US-1901 AC1).
+pub(super) async fn insert_member_with_title(
+    conn: &mut PgConnection,
+    id: Uuid,
+    corporate_client_id: Uuid,
+    account_id: Uuid,
+    job_title: &str,
+    now: OffsetDateTime,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO app.corporate_member \
+           (id, created_at, created_by, updated_at, updated_by, account_id, corporate_client_id, job_title) \
+         VALUES ($1, $5, $3, $5, $3, $3, $2, $4)",
+        id,
+        corporate_client_id,
+        account_id,
+        job_title,
+        now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}

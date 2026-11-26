@@ -20,6 +20,14 @@ pub const HR_EMAIL_ALREADY_REGISTERED: ResponseCode = ResponseCode::new(
     "Email HR sudah dipakai akun lain di realm korporat",
 );
 
+/// `4090106`: teks persetujuan pendaftaran perusahaan yang dikirim bukan versi berlaku, atau butirnya bukan milik
+/// versi berlaku (US-104 AC3, US-1901 AC1). Klien memuat ulang teks lalu meminta persetujuan lagi. Tidak
+/// berkaitan dengan keberadaan akun atau NIB (bukan pembeda anti-enumerasi).
+pub const REGISTRATION_CONSENT_OUTDATED: ResponseCode = ResponseCode::new(
+    "4090106",
+    "Teks persetujuan telah berubah. Muat ulang teks persetujuan lalu setujui kembali",
+);
+
 /// Galat use case modul Korporat. Pesan dan isi tidak pernah memuat NPWP (klasifikasi Terbatas, DD A20).
 #[derive(Debug)]
 pub enum CorporateError {
@@ -38,6 +46,10 @@ pub enum CorporateError {
     NibAlreadyRegistered,
     /// Email HR pertama sudah dipakai akun di realm `korporat` (409, US-1903 AC1).
     HrEmailAlreadyRegistered,
+    /// Teks persetujuan pendaftaran sudah berganti (409, US-104 AC3).
+    ConsentOutdated,
+    /// Batas laju pendaftaran terlampaui (429).
+    RateLimited,
     /// Galat berkas dari modul `platform`.
     File(FileError),
     /// PostgreSQL tidak tersedia (503; detail hanya di log).
@@ -56,6 +68,8 @@ impl fmt::Display for CorporateError {
             Self::AlreadyDecided => f.write_str("pengajuan sudah diputuskan"),
             Self::NibAlreadyRegistered => f.write_str("NIB sudah terdaftar"),
             Self::HrEmailAlreadyRegistered => f.write_str("email HR sudah dipakai"),
+            Self::ConsentOutdated => f.write_str("teks persetujuan sudah berganti"),
+            Self::RateLimited => f.write_str("batas laju"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::Database => f.write_str("database tidak tersedia"),
             Self::Internal(what) => write!(f, "galat internal: {what}"),
@@ -75,6 +89,8 @@ impl ApiError for CorporateError {
             Self::AlreadyDecided => codes::STATUS_CONFLICT,
             Self::NibAlreadyRegistered => NIB_ALREADY_REGISTERED,
             Self::HrEmailAlreadyRegistered => HR_EMAIL_ALREADY_REGISTERED,
+            Self::ConsentOutdated => REGISTRATION_CONSENT_OUTDATED,
+            Self::RateLimited => codes::RATE_LIMITED,
             Self::File(e) => e.response_code(),
             Self::Database => codes::UNAVAILABLE,
             Self::Internal(_) => codes::INTERNAL,
@@ -104,6 +120,8 @@ mod tests {
             (CorporateError::AlreadyDecided, "4090001"),
             (CorporateError::NibAlreadyRegistered, "4090110"),
             (CorporateError::HrEmailAlreadyRegistered, "4090111"),
+            (CorporateError::ConsentOutdated, "4090106"),
+            (CorporateError::RateLimited, "4290001"),
             (CorporateError::File(FileError::NotFound), "4040001"),
             (CorporateError::Database, "5030001"),
             (CorporateError::Internal("x"), "5000001"),

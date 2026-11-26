@@ -16,6 +16,10 @@ pub enum PublicReason {
     PublicContent,
     /// Halaman verifikasi resep dengan kode acak (US-309 AC6–AC8).
     PrescriptionVerification,
+    /// Pendaftaran perusahaan mandiri oleh calon HR yang belum punya akun, dan teks persetujuannya (US-1901,
+    /// ADR-012 butir 3 butir tambahan; KEPUTUSAN-323). Jawaban seragam (anti-enumerasi), batas laju, dan
+    /// penolakan teks persetujuan draf di production.
+    CorporateRegistration,
 }
 
 /// Syarat akses endpoint terautentikasi. Dibangun lewat [`Policy`]; tanpa konstruktor publik supaya

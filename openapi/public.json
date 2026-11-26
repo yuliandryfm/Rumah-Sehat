@@ -291,6 +291,158 @@
           }
         }
       }
+    },
+    "/v1/public/corporate-registrations": {
+      "post": {
+        "tags": [
+          "corporate-registration"
+        ],
+        "summary": "Mendaftarkan perusahaan mandiri tanpa login (US-1901). Jawaban `202` seragam untuk pendaftaran baru, NIB\nterdaftar, dan email terdaftar, dengan waktu respons yang disamakan; password tidak diminta (diatur lewat\ntautan aktivasi email).",
+        "operationId": "corporate_registration_submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorporateRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Permintaan diterima; jawaban sama untuk pendaftaran baru dan NIB atau email yang sudah terdaftar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorporateRegistrationAcceptedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090106: teks persetujuan telah berubah; muat ulang teks lalu setujui kembali.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid per field, atau persetujuan wajib tidak dicentang.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Teks persetujuan belum tersedia atau layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/corporate-registrations/consent-text": {
+      "get": {
+        "tags": [
+          "corporate-registration"
+        ],
+        "summary": "Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.\nTanpa login, dengan batas laju yang sama dengan pendaftaran. Teks draf tidak disajikan di production.",
+        "operationId": "corporate_registration_consent_text",
+        "responses": {
+          "200": {
+            "description": "Versi teks yang berlaku.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationConsentTextEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Batas laju terlampaui.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat tak terduga.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Belum ada versi teks final yang berlaku atau layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -304,6 +456,137 @@
           "article",
           "promo"
         ]
+      },
+      "CorporateRegistrationAcceptedDto": {
+        "type": "object",
+        "description": "Jawaban seragam pendaftaran.",
+        "required": [
+          "status",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Pesan seragam untuk layar \"Periksa email Anda\"."
+          },
+          "status": {
+            "type": "string",
+            "description": "Selalu `processing`, juga untuk NIB atau email yang sudah terdaftar (anti-enumerasi).",
+            "example": "processing"
+          }
+        }
+      },
+      "CorporateRegistrationAcceptedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons pendaftaran.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CorporateRegistrationAcceptedDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2020000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Diterima"
+          }
+        }
+      },
+      "CorporateRegistrationRequest": {
+        "type": "object",
+        "description": "Isian pendaftaran perusahaan. Tanpa password: password diatur lewat tautan aktivasi email (KEPUTUSAN-303).",
+        "required": [
+          "legal_name",
+          "nib",
+          "npwp",
+          "office_address",
+          "office_phone",
+          "hr_full_name",
+          "hr_job_title",
+          "hr_email",
+          "consent_text_version_id",
+          "consent_item_ids"
+        ],
+        "properties": {
+          "consent_item_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Butir persetujuan yang dicentang; butir wajib harus ada.",
+            "example": [
+              "01a2008d-7400-7000-8000-000000000b02"
+            ],
+            "maxItems": 20
+          },
+          "consent_text_version_id": {
+            "type": "string",
+            "description": "Versi teks persetujuan yang ditampilkan (dari `GET .../consent-text`).",
+            "example": "01a2008d-7400-7000-8000-000000000b01"
+          },
+          "hr_email": {
+            "type": "string",
+            "description": "Email HR pendaftar: penerima tautan aktivasi (verifikasi email, password, TOTP).",
+            "example": "hr@perusahaan.example",
+            "maxLength": 254
+          },
+          "hr_full_name": {
+            "type": "string",
+            "description": "Nama HR pendaftar (maks 120 karakter).",
+            "example": "Nama HR Sintetis",
+            "maxLength": 120
+          },
+          "hr_job_title": {
+            "type": "string",
+            "description": "Jabatan HR pendaftar (maks 100 karakter).",
+            "example": "Manajer SDM",
+            "maxLength": 100
+          },
+          "legal_name": {
+            "type": "string",
+            "description": "Nama badan usaha (maks 200 karakter).",
+            "example": "PT Contoh Sintetis",
+            "maxLength": 200
+          },
+          "nib": {
+            "type": "string",
+            "description": "NIB: tepat 13 angka (Peraturan BKPM 3/2021). Keaslian diperiksa Verifikator.",
+            "example": "1234567890123",
+            "maxLength": 13,
+            "minLength": 13,
+            "pattern": "^[0-9]{13}$"
+          },
+          "npwp": {
+            "type": "string",
+            "description": "NPWP badan: tepat 16 angka (PMK 112/PMK.03/2022). NPWP 15 angka lama: tambahkan angka 0 di depan\nsebelum dikirim.",
+            "example": "0123456789012345",
+            "maxLength": 16,
+            "minLength": 16,
+            "pattern": "^[0-9]{16}$"
+          },
+          "office_address": {
+            "type": "string",
+            "description": "Alamat kantor (maks 500 karakter).",
+            "example": "Jl. Contoh No. 1, Jakarta",
+            "maxLength": 500
+          },
+          "office_phone": {
+            "type": "string",
+            "description": "Telepon kantor (maks 32 karakter).",
+            "example": "021-0000000",
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
       },
       "ErrorEnvelope": {
         "type": "object",
@@ -556,6 +839,160 @@
           }
         }
       },
+      "RegistrationConsentContactDto": {
+        "type": "object",
+        "description": "Kontak Ruang Sehat.",
+        "required": [
+          "title",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "RegistrationConsentItemDto": {
+        "type": "object",
+        "description": "Butir persetujuan: satu kotak centang yang tidak tercentang otomatis.",
+        "required": [
+          "consent_item_id",
+          "item_code",
+          "label",
+          "is_primary",
+          "is_required",
+          "sort_order"
+        ],
+        "properties": {
+          "consent_item_id": {
+            "type": "string",
+            "example": "01a2008d-7400-7000-8000-000000000b02"
+          },
+          "is_primary": {
+            "type": "boolean"
+          },
+          "is_required": {
+            "type": "boolean",
+            "description": "Wajib dicentang untuk mendaftar."
+          },
+          "item_code": {
+            "type": "string",
+            "example": "corporate_hr_data_processing"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RegistrationConsentSectionDto": {
+        "type": "object",
+        "description": "Satu bagian teks persetujuan.",
+        "required": [
+          "code",
+          "title",
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Isi bagian, teks biasa (bukan HTML)."
+          },
+          "code": {
+            "type": "string",
+            "example": "purpose"
+          },
+          "title": {
+            "type": "string",
+            "example": "(b) Tujuan pemrosesan"
+          }
+        }
+      },
+      "RegistrationConsentTextDto": {
+        "type": "object",
+        "description": "Versi teks persetujuan HR yang berlaku.",
+        "required": [
+          "consent_text_version_id",
+          "consent_type",
+          "version_label",
+          "effective_from",
+          "sections",
+          "contact",
+          "items"
+        ],
+        "properties": {
+          "consent_text_version_id": {
+            "type": "string",
+            "example": "01a2008d-7400-7000-8000-000000000b01"
+          },
+          "consent_type": {
+            "type": "string",
+            "example": "corporate_hr_registration"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/RegistrationConsentContactDto"
+          },
+          "draft_notice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Penanda teks draf (`null` untuk teks final yang disetujui legal dan Petugas PDP)."
+          },
+          "effective_from": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-26T00:00:01Z"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegistrationConsentItemDto"
+            }
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegistrationConsentSectionDto"
+            }
+          },
+          "version_label": {
+            "type": "string",
+            "example": "0.1-draf"
+          }
+        }
+      },
+      "RegistrationConsentTextEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons teks persetujuan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RegistrationConsentTextDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
       "SitePage": {
         "type": "string",
         "description": "Halaman situs tujuan (BR-130, `ck_cms_content_site_page`).",
@@ -577,6 +1014,10 @@
     {
       "name": "public-content",
       "description": "Konten situs yang sedang tayang"
+    },
+    {
+      "name": "corporate-registration",
+      "description": "Pendaftaran perusahaan mandiri oleh calon HR (US-1901)"
     }
   ]
 }
