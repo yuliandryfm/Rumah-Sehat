@@ -9,6 +9,7 @@ import { DaftarArtikel, DetailArtikel } from "./Artikel.tsx";
 import { Beranda, type DataBeranda } from "./Beranda.tsx";
 import { HalamanKonten } from "./HalamanKonten.tsx";
 import { KerangkaSitus } from "./KerangkaSitus.tsx";
+import { HalamanLayanan } from "./Layanan.tsx";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
@@ -28,6 +29,9 @@ const KONTEN: Konten = {
   image: { url: IMG, alt_text: "Gedung klinik" },
 };
 const KOSONG: DataBeranda = { beranda: null, layanan: null, untukPerusahaan: null, artikelTerbaru: [] };
+// Konvensi kartu CR-033: pengantar + satu `##` per layanan (paragraf pertama = ringkasan).
+const KARTU_MD = "Pengantar.\n\n## Konsultasi dokter\n\nChat dan video.\n\n- Resep digital\n\n## Layanan korporat\n\nUntuk perusahaan.\n";
+const KARTU: Konten = { ...KONTEN, body: KARTU_MD };
 const PENUH: DataBeranda = { beranda: KONTEN, layanan: KONTEN, untukPerusahaan: KONTEN, artikelTerbaru: [{ ...KONTEN, content_type: "article" }] };
 
 /**
@@ -51,7 +55,11 @@ describe("aksesibilitas otomatis (axe-core)", () => {
   test.each([
     ["Beranda, CMS kosong", <Beranda key="a" data={KOSONG} />],
     ["Beranda, CMS terisi", <Beranda key="b" data={PENUH} />],
+    ["Beranda, kartu layanan dan sorotan perusahaan (CR-033)", <Beranda key="j" data={{ ...PENUH, layanan: KARTU, untukPerusahaan: KARTU }} />],
     ["Halaman isi CMS", <HalamanKonten key="c" konten={KONTEN} />],
+    ["Halaman Layanan berkartu (CR-033)", <HalamanLayanan key="k" konten={KARTU} />],
+    ["Halaman Layanan fallback Markdown", <HalamanLayanan key="l" konten={KONTEN} />],
+    ["Untuk Perusahaan, pita judul gelap (CR-033)", <HalamanKonten key="m" konten={KARTU} gelap label="Untuk HR dan perusahaan" />],
     ["Halaman isi bertanda draf (kebijakan)", <HalamanKonten key="f" konten={KONTEN} draf />],
     ["Daftar artikel, ada kursor", <DaftarArtikel key="g" pengantar={KONTEN} artikel={[{ ...KONTEN, content_type: "article" }]} kursorBerikut={KONTEN.content_id} />],
     ["Daftar artikel kosong", <DaftarArtikel key="h" pengantar={null} artikel={[]} kursorBerikut={null} />],

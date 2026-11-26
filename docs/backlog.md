@@ -630,6 +630,19 @@ Alasan: pengunjung HR perlu jalan masuk ke member area dari situs publik tanpa m
 Keputusan: disetujui user
 Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge)
 
+### CR-033: Perombakan visual situs publik tahap pertama (C-01, C-02, C-03)
+
+Diajukan: 2026-11-26 (arahan user: tampilan situs harus "lebih fancy, profesional, eye catching; sekarang sangat kaku dan jelek"; `docs/design/brief-situs.md` v0.1 §7, §10); disetujui user via Telegram 2026-11-26 ("jalankan rekomendasimu")
+Keputusan user: Q15 = konsep A "Ruang Teduh" + seksi gelap ala konsep B untuk blok Untuk Perusahaan (Beranda) dan hero halaman Untuk Perusahaan; Q16 = kerjakan C-01, C-02, C-03 `[USER]`
+Cakupan:
+- C-01 gaya visual konsep A di `web/situs`: token situs `--situs-*` (skala tipografi, ritme seksi, kontainer, radius; DG v1.3 §3.3a/§3.4a), gradien `bg.app → mint`, ornamen SVG sebaris, kartu sudut 20–24 + bayangan token, hover/transisi CSS yang menghormati `prefers-reduced-motion`, header lengket, pita judul halaman isi, footer empat kolom, seksi gelap `primaryStrong`, normalisasi tingkat judul Markdown (KEPUTUSAN-353, -357, -358)
+- C-02 kartu layanan berikon di Beranda dan halaman Layanan dari konvensi Markdown `services` (`##` = kartu, paragraf pertama = ringkasan, urutan dari CMS, fallback Markdown biasa), ikon SVG buatan sendiri dengan pemetaan kata kunci + ikon generik (KEPUTUSAN-354, -355)
+- C-03 hero Beranda: mockup ponsel ilustratif di atas blob daun bila CMS tanpa gambar, dua kartu mengambang dan tiga chip nilai faktual, CTA ganda tetap; bingkai gambar baru menggantikan kotak putus-putus (D3) (KEPUTUSAN-359)
+Di luar cakupan: C-04–C-16 (termasuk font merek C-13: tetap font sistem, KEPUTUSAN-356; penanda kosong publik C-11), perubahan backend/CMS/OpenAPI, `web/packages/ui`.
+Alasan: dampak visual terbesar tanpa perubahan model konten (brief §10 saran urutan).
+Keputusan: disetujui user
+Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge). Tindak lanjut yang perlu keputusan user: teks chip nilai/kartu mengambang sebagai klaim publik (brief §12 butir 4), font merek UP-59/C-13, aturan tinggi baris 1,3 untuk judul (DG §3.3a), pemeriksaan visual di peramban sungguhan (belum dilakukan di server: pustaka sistem peramban headless tidak terpasang)
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

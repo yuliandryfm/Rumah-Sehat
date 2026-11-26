@@ -94,6 +94,11 @@ describe("render Markdown aman (SIT-01, TD-25)", () => {
     expect(container.querySelector("h6")?.textContent).toBe("Enam");
   });
 
+  test("judul dinormalkan (CR-033): isi yang hanya memakai ## dimulai dari h2, tanpa lompatan tingkat", () => {
+    const { container } = render(<Markdown teks={"## Bagian\n\nTeks.\n\n### Sub\n\n#### Rinci"} />);
+    expect([...container.querySelectorAll("h2, h3, h4, h5, h6")].map((h) => h.tagName)).toEqual(["H2", "H3", "H4"]);
+  });
+
   test.each(PAYLOAD_HTML)("HTML mentah tidak pernah menjadi elemen: %s", (payload) => {
     const { container } = render(<Markdown teks={payload} />);
     periksaAman(container);

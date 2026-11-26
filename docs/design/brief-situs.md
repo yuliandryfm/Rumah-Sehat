@@ -400,6 +400,8 @@ Nilai berikut sudah ada di design guideline v1.2 dan disetujui user sebagai arah
 
 Saran urutan bila disetujui: C-01 + C-02 + C-03 dulu (dampak visual terbesar), lalu C-05 dan C-06.
 
+**Status (2026-11-26):** user memilih konsep A + seksi gelap ala B (Q15) dan menyetujui C-01, C-02, C-03 (Q16) `[USER 2026-11-26]`; ketiganya dibangun sebagai CR-033 (`docs/backlog.md`, KEPUTUSAN-353–359, DG v1.3 §3.3a/§3.4a). Catatan implementasi: font tetap sistem (C-13 belum diputuskan); ikon SVG buatan sendiri (bukan set C-14); pita nilai memakai tiga butir faktual tanpa klaim yang menunggu legal; penanda `[TIDAK DIKETAHUI]` publik tetap (C-11). C-04–C-16 belum dikerjakan.
+
 ## 11. Deliverable yang diminta dari desainer (usulan)
 
 1. **Moodboard dan dua kalimat arah** untuk Konsep A (dan B/C bila user ingin membandingkan), dengan contoh hero Beranda per konsep.

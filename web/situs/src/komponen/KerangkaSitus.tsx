@@ -17,50 +17,102 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
         Lewati ke isi
       </a>
       <header className="situs-top">
-        <Link className="situs-logo" href="/">
-          Ruang Sehat
-        </Link>
-        <span className="situs-grow" />
-        <div className="situs-nav-lebar">
-          <NavUtama label="Utama" />
+        <div className="situs-wadah situs-top__isi">
+          <Link className="situs-logo" href="/">
+            Ruang Sehat
+          </Link>
+          <span className="situs-grow" />
+          <div className="situs-nav-lebar">
+            <NavUtama label="Utama" />
+          </div>
+          <details className="situs-menu">
+            <summary aria-label="Menu utama">Menu</summary>
+            <NavUtama label="Utama (seluler)" />
+          </details>
         </div>
-        <details className="situs-menu">
-          <summary aria-label="Menu utama">Menu</summary>
-          <NavUtama label="Utama (seluler)" />
-        </details>
       </header>
       <main id="isi">{children}</main>
       <footer className="situs-foot">
-        <div>
-          <b>Ruang Sehat</b>
-          <p className="situs-kecil">Ruang Sehat berperan sebagai platform yang menghubungkan pasien dengan rekanan.</p>
+        <div className="situs-wadah situs-foot__grid">
+          <div className="situs-foot__merek">
+            <p className="situs-foot__nama">Ruang Sehat</p>
+            <p className="situs-kecil">Ruang Sehat berperan sebagai platform yang menghubungkan pasien dengan rekanan.</p>
+            <p className="situs-kecil situs-foot__redup">Dioperasikan oleh PT. Arunika</p>
+          </div>
+          <nav className="situs-foot__nav" aria-label="Tautan kaki">
+            <div>
+              <p className="situs-foot__judul" id="kaki-layanan">
+                Layanan
+              </p>
+              <ul aria-labelledby="kaki-layanan">
+                <li>
+                  <Link href="/layanan" prefetch={false}>
+                    Semua layanan
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/unduh" prefetch={false}>
+                    Unduh aplikasi
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/artikel" prefetch={false}>
+                    Artikel
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="situs-foot__judul" id="kaki-perusahaan">
+                Perusahaan
+              </p>
+              <ul aria-labelledby="kaki-perusahaan">
+                <li>
+                  <Link href="/untuk-perusahaan" prefetch={false}>
+                    Untuk Perusahaan
+                  </Link>
+                </li>
+                {urlKorporat === null ? null : (
+                  <li>
+                    <a href={urlKorporat} rel="noopener noreferrer">
+                      Masuk HR
+                    </a>
+                  </li>
+                )}
+                <li>
+                  <Link href="/rekanan" prefetch={false}>
+                    Rekanan
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="situs-foot__judul" id="kaki-bantuan">
+                Bantuan
+              </p>
+              <ul aria-labelledby="kaki-bantuan">
+                <li>
+                  <Link href="/tentang-kami" prefetch={false}>
+                    Tentang Kami
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/kontak" prefetch={false}>
+                    Kontak
+                  </Link>
+                </li>
+                <li>
+                  <Link href={NAV_KEBIJAKAN.href} prefetch={false}>
+                    {NAV_KEBIJAKAN.label}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </nav>
+          <p className="situs-legal">
+            {/* Teks hak cipta: keputusan user 2026-11-26 (opsi A, tanpa alamat badan usaha). */}© 2026 PT. Arunika. Hak cipta dilindungi.
+          </p>
         </div>
-        <nav aria-label="Tautan kaki">
-          <ul>
-            <li>
-              <Link href={NAV_KEBIJAKAN.href} prefetch={false}>
-                {NAV_KEBIJAKAN.label}
-              </Link>
-            </li>
-            <li>
-              <Link href="/kontak" prefetch={false}>
-                Kontak
-              </Link>
-            </li>
-            {urlKorporat === null ? null : (
-              <li>
-                <a href={urlKorporat} rel="noopener noreferrer">
-                  Masuk HR
-                </a>
-              </li>
-            )}
-          </ul>
-        </nav>
-        <div className="situs-kecil">Dioperasikan oleh PT. Arunika</div>
-        <p className="situs-legal">
-          {/* Teks hak cipta: keputusan user 2026-11-26 (opsi A, tanpa alamat badan usaha). */}
-          © 2026 PT. Arunika. Hak cipta dilindungi.
-        </p>
       </footer>
     </>
   );
