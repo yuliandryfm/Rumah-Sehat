@@ -621,6 +621,15 @@ Alasan: pertahanan berlapis bila jalur tulis lain menyisipkan bukti tanpa lewat 
 Keputusan: menunggu user
 Status: diajukan
 
+### CR-032: Tautan ke member area korporat dari situs publik
+
+Diajukan: 2026-11-26 (Tahap 8 Fase 1); disetujui user via Telegram 2026-11-26 ("jalankan")
+Deskripsi: `web/situs` memuat tautan ke web korporat (member area HR): blok "Sudah terdaftar?" dengan tombol "Masuk member area" di halaman Untuk Perusahaan (mengikuti `docs/prototype/situs/04-perusahaan.html` dan `docs/wireframes/s01-situs-publik.html`) dan tautan kecil "Masuk HR" di footer. Alamat dari env server `SITUS_KORPORAT_URL` (domain member area `[TIDAK DIKETAHUI]`), divalidasi fail-closed; tidak valid atau kosong → tautan tidak dirender (KEPUTUSAN-350, KEPUTUSAN-351).
+Catatan: tombol "Daftarkan perusahaan" TIDAK dibuat di task ini; menyusul bersama F1-T103 karena halaman tujuannya belum ada.
+Alasan: pengunjung HR perlu jalan masuk ke member area dari situs publik tanpa membakukan domain di build.
+Keputusan: disetujui user
+Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge)
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

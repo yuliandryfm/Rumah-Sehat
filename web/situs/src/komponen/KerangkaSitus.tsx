@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { NAV_KEBIJAKAN } from "../navigasi.ts";
+import { ambilUrlKorporat } from "../konten/tautan-korporat.ts";
 import { NavUtama } from "./NavUtama.tsx";
 
 /**
@@ -8,6 +9,8 @@ import { NavUtama } from "./NavUtama.tsx";
  * docs/wireframes/s01-situs-publik.html. Menu seluler memakai `<details>` tanpa skrip.
  */
 export function KerangkaSitus({ children }: { children: ReactNode }) {
+  // Dibaca per permintaan (layout dinamis lewat `connection()`); tidak valid → tautan tidak tampil (CR-032).
+  const urlKorporat = ambilUrlKorporat();
   return (
     <>
       <a className="situs-skip" href="#isi">
@@ -44,6 +47,13 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
                 Kontak
               </Link>
             </li>
+            {urlKorporat === null ? null : (
+              <li>
+                <a href={urlKorporat} rel="noopener noreferrer">
+                  Masuk HR
+                </a>
+              </li>
+            )}
           </ul>
         </nav>
         <div className="situs-kecil">Dioperasikan oleh PT. Arunika</div>

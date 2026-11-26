@@ -10,6 +10,8 @@ export * from "./tipe.ts";
  * - selain itu: API backend di `SITUS_API_BASE_URL` (wajib; alamat Caddy untuk `/v1/public/*`, nilainya
  *   `[TIDAK DIKETAHUI]` sampai F1-T111). Tanpa nilai, `KontenTidakTersedia`.
  * Bawaan aman: tanpa pengaturan eksplisit, situs tidak pernah menampilkan data contoh.
+ * Variabel situs lain: `SITUS_KORPORAT_URL` (opsional, CR-032) = alamat member area korporat; fail-closed, tautan
+ * tidak dirender bila kosong atau tidak valid (`tautan-korporat.ts`).
  */
 export function ambilKlienKonten(env: Record<string, string | undefined> = process.env): KlienKonten {
   if (env["SITUS_KONTEN_SUMBER"] === "contoh") return new KlienKontenContoh();
