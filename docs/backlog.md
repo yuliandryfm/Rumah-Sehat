@@ -595,6 +595,15 @@ Review T1 gabungan (keamanan + DBA + kode) langkah 1–4: LULUS DENGAN CATATAN; 
 - Catatan 4 (syarat penutupan langkah 7): akurasi audit bila efek Keycloak terjadi tetapi transaksi hasil gagal ditutup lewat pencocokan admin event; alarm admin event ADR-030 butir 9 wajib aktif sebelum alur korporat dipakai di production.
 - Catatan 5 (pemanggil F1-T101/F1-T105): `normalize_email` (trim + huruf kecil Unicode) tidak sama dengan `lower(email)` PostgreSQL tanpa trim, sehingga pemanggil wajib memvalidasi email ASCII ternormalisasi; kunci advisory email diambil pertama, pemanggil tidak memegang kunci baris lain sebelumnya (aturan tertulis di doc `register_pending_account`).
 
+### CR-027: Hook pre-commit mengizinkan docs/ belum di-stage padahal langkah verifikasi membaca docs/
+
+Diajukan: 2026-11-25 (Tahap 8 Fase 1, review T1 KEPUTUSAN-301, catatan non-blokir N-5)
+Deskripsi: `.githooks/pre-commit` menolak perubahan belum di-stage/belum dilacak di luar `docs/`, tetapi `scripts/verify.sh` memeriksa pohon kerja, dan beberapa langkah membaca berkas `docs/` (mis. registry `docs/05-response-codes.md` di test Rust dan web, data dictionary). Akibatnya commit dapat diverifikasi terhadap isi `docs/` di pohon kerja yang berbeda dari yang di-commit: hijau di lokal, tetapi isi yang ter-commit tidak pernah diverifikasi lokal (CI tetap memverifikasi isi commit). Ini sudah ada sebelum KEPUTUSAN-301; cache sidik tidak memperburuknya karena sidik dihitung dari pohon kerja yang sama dengan yang diperiksa.
+Usulan: hook menolak juga perubahan `docs/` yang belum di-stage bila commit memuat kode (atau verifikasi dijalankan atas salinan index). Mengubah `.githooks/` memerlukan persetujuan user (CLAUDE.md, aturan nomor dua).
+Alasan: integritas gerbang "hanya commit hijau"; tidak mengubah scope bisnis.
+Keputusan: menunggu user
+Status: diajukan; `.githooks/` tidak diubah
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

@@ -83,10 +83,33 @@ jobs:
           docker version
           docker info --format '{{.OperatingSystem}} {{.ServerVersion}}'
 
+      # Langkah web verify.sh butuh Node 26 dan pnpm persis sama dengan packageManager di web/package.json
+      # (docs/05-stack.md §1.2: Node v26.13.1 SRC-107, pnpm 12.21.0 SRC-113). setup-node v7.1.0 dipin SHA
+      # commit tag resmi (SRC-853); tanpa cache paket (package-manager-cache: false), sesuai aturan workflow.
+      # pnpm dari registry npm dengan versi persis; npm memeriksa integritas sha512 tarball dari metadata registry.
+      - name: Pasang Node.js 26.13.1
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.1"
+          package-manager-cache: false
+
+      - name: Pasang pnpm 12.21.0 (registry npm, versi persis)
+        run: |
+          npm install --global pnpm@12.21.0
+          test "$(node --version)" = "v26.13.1"
+          test "$(cd web && pnpm --version)" = "12.21.0"
+
+      - name: Test unit penyaringan kelas sidik cache verify.sh (KEPUTUSAN-301)
+        run: bash scripts/test/test-verify-sidik.sh
+
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh
 
+      # KEPUTUSAN-301: CI selalu tanpa cache sidik. verify.sh sudah mematikan cache bila CI/GITHUB_ACTIONS
+      # diset (keduanya diset GitHub Actions, SRC-795); RS_VERIFY_TANPA_CACHE ditambahkan eksplisit.
       - name: scripts/verify.sh
+        env:
+          RS_VERIFY_TANPA_CACHE: "1"
         run: bash scripts/verify.sh
 
       - name: Test skrip verifikasi (fixture merah harus MERAH)

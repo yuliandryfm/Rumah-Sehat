@@ -16,6 +16,9 @@
 #   dengan versi persis di bawah (docs/05-stack.md §1.6, §1.1); bila tidak ada atau versinya lain, langkahnya
 #   GAGAL, tidak dilewati. Basis data advisory diambil dari jaringan setiap kali (tanpa mode offline).
 # - Perilaku skrip ini diuji oleh scripts/test/test-verify.sh (fixture merah harus MERAH), dijalankan CI.
+# - Cache berbasis sidik isi (KEPUTUSAN-301, rincian di bagian "Cache berbasis sidik isi"): langkah yang
+#   isinya, alatnya, dan lingkungannya sama persis dengan run LULUS sebelumnya dicatat "LULUS (cache, sidik
+#   ...)". GAGAL tidak di-cache; CI dan scripts/verify-penuh.sh (tiap malam) selalu tanpa cache.
 
 set -euo pipefail
 
@@ -65,6 +68,7 @@ jalankan() { # jalankan <nama> <perintah...>
   shift
   echo ""
   echo "==> [$nama] $*"
+  MANIFEST_SEGAR=0 # langkah yang berjalan dapat mengubah pohon kerja: manifest sidik dihitung ulang
   if "$@"; then
     LULUS=$((LULUS + 1))
     catat "LULUS" "$nama"
@@ -490,7 +494,447 @@ periksa_osv_scanner() { # kerentanan pada setiap lockfile yang dilacak git (atau
   tanpa_env_git osv-scanner scan source --all-vulns --config osv-scanner.toml "${opsi[@]}"
 }
 
+# --- Cache berbasis sidik isi (KEPUTUSAN-301) ---
+# Langkah mahal yang hasilnya sepenuhnya ditentukan oleh isi repo, alat, dan lingkungan dicatat
+# "LULUS (cache, sidik <8 hex>)" tanpa dijalankan ulang bila sidiknya sama persis dengan run sebelumnya
+# yang LULUS untuk langkah itu (paling lama 24 jam). Selain itu langkah dijalankan penuh.
+# Sidik = SHA-256 atas: nama, kelas masukan, dan perintah langkah; isi scripts/verify.sh utuh; manifest isi
+# POHON KERJA (bukan commit) untuk kelas masukan langkah: path, SHA-256 isi, bit eksekusi, target symlink,
+# dan berkas dilacak yang hilang, dari berkas dilacak git + belum dilacak yang tidak diabaikan + berkas yang
+# diabaikan di luar direktori yang diabaikan (mis. .env*, *.pem; tanpa target/, node_modules/, .claude/);
+# identitas dan versi alat; seluruh variabel lingkungan kecuali daftar tolak per sesi (diambil sebelum verify.sh
+# mengubah apa pun); untuk migrasi-db juga merge-base basis git yang dipakai penjaga urutan migrasi.
+# - GAGAL tidak pernah di-cache. LULUS hanya disimpan bila sidik sesudah langkah sama dengan sebelumnya.
+# - Kelas masukan: "semua" (seluruh isi repo) untuk langkah lintas area; "rust" = seluruh repo kecuali web/
+#   dan kecuali berkas docs/ yang tidak disebut di berkas *.rs mana pun (atau scripts/db-ephemeral.sh);
+#   "web" = seluruh repo kecuali area Rust (crates/, apps/, db/, .sqlx/, Cargo.toml, Cargo.lock), .claude/,
+#   dan berkas docs/ yang tidak disebut di bawah web/, ditambah keadaan pemasangan web/node_modules (salinan
+#   lockfile terpasang dan daftar paket .pnpm). Daftar docs/ yang disebut dihitung ulang setiap run;
+#   penyebutan docs/ dinamis (tanpa nama berkas) memasukkan seluruh docs/.
+# - Tidak pernah di-cache: pemindai dengan basis data advisory jaringan (cargo-deny, cargo-audit,
+#   osv-scanner), gitleaks (membaca riwayat git dan index), serta langkah yang memeriksa keadaan di luar repo
+#   atau berefek samping (rust-toolchain, web-alat, web-install, web-dependensi-segar, web-lisensi).
+# - Cache lokal per pengguna di ${XDG_CACHE_HOME:-$HOME/.cache}/ruang-sehat-verify/, tidak dipakai lintas
+#   mesin. Mati bila CI atau GITHUB_ACTIONS diset (keduanya diset GitHub Actions, SRC-795; CI selalu penuh)
+#   dan bila RS_VERIFY_TANPA_CACHE diset
+#   (scripts/verify-penuh.sh, dijadwalkan tiap malam). Mematikan cache hanya menambah langkah yang berjalan;
+#   tidak ada cara melewati langkah tanpa sidik yang cocok. Bila sidik tidak dapat dihitung, langkah jalan penuh.
+# - Catatan cache diikat ke isi lewat MAC berkunci lokal (lihat cache_ada); catatan rusak/terpotong/buatan
+#   tangan dianggap tidak ada. Konfigurasi luar repo yang dimuat otomatis (~/.cargo/config*, .npmrc,
+#   gitconfig, .cargo/config* di direktori induk) ikut sidik lewat isinya.
+# - Langkah kelas "semua" yang memakai Docker efemeral (cargo-test, bootstrap-role-db, migrasi-db,
+#   schemathesis): image dipin tag@digest di infra/local/compose.yaml (masuk manifest), data sintetis
+#   dibuat ulang tiap run, versi klien/server Docker masuk sidik; karena itu aman di-cache.
+CACHE_DIR=""
+CACHE_KET=""
+CACHE_DIPAKAI=0
+CACHE_TMP=""
+MANIFEST_SEGAR=0
+SIDIK=""
+SIDIK_ALAT=""
+SIDIK_ALAT_ADA=0
+# Lingkungan masuk sidik dengan pola daftar tolak (review T1 KEPUTUSAN-301, N-2): SELURUH `env` ikut, kecuali
+# variabel yang berubah per sesi/terminal dan tidak dibaca langkah mana pun. Nilai hanya di memori dan hanya
+# di-hash (variabel rahasia tidak pernah ditulis ke berkas atau dicetak). GIT_* dikecualikan karena langkah
+# menjalankan alat lewat tanpa_env_git; PATH ikut setelah direktori exec-path git (ditaruh git hook di depan
+# PATH) dibuang. Ragu = ikut sidik (hanya mengurangi hit, tidak pernah melewati langkah).
+SIDIK_ENV_TOLAK='^(PWD|OLDPWD|SHLVL|_|PATH|COLUMNS|LINES|COLORTERM|LS_COLORS|LESSOPEN|LESSCLOSE|MAIL|DISPLAY|WINDOWID|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|XDG_SESSION_[A-Za-z0-9_]*|TERM|TERM_[A-Za-z0-9_]*|SSH_[A-Za-z0-9_]*|TMUX|TMUX_[A-Za-z0-9_]*|WAYLAND_[A-Za-z0-9_]*|GIT_[A-Za-z0-9_]*|CLAUDE[A-Za-z0-9_]*|AI_AGENT|TELEGRAM_[A-Za-z0-9_]*|RS_VERIFY_TANPA_CACHE|RS_ANTRE_[A-Za-z0-9_]*)='
+SIDIK_ENV="$(
+  env | LC_ALL=C grep -vE "$SIDIK_ENV_TOLAK" | LC_ALL=C sort || true
+  gitexec="$(git --exec-path 2>/dev/null || true)"
+  printf 'PATH(tanpa exec-path git)='
+  printf '%s' "${PATH:-}" | tr ':' '\n' | { if [ -n "$gitexec" ]; then grep -vxF "$gitexec"; else cat; fi; } | tr '\n' ':' || true
+  echo
+)"
+
+sha256_alir() { # sha256_alir [-- berkas...]: keluaran "<64 hex>  <nama>" (sha256sum, atau shasum di macOS)
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$@"
+  else
+    shasum -a 256 "$@"
+  fi
+}
+
+cache_siapkan() {
+  local akar dir
+  if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+    CACHE_KET="mati (CI: semua langkah dijalankan penuh)"
+    return 0
+  fi
+  if [ -n "${RS_VERIFY_TANPA_CACHE:-}" ]; then
+    CACHE_KET="mati (RS_VERIFY_TANPA_CACHE: verifikasi penuh)"
+    return 0
+  fi
+  if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
+    CACHE_KET="mati (sha256sum/shasum tidak ada)"
+    return 0
+  fi
+  akar="${XDG_CACHE_HOME:-}"
+  if [ -z "$akar" ]; then
+    if [ -z "${HOME:-}" ]; then
+      CACHE_KET="mati (HOME tidak diset)"
+      return 0
+    fi
+    akar="$HOME/.cache"
+  fi
+  case "$akar" in
+    /*) ;;
+    *)
+      CACHE_KET="mati (direktori cache bukan path absolut)"
+      return 0
+      ;;
+  esac
+  dir="$akar/ruang-sehat-verify"
+  case "$dir/" in
+    "$ROOT"/*)
+      CACHE_KET="mati (direktori cache di dalam repo)"
+      return 0
+      ;;
+  esac
+  if ! mkdir -p "$dir/v1/tmp" 2>/dev/null || ! chmod 700 "$dir" 2>/dev/null; then
+    CACHE_KET="mati (direktori cache $dir tidak dapat dibuat)"
+    return 0
+  fi
+  CACHE_DIR="$dir/v1"
+  # Catatan lebih dari 7 hari dan sisa direktori sementara run yang terhenti dibuang.
+  find "$CACHE_DIR" -type f -mtime +7 -exec rm -f {} + 2>/dev/null || true
+  find "$CACHE_DIR/tmp" -mindepth 1 -type d -mtime +1 -exec rm -rf {} + 2>/dev/null || true
+  CACHE_TMP="$(mktemp -d "$CACHE_DIR/tmp/run.XXXXXX" 2>/dev/null)" || {
+    CACHE_DIR=""
+    CACHE_KET="mati (direktori sementara cache tidak dapat dibuat)"
+    return 0
+  }
+  CACHE_KET="aktif ($CACHE_DIR)"
+}
+
+manifest_bangun() { # menulis $CACHE_TMP/manifest (baris "path<TAB>jenis[<TAB>nilai]", terurut); 1 bila gagal
+  local t="$CACHE_TMP" f n_reg n_hash
+  [ "$MANIFEST_SEGAR" -eq 1 ] && return 0
+  tanpa_env_git git ls-files -z --cached --others --exclude-standard >"$t/a.z" || return 1
+  tanpa_env_git git ls-files -z --others --ignored --exclude-standard --directory >"$t/b.z" || return 1
+  # Nama berkas berisi baris baru tidak dapat dimanifest per baris: sidik dinyatakan tidak dapat dihitung.
+  if [ "$(cat "$t/a.z" "$t/b.z" | tr -d '\000' | wc -l | tr -d ' ')" != "0" ]; then
+    return 1
+  fi
+  {
+    tr '\000' '\n' <"$t/a.z"
+    # Berkas yang diabaikan (bukan direktori yang diabaikan seperti target/ dan node_modules/), selain .claude/.
+    tr '\000' '\n' <"$t/b.z" | grep -v '/$' | grep -v '^\.claude/' || true
+  } | LC_ALL=C sort -u >"$t/daftar" || return 1
+  while IFS= read -r f; do
+    if [ -L "$f" ]; then
+      printf '%s\tl\t%s\n' "$f" "$(readlink "$f")" >&4
+    elif [ -f "$f" ]; then
+      printf '%s\000' "$f" >&3
+      if [ -x "$f" ]; then
+        printf '%s\tx\n' "$f" >&4
+      fi
+    elif [ -e "$f" ]; then
+      printf '%s\td\n' "$f" >&4
+    else
+      printf '%s\th\n' "$f" >&4
+    fi
+  done <"$t/daftar" 3>"$t/reg.z" 4>"$t/meta" || return 1
+  n_reg="$(tr -cd '\000' <"$t/reg.z" | wc -c | tr -d ' ')"
+  if [ "$n_reg" -gt 0 ]; then
+    xargs -0 sh -c 'if command -v sha256sum >/dev/null 2>&1; then sha256sum -- "$@"; else shasum -a 256 -- "$@"; fi' sh \
+      <"$t/reg.z" >"$t/hash" || return 1
+  else
+    : >"$t/hash"
+  fi
+  # Baris yang tidak berbentuk "<64 hex><2 spasi><path>" (mis. nama dengan garis miring terbalik yang
+  # di-escape) membuat sidik tidak andal: gagal, langkah dijalankan penuh.
+  awk 'length($0) < 67 || substr($0, 1, 64) !~ /^[0-9a-f]+$/ || substr($0, 65, 2) != "  " { bad = 1 }
+       { printf "%s\tc\t%s\n", substr($0, 67), substr($0, 1, 64) }
+       END { exit bad }' "$t/hash" >"$t/hash.tsv" || return 1
+  n_hash="$(wc -l <"$t/hash.tsv" | tr -d ' ')"
+  [ "$n_hash" = "$n_reg" ] || return 1
+  LC_ALL=C sort "$t/meta" "$t/hash.tsv" >"$t/manifest" || return 1
+  MANIFEST_SEGAR=1
+}
+
+konfigurasi_luar_repo() { # cetak "path=sha256" (atau "path=-") berkas konfigurasi luar repo yang dimuat otomatis
+  local d f
+  d="$(dirname "$ROOT")"
+  while :; do
+    # rustfmt mencari rustfmt.toml/.rustfmt.toml ke direktori induk (review T1 KEPUTUSAN-301, N-4).
+    for f in "$d/.cargo/config" "$d/.cargo/config.toml" "$d/.npmrc" "$d/rustfmt.toml" "$d/.rustfmt.toml"; do
+      [ -e "$f" ] && printf '%s=%s\n' "$f" "$(sha256_alir <"$f" 2>/dev/null | cut -c1-64 || echo tidak-terbaca)"
+    done
+    [ "$d" = "/" ] && break
+    d="$(dirname "$d")"
+  done
+  for f in "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/config" "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/config.toml" \
+    "${CARGO_HOME:-${HOME:-/nonexistent}/.cargo}/audit.toml" "${HOME:-/nonexistent}/.npmrc" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/pnpm/rc" "${HOME:-/nonexistent}/.gitconfig" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/git/config" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/rustfmt/rustfmt.toml" \
+    "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/rustfmt/.rustfmt.toml"; do
+    if [ -e "$f" ]; then
+      printf '%s=%s\n' "$f" "$(sha256_alir <"$f" 2>/dev/null | cut -c1-64 || echo tidak-terbaca)"
+    else
+      printf '%s=-\n' "$f"
+    fi
+  done
+}
+
+alat_sidik_siapkan() { # identitas dan versi alat yang dipakai langkah-langkah, dihitung sekali per run
+  local b
+  [ "$SIDIK_ALAT_ADA" -eq 1 ] && return 0
+  SIDIK_ALAT="$(
+    # Path git tidak dicatat: git hook menaruh direktori exec-path git di depan PATH.
+    for b in bash sh cargo rustc rustfmt cargo-clippy cargo-fmt cargo-sqlx sqlx node pnpm docker gitleaks \
+      osv-scanner cargo-deny cargo-audit psql sed awk grep sort tr cmp tee mktemp od base64 openssl curl; do
+      printf '%s=%s\n' "$b" "$(command -v "$b" 2>/dev/null || echo -)"
+    done
+    echo "bash: $BASH_VERSION"
+    git --version 2>&1 || echo "git: -"
+    rustc -vV 2>&1 || echo "rustc: -"
+    cargo -V 2>&1 || echo "cargo: -"
+    cargo fmt --version 2>&1 || echo "rustfmt: -"
+    cargo clippy --version 2>&1 || echo "clippy: -"
+    cargo sqlx --version 2>&1 || echo "sqlx-cli: -"
+    node --version 2>&1 || echo "node: -"
+    if [ -d web ]; then (cd web && pnpm --version 2>&1) || echo "pnpm: -"; fi
+    docker version --format 'docker {{.Client.Version}} {{.Server.Version}}' 2>&1 || echo "docker: -"
+    openssl version 2>&1 || echo "openssl: -"
+    curl --version 2>&1 | sed -n '1p' || echo "curl: -"
+    # Konfigurasi di luar repo yang dimuat otomatis oleh cargo, npm/pnpm, dan git: isinya ikut sidik
+    # (konservatif; CI menolak keberadaannya lewat runner bersih). Direktori induk repo ditelusuri sampai /.
+    konfigurasi_luar_repo
+  )"
+  SIDIK_ALAT_ADA=1
+}
+
+docs_dirujuk() { # docs_dirujuk <ERE-path-sumber>: path docs/ yang disebut di berkas sumber ("docs" = seluruh docs/)
+  # Galat baca (bukan sekadar tidak ada kecocokan) membuat sidik tidak dapat dihitung: langkah jalan penuh.
+  awk -F'\t' -v re="$1" '$2 == "c" && $1 ~ re { print $1 }' "$CACHE_TMP/manifest" | tr '\n' '\000' \
+    >"$CACHE_TMP/sumber.z" || return 1
+  if [ ! -s "$CACHE_TMP/sumber.z" ]; then
+    return 0
+  fi
+  xargs -0 sh -c 'grep -aohE -- "$0" "$@"; s=$?; [ "$s" -le 1 ]' \
+    "docs(/[A-Za-z0-9._/-]*[A-Za-z0-9_-]|/?[\"'\`\$}{(])" <"$CACHE_TMP/sumber.z" >"$CACHE_TMP/rujukan.mentah" || return 1
+  sed 's|^docs/*[^A-Za-z0-9._-]*$|docs|' "$CACHE_TMP/rujukan.mentah" | LC_ALL=C sort -u
+}
+
+saring_kelas() { # saring_kelas <kelas>: cetak baris manifest yang termasuk kelas masukan
+  local rujukan="$CACHE_TMP/rujukan"
+  case "$1" in
+    semua | semua-git)
+      cat "$CACHE_TMP/manifest"
+      ;;
+    rust | web)
+      if [ "$1" = rust ]; then
+        # Langkah kelas rust hanya menjalankan cargo (kode .rs, termasuk build.rs dan test) dan
+        # scripts/db-ephemeral.sh; hanya berkas yang dieksekusi yang dapat membaca docs/.
+        docs_dirujuk '[.]rs$|^scripts/db-ephemeral[.]sh$' >"$rujukan" || return 1
+      else
+        docs_dirujuk '^web/' >"$rujukan" || return 1
+      fi
+      # Berkas rujukan dikenali lewat FILENAME, bukan NR == FNR: bila rujukan kosong, NR == FNR juga benar
+      # untuk seluruh manifest sehingga semua berkas tertelan ke R[] dan kelas menjadi kosong (review T1
+      # KEPUTUSAN-301, B-1). Penjaga gagal-tertutupnya ada di saring_kelas_aman.
+      # ARGV[1] (bukan -v) karena nilai -v diproses escape-nya oleh awk.
+      awk -F'\t' -v kelas="$1" '
+        FILENAME == ARGV[1] { if ($0 != "") R[++n] = $0; next }
+        function dirujuk(p,   i) {
+          for (i = 1; i <= n; i++) {
+            # Awalan apa adanya (bukan hanya per direktori): rujukan potongan nama yang disambung saat
+            # runtime ("docs/05-" + nama) ikut mencakup semua berkas berawalan itu (konservatif).
+            if (R[i] == "docs" || index(p, R[i]) == 1) return 1
+          }
+          return 0
+        }
+        kelas == "rust" && $1 ~ /^web\// { next }
+        kelas == "web" && ($1 ~ /^(crates|apps|db|\.sqlx|\.claude)\// || $1 ~ /^Cargo\.(toml|lock)$/) { next }
+        $1 ~ /^docs\// { if (dirujuk($1)) print; next }
+        { print }' "$rujukan" "$CACHE_TMP/manifest"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+saring_kelas_aman() { # saring_kelas_aman <kelas> <berkas-keluaran>: saring_kelas dengan penjaga gagal-tertutup
+  # Setiap kelas pasti memuat scripts/verify.sh (tidak ada kelas yang mengecualikan scripts/). Keluaran kosong,
+  # galat, atau tanpa baris scripts/verify.sh berarti penyaringan rusak: sidik tidak dapat dihitung dan langkah
+  # dijalankan penuh (review T1 KEPUTUSAN-301, B-1).
+  saring_kelas "$1" >"$2" || return 1
+  [ -s "$2" ] || return 1
+  LC_ALL=C grep -q "^scripts/verify\.sh$(printf '\t')" "$2" || return 1
+}
+
+sidik_hitung() { # sidik_hitung <nama> <kelas> <perintah...>: cetak sidik 64 hex (manifest dan alat sudah siap)
+  local nama="$1" kelas="$2" ref
+  shift 2
+  saring_kelas_aman "$kelas" "$CACHE_TMP/kelas" || return 1
+  {
+    printf 'skema=1\nlangkah=%s\nkelas=%s\nperintah=%s\n' "$nama" "$kelas" "$*"
+    printf 'verify.sh=%s\n' "$(sha256_alir <"$ROOT/scripts/verify.sh" | cut -c1-64)"
+    printf -- '--alat--\n%s\n--lingkungan--\n%s\n' "$SIDIK_ALAT" "$SIDIK_ENV"
+    if [ "$kelas" = semua-git ]; then
+      # Penjaga urutan migrasi membandingkan dengan merge-base HEAD dan main/tahap-08-fase-1.
+      printf -- '--basis-git--\n'
+      for ref in main tahap-08-fase-1; do
+        if tanpa_env_git git rev-parse -q --verify "$ref^{commit}" >/dev/null 2>&1; then
+          printf '%s=%s\n' "$ref" "$(tanpa_env_git git merge-base HEAD "$ref" 2>/dev/null || echo tanpa-merge-base)"
+        else
+          printf '%s=tidak-ada\n' "$ref"
+        fi
+      done
+    fi
+    if [ "$kelas" = web ]; then
+      # node_modules diabaikan git sehingga tidak ada di manifest. Keadaan pemasangannya ikut sidik: salinan
+      # lockfile terpasang dan daftar paket di web/node_modules/.pnpm (nama@versi). web-install
+      # (--frozen-lockfile) dan web-dependensi-segar tetap dijalankan setiap kali, tanpa cache.
+      printf -- '--node-modules--\n'
+      if [ -f web/node_modules/.pnpm/lock.yaml ]; then
+        printf 'lock=%s\n' "$(sha256_alir <web/node_modules/.pnpm/lock.yaml | cut -c1-64)"
+      else
+        printf 'lock=-\n'
+      fi
+      if [ -d web/node_modules/.pnpm ]; then
+        printf 'paket=%s\n' "$(LC_ALL=C ls -1A web/node_modules/.pnpm | sha256_alir | cut -c1-64)"
+      else
+        printf 'paket=-\n'
+      fi
+    fi
+    printf -- '--berkas--\n'
+    cat "$CACHE_TMP/kelas"
+  } | sha256_alir | cut -c1-64
+}
+
+sidik_siap() { # sidik_siap <nama> <kelas> <perintah...>: isi SIDIK (kosong bila tidak dapat dihitung)
+  SIDIK=""
+  [ -n "$CACHE_DIR" ] || return 1
+  manifest_bangun || return 1
+  alat_sidik_siapkan || return 1
+  SIDIK="$(sidik_hitung "$@")" || {
+    SIDIK=""
+    return 1
+  }
+  case "$SIDIK" in
+    *[!0-9a-f]* | "")
+      SIDIK=""
+      return 1
+      ;;
+  esac
+  [ "${#SIDIK}" -eq 64 ] || {
+    SIDIK=""
+    return 1
+  }
+}
+
+# Catatan cache diikat ke isinya: lima baris tetap (penanda format, langkah, sidik 64 hex, waktu epoch,
+# MAC). MAC = SHA-256(kunci lokal + empat baris pertama); kunci 32 byte acak di $CACHE_DIR/kunci (0600),
+# dibuat sekali per mesin. Berkas kosong, terpotong, rusak, untuk langkah/sidik lain, bertanggal masa depan,
+# lebih dari 24 jam, atau MAC-nya tidak cocok dianggap tidak ada (langkah dijalankan penuh). Ini mencegah
+# hijau palsu karena berkas cache rusak atau dibuat tangan (mis. `touch`); penjaga terakhirnya tetap CI yang
+# selalu menjalankan semua langkah tanpa cache.
+CACHE_KUNCI=""
+
+cache_kunci_siapkan() { # isi CACHE_KUNCI (64 hex); 1 bila kunci tidak dapat dibuat/dibaca
+  local berkas="$CACHE_DIR/kunci" tmp
+  [ -n "$CACHE_KUNCI" ] && return 0
+  if [ ! -f "$berkas" ]; then
+    tmp="$(umask 077 && mktemp "$CACHE_DIR/.kunci.XXXXXX" 2>/dev/null)" || return 1
+    if od -An -N32 -tx1 /dev/urandom | tr -d ' \n' >"$tmp" && chmod 600 "$tmp"; then
+      # ln gagal bila kunci sudah dibuat run lain bersamaan: kunci yang ada yang dipakai.
+      ln "$tmp" "$berkas" 2>/dev/null || true
+    fi
+    rm -f "$tmp"
+  fi
+  CACHE_KUNCI="$(sed -n '1p' "$berkas" 2>/dev/null || true)"
+  case "$CACHE_KUNCI" in
+    *[!0-9a-f]* | "")
+      CACHE_KUNCI=""
+      return 1
+      ;;
+  esac
+  [ "${#CACHE_KUNCI}" -eq 64 ] || {
+    CACHE_KUNCI=""
+    return 1
+  }
+}
+
+cache_isi() { # cache_isi <nama> <sidik> <epoch>: empat baris pertama catatan (tanpa MAC)
+  printf 'ruang-sehat-verify-cache v1\nlangkah %s\nsidik %s\nwaktu %s\n' "$1" "$2" "$3"
+}
+
+cache_mac() { # cache_mac <nama> <sidik> <epoch>: 64 hex
+  { printf 'kunci %s\n' "$CACHE_KUNCI"; cache_isi "$1" "$2" "$3"; } | sha256_alir | cut -c1-64
+}
+
+cache_ada() { # cache_ada <nama> <sidik>: benar bila ada catatan LULUS sah berumur kurang dari 24 jam
+  local berkas="$CACHE_DIR/$1/$2" waktu kini mac_berkas mac
+  [ -f "$berkas" ] && [ ! -L "$berkas" ] || return 1
+  cache_kunci_siapkan || return 1
+  [ "$(wc -l <"$berkas" | tr -d ' ')" = "5" ] || return 1
+  waktu="$(sed -n '4s/^waktu \([0-9][0-9]*\)$/\1/p' "$berkas")"
+  mac_berkas="$(sed -n '5s/^mac \([0-9a-f]\{64\}\)$/\1/p' "$berkas")"
+  [ -n "$waktu" ] && [ -n "$mac_berkas" ] || return 1
+  [ "$(sed -n '1,4p' "$berkas")" = "$(cache_isi "$1" "$2" "$waktu")" ] || return 1
+  kini="$(date +%s)"
+  [ "$waktu" -le $((kini + 60)) ] && [ $((kini - waktu)) -lt 86400 ] || return 1
+  mac="$(cache_mac "$1" "$2" "$waktu")"
+  [ "${#mac}" -eq 64 ] && [ "$mac" = "$mac_berkas" ]
+}
+
+cache_simpan() { # cache_simpan <nama> <sidik>
+  local d="$CACHE_DIR/$1" tmp waktu mac
+  cache_kunci_siapkan || return 0
+  mkdir -p "$d" 2>/dev/null || return 0
+  tmp="$(mktemp "$d/.baru.XXXXXX" 2>/dev/null)" || return 0
+  waktu="$(date +%s)"
+  mac="$(cache_mac "$1" "$2" "$waktu")"
+  if [ "${#mac}" -eq 64 ] && { cache_isi "$1" "$2" "$waktu"; printf 'mac %s\n' "$mac"; } >"$tmp"; then
+    mv -f "$tmp" "$d/$2" || rm -f "$tmp"
+  else
+    rm -f "$tmp"
+  fi
+}
+
+jalankan_sidik() { # jalankan_sidik <nama> <kelas> <perintah...>: seperti jalankan, dengan cache sidik isi
+  local nama="$1" kelas="$2" sidik sesudah
+  shift 2
+  sidik=""
+  if sidik_siap "$nama" "$kelas" "$@"; then
+    sidik="$SIDIK"
+    if cache_ada "$nama" "$sidik"; then
+      echo ""
+      echo "==> [$nama] LULUS (cache, sidik ${sidik:0:8})"
+      LULUS=$((LULUS + 1))
+      CACHE_DIPAKAI=$((CACHE_DIPAKAI + 1))
+      catat "LULUS" "$nama (cache, sidik ${sidik:0:8})"
+      return 0
+    fi
+  fi
+  echo ""
+  echo "==> [$nama] $*"
+  if "$@"; then
+    MANIFEST_SEGAR=0
+    LULUS=$((LULUS + 1))
+    catat "LULUS" "$nama"
+    if [ -n "$sidik" ]; then
+      if sidik_siap "$nama" "$kelas" "$@" && [ "$SIDIK" = "$sidik" ]; then
+        cache_simpan "$nama" "$sidik"
+      else
+        echo "==> [$nama] isi masukan berubah selama langkah berjalan; hasil tidak di-cache" >&2
+      fi
+    fi
+  else
+    MANIFEST_SEGAR=0
+    GAGAL=$((GAGAL + 1))
+    catat "GAGAL" "$nama"
+    echo "==> [$nama] GAGAL" >&2
+  fi
+}
+
 echo "verify.sh: $ROOT"
+cache_siapkan
+echo "cache sidik: $CACHE_KET"
 
 # --- Langkah 0: lingkungan tidak boleh mengubah hasil (review keamanan F1-T05, B-1) ---
 # Variabel berikut dapat mematikan lint atau mengganti runner test sehingga hasil hijau palsu.
@@ -523,16 +967,16 @@ elif ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; t
   gagal "rust" "cargo/rustc tidak ditemukan di PATH"
 else
   jalankan "rust-toolchain" periksa_toolchain
-  jalankan "cargo-fmt" cargo fmt --all --check
+  jalankan_sidik "cargo-fmt" rust cargo fmt --all --check
   # clippy dan test menjalankan build script dan test, yang dapat memanggil git: tanpa GIT_* warisan hook.
-  jalankan "cargo-clippy" tanpa_env_git cargo clippy --workspace --all-targets --locked -- -D warnings
+  jalankan_sidik "cargo-clippy" rust tanpa_env_git cargo clippy --workspace --all-targets --locked -- -D warnings
   # Sejak F1-T23 test integrasi memakai PostgreSQL 18 sekali pakai (scripts/db-ephemeral.sh, butuh docker);
   # test yang butuh database GAGAL bila variabel RS_TEST_DB_* tidak ada, tidak dilewati.
-  jalankan "cargo-test" tanpa_env_git bash scripts/db-ephemeral.sh cargo test --workspace --locked
+  jalankan_sidik "cargo-test" semua tanpa_env_git bash scripts/db-ephemeral.sh cargo test --workspace --locked
 fi
 
 if pakai_sqlx; then
-  jalankan "sqlx-prepare" sqlx_prepare_check
+  jalankan_sidik "sqlx-prepare" rust sqlx_prepare_check
 else
   belum "sqlx-prepare" "task pertama yang memakai sqlx; belum ditetapkan di phase plan §7.3"
 fi
@@ -544,7 +988,7 @@ jalankan "cargo-audit" periksa_cargo_audit
 #     pakai (butuh docker), lalu test katalog dan test negatif hak role (skema fisik §3.5, §11.1, §12).
 #     Sejak F1-T13 berkas bootstrap wajib ada; hilangnya berkas itu GAGAL.
 if ada_pola "db/roles/*.sql"; then
-  jalankan "bootstrap-role-db" tanpa_env_git bash scripts/db-roles-check.sh ephemeral
+  jalankan_sidik "bootstrap-role-db" semua tanpa_env_git bash scripts/db-roles-check.sh ephemeral
 else
   gagal "bootstrap-role-db" "db/roles/*.sql (bootstrap klaster, F1-T13) tidak ada"
 fi
@@ -555,24 +999,24 @@ fi
 if [ -f scripts/db-migrations-check.sh ]; then
   # tanpa_env_git: runner memakai `git merge-base`/`git show`; GIT_INDEX_FILE dkk. warisan hook
   # pre-merge-commit membuat fixture statis salah dibaca (merge F1-T06, 2026-11-19).
-  jalankan "migrasi-db" tanpa_env_git bash scripts/db-migrations-check.sh
+  jalankan_sidik "migrasi-db" semua-git tanpa_env_git bash scripts/db-migrations-check.sh
 else
   gagal "migrasi-db" "scripts/db-migrations-check.sh (F1-T15) tidak ada"
 fi
 
 # --- Langkah 3: Kontrak API (§6 butir 3) ---
 if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
-  jalankan "openapi-sinkron" openapi_sinkron
+  jalankan_sidik "openapi-sinkron" rust openapi_sinkron
   # Setiap response_code di spesifikasi terdaftar di docs/05-response-codes.md (envelope::registry::parse),
   # deskripsinya sama, dan tiga digit pertamanya sama dengan HTTP respons. --test gagal bila targetnya hilang.
-  jalankan "registry-response-code" tanpa_env_git cargo test --locked -p rs-backend --test openapi_response_codes
+  jalankan_sidik "registry-response-code" rust tanpa_env_git cargo test --locked -p rs-backend --test openapi_response_codes
 else
   gagal "openapi-sinkron" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
   gagal "registry-response-code" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
 fi
 belum "asyncapi-sinkron" "task AsyncAPI belum ditetapkan" "openapi/asyncapi/*.yaml" "openapi/asyncapi/*.yml" "openapi/asyncapi/*.json"
 if [ -f apps/rs-backend/Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
-  jalankan "schemathesis" schemathesis_dengan_db
+  jalankan_sidik "schemathesis" semua schemathesis_dengan_db
 else
   gagal "schemathesis" "apps/rs-backend tidak ada atau cargo tidak ditemukan"
 fi
@@ -583,7 +1027,7 @@ fi
 # terlarang, dan pengecualian sempit (architecture-exceptions.toml), lengkap dengan uji negatifnya.
 # Sejak F1-T12 berkas module-tables.toml wajib ada; hilangnya GAGAL.
 if ada_pola "apps/*/module-tables.toml"; then
-  jalankan "test-arsitektur" tanpa_env_git cargo test --locked -p arch-check
+  jalankan_sidik "test-arsitektur" semua tanpa_env_git cargo test --locked -p arch-check
 else
   gagal "test-arsitektur" "apps/*/module-tables.toml (F1-T12) tidak ada"
 fi
@@ -625,7 +1069,9 @@ web_dependensi_segar() { # hijau palsu karena node_modules basi (pola npm ci di 
     return 1
   fi
   if ! git ls-files --error-unmatch web/pnpm-lock.yaml >/dev/null 2>&1; then
-    # Sebelum commit pertama lockfile boleh baru di-stage atau belum dilacak; hook commit memverifikasi index.
+    # Sebelum commit pertama lockfile boleh baru di-stage atau belum dilacak. verify.sh selalu memeriksa pohon
+    # kerja, bukan index; hook pre-commit menolak perubahan belum di-stage/belum dilacak di luar docs/, jadi
+    # untuk berkas di luar docs/ pohon kerja = index saat commit (docs/ boleh berbeda; lihat CR di backlog).
     if [ -z "$(git ls-files --others --exclude-standard web/pnpm-lock.yaml)" ]; then
       echo "web/pnpm-lock.yaml tidak dilacak git" >&2
       return 1
@@ -661,11 +1107,12 @@ if [ -f web/package.json ] && [ -f web/pnpm-workspace.yaml ]; then
   jalankan "web-alat" web_alat_siap
   jalankan "web-install" di_web pnpm install --frozen-lockfile
   jalankan "web-dependensi-segar" web_dependensi_segar
-  jalankan "web-typecheck" di_web pnpm run typecheck
-  jalankan "web-lint" di_web pnpm run lint
-  jalankan "web-test" di_web pnpm run test
-  jalankan "web-api-client-sinkron" di_web pnpm run generate:check
+  jalankan_sidik "web-typecheck" web di_web pnpm run typecheck
+  jalankan_sidik "web-lint" web di_web pnpm run lint
+  jalankan_sidik "web-test" web di_web pnpm run test
+  jalankan_sidik "web-api-client-sinkron" web di_web pnpm run generate:check
   # TD-32 (KEPUTUSAN-136/297/298): lisensi dependensi npm runtime dan dev sesuai daftar izin; Unknown = gagal.
+  # Tidak di-cache: membaca metadata paket di node_modules (di luar isi repo).
   if [ -f web/scripts/periksa-lisensi.mjs ]; then
     jalankan "web-lisensi" di_web pnpm run lisensi
   else
@@ -675,12 +1122,12 @@ if [ -f web/package.json ] && [ -f web/pnpm-workspace.yaml ]; then
   # setiap paket/aplikasi yang punya skrip build (saat ini galeri state web/packages/ui; aplikasi Next.js
   # menambah `next build` pada task fiturnya). Hilangnya semua skrip build GAGAL, bukan dilewati.
   if [ -f web/packages/ui/scripts/kontras.mjs ]; then
-    jalankan "web-kontras" di_web pnpm run kontras
+    jalankan_sidik "web-kontras" web di_web pnpm run kontras
   else
     gagal "web-kontras" "web/packages/ui/scripts/kontras.mjs (F1-T40) tidak ada"
   fi
   if grep -l '"build"[[:space:]]*:' web/*/package.json web/packages/*/package.json >/dev/null 2>&1; then
-    jalankan "web-build" web_build
+    jalankan_sidik "web-build" web web_build
   else
     gagal "web-build" "tidak ada paket web dengan skrip build (web/packages/ui, F1-T40)"
   fi
@@ -698,10 +1145,14 @@ jalankan "gitleaks" periksa_gitleaks
 jalankan "osv-scanner" periksa_osv_scanner
 
 # --- Ringkasan ---
+if [ -n "$CACHE_TMP" ]; then
+  rm -rf "$CACHE_TMP"
+fi
 echo ""
 echo "== Ringkasan verify.sh =="
 printf '%s' "$RINGKASAN"
-echo "Lulus: $LULUS, gagal: $GAGAL, belum diterapkan: $BELUM (tidak dihitung lulus)"
+echo "Lulus: $LULUS (dari cache sidik: $CACHE_DIPAKAI), gagal: $GAGAL, belum diterapkan: $BELUM (tidak dihitung lulus)"
+echo "Cache sidik: $CACHE_KET"
 if [ "$GAGAL" -ne 0 ]; then
   echo "HASIL: MERAH ($GAGAL langkah gagal)"
   exit 1
@@ -710,4 +1161,4 @@ if [ "$LULUS" -eq 0 ]; then
   echo "HASIL: MERAH (tidak ada langkah yang berjalan)"
   exit 1
 fi
-echo "HASIL: HIJAU ($LULUS langkah lulus, $BELUM langkah belum diterapkan)"
+echo "HASIL: HIJAU ($LULUS langkah lulus, $CACHE_DIPAKAI di antaranya dari cache sidik, $BELUM langkah belum diterapkan)"

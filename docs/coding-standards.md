@@ -66,7 +66,8 @@ db/roles/               bootstrap klaster idempoten oleh superuser: role, atribu
 openapi/                spesifikasi OpenAPI hasil generate (di-commit) + asyncapi/
 infra/                  Compose per lingkungan, Caddyfile, LiveKit, realm Keycloak,
                         policy OpenBao, pgBackRest, Prometheus/Loki/alert rules, skrip deploy
-scripts/verify.sh       pintu verifikasi tunggal
+scripts/verify.sh       pintu verifikasi tunggal (cache sidik isi lokal, KEPUTUSAN-301)
+scripts/verify-penuh.sh verify.sh tanpa cache sidik, untuk jadwal tiap malam
 docs/
 ```
 
