@@ -34,7 +34,8 @@ jobs:
   verify:
     name: verify.sh (lingkungan bersih)
     runs-on: ubuntu-24.04
-    # test-verify.sh menjalankan verify.sh lengkap (termasuk Docker) untuk setiap fixture.
+    # Run nyata terakhir: verify.sh lengkap sekitar 24 menit di runner bersih (data: docs/05-stack.md §3.2).
+    # Test perilaku verify.sh (fixture) dipindah ke job test-verify (matrix per kelompok, KEPUTUSAN-340).
     timeout-minutes: 60
     steps:
       - name: Checkout (riwayat penuh untuk gitleaks dan basis migrasi)
@@ -102,6 +103,11 @@ jobs:
       - name: Test unit penyaringan kelas sidik cache verify.sh (KEPUTUSAN-301)
         run: bash scripts/test/test-verify-sidik.sh
 
+      # KEPUTUSAN-340: gabungan kelompok matrix = seluruh fixture test-verify.sh, dan daftar kelompok di matrix
+      # job test-verify di bawah = daftar kelompok skrip. Fixture atau kelompok yang terlewat membuat langkah ini merah.
+      - name: Test kelengkapan kelompok fixture test-verify.sh (KEPUTUSAN-340)
+        run: bash scripts/test/test-verify-kelompok.sh
+
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh
 
@@ -112,5 +118,106 @@ jobs:
           RS_VERIFY_TANPA_CACHE: "1"
         run: bash scripts/verify.sh
 
-      - name: Test skrip verifikasi (fixture merah harus MERAH)
+  # KEPUTUSAN-340 (CR-029): test-verify.sh menjalankan verify.sh lengkap untuk hampir setiap fixture (puluhan pemanggilan;
+  # satu fixture pertama di runner bersih sekitar 23 menit, fixture berikutnya belasan menit), jadi satu job
+  # tidak muat dalam batas waktu. Fixture dibagi ke kelompok (kelompok_blok di scripts/test/test-verify.sh,
+  # maksimal dua fixture penuh per kelompok) dan dijalankan sebagai job matrix paralel di runner standar GitHub
+  # (ubuntu-24.04, bukan larger runner berbayar). fail-fast mati supaya semua kelompok terlapor, bukan hanya yang
+  # pertama merah. Batas waktu job tetap 60 menit; ukuran kelompok yang diperkecil, bukan batasnya dinaikkan.
+  # Daftar kelompok di bawah dijaga sama dengan skrip oleh scripts/test/test-verify-kelompok.sh (job verify).
+  test-verify:
+    name: test-verify.sh (${{ matrix.kelompok }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        kelompok:
+          - dasar
+          - lingkungan
+          - config-rust
+          - rust-lint-test
+          - gitleaks-a
+          - gitleaks-b
+          - gitleaks-config
+          - osv-audit
+          - lockfile-deny
+          - lisensi-rentan
+          - alat
+          - web-a
+          - web-b
+          - cache-isi
+          - cache-ci
+          - cache-penuh
+          - cache-batal
+          - cache-tanpa-rujukan
+    steps:
+      - name: Checkout (riwayat penuh untuk gitleaks dan basis migrasi)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # scripts/db-migrations-check.sh mencari basis lewat `git merge-base HEAD main` atau
+      # `tahap-08-fase-1` (ref lokal). Checkout hanya membuat branch lokal untuk ref yang dibangun; branch
+      # lain tersedia sebagai origin/<nama>, jadi dibuatkan branch lokal (tanpa jaringan).
+      - name: Siapkan ref basis migrasi (main, tahap-08-fase-1)
+        run: |
+          for b in main tahap-08-fase-1; do
+            if ! git show-ref --verify --quiet "refs/heads/$b" && git show-ref --verify --quiet "refs/remotes/origin/$b"; then
+              git branch "$b" "origin/$b"
+            fi
+          done
+          git branch --list main tahap-08-fase-1
+
+      - name: Pasang toolchain Rust sesuai rust-toolchain.toml
+        run: |
+          channel="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml | sed -n '1p')"
+          test -n "$channel"
+          rustup toolchain install "$channel" --profile minimal --component rustfmt,clippy --no-self-update
+          rustc --version
+
+      - name: Pasang alat pemindai (versi persis, SHA-256 diperiksa)
+        run: |
+          bash scripts/ci/pasang-alat.sh "$RUNNER_TEMP/alat-ci"
+          echo "$RUNNER_TEMP/alat-ci" >> "$GITHUB_PATH"
+
+      # sqlx-cli 0.9.1 (SRC-182) untuk langkah migrasi-db, di lokasi yang dicari scripts/db-migrations-check.sh.
+      # --locked memakai Cargo.lock rilis; setiap crate diperiksa checksum-nya terhadap indeks crates.io.
+      - name: Pasang sqlx-cli 0.9.1 (crates.io, --locked)
+        run: |
+          root="$HOME/.local/share/ruang-sehat/sqlx-cli-0.9.1"
+          cargo install sqlx-cli --version 0.9.1 --locked --no-default-features --features postgres,rustls --root "$root"
+          test "$("$root/bin/sqlx" --version | sed -n '1p')" = "sqlx-cli 0.9.1"
+
+      # Langkah bootstrap-role-db dan migrasi-db (kontainer PostgreSQL sekali pakai) serta schemathesis (image
+      # Docker dengan --network host) di verify.sh butuh Docker. Docker Engine sudah terpasang di image
+      # ubuntu-24.04 (SRC-357); di sini dipastikan daemon berjalan sebelum verify.sh.
+      - name: Periksa Docker tersedia (bootstrap-role-db, migrasi-db, schemathesis)
+        run: |
+          docker version
+          docker info --format '{{.OperatingSystem}} {{.ServerVersion}}'
+
+      # Langkah web verify.sh butuh Node 26 dan pnpm persis sama dengan packageManager di web/package.json
+      # (docs/05-stack.md §1.2: Node v26.13.1 SRC-107, pnpm 12.21.0 SRC-113). setup-node v7.1.0 dipin SHA
+      # commit tag resmi (SRC-853); tanpa cache paket (package-manager-cache: false), sesuai aturan workflow.
+      # pnpm dari registry npm dengan versi persis; npm memeriksa integritas sha512 tarball dari metadata registry.
+      - name: Pasang Node.js 26.13.1
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.1"
+          package-manager-cache: false
+
+      - name: Pasang pnpm 12.21.0 (registry npm, versi persis)
+        run: |
+          npm install --global pnpm@12.21.0
+          test "$(node --version)" = "v26.13.1"
+          test "$(cd web && pnpm --version)" = "12.21.0"
+
+      - name: Periksa tidak ada konfigurasi cargo di luar repo
+        run: bash scripts/ci/periksa-lingkungan-bersih.sh
+
+      - name: Test skrip verifikasi, kelompok ${{ matrix.kelompok }} (fixture merah harus MERAH)
+        env:
+          RS_TEST_VERIFY_KELOMPOK: ${{ matrix.kelompok }}
         run: bash scripts/test/test-verify.sh

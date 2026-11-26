@@ -613,6 +613,15 @@ Alasan: perbaikan cacat; tidak mengubah scope bisnis atau pengaturan keamanan la
 Keputusan: disetujui user
 Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge)
 
+### CR-029: CI test-verify.sh dipecah jadi job matrix paralel per kelompok fixture
+
+Diajukan: 2026-11-26 (review CI; run 45733028822 berhenti di `timeout-minutes: 60`); opsi A dipilih user via Telegram 2026-11-26
+Deskripsi: CI menjalankan seluruh `scripts/test/test-verify.sh` dalam satu job. Skrip itu menjalankan verify.sh lengkap untuk hampir setiap fixture (fixture pertama sekitar 23 menit di runner bersih, fixture berikutnya belasan menit), sehingga job tidak pernah selesai dalam batas 60 menit dan status CI tidak bisa dibaca hijau atau merah (SRC-858).
+Perbaikan: fixture dikelompokkan (`kelompok_blok`), dipilih lewat `RS_TEST_VERIFY_KELOMPOK` (tanpa pilihan: semua, perilaku lokal tidak berubah; nama tidak dikenal gagal); job matrix `test-verify` di `.github/workflows/ci.yml` (runner `ubuntu-24.04` standar, `fail-fast: false`, batas 60 menit tidak dinaikkan); job `verify` dipertahankan; test kelengkapan `scripts/test/test-verify-kelompok.sh` (gabungan kelompok = seluruh fixture; matrix = kelompok skrip). KEPUTUSAN-340 sampai KEPUTUSAN-342; SRC-856 sampai SRC-858; `docs/05-stack.md` §3.2.
+Alasan: perbaikan alur CI; tidak mengubah `scripts/verify.sh`, tidak mengubah cakupan test, tanpa runner berbayar.
+Keputusan: disetujui user (opsi A)
+Status: kode selesai; hasil run CI nyata dicatat di `docs/05-stack.md` §3.2
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
