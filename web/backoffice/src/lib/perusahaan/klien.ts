@@ -19,6 +19,10 @@ export const KODE_CSRF_DITOLAK = "4030101";
 /** Kode 409 pembuatan perusahaan (`docs/05-response-codes.md`, US-1903 AC1/AC4). */
 export const KODE_NIB_TERDAFTAR = "4090110";
 export const KODE_EMAIL_HR_DIPAKAI = "4090111";
+/** 409: persetujuan sebelum NIB, NPWP, dan bukti kewenangan lengkap (F1-T102). */
+export const KODE_DOKUMEN_BELUM_LENGKAP = "4090113";
+/** 409: dokumen berubah sejak detail dilihat; muat ulang lalu putuskan kembali (F1-T102). */
+export const KODE_DOKUMEN_BERUBAH = "4090114";
 
 /** Teks per `response_code` (409 `4090001` US-1902 AC4; 403 `4030101` dari BFF). */
 const PESAN_KODE: Record<string, string> = {
@@ -26,6 +30,8 @@ const PESAN_KODE: Record<string, string> = {
   [KODE_NIB_TERDAFTAR]: "NIB sudah terdaftar. Hubungi Layanan Pelanggan bila perusahaan ini belum pernah didaftarkan.",
   [KODE_EMAIL_HR_DIPAKAI]: "Email HR sudah dipakai akun lain di portal perusahaan. Gunakan email HR yang lain.",
   "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
+  [KODE_DOKUMEN_BELUM_LENGKAP]: "Dokumen belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui.",
+  [KODE_DOKUMEN_BERUBAH]: "Dokumen perusahaan berubah sejak Anda membukanya. Detail dimuat ulang; periksa dokumen lalu putuskan kembali.",
 };
 
 const PESAN_STATUS: Record<number, string> = {
@@ -57,8 +63,9 @@ export interface KlienPerusahaan {
   detail(id: string): Promise<Hasil<DetailPerusahaan>>;
   /** URL unduh berumur pendek; E-05 tercatat di server sebelum URL terbit. */
   dokumenUrl(id: string, jenis: JenisDokumen): Promise<Hasil<DokumenUrl>>;
-  setujui(id: string): Promise<Hasil<KeputusanPerusahaan>>;
-  tolak(id: string, kodeAlasan: string): Promise<Hasil<KeputusanPerusahaan>>;
+  /** `versiDokumen` = `documents_version` dari detail yang dilihat Verifikator (keputusan terikat versi dokumen). */
+  setujui(id: string, versiDokumen: string): Promise<Hasil<KeputusanPerusahaan>>;
+  tolak(id: string, kodeAlasan: string, versiDokumen: string): Promise<Hasil<KeputusanPerusahaan>>;
   /** Membuat perusahaan Aktif dan mengundang HR pertama (US-1903). Isian tidak pernah dicatat ke console. */
   buat(isian: PermintaanBuatPerusahaan): Promise<Hasil<PerusahaanDibuat>>;
 }
@@ -107,11 +114,20 @@ export function buatKlienPerusahaan(csrfToken: string, opsi: OpsiKlien = {}): Kl
         }),
         (d) => d as DokumenUrl,
       ),
-    setujui: (id) =>
-      kerjakan(c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/approve", path(id)), (d) => d as KeputusanPerusahaan),
-    tolak: (id, kodeAlasan) =>
+    setujui: (id, versiDokumen) =>
       kerjakan(
-        c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/reject", { ...path(id), body: { reason_code: kodeAlasan } }),
+        c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/approve", {
+          ...path(id),
+          body: { documents_version: versiDokumen },
+        }),
+        (d) => d as KeputusanPerusahaan,
+      ),
+    tolak: (id, kodeAlasan, versiDokumen) =>
+      kerjakan(
+        c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/reject", {
+          ...path(id),
+          body: { reason_code: kodeAlasan, documents_version: versiDokumen },
+        }),
         (d) => d as KeputusanPerusahaan,
       ),
     buat: async (isian) => {

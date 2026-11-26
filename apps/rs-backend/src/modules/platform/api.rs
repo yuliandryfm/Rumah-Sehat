@@ -106,6 +106,11 @@ pub const FILE_VALIDATION_QUEUE_TIMEOUT_RANGE: std::ops::RangeInclusive<u64> = 1
 /// Jeda setelah `expires_at` sebelum slot dan objek mentahnya dibersihkan (TD-17, usulan teknis): menutup
 /// selisih jam aplikasi dan penyedia serta validasi yang masih berjalan saat slot kedaluwarsa.
 pub const UPLOAD_SLOT_TOMBSTONE_GRACE: Duration = Duration::from_secs(15 * 60);
+/// Lama minimal baris `upload_slot` dipertahankan sejak `created_at` (usulan teknis F1-T102): dasar hitungan
+/// kuota slot per akun, sehingga jendela kuota yang dipakai pemanggil tidak boleh lebih panjang dari ini.
+/// Pembersih (TD-17) menghapus slot (dan objeknya) hanya bila `expires_at` + jeda **dan** `created_at` + ini
+/// sudah lewat.
+pub const UPLOAD_SLOT_QUOTA_RETENTION: Duration = Duration::from_secs(3600);
 /// Jenis job pembersih slot kedaluwarsa (platform-jobs).
 pub const UPLOAD_SLOT_PURGE_JOB: &str = "platform_upload_slot_purge";
 /// Jenis job rekonsiliasi bucket terhadap `stored_file` (platform-jobs); payload `bucket` = nilai kolom

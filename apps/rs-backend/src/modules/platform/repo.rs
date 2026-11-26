@@ -25,6 +25,8 @@ pub(super) struct SlotRow {
 /// Slot baru.
 pub(super) struct NewSlot<'a> {
     pub(super) id: Uuid,
+    /// Waktu pembuatan menurut jam aplikasi (sumber waktu yang sama dengan hitungan kuota).
+    pub(super) created_at: OffsetDateTime,
     pub(super) expires_at: OffsetDateTime,
     pub(super) owner_account_id: Uuid,
     pub(super) bucket: &'a str,
@@ -36,8 +38,8 @@ pub(super) struct NewSlot<'a> {
 pub(super) async fn insert_slot(pool: &PgPool, slot: &NewSlot<'_>) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO app.upload_slot \
-           (id, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+           (id, created_at, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes) \
+         VALUES ($1, $8, $2, $3, $4, $5, $6, $7)",
         slot.id,
         slot.expires_at,
         slot.owner_account_id,
@@ -45,6 +47,7 @@ pub(super) async fn insert_slot(pool: &PgPool, slot: &NewSlot<'_>) -> Result<(),
         slot.object_key,
         slot.allowed_mime_type,
         slot.max_size_bytes,
+        slot.created_at,
     )
     .execute(pool)
     .await?;
@@ -156,9 +159,15 @@ pub(super) struct ExpiredSlotRow {
     pub(super) recorded: bool,
 }
 
+/// Slot yang objeknya dan barisnya boleh dibersihkan: `expires_at` sebelum `cutoff` **dan** `created_at` sebelum
+/// `quota_cutoff`. Baris slot adalah dasar hitungan kuota unggah per akun (jendela terpanjang
+/// `UPLOAD_SLOT_QUOTA_RETENTION`), jadi tidak dihapus lebih awal dari itu walau sudah kedaluwarsa (review T1
+/// F1-T102); objeknya ikut menunggu, karena baris yang tersisa tanpa penanda "objek sudah dibersihkan" akan
+/// diproses ulang tiap putaran.
 pub(super) async fn expired_slots(
     pool: &PgPool,
     cutoff: OffsetDateTime,
+    quota_cutoff: OffsetDateTime,
     limit: i64,
 ) -> Result<Vec<ExpiredSlotRow>, sqlx::Error> {
     sqlx::query_as!(
@@ -167,11 +176,12 @@ pub(super) async fn expired_slots(
                   EXISTS (SELECT 1 FROM app.stored_file f WHERE f.object_key = s.sanitized_object_key)
                     AS "recorded!"
            FROM app.upload_slot s
-           WHERE s.expires_at < $1
+           WHERE s.expires_at < $1 AND s.created_at < $3
            ORDER BY s.expires_at
            LIMIT $2"#,
         cutoff,
         limit,
+        quota_cutoff,
     )
     .fetch_all(pool)
     .await
@@ -182,11 +192,13 @@ pub(super) async fn delete_expired_slot(
     pool: &PgPool,
     id: Uuid,
     cutoff: OffsetDateTime,
+    quota_cutoff: OffsetDateTime,
 ) -> Result<bool, sqlx::Error> {
     let r = sqlx::query!(
-        "DELETE FROM app.upload_slot WHERE id = $1 AND expires_at < $2",
+        "DELETE FROM app.upload_slot WHERE id = $1 AND expires_at < $2 AND created_at < $3",
         id,
         cutoff,
+        quota_cutoff,
     )
     .execute(pool)
     .await?;
@@ -375,8 +387,9 @@ pub(super) async fn soft_delete_file(
     Ok(r.rows_affected() == 1)
 }
 
-/// Jumlah slot yang dibuat `owner` di `bucket` sejak `since` (kuota unggah per akun, F1-T102). Slot tetap
-/// ada sampai `expires_at` + jeda pembersihan, jadi jendela sampai sekitar satu jam terbaca penuh. Index
+/// Jumlah slot yang dibuat `owner` di `bucket` sejak `since` (kuota unggah per akun, F1-T102). Pembersih tidak
+/// menghapus baris slot sebelum `created_at` + `UPLOAD_SLOT_QUOTA_RETENTION`, jadi jendela sampai satu jam
+/// terbaca penuh. `created_at` diisi jam aplikasi (sama dengan `since`). Index
 /// `ix_upload_slot_owner_account_id_bucket_created_at` melayani query ini.
 pub(super) async fn count_slots_since(
     pool: &PgPool,

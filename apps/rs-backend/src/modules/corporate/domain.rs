@@ -116,6 +116,23 @@ pub(super) fn documents_complete<S: AsRef<str>>(kinds: &[S]) -> bool {
         .all(|k| kinds.iter().any(|c| c.as_ref() == k.as_str()))
 }
 
+/// Token versi dokumen aktif (review T1 F1-T102): SHA-256 (heksadesimal) atas ID baris dokumen aktif terurut.
+/// Penggantian dokumen selalu membuat baris baru (ID baru), sehingga token berubah pada setiap unggah atau
+/// penggantian. Verifikator mengirim token dari detail yang dilihatnya bersama keputusan; keputusan atas dokumen
+/// yang berbeda dari yang dilihat ditolak (`4090114`).
+pub(super) fn documents_version(ids: &[foundation::Uuid]) -> String {
+    let mut sorted = ids.to_vec();
+    sorted.sort();
+    let mut bytes = Vec::with_capacity(sorted.len() * 16);
+    for id in &sorted {
+        bytes.extend_from_slice(id.as_bytes());
+    }
+    crypto::sha256(&bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 /// Dokumen hanya dapat diunggah, diganti, dan dilihat HR saat perusahaan "Menunggu verifikasi" atau "Ditolak"
 /// (US-1901 AC6, keputusan user Q8 2026-11-26). Perusahaan Aktif tidak mengubah dokumen yang sudah diverifikasi;
 /// perusahaan Nonaktif sudah ditolak middleware (`401`).
@@ -130,7 +147,8 @@ pub(super) fn may_manage_documents(status: CorporateClientStatus) -> bool {
 /// cukup untuk tiga jenis dengan beberapa percobaan ulang, jauh di bawah yang dibutuhkan penyalahgunaan.
 pub(super) const DOCUMENT_SLOTS_PER_WINDOW: i64 = 30;
 /// Jendela kuota slot unggah dokumen.
-pub(super) const DOCUMENT_SLOT_WINDOW: std::time::Duration = std::time::Duration::from_secs(3600);
+pub(super) const DOCUMENT_SLOT_WINDOW: std::time::Duration =
+    crate::modules::platform::api::UPLOAD_SLOT_QUOTA_RETENTION;
 
 /// Panjang NIB: tiga belas digit angka `[SRC-854]` (Peraturan BKPM 3/2021, KEPUTUSAN-325). Angka pengaman
 /// (digit ke-13) dan tanggal (enam digit pertama) TIDAK divalidasi: algoritma angka pengaman tidak
@@ -285,6 +303,27 @@ mod tests {
         ] {
             assert!(!documents_complete(&partial), "{partial:?}");
         }
+    }
+
+    // trace: review T1 F1-T102 (keputusan terikat versi dokumen yang dilihat Verifikator)
+    #[test]
+    fn documents_version_is_order_independent_and_changes_with_any_document() {
+        let (a, b, c) = (
+            foundation::new_id(),
+            foundation::new_id(),
+            foundation::new_id(),
+        );
+        let v = documents_version(&[a, b, c]);
+        assert_eq!(v.len(), 64);
+        assert!(v.bytes().all(|x| x.is_ascii_hexdigit()));
+        assert_eq!(v, documents_version(&[c, a, b]));
+        assert_ne!(
+            v,
+            documents_version(&[a, b, foundation::new_id()]),
+            "dokumen diganti"
+        );
+        assert_ne!(v, documents_version(&[a, b]), "dokumen dihapus");
+        assert_ne!(documents_version(&[]), documents_version(&[a]));
     }
 
     // trace: US-1901 AC6, Q8 (dokumen hanya saat menunggu verifikasi atau ditolak)

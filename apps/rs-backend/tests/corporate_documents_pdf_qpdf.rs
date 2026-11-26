@@ -137,7 +137,22 @@ async fn plain_pdf_passes_and_active_content_is_rejected() {
     );
     assert_eq!(verdict(&link).await, PdfVerdict::Safe);
 
+    // Halaman pindaian biasa: kamus grup transparansi (`/S /Transparency`) bukan aksi (daftar izin `/S`).
+    let scan = build_pdf(
+        "",
+        &["<< /Type /Page /Parent 2 0 R /Group << /S /Transparency /CS /DeviceRGB >> >>"],
+    );
+    assert_eq!(verdict(&scan).await, PdfVerdict::Safe);
+
     let bad: Vec<(&str, Vec<u8>)> = vec![
+        (
+            "jenis aksi di luar daftar izin (/S /Thread)",
+            build_pdf("", &["<< /S /Thread /D 3 0 R >>"]),
+        ),
+        (
+            "parameter peluncuran /Win",
+            build_pdf("", &["<< /Win << /F (cmd.exe) >> >>"]),
+        ),
         (
             "OpenAction + JavaScript",
             build_pdf(
@@ -187,6 +202,23 @@ async fn plain_pdf_passes_and_active_content_is_rejected() {
 
 #[tokio::test]
 #[ignore = "butuh biner qpdf 12.4.2 (RS_TEST_QPDF); lihat dokumentasi berkas"]
+async fn duplicate_s_keys_are_never_safe() {
+    // Kunci `/S` ganda dalam satu kamus: penampil berbeda memilih nilai pertama atau terakhir. JSON qpdf hanya
+    // memuat satu nilai; perilaku qpdf atas kunci ganda `[TIDAK DIKETAHUI]`, jadi kedua urutan wajib tidak
+    // pernah dinilai aman (ditolak sebagai konten aktif atau tidak terbaca, mis. peringatan qpdf kode keluar 3).
+    for dict in [
+        "<< /S /URI /S /Launch /F (cmd.exe) >>",
+        "<< /S /Launch /F (cmd.exe) /S /URI >>",
+        "<< /S /URI /S /Thread >>",
+        "<< /S /Thread /S /URI >>",
+    ] {
+        let pdf = build_pdf("/OpenAction 4 0 R", &[dict]);
+        assert_ne!(verdict(&pdf).await, PdfVerdict::Safe, "{dict}");
+    }
+}
+
+#[tokio::test]
+#[ignore = "butuh biner qpdf 12.4.2 (RS_TEST_QPDF); lihat dokumentasi berkas"]
 async fn javascript_hidden_in_a_compressed_object_stream_is_still_found() {
     let raw = build_pdf(
         "/OpenAction 4 0 R",
@@ -222,6 +254,13 @@ async fn encrypted_damaged_and_non_pdf_inputs_are_rejected() {
         &build_pdf("", &[]),
     );
     assert_eq!(verdict(&encrypted).await, PdfVerdict::Unreadable);
+    // Hanya password pemilik (password pengguna kosong): qpdf membukanya tanpa password, tetapi `/Encrypt`
+    // di keluaran membuatnya ditolak (klaim KEPUTUSAN-346: berkas terenkripsi ditolak).
+    let owner_only = qpdf_tool(
+        &["--encrypt", "", "kata-sandi-pemilik", "256", "--"],
+        &build_pdf("", &[]),
+    );
+    assert_ne!(verdict(&owner_only).await, PdfVerdict::Safe);
     // xref rusak (offset digeser): qpdf memulihkan dengan peringatan (kode keluar 3), ditolak kebijakan.
     let mut damaged = build_pdf("", &[]);
     let text = String::from_utf8_lossy(&damaged).to_string();

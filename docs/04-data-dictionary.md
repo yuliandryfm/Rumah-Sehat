@@ -2288,7 +2288,10 @@ Slot unggah yang belum dikonfirmasi. Berkas yang gagal validasi atau tidak perna
 | allowed_mime_type | text | tidak | | — | |
 | max_size_bytes | integer | tidak | | — | 5 MB foto, 10 MB PDF (KEPUTUSAN-08) |
 | consumed_at | timestamptz | ya | | — | TD-17: slot sudah dipakai (`stored_file` dicatat) atau berkasnya ditolak. Baris tetap ada sebagai tombstone sampai pembersih menghapusnya setelah `expires_at` + jeda, karena URL unggah masih dapat dipakai sampai kedaluwarsa |
-| sanitized_object_key | text | ya | UQ | — | TD-17: kunci objek hasil kode ulang (prefiks `files/`) yang diklaim slot sebelum objeknya ditulis; CHECK `<> object_key` |
+| sanitized_object_key | text | ya | UQ | — | TD-17: kunci objek hasil kode ulang (prefiks `files/`) yang diklaim slot sebelum objeknya ditulis; CHECK `<> object_key`. F1-T102: untuk PDF klaim ini dibuat **sebelum** unduh dan pemeriksaan (klaim atomik "sedang divalidasi"), dan dilepas bila kegagalan bukan salah berkas |
+
+Index tambahan F1-T102 (migrasi `20261126350000_platform_upload_slot_owner_index.sql`): `ix_upload_slot_owner_account_id_bucket_created_at (owner_account_id, bucket, created_at)` untuk kuota slot per akun per jam. Pembersih tidak menghapus baris (dan objek) sebelum `created_at` + 1 jam (`UPLOAD_SLOT_QUOTA_RETENTION`), supaya hitungan kuota benar; `created_at` diisi jam aplikasi.
+
 
 Pembersihan (TD-17, migrasi `20261120131700_platform_upload_slot_tombstone.sql`): job pembersih menghapus semua versi objek `object_key` dan objek `sanitized_object_key` yang tidak tercatat di `stored_file`, lalu barisnya, setelah `expires_at` + jeda 15 menit (usulan teknis); rekonsiliasi berkala menghapus objek di prefiks `incoming/` dan `files/` yang tidak tercatat.
 
@@ -2425,7 +2428,7 @@ Catatan:
 - `npwp` berklasifikasi **Terbatas** (keputusan review F1-T98/T99): tidak boleh muncul di log aplikasi, payload audit (`before_values`/`after_values`), maupun pesan galat. Perlu-tidaknya enkripsi tingkat aplikasi diputuskan di F1-T101. Label "Terbatas" belum ada di legenda §0.5.
 - `reason_code` penolakan perusahaan berupa teks kode; konteks A6.7 `corporate_rejection` ditambahkan F1-T104 (migrasi `20261124200000`), dengan daftar awal **draf** (`nib_document_invalid`, `npwp_document_invalid`, `company_data_mismatch`, `authority_proof_insufficient`; hanya yang terakhir disebut PRD US-1902 AC3, sisanya usulan F1-T104 `[TIDAK DIKETAHUI]` persetujuan user). Keanggotaan kode diperiksa aplikasi di transaksi keputusan.
 - Status `corporate_client.status` diubah langsung di baris Master oleh keputusan Verifikator (F1-T104), dengan penjaga: kunci baris `FOR UPDATE`, UQ `(corporate_client_id, submission_round)`, dan `UPDATE ... WHERE status = 'pending_verification' AND submission_round = n`; skema K1 tidak memakai pasangan `_status_event`/`_state`.
-- Dokumen perusahaan disimpan sebagai `stored_file` bucket `license_document` kategori `corporate_document` (usulan teknis F1-T104, preseden A5.3; dikonfirmasi bersama jalur unggah F1-T102).
+- Dokumen perusahaan disimpan sebagai `stored_file` bucket `license_document` kategori `corporate_document` (usulan teknis F1-T104, preseden A5.3; jalur unggah F1-T102 memakai bucket dan kategori yang sama; wadah retensi dan pemusnahan dokumen ini belum ditetapkan, lihat TD-49).
 - Dengan F1-T99, CHECK realm `idp_event_cursor` dan `idp_event_receipt` (pengambil event Keycloak, F1-T34) juga menerima `korporat`. `actor_type` riwayat status verifikasi identitas tidak diperluas, karena HR tidak menulis tabel itu.
 
 **Catatan untuk DBA (review keamanan CR-021 putaran 2, R2-01)** atas `bank_statement_entry`, diputuskan di task migrasinya:

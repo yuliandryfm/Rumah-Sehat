@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_client_document (id, corporate_client_id, document_kind, stored_file_id) VALUES ($1, $2, 'nib', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5410ce1d959e2a2463ee3a5a9155d5df77b07f0cb6cfcbcb3c798863feb1e292"
+}

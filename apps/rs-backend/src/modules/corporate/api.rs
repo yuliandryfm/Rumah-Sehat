@@ -229,6 +229,9 @@ pub struct CorporateDetailView {
     /// Jenis dokumen aktif (`authority_proof`, `nib`, `npwp`); lengkap bila ketiganya ada (persetujuan ditolak
     /// `4090113` bila belum, F1-T102).
     pub documents: Vec<&'static str>,
+    /// Token versi dokumen aktif; wajib dikirim kembali saat menyetujui atau menolak (`4090114` bila dokumen
+    /// berubah sejak detail dilihat).
+    pub documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     pub rejection_reason: Option<String>,
     /// Waktu keputusan putaran berjalan, bila sudah diputuskan.
@@ -306,8 +309,16 @@ pub async fn approve_corporate_client(
     principal: &Principal,
     route: &str,
     corporate_client_id: Uuid,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
-    verification::approve(deps, principal, route, corporate_client_id).await
+    verification::approve(
+        deps,
+        principal,
+        route,
+        corporate_client_id,
+        documents_version,
+    )
+    .await
 }
 
 /// US-1902 AC3, AC4: menolak pengajuan dengan kode alasan.
@@ -317,8 +328,17 @@ pub async fn reject_corporate_client(
     route: &str,
     corporate_client_id: Uuid,
     reason_code: &str,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
-    verification::reject(deps, principal, route, corporate_client_id, reason_code).await
+    verification::reject(
+        deps,
+        principal,
+        route,
+        corporate_client_id,
+        reason_code,
+        documents_version,
+    )
+    .await
 }
 
 /// US-1902 AC3: daftar alasan penolakan aktif.

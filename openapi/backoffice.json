@@ -1452,6 +1452,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Disetujui.",
@@ -1459,6 +1469,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -1494,7 +1514,27 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Token versi dokumen tidak ada atau tidak valid.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1687,7 +1727,7 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2273,6 +2313,22 @@
   },
   "components": {
     "schemas": {
+      "ApproveRequest": {
+        "type": "object",
+        "description": "Persetujuan (US-1902 AC2), terikat versi dokumen yang dilihat.",
+        "required": [
+          "documents_version"
+        ],
+        "properties": {
+          "documents_version": {
+            "type": "string",
+            "description": "`documents_version` dari detail yang dilihat Verifikator.",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            "maxLength": 64
+          }
+        },
+        "additionalProperties": false
+      },
       "AttachImageRequest": {
         "type": "object",
         "description": "Memasang gambar yang sudah diunggah ke draf.",
@@ -2819,6 +2875,7 @@
           "submission_round",
           "submitted_at",
           "documents",
+          "documents_version",
           "can_decide"
         ],
         "properties": {
@@ -2844,6 +2901,12 @@
               "$ref": "#/components/schemas/DocumentKindDto"
             },
             "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,\n`authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102)."
+          },
+          "documents_version": {
+            "type": "string",
+            "description": "Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            "maxLength": 64
           },
           "legal_name": {
             "type": "string",

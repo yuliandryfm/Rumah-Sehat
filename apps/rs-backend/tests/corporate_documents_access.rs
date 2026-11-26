@@ -510,15 +510,12 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
     }
 
     // Persetujuan atas pengajuan yang dokumennya belum lengkap ditolak 409 4090113 tanpa efek.
-    let base = corporate_documents_support::QUEUE;
     let events_before = (
         w.all_tenant_events(partial.id).await.len(),
         w.all_tenant_events(none.id).await.len(),
     );
     for c in [&partial, &none] {
-        let r = w
-            .verifier_post(&verifier, &format!("{base}/{}/approve", c.id), &json!({}))
-            .await;
+        let r = w.decide(&verifier, c.id, None).await;
         assert_eq!(
             (r.status, code(&r).as_str()),
             (409, "4090113"),
@@ -548,22 +545,65 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
     );
     // Penolakan dengan alasan tetap boleh (Verifikator dapat menolak pengajuan yang tidak lengkap).
     let r = w
-        .verifier_post(
-            &verifier,
-            &format!("{base}/{}/reject", partial.id),
-            &json!({"reason_code": "nib_document_invalid"}),
-        )
+        .decide(&verifier, partial.id, Some("nib_document_invalid"))
         .await;
     assert_eq!(r.status, 200, "{}", r.body);
     assert_eq!(client_status(&w.app, partial.id).await.0, "rejected");
     // Yang lengkap dapat disetujui.
+    let r = w.decide(&verifier, full.id, None).await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(client_status(&w.app, full.id).await.0, "active");
+}
+
+// trace: review T1 F1-T102 (keputusan Verifikator terikat versi dokumen yang dilihat)
+#[tokio::test(flavor = "multi_thread")]
+async fn decision_is_bound_to_the_document_version_the_verifier_saw() {
+    let w = plain_world().await;
+    let verifier = insert_verifier(&w.app).await;
+    let c = insert_client(&w.app, "pending_verification", 5).await;
+    seed_all_documents(&w.app, c.id).await;
+    let seen = w.documents_version(&verifier, c.id).await;
+    assert_eq!(seen.len(), 64);
+    // Detail yang sama berulang = token sama; HR mengganti dokumen NIB sesudah Verifikator membuka detail.
+    assert_eq!(seen, w.documents_version(&verifier, c.id).await);
+    sqlx::query!(
+        "UPDATE app.corporate_client_document SET deleted_at = now(), delete_reason = 'replaced' \
+         WHERE corporate_client_id = $1 AND document_kind = 'nib' AND deleted_at IS NULL",
+        c.id
+    )
+    .execute(&w.app)
+    .await
+    .unwrap();
+    seed_document(&w.app, c.id, "nib").await;
+    let events_before = w.all_tenant_events(c.id).await.len();
+    // Menyetujui dan menolak dengan token lama ditolak 409 4090114 tanpa efek; token kosong/asal juga.
+    for version in [seen.as_str(), "", "x", &"0".repeat(64)] {
+        for reason in [None, Some("nib_document_invalid")] {
+            let r = w.decide_with(&verifier, c.id, reason, version).await;
+            assert_eq!(
+                (r.status, code(&r).as_str()),
+                (409, "4090114"),
+                "{reason:?} {version}: {}",
+                r.body
+            );
+        }
+    }
+    assert_eq!(
+        client_status(&w.app, c.id).await,
+        ("pending_verification".to_string(), 1)
+    );
+    assert_eq!(w.all_tenant_events(c.id).await.len(), events_before);
+    // Token wajib ada: tanpa field = 422; field asing = 422.
     let r = w
         .verifier_post(
             &verifier,
-            &format!("{base}/{}/approve", full.id),
+            &format!("{}/{}/approve", corporate_documents_support::QUEUE, c.id),
             &json!({}),
         )
         .await;
+    assert_eq!(r.status, 422, "{}", r.body);
+    // Setelah memuat ulang detail, token baru sah.
+    let r = w.decide(&verifier, c.id, None).await;
     assert_eq!(r.status, 200, "{}", r.body);
-    assert_eq!(client_status(&w.app, full.id).await.0, "active");
+    assert_eq!(client_status(&w.app, c.id).await.0, "active");
 }

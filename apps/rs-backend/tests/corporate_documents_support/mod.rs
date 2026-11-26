@@ -55,6 +55,50 @@ impl PdfInspector for StubInspector {
     }
 }
 
+/// Pemeriksa PDF yang meniru qpdf: pekerjaan berjalan di thread blocking (tidak ikut dibatalkan bila permintaan
+/// dibatalkan) dan mencatat jumlah pemeriksaan serentak tertinggi serta jumlah panggilan.
+pub struct CountingInspector {
+    delay: std::time::Duration,
+    current: Arc<std::sync::atomic::AtomicUsize>,
+    pub max_concurrent: Arc<std::sync::atomic::AtomicUsize>,
+    pub calls: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl CountingInspector {
+    pub fn new(delay: std::time::Duration) -> Self {
+        Self {
+            delay,
+            current: Arc::default(),
+            max_concurrent: Arc::default(),
+            calls: Arc::default(),
+        }
+    }
+}
+
+impl PdfInspector for CountingInspector {
+    fn inspect<'a>(&'a self, _bytes: &'a [u8]) -> PdfInspectFuture<'a> {
+        use std::sync::atomic::Ordering::SeqCst;
+        let (delay, current, max, calls) = (
+            self.delay,
+            Arc::clone(&self.current),
+            Arc::clone(&self.max_concurrent),
+            Arc::clone(&self.calls),
+        );
+        Box::pin(async move {
+            calls.fetch_add(1, SeqCst);
+            let joined = tokio::task::spawn_blocking(move || {
+                let now = current.fetch_add(1, SeqCst) + 1;
+                max.fetch_max(now, SeqCst);
+                std::thread::sleep(delay);
+                current.fetch_sub(1, SeqCst);
+                PdfVerdict::Safe
+            })
+            .await;
+            joined.unwrap_or(PdfVerdict::Unavailable)
+        })
+    }
+}
+
 /// PDF sintetis kecil yang dianggap aman oleh [`StubInspector`] dan memuat `marker` (untuk uji isi tersimpan).
 pub fn pdf(marker: &str) -> Vec<u8> {
     format!("%PDF-1.7\n% {marker}\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n")
@@ -384,6 +428,52 @@ impl World {
             "unggah ke penyedia {provider}"
         );
         self.confirm(hr, kind, &slot).await
+    }
+
+    /// Token versi dokumen dari detail Verifikator (keputusan terikat versi dokumen, F1-T102).
+    pub async fn documents_version(&self, verifier: &str, client: Uuid) -> String {
+        let r = self
+            .verifier_get(verifier, &format!("{QUEUE}/{client}"))
+            .await;
+        assert_eq!(r.status, 200, "{}", r.body);
+        r.json()["data"]["documents_version"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    /// Menyetujui (`reason` = None) atau menolak pengajuan dengan token versi terbaru dari detail.
+    pub async fn decide(&self, verifier: &str, client: Uuid, reason: Option<&str>) -> Resp {
+        let version = self.documents_version(verifier, client).await;
+        self.decide_with(verifier, client, reason, &version).await
+    }
+
+    /// Seperti [`World::decide`] dengan token yang ditentukan pemanggil.
+    pub async fn decide_with(
+        &self,
+        verifier: &str,
+        client: Uuid,
+        reason: Option<&str>,
+        version: &str,
+    ) -> Resp {
+        match reason {
+            None => {
+                self.verifier_post(
+                    verifier,
+                    &format!("{QUEUE}/{client}/approve"),
+                    &json!({ "documents_version": version }),
+                )
+                .await
+            }
+            Some(r) => {
+                self.verifier_post(
+                    verifier,
+                    &format!("{QUEUE}/{client}/reject"),
+                    &json!({ "reason_code": r, "documents_version": version }),
+                )
+                .await
+            }
+        }
     }
 
     /// Antrean lengkap (`limit=100`) sebagai daftar ID untuk pilihan `readiness` (`None` = bawaan).

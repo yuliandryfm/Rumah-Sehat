@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT q.id AS \"id!\", q.legal_name AS \"legal_name!\", q.nib AS \"nib!\", q.origin AS \"origin!\",\n                  q.submission_round AS \"submission_round!\", q.submitted_at AS \"submitted_at!\",\n                  q.documents_complete AS \"documents_complete!\"\n           FROM (\n             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,\n                    (SELECT count(*) FROM app.corporate_client_document d\n                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) >= 3 AS documents_complete\n             FROM app.corporate_client c\n             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'\n           ) q\n           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)\n             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >\n                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))\n           ORDER BY q.submitted_at, q.id\n           LIMIT $3",
+  "query": "SELECT q.id AS \"id!\", q.legal_name AS \"legal_name!\", q.nib AS \"nib!\", q.origin AS \"origin!\",\n                  q.submission_round AS \"submission_round!\", q.submitted_at AS \"submitted_at!\",\n                  q.documents_complete AS \"documents_complete!\"\n           FROM (\n             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,\n                    (SELECT count(*) FILTER (WHERE d.document_kind IN ('nib', 'npwp', 'authority_proof'))\n                       FROM app.corporate_client_document d\n                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) = 3 AS documents_complete\n             FROM app.corporate_client c\n             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'\n           ) q\n           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)\n             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >\n                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))\n           ORDER BY q.submitted_at, q.id\n           LIMIT $3",
   "describe": {
     "columns": [
       {
@@ -93,5 +93,5 @@
       null
     ]
   },
-  "hash": "35d597742d120ec13b9a40258275ec89eecc25ee61a7a7de0c3a5ebec720981c"
+  "hash": "18f679c9a1e1846b0cb6cea5765dbcaca164a6c4d8ed55f7519e15d6274baa00"
 }

@@ -382,6 +382,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Persetujuan (US-1902 AC2), terikat versi dokumen yang dilihat. */
+        ApproveRequest: {
+            /**
+             * @description `documents_version` dari detail yang dilihat Verifikator.
+             * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+             */
+            documents_version: string;
+        };
         /** @description Memasang gambar yang sudah diunggah ke draf. */
         AttachImageRequest: {
             /**
@@ -606,6 +614,11 @@ export interface components {
              *     `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
              */
             documents: components["schemas"]["DocumentKindDto"][];
+            /**
+             * @description Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
+             * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+             */
+            documents_version: string;
             /** @example PT Sintetis Sejahtera */
             legal_name: string;
             /** @example 9120000000001 */
@@ -2072,7 +2085,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequest"];
+            };
+        };
         responses: {
             /** @description Disetujui. */
             200: {
@@ -2081,6 +2098,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Belum login, token tidak sah, sesi dicabut, atau akun nonaktif. */
@@ -2110,8 +2136,26 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Token versi dokumen tidak ada atau tidak valid. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2252,7 +2296,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102). */
             409: {
                 headers: {
                     [name: string]: unknown;

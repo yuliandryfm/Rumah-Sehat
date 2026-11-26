@@ -14,6 +14,7 @@ import { PanelPerusahaan } from "./PanelPerusahaan.tsx";
 const NIB = "9120000000099";
 const NPWP = "012345678901234";
 const ID = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b";
+const VERSI = "a".repeat(64);
 const URL_DOK = "https://neo.example.test/dok/abc?X-Sig=rahasia";
 
 const item = (o: Partial<ItemAntreanPerusahaan> = {}): ItemAntreanPerusahaan => ({
@@ -37,6 +38,7 @@ const detail = (o: Partial<DetailPerusahaan> = {}): DetailPerusahaan => ({
   submission_round: 1,
   submitted_at: "2027-03-01T01:01:00Z",
   documents: ["nib", "npwp", "authority_proof"],
+  documents_version: VERSI,
   can_decide: true,
   ...o,
 });
@@ -176,7 +178,7 @@ describe("keputusan", () => {
     await bukaPanel(klienUji({ setujui, antrean }));
     fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
     expect(await screen.findByText(/disetujui dan berstatus Aktif/)).toBeTruthy();
-    expect(setujui).toHaveBeenCalledWith(ID);
+    expect(setujui).toHaveBeenCalledWith(ID, VERSI);
     expect(antrean).toHaveBeenCalledTimes(2);
     expect(screen.queryByTestId("npwp-lengkap")).toBeNull();
   });
@@ -190,7 +192,15 @@ describe("keputusan", () => {
     fireEvent.change(screen.getByLabelText("Alasan penolakan"), { target: { value: "document_invalid" } });
     fireEvent.click(screen.getByRole("button", { name: "Tolak" }));
     expect(await screen.findByText(/Pengajuan ditolak/)).toBeTruthy();
-    expect(tolak).toHaveBeenCalledWith(ID, "document_invalid");
+    expect(tolak).toHaveBeenCalledWith(ID, "document_invalid", VERSI);
+  });
+
+  test("4090114 dokumen berubah: pesan dan detail dimuat ulang", async () => {
+    const detailFn = vi.fn(() => ok(detail()));
+    await bukaPanel(klienUji({ detail: detailFn, setujui: () => gagal(409, "4090114") }));
+    fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+    expect(await screen.findByText(/Dokumen perusahaan berubah/)).toBeTruthy();
+    expect(detailFn).toHaveBeenCalledTimes(2);
   });
 
   test("4090001 keputusan pertama berlaku: pesan, tombol hilang, antrean disegarkan", async () => {
@@ -237,7 +247,7 @@ describe("klien, navigasi, halaman", () => {
     expect(g.pesan).toContain("Keputusan pertama");
   });
 
-  test("mutasi membawa X-CSRF-Token, jalur BFF benar, badan tolak hanya reason_code", async () => {
+  test("mutasi membawa X-CSRF-Token, jalur BFF benar, badan setujui/tolak memuat versi dokumen", async () => {
     const dipanggil: { url: string; method: string; csrf: string | null; body: string }[] = [];
     const fetchUji = (async (r: Request) => {
       dipanggil.push({ url: new URL(r.url).pathname, method: r.method, csrf: r.headers.get("x-csrf-token"), body: await r.text() });
@@ -247,8 +257,8 @@ describe("klien, navigasi, halaman", () => {
       });
     }) as unknown as typeof fetch;
     const k = buatKlienPerusahaan("tok", { basis: "http://bff.test/bff", fetch: fetchUji });
-    await k.setujui(ID);
-    await k.tolak(ID, "document_invalid");
+    await k.setujui(ID, VERSI);
+    await k.tolak(ID, "document_invalid", VERSI);
     await k.dokumenUrl(ID, "npwp");
     await k.detail(ID);
     const dasar = `/bff/backoffice/v1/corporate-verifications/${ID}`;
@@ -259,7 +269,8 @@ describe("klien, navigasi, halaman", () => {
       `GET ${dasar}`,
     ]);
     expect(dipanggil.every((d) => d.csrf === "tok")).toBe(true);
-    expect(JSON.parse(dipanggil[1]?.body ?? "")).toEqual({ reason_code: "document_invalid" });
+    expect(JSON.parse(dipanggil[1]?.body ?? "")).toEqual({ reason_code: "document_invalid", documents_version: VERSI });
+    expect(JSON.parse(dipanggil[0]?.body ?? "")).toEqual({ documents_version: VERSI });
   });
 
   test("galat jaringan menjadi 503 terkendali", async () => {

@@ -45,7 +45,8 @@ pub struct ApiConfig {
     pub files: FileStorageConfig,
     /// Pemeriksa PDF qpdf (F1-T102, KEPUTUSAN-86): `PDF_INSPECTOR_QPDF_PATH` (path biner `qpdf`; kosong atau tidak
     /// diisi = PDF belum didukung, slot unggah PDF ditolak `415`) dan `PDF_INSPECTOR_TIMEOUT_SECONDS` (bawaan
-    /// 10, 1..=60).
+    /// 10, 1..=60), `PDF_INSPECTOR_TEMP_DIR` (direktori khusus berkas sementara, dibuat 0700 saat start; bawaan
+    /// `<tmp>/rs-pdf-inspect`).
     pub pdf_inspector: Option<QpdfConfig>,
     /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
     /// (bawaan 300) dan `PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE` (bawaan 3000). Angka bawaan adalah usulan
@@ -217,8 +218,13 @@ fn load_pdf_inspector(env: &EnvSource) -> Result<Option<QpdfConfig>, ConfigError
     if !(1..=60).contains(&timeout) {
         return Err(ConfigError::invalid("PDF_INSPECTOR_TIMEOUT_SECONDS"));
     }
+    let temp_dir: String = env.optional_or("PDF_INSPECTOR_TEMP_DIR", String::new())?;
     let mut config = QpdfConfig::new(path.trim());
     config.timeout = Duration::from_secs(timeout);
+    config.cpu_limit_seconds = timeout + 5;
+    if !temp_dir.trim().is_empty() {
+        config.temp_dir = PathBuf::from(temp_dir.trim());
+    }
     Ok(Some(config))
 }
 

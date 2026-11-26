@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.upload_slot SET expires_at = now() - interval '16 minutes' WHERE owner_account_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f1e1f7e302070c170f5ff71bea1fdb7974346fa61dfbe477bc01850379b96695"
+}

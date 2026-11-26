@@ -26,13 +26,16 @@ mod files;
 
 use audit_support::assert_event_complete;
 use corporate_documents_support::{
-    DOCUMENTS, DOWNLOADS, Hr, StubInspector, World, active_kinds, code, insert_client, insert_hr,
-    insert_verifier, pdf, seed_all_documents, world,
+    CountingInspector, DOCUMENTS, DOWNLOADS, Hr, StubInspector, World, active_kinds, code,
+    insert_client, insert_hr, insert_verifier, pdf, seed_all_documents, world,
 };
 use files::{METADATA_MARKER, SeaweedFs, contains, jpeg, jpeg_with_exif, png, png_with_metadata};
 use foundation::{Clock, FixedClock, SystemClock, Uuid, new_id};
 use object_storage::VersionListCursor;
-use rs_backend::modules::platform::api::{FileStorage, LogicalBucket, UploadMethod};
+use rs_backend::modules::platform::api::{
+    FileError, FileStorage, LogicalBucket, PdfInspector, UploadMethod, UploadPurpose,
+    UploadSlotRequest, create_upload_slot, purge_expired_upload_slots, validate_upload,
+};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::process::Command;
@@ -46,11 +49,15 @@ struct Fixture {
 }
 
 async fn fixture_with_clock(clock: Arc<dyn Clock>) -> Fixture {
+    fixture_with(clock, Arc::new(StubInspector)).await
+}
+
+async fn fixture_with(clock: Arc<dyn Clock>, inspector: Arc<dyn PdfInspector>) -> Fixture {
     let sw = SeaweedFs::start().await;
     let storage = sw
         .file_storage(UploadMethod::Post, Duration::from_secs(600))
         .await
-        .with_pdf_inspector(Arc::new(StubInspector));
+        .with_pdf_inspector(inspector);
     // Bucket `license_document` (dokumen perusahaan) dibuat dengan versi objek aktif seperti produksi.
     sw.create_other_buckets(&storage).await;
     let storage = Arc::new(storage);
@@ -343,13 +350,7 @@ async fn hr_uploads_three_documents_which_are_validated_stored_and_audited_witho
     }
 
     // Verifikator dapat menyetujui pengajuan yang lengkap; setelah Aktif dokumen tidak dapat diubah HR.
-    let r = w
-        .verifier_post(
-            &verifier,
-            &format!("{}/{}/approve", corporate_documents_support::QUEUE, c.id),
-            &json!({}),
-        )
-        .await;
+    let r = w.decide(&verifier, c.id, None).await;
     assert_eq!(r.status, 200, "{}", r.body);
     let r = w.slot(&hr, "image/png", 100).await;
     assert_eq!(
@@ -724,4 +725,167 @@ async fn expired_download_url_is_rejected_by_the_provider() {
     let (status, _, _) = download(d["url"].as_str().unwrap());
     assert_eq!(status, 403, "URL kedaluwarsa harus ditolak penyedia");
     assert_eq!(active_kinds(&w.app, c.id).await, ["nib"]);
+}
+
+/// Slot PDF untuk akun `owner` yang sudah diunggah ke object storage; mengembalikan ID slot.
+async fn uploaded_pdf_slot(f: &Fixture, owner: Uuid, marker: &str) -> Uuid {
+    let bytes = pdf(marker);
+    let ticket = create_upload_slot(
+        &f.w.app,
+        &SystemClock,
+        &f.storage,
+        UploadSlotRequest {
+            owner_account_id: owner,
+            purpose: UploadPurpose::CorporateDocument,
+            content_type: "application/pdf".to_string(),
+            size_bytes: bytes.len() as u64,
+        },
+    )
+    .await
+    .unwrap();
+    let code = files::upload(&ticket.instruction, &bytes);
+    assert!((200..300).contains(&code), "unggah {code}");
+    ticket.upload_slot_id
+}
+
+// trace: review T1 F1-T102 (izin konkurensi pemeriksa PDF ikut task pemeriksa, bukan permintaan)
+#[tokio::test(flavor = "multi_thread")]
+async fn cancelled_validation_keeps_its_permit_until_the_inspection_finishes() {
+    let inspector = Arc::new(CountingInspector::new(Duration::from_millis(2500)));
+    let max = Arc::clone(&inspector.max_concurrent);
+    let calls = Arc::clone(&inspector.calls);
+    let f = fixture_with(Arc::new(SystemClock), inspector).await; // konkurensi validasi = 2
+    let (_c, hr) = company_with_hr(&f.w.app, "pending_verification").await;
+    let mut slots = Vec::new();
+    for i in 0..4 {
+        slots.push(uploaded_pdf_slot(&f, hr.account_id, &format!("batal-{i}")).await);
+    }
+    let validate = |slot: Uuid| {
+        let (pool, storage) = (f.w.app.clone(), Arc::clone(&f.storage));
+        async move {
+            validate_upload(
+                &pool,
+                &SystemClock,
+                &storage,
+                hr.account_id,
+                slot,
+                UploadPurpose::CorporateDocument,
+            )
+            .await
+        }
+    };
+    // Dua permintaan dibatalkan 800 ms setelah pemeriksaan berjalan (dua izin terpakai).
+    let cancelled = tokio::join!(
+        tokio::time::timeout(Duration::from_millis(800), validate(slots[0])),
+        tokio::time::timeout(Duration::from_millis(800), validate(slots[1])),
+    );
+    assert!(
+        cancelled.0.is_err() && cancelled.1.is_err(),
+        "harus terbatalkan"
+    );
+    // Dua berikutnya langsung diminta: tanpa izin yang ikut task, keduanya berjalan sekarang (4 serentak).
+    let (a, b) = tokio::join!(validate(slots[2]), validate(slots[3]));
+    let (a, b) = (a.unwrap(), b.unwrap());
+    assert_eq!(a.mime_type(), "application/pdf");
+    assert_eq!(b.mime_type(), "application/pdf");
+    assert_eq!(
+        max.load(std::sync::atomic::Ordering::SeqCst),
+        2,
+        "pemeriksaan serentak tidak boleh melebihi batas konkurensi walau permintaan dibatalkan"
+    );
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 4);
+}
+
+// trace: review T1 F1-T102 (klaim atomik: satu slot diperiksa sekali pada satu waktu)
+#[tokio::test(flavor = "multi_thread")]
+async fn parallel_confirmations_of_one_slot_run_the_inspector_once() {
+    let inspector = Arc::new(CountingInspector::new(Duration::from_millis(600)));
+    let calls = Arc::clone(&inspector.calls);
+    let f = fixture_with(Arc::new(SystemClock), inspector).await;
+    let (_c, hr) = company_with_hr(&f.w.app, "pending_verification").await;
+    let slot = uploaded_pdf_slot(&f, hr.account_id, "sekali").await;
+    let run = || {
+        let (pool, storage) = (f.w.app.clone(), Arc::clone(&f.storage));
+        async move {
+            validate_upload(
+                &pool,
+                &SystemClock,
+                &storage,
+                hr.account_id,
+                slot,
+                UploadPurpose::CorporateDocument,
+            )
+            .await
+        }
+    };
+    let results = tokio::join!(run(), run(), run(), run());
+    let all = [results.0, results.1, results.2, results.3];
+    let ok = all.iter().filter(|r| r.is_ok()).count();
+    assert_eq!(ok, 1, "tepat satu menang");
+    for r in all.iter().filter(|r| r.is_err()) {
+        assert!(matches!(r, Err(FileError::NotFound)), "{r:?}");
+    }
+    assert_eq!(
+        calls.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "pemeriksa hanya sekali"
+    );
+}
+
+// trace: review T1 F1-T102 (kuota slot tetap berlaku walau pembersih berjalan di tengah jendela)
+#[tokio::test(flavor = "multi_thread")]
+async fn slot_quota_survives_cleanup_inside_the_window() {
+    let f = fixture().await;
+    let w = &f.w;
+    let (_c, hr) = company_with_hr(&w.app, "pending_verification").await;
+    for i in 0..30 {
+        let r = w.slot(&hr, "image/png", 1024).await;
+        assert_eq!(r.status, 201, "slot ke-{} {}", i + 1, r.body);
+    }
+    let r = w.slot(&hr, "image/png", 1024).await;
+    assert_eq!((r.status, code(&r).as_str()), (429, "4290001"));
+    // Semua slot sudah lewat kedaluwarsa + jeda pembersihan, tetapi baru dibuat (di dalam jendela kuota 1 jam).
+    sqlx::query!(
+        "UPDATE app.upload_slot SET expires_at = now() - interval '16 minutes' WHERE owner_account_id = $1",
+        hr.account_id
+    )
+    .execute(&w.app)
+    .await
+    .unwrap();
+    let count = || async {
+        sqlx::query_scalar!(
+            r#"SELECT count(*) AS "n!" FROM app.upload_slot WHERE owner_account_id = $1"#,
+            hr.account_id
+        )
+        .fetch_one(&w.app)
+        .await
+        .unwrap()
+    };
+    purge_expired_upload_slots(&w.app, &SystemClock, &f.storage, 1000)
+        .await
+        .unwrap();
+    assert_eq!(
+        count().await,
+        30,
+        "pembersih tidak boleh menghapus slot di dalam jendela kuota"
+    );
+    let r = w.slot(&hr, "image/png", 1024).await;
+    assert_eq!(
+        (r.status, code(&r).as_str()),
+        (429, "4290001"),
+        "kuota tetap menolak"
+    );
+    // Setelah jendela lewat, baris dibersihkan dan kuota pulih.
+    sqlx::query!(
+        "UPDATE app.upload_slot SET created_at = now() - interval '2 hours' WHERE owner_account_id = $1",
+        hr.account_id
+    )
+    .execute(&w.app)
+    .await
+    .unwrap();
+    purge_expired_upload_slots(&w.app, &SystemClock, &f.storage, 1000)
+        .await
+        .unwrap();
+    assert_eq!(count().await, 0);
+    assert_eq!(w.slot(&hr, "image/png", 1024).await.status, 201);
 }

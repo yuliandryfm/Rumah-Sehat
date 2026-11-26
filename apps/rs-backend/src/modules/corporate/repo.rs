@@ -64,8 +64,9 @@ pub(super) async fn pending_queue(
                   q.documents_complete AS "documents_complete!"
            FROM (
              SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,
-                    (SELECT count(*) FROM app.corporate_client_document d
-                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) >= 3 AS documents_complete
+                    (SELECT count(*) FILTER (WHERE d.document_kind IN ('nib', 'npwp', 'authority_proof'))
+                       FROM app.corporate_client_document d
+                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) = 3 AS documents_complete
              FROM app.corporate_client c
              WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'
            ) q
@@ -121,11 +122,14 @@ pub(super) struct DecisionRow {
 }
 
 /// Keputusan putaran `submission_round` (paling banyak satu, `uq_corp_verif_decision_*`).
-pub(super) async fn round_decision(
-    pool: &PgPool,
+pub(super) async fn round_decision<'e, E>(
+    executor: E,
     corporate_client_id: Uuid,
     submission_round: i32,
-) -> Result<Option<DecisionRow>, sqlx::Error> {
+) -> Result<Option<DecisionRow>, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     sqlx::query_as!(
         DecisionRow,
         "SELECT decision, reason_code, created_at FROM app.corporate_verification_decision \
@@ -133,24 +137,7 @@ pub(super) async fn round_decision(
         corporate_client_id,
         submission_round,
     )
-    .fetch_optional(pool)
-    .await
-}
-
-/// Jenis dokumen aktif perusahaan (urut jenis). `executor` boleh pool atau koneksi transaksi pemanggil.
-pub(super) async fn active_document_kinds<'e, E>(
-    executor: E,
-    corporate_client_id: Uuid,
-) -> Result<Vec<String>, sqlx::Error>
-where
-    E: sqlx::PgExecutor<'e>,
-{
-    sqlx::query_scalar!(
-        "SELECT document_kind FROM app.corporate_client_document \
-         WHERE corporate_client_id = $1 AND deleted_at IS NULL ORDER BY document_kind",
-        corporate_client_id,
-    )
-    .fetch_all(executor)
+    .fetch_optional(executor)
     .await
 }
 

@@ -250,11 +250,14 @@ pub(super) async fn detail(
     let decision = repo::round_decision(s.pool, row.id, row.submission_round)
         .await
         .map_err(db_error)?;
-    let documents = repo::active_document_kinds(s.pool, row.id)
+    let active_docs = repo::active_documents(s.pool, row.id)
         .await
-        .map_err(db_error)?
+        .map_err(db_error)?;
+    let documents_version =
+        domain::documents_version(&active_docs.iter().map(|d| d.id).collect::<Vec<_>>());
+    let documents = active_docs
         .iter()
-        .map(|k| corrupt(DocumentKind::parse(k)).map(DocumentKind::as_str))
+        .map(|d| corrupt(DocumentKind::parse(&d.document_kind)).map(DocumentKind::as_str))
         .collect::<Result<Vec<_>, _>>()?;
     let (rejection_reason, decided_at) = match (&decision, status) {
         (Some(d), CorporateClientStatus::Rejected) if d.decision == Decision::Rejected.as_str() => {
@@ -275,6 +278,7 @@ pub(super) async fn detail(
         submission_round: row.submission_round,
         submitted_at: row.submitted_at,
         documents,
+        documents_version,
         rejection_reason,
         decided_at,
         can_decide: domain::may_decide(status),
@@ -351,8 +355,17 @@ pub(super) async fn approve(
     principal: &Principal,
     route: &str,
     corporate_client_id: Uuid,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
-    decide(s, principal, route, corporate_client_id, None).await
+    decide(
+        s,
+        principal,
+        route,
+        corporate_client_id,
+        None,
+        documents_version,
+    )
+    .await
 }
 
 /// US-1902 AC3: Verifikator menolak pengajuan dengan kode alasan; perusahaan Ditolak.
@@ -362,9 +375,18 @@ pub(super) async fn reject(
     route: &str,
     corporate_client_id: Uuid,
     reason_code: &str,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
     let reason = RejectionReason::parse(reason_code).ok_or_else(invalid_reason)?;
-    decide(s, principal, route, corporate_client_id, Some(reason)).await
+    decide(
+        s,
+        principal,
+        route,
+        corporate_client_id,
+        Some(reason),
+        documents_version,
+    )
+    .await
 }
 
 /// Jalur keputusan bersama: `reason = None` = setuju, `Some` = tolak.
@@ -374,8 +396,10 @@ async fn decide(
     route: &str,
     corporate_client_id: Uuid,
     reason: Option<RejectionReason>,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
     let ip = client_ip(principal, route)?;
+    let seen_version = documents_version.to_string();
     let context = audit_context(principal, ip);
     let (decision, action) = match reason {
         None => (Decision::Approved, APPROVED_ACTION),
@@ -394,13 +418,19 @@ async fn decide(
             if !domain::may_decide(from) {
                 return Err(CorporateError::AlreadyDecided);
             }
+            // Dokumen dibaca di transaksi yang sama dengan kunci baris: unggahan HR yang bersamaan (yang juga
+            // mengunci baris ini) tidak menyelipkan perubahan di antara pemeriksaan dan keputusan.
+            let docs = repo::active_documents(&mut *conn, corporate_client_id)
+                .await
+                .map_err(db_error)?;
+            // Keputusan terikat versi dokumen yang dilihat Verifikator (review T1 F1-T102).
+            let current = domain::documents_version(&docs.iter().map(|d| d.id).collect::<Vec<_>>());
+            if current != seen_version {
+                return Err(CorporateError::DocumentsChanged);
+            }
             if reason.is_none() {
-                // F1-T102 (Q8): persetujuan hanya untuk pengajuan yang ketiga dokumennya lengkap. Dibaca di
-                // transaksi yang sama dengan kunci baris, sehingga unggahan HR yang bersamaan (yang juga
-                // mengunci baris ini) tidak menyelipkan perubahan di antara pemeriksaan dan keputusan.
-                let kinds = repo::active_document_kinds(&mut *conn, corporate_client_id)
-                    .await
-                    .map_err(db_error)?;
+                // F1-T102 (Q8): persetujuan hanya untuk pengajuan yang ketiga dokumennya lengkap.
+                let kinds: Vec<&str> = docs.iter().map(|d| d.document_kind.as_str()).collect();
                 if !domain::documents_complete(&kinds) {
                     return Err(CorporateError::DocumentsIncomplete);
                 }

@@ -152,18 +152,43 @@ pub(super) async fn overview(
     if !may_manage_documents(status) {
         return Err(CorporateError::DocumentsNotManageable);
     }
-    let docs = repo::active_documents(s.pool, client_id)
+    read_overview(s.pool, client_id, status, client.submission_round)
         .await
-        .map_err(db_error)?;
+        .map_err(db_error)
+}
+
+/// Membaca dokumen aktif dan alasan penolakan lalu menyusun ringkasan. `executor` boleh pool atau koneksi
+/// transaksi pemanggil (respons konfirmasi dibangun dari data di dalam transaksi, review T1 F1-T102).
+async fn read_overview(
+    executor: &PgPool,
+    client_id: Uuid,
+    status: CorporateClientStatus,
+    submission_round: i32,
+) -> Result<DocumentsOverviewView, sqlx::Error> {
+    let docs = repo::active_documents(executor, client_id).await?;
     let rejection_reason = if status == CorporateClientStatus::Rejected {
-        repo::round_decision(s.pool, client_id, client.submission_round)
-            .await
-            .map_err(db_error)?
+        repo::round_decision(executor, client_id, submission_round)
+            .await?
             .filter(|d| d.decision == domain::Decision::Rejected.as_str())
             .and_then(|d| d.reason_code)
     } else {
         None
     };
+    Ok(build_overview(
+        status,
+        submission_round,
+        &docs,
+        rejection_reason,
+    ))
+}
+
+/// Ringkasan dari data yang sudah dibaca.
+fn build_overview(
+    status: CorporateClientStatus,
+    submission_round: i32,
+    docs: &[repo::DocumentRow],
+    rejection_reason: Option<String>,
+) -> DocumentsOverviewView {
     let documents: Vec<DocumentStatusView> = DocumentKind::ALL
         .into_iter()
         .map(|k| {
@@ -176,13 +201,13 @@ pub(super) async fn overview(
         })
         .collect();
     let complete = documents.iter().all(|d| d.uploaded);
-    Ok(DocumentsOverviewView {
+    DocumentsOverviewView {
         status: status.as_str(),
-        submission_round: client.submission_round,
+        submission_round,
         rejection_reason,
         documents,
         complete,
-    })
+    }
 }
 
 /// Langkah 1: slot unggah untuk akun HR pemanggil. Jenis dan ukuran dinyatakan diperiksa modul `platform`
@@ -408,20 +433,36 @@ pub(super) async fn confirm(
                 None,
                 Some(Value::Bool(old.is_some())),
             ));
-            Ok(((), vec![event]))
+            // Respons dibangun dari data di dalam transaksi (baris perusahaan masih terkunci), bukan dibaca
+            // ulang setelah commit.
+            let docs = repo::active_documents(&mut *conn, client_id)
+                .await
+                .map_err(db_error)?;
+            let rejection_reason = if status == CorporateClientStatus::Rejected {
+                repo::round_decision(&mut *conn, client_id, locked.submission_round)
+                    .await
+                    .map_err(db_error)?
+                    .filter(|d| d.decision == domain::Decision::Rejected.as_str())
+                    .and_then(|d| d.reason_code)
+            } else {
+                None
+            };
+            let view = build_overview(status, locked.submission_round, &docs, rejection_reason);
+            Ok((view, vec![event]))
         })
     })
     .await;
     match result {
-        Ok(()) => {}
+        Ok(view) => {
+            tracing::info!(document_kind = kind.as_str(), "corporate_document_uploaded");
+            Ok(view)
+        }
         Err(e) => {
             // Transaksi gagal: berkas tervalidasi dibuang (slot dapat dipakai ulang tidak: tombstone/klaim).
             discard(s, upload).await;
-            return Err(audited_error(e));
+            Err(audited_error(e))
         }
     }
-    tracing::info!(document_kind = kind.as_str(), "corporate_document_uploaded");
-    overview(s, scope).await
 }
 
 /// URL unduh dokumen aktif `kind` milik perusahaan pemanggil (E-12 dulu, modul `platform`). Jenis di luar

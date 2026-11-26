@@ -148,14 +148,16 @@ fn document_slot_body(_t: &Tenant) -> Value {
     json!({ "content_type": "image/png", "size_bytes": 1024 })
 }
 
-/// Isi konfirmasi dokumen yang sah (slot acak yang tidak ada).
+/// Isi konfirmasi dokumen: ID slot sengaja bukan UUID (422 di handler), supaya pembanding positif membuktikan sesi
+/// HR lolos middleware dan gerbang status tanpa menyentuh object storage (harness memakai endpoint yang tidak
+/// dipakai); lintas slot/tenant diuji `corporate_documents_access.rs`.
 fn document_confirm_body(_t: &Tenant) -> Value {
-    json!({ "document_kind": "nib", "upload_slot_id": new_id().to_string() })
+    json!({ "document_kind": "nib", "upload_slot_id": "bukan-uuid" })
 }
 
-/// Isi permintaan URL unduh dokumen yang sah.
+/// Isi permintaan URL unduh dokumen yang sah (NIB: ada pada perusahaan fixture Menunggu verifikasi).
 fn document_download_body(_t: &Tenant) -> Value {
-    json!({ "document_kind": "npwp" })
+    json!({ "document_kind": "nib" })
 }
 
 /// Isi undangan sah dengan email sintetis unik per panggilan.
@@ -306,9 +308,38 @@ async fn insert_hr(pool: &PgPool, client_id: Uuid) -> (Uuid, String, String, Uui
 /// Perusahaan Aktif dengan satu HR dan objek fixture untuk setiap jenis parameter path yang dikenal
 /// harness. Parameter path baru di endpoint baru = tambahkan objeknya di sini.
 async fn seed_tenant(pool: &PgPool, tag: &str) -> Tenant {
-    let (client_id, legal_name, nib, npwp) = insert_client(pool, "active", tag).await;
+    seed_tenant_with(pool, tag, "active").await
+}
+
+/// Seperti [`seed_tenant`] dengan status perusahaan `status`. Perusahaan Menunggu verifikasi diberi dokumen NIB
+/// aktif (F1-T102), sehingga endpoint dokumen HR menjawab dengan objek yang benar-benar ada.
+async fn seed_tenant_with(pool: &PgPool, tag: &str, status: &str) -> Tenant {
+    let (client_id, legal_name, nib, npwp) = insert_client(pool, status, tag).await;
     let (account_id, subject, email, member_id) = insert_hr(pool, client_id).await;
-    let ids = HashMap::from([("corporate_member_id", member_id)]);
+    let mut ids = HashMap::from([("corporate_member_id", member_id)]);
+    if status == "pending_verification" {
+        let file = new_id();
+        sqlx::query!(
+            "INSERT INTO app.stored_file (id, bucket, object_key, category, mime_type, size_bytes, sha256, validated_at) \
+             VALUES ($1, 'license_document', $2, 'corporate_document', 'image/jpeg', 1024, '\\x00', now())",
+            file,
+            format!("uji-isolasi/{}", random_hex(12)),
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query!(
+            "INSERT INTO app.corporate_client_document (id, corporate_client_id, document_kind, stored_file_id) \
+             VALUES ($1, $2, 'nib', $3)",
+            new_id(),
+            client_id,
+            file,
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        ids.insert("stored_file_id", file);
+    }
     Tenant {
         client_id,
         member_id,
@@ -911,6 +942,56 @@ fn coverage_check_rejects_unregistered_stale_and_mismatched_cases() {
         },
     ];
     assert_eq!(coverage_violations(&registered, &empty_reason).len(), 1);
+}
+
+// trace: US-1901 AC2, AC6, H-18 (perusahaan Menunggu verifikasi: endpoint dokumen HR benar-benar menjangkau objek
+// perusahaannya, dan percobaan perusahaan lain tidak membocorkan atau mengubah apa pun)
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn production_corporate_endpoints_do_not_leak_between_two_pending_companies() {
+    let pool = pool("RS_TEST_DB_APP_URL").await;
+    let keys = TestKeys::generate();
+    let a = seed_tenant_with(&pool, "PA", "pending_verification").await;
+    let b = seed_tenant_with(&pool, "PB", "pending_verification").await;
+    let addr = spawn_production(&pool, &keys).await;
+    let h = Harness {
+        addr,
+        keys: &keys,
+        pool: &pool,
+        attacker: &a,
+        victim: &b,
+    };
+    // Hanya endpoint yang berlaku untuk perusahaan Menunggu verifikasi (dokumen); endpoint anggota HR hanya untuk
+    // perusahaan Aktif (403 di sini, sudah dicakup varian Aktif).
+    let pending_cases: Vec<Case> = PRODUCTION_CASES
+        .iter()
+        .copied()
+        .filter(|c| c.path.starts_with("/v1/corporate/document"))
+        .collect();
+    assert_eq!(pending_cases.len(), 4);
+    let v = run_harness(&h, &pending_cases).await;
+    assert!(v.is_empty(), "{v:#?}");
+    // Pembanding positif benar-benar mengenai dokumen B: unduhan NIB HR B berhasil (bukan 409 status Aktif).
+    let r = common::request_json(
+        addr,
+        "POST",
+        "/v1/corporate/document-download-urls",
+        &[&bearer(&hr_token(&keys, &b))],
+        &json!({ "document_kind": "nib" }),
+    )
+    .await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    // HR A tidak pernah mendapat dokumen B (A punya NIB sendiri, URL-nya berbeda dan bukan milik B).
+    let ra = common::request_json(
+        addr,
+        "POST",
+        "/v1/corporate/document-download-urls",
+        &[&bearer(&hr_token(&keys, &a))],
+        &json!({ "document_kind": "nib" }),
+    )
+    .await;
+    assert_eq!(ra.status, 200, "{}", ra.body);
+    let file_b = b.ids.get("stored_file_id").unwrap().to_string();
+    assert!(!ra.body.contains(&file_b));
 }
 
 // trace: US-1904 AC3, AC4 (proses api lengkap: semua kasus produksi + token korporat ditolak di luar namespace)

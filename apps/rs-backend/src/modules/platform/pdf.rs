@@ -76,6 +76,85 @@ pub const ACTIVE_CONTENT_NAMES: &[&str] = &[
     "/Sound",
     "/Rendition",
     "/3D",
+    // Parameter peluncuran khusus platform (aksi Launch lama) dan berkas terenkripsi (F1-T102 review T1).
+    "/Win",
+    "/Mac",
+    "/Unix",
+    "/Encrypt",
+];
+
+/// Nilai `/S` (jenis aksi atau subtipe kamus) yang diizinkan (daftar izin, review T1 F1-T102): kamus yang punya
+/// `/S` selain nilai ini ditolak, sehingga jenis aksi baru atau yang tidak dikenal tidak lolos hanya karena
+/// belum ada di daftar tolak. Aksi yang diizinkan: `/URI` (tautan), `/GoTo` (lompat di dokumen), `/Named`
+/// (navigasi baku). Nilai sah non-aksi (supaya PDF pindaian dan PDF bertag biasa tidak ditolak): `/Transparency`
+/// (kamus grup), jenis label halaman `/D /R /r /A /a`, gaya garis `/S /D /B /I /U` (kamus border), dan tipe
+/// struktur baku PDF 32000-1 §14.8.4 (`/Document /P /Span /Figure` dan seterusnya). Tipe struktur khusus
+/// (dipetakan lewat RoleMap) tidak ada di daftar, sehingga PDF bertag dengan tipe khusus ditolak; batas yang
+/// diketahui dan dicatat di TD-48. Kunci `/S` ganda dalam satu kamus tidak terlihat di JSON qpdf (hanya satu
+/// nilai); perilaku qpdf atasnya `[TIDAK DIKETAHUI]` dan diuji di `corporate_documents_pdf_qpdf.rs`.
+pub const ALLOWED_S_VALUES: &[&str] = &[
+    "/URI",
+    "/GoTo",
+    "/Named",
+    "/Transparency",
+    "/D",
+    "/R",
+    "/r",
+    "/A",
+    "/a",
+    "/S",
+    "/B",
+    "/I",
+    "/U",
+    "/Document",
+    "/Part",
+    "/Art",
+    "/Sect",
+    "/Div",
+    "/BlockQuote",
+    "/Caption",
+    "/TOC",
+    "/TOCI",
+    "/Index",
+    "/NonStruct",
+    "/Private",
+    "/P",
+    "/H",
+    "/H1",
+    "/H2",
+    "/H3",
+    "/H4",
+    "/H5",
+    "/H6",
+    "/L",
+    "/LI",
+    "/Lbl",
+    "/LBody",
+    "/Table",
+    "/TR",
+    "/TH",
+    "/TD",
+    "/THead",
+    "/TBody",
+    "/TFoot",
+    "/Span",
+    "/Quote",
+    "/Note",
+    "/Reference",
+    "/BibEntry",
+    "/Code",
+    "/Link",
+    "/Annot",
+    "/Ruby",
+    "/RB",
+    "/RT",
+    "/RP",
+    "/Warichu",
+    "/WT",
+    "/WP",
+    "/Figure",
+    "/Formula",
+    "/Form",
 ];
 
 /// Batas waktu bawaan satu pemeriksaan (detik). Usulan teknis F1-T102.
@@ -98,9 +177,19 @@ pub struct QpdfConfig {
     pub timeout: Duration,
     /// Batas keluaran JSON.
     pub max_output_bytes: usize,
-    /// Direktori berkas sementara (berkas 0600, dihapus setelah proses).
+    /// Direktori berkas sementara khusus pemeriksa (berkas 0600, dihapus setelah proses). Disiapkan
+    /// [`QpdfInspector::prepare`] saat start (0700, sisa `rs-pdf-*` dibersihkan); jangan menunjuk `/tmp` langsung.
     pub temp_dir: PathBuf,
+    /// Batas ruang alamat proses qpdf dalam KiB (`ulimit -v`, RLIMIT_AS). Usulan teknis F1-T102: 2 GiB.
+    pub memory_limit_kib: u64,
+    /// Batas waktu CPU proses qpdf dalam detik (`ulimit -t`, RLIMIT_CPU); bawaan batas waktu + 5.
+    pub cpu_limit_seconds: u64,
 }
+
+/// Bawaan batas ruang alamat proses qpdf (KiB): 2 GiB.
+pub const DEFAULT_PDF_INSPECT_MEMORY_LIMIT_KIB: u64 = 2 * 1024 * 1024;
+/// Nama subdirektori bawaan berkas sementara pemeriksa di dalam direktori sementara sistem.
+pub const DEFAULT_PDF_TEMP_SUBDIR: &str = "rs-pdf-inspect";
 
 impl QpdfConfig {
     /// Konfigurasi bawaan untuk biner di `program`.
@@ -109,7 +198,9 @@ impl QpdfConfig {
             program: program.into(),
             timeout: Duration::from_secs(DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS),
             max_output_bytes: DEFAULT_PDF_INSPECT_MAX_OUTPUT_BYTES,
-            temp_dir: std::env::temp_dir(),
+            temp_dir: std::env::temp_dir().join(DEFAULT_PDF_TEMP_SUBDIR),
+            memory_limit_kib: DEFAULT_PDF_INSPECT_MEMORY_LIMIT_KIB,
+            cpu_limit_seconds: DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS + 5,
         }
     }
 }
@@ -127,6 +218,27 @@ impl QpdfInspector {
             config: Arc::new(config),
         }
     }
+
+    /// Menyiapkan direktori berkas sementara saat start: dibuat bila belum ada, izin 0700 (hanya pemilik proses),
+    /// dan sisa berkas `rs-pdf-*` dari proses yang mati dihapus. Berkas lain di direktori itu tidak disentuh.
+    /// Direktori adalah milik pemeriksa saja: izinnya diubah ke 0700.
+    pub fn prepare(config: &QpdfConfig) -> std::io::Result<()> {
+        std::fs::create_dir_all(&config.temp_dir)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&config.temp_dir, std::fs::Permissions::from_mode(0o700))?;
+        }
+        for entry in std::fs::read_dir(&config.temp_dir)? {
+            let entry = entry?;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("rs-pdf-") && entry.file_type()?.is_file() {
+                std::fs::remove_file(entry.path())?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl PdfInspector for QpdfInspector {
@@ -134,16 +246,18 @@ impl PdfInspector for QpdfInspector {
         Box::pin(async move {
             let config = Arc::clone(&self.config);
             let data = bytes.to_vec();
-            let joined = tokio::task::spawn_blocking(move || run_qpdf(&config, &data)).await;
-            match joined {
-                Ok(Ok(output)) => analyze_qpdf_json(&output),
-                Ok(Err(RunFailure::Unavailable)) => PdfVerdict::Unavailable,
-                Ok(Err(RunFailure::Rejected)) => PdfVerdict::Unreadable,
-                Err(_) => {
-                    tracing::error!("pdf_inspect_task_failed");
-                    PdfVerdict::Unavailable
-                }
-            }
+            // Proses dan analisis JSON sama-sama di thread blocking: permintaan yang dibatalkan tidak menghentikan
+            // pekerjaan ini, dan pemanggil menahan izin konkurensinya sampai selesai (service.rs).
+            let joined = tokio::task::spawn_blocking(move || match run_qpdf(&config, &data) {
+                Ok(output) => analyze_qpdf_json(&output),
+                Err(RunFailure::Unavailable) => PdfVerdict::Unavailable,
+                Err(RunFailure::Rejected) => PdfVerdict::Unreadable,
+            })
+            .await;
+            joined.unwrap_or_else(|_| {
+                tracing::error!("pdf_inspect_task_failed");
+                PdfVerdict::Unavailable
+            })
         })
     }
 }
@@ -193,9 +307,22 @@ fn write_temp(config: &QpdfConfig, data: &[u8]) -> Result<TempFile, RunFailure> 
     Ok(guard)
 }
 
+/// Pembungkus POSIX tanpa `unsafe`: memasang batas ruang alamat dan waktu CPU (`ulimit`, upaya terbaik: platform
+/// tanpa `ulimit -v`, misalnya macOS, melewatinya diam-diam) lalu `exec` qpdf. Argumen: batas KiB, batas detik,
+/// program, lalu argumen program. Kode keluar 126/127 (tidak dapat dieksekusi / tidak ditemukan) dibaca
+/// sebagai pemeriksa tidak tersedia.
+const LIMIT_WRAPPER: &str =
+    r#"ulimit -v "$1" 2>/dev/null; ulimit -t "$2" 2>/dev/null; shift 2; exec "$@""#;
+
 fn spawn_qpdf(config: &QpdfConfig, input: &std::path::Path) -> Result<std::process::Child, ()> {
     for attempt in 0..SPAWN_RETRIES {
-        let spawned = Command::new(&config.program)
+        let spawned = Command::new("/bin/sh")
+            .arg("-c")
+            .arg(LIMIT_WRAPPER)
+            .arg("sh")
+            .arg(config.memory_limit_kib.to_string())
+            .arg(config.cpu_limit_seconds.to_string())
+            .arg(&config.program)
             .args([
                 "--json=2",
                 "--json-key=qpdf",
@@ -224,6 +351,11 @@ fn spawn_qpdf(config: &QpdfConfig, input: &std::path::Path) -> Result<std::proce
 }
 
 fn run_qpdf(config: &QpdfConfig, data: &[u8]) -> Result<Vec<u8>, RunFailure> {
+    // Biner tidak ada atau bukan berkas: bukan kesalahan berkas (pembungkus sh akan menjawab 127 juga).
+    if !config.program.is_file() {
+        tracing::error!("pdf_inspector_binary_missing");
+        return Err(RunFailure::Unavailable);
+    }
     let temp = write_temp(config, data)?;
     let mut child = spawn_qpdf(config, &temp.0).map_err(|()| {
         tracing::error!("pdf_inspector_spawn_failed");
@@ -273,6 +405,10 @@ fn run_qpdf(config: &QpdfConfig, data: &[u8]) -> Result<Vec<u8>, RunFailure> {
         let _ = child.wait();
     }
     match status {
+        Some(s) if matches!(s.code(), Some(126 | 127)) => {
+            tracing::error!("pdf_inspector_not_executable");
+            Err(RunFailure::Unavailable)
+        }
         Some(s) if s.success() && !overflow.load(Ordering::Acquire) => {
             // Proses sudah selesai: ujung pipa tertutup dan pembaca segera mengirim hasilnya. Batas tunggu
             // pendek melindungi dari pemegang ujung pipa lain; tanpa hasil = ditolak.
@@ -289,12 +425,24 @@ fn is_active_name(s: &str) -> bool {
     ACTIVE_CONTENT_NAMES.contains(&name)
 }
 
+/// Apakah nilai `/S` termasuk [`ALLOWED_S_VALUES`] (nama kanonik, awalan `n:` dibuang).
+fn is_allowed_s(v: &Value) -> bool {
+    v.as_str().is_some_and(|s| {
+        let name = s.strip_prefix("n:").unwrap_or(s);
+        ALLOWED_S_VALUES.contains(&name)
+    })
+}
+
 /// Menelusuri seluruh pohon JSON (kunci dan nilai string) tanpa rekursi; `true` bila ada nama konten aktif.
 fn contains_active_name(root: &Value) -> bool {
     let mut stack = vec![root];
     while let Some(v) = stack.pop() {
         match v {
             Value::Object(map) => {
+                // Daftar izin `/S`: nilai di luar [`ALLOWED_S_VALUES`] (atau bukan nama) ditolak.
+                if map.get("/S").is_some_and(|s| !is_allowed_s(s)) {
+                    return true;
+                }
                 for (k, child) in map {
                     if is_active_name(k) {
                         return true;
@@ -462,6 +610,61 @@ mod tests {
         assert_eq!(analyze_qpdf_json(deep.as_bytes()), PdfVerdict::Unreadable);
     }
 
+    // trace: review T1 F1-T102 (daftar izin /S: aksi tak dikenal ditolak, dokumen pindaian/bertag biasa lolos)
+    #[test]
+    fn s_values_follow_an_allow_list_not_a_deny_list() {
+        for ok in [
+            "/URI",
+            "/GoTo",
+            "/Named",
+            "/Transparency",
+            "/D",
+            "/r",
+            "/P",
+            "/Span",
+            "/Figure",
+            "/Table",
+        ] {
+            let out = doc(json!({"obj:1 0 R": {"value": {"/S": ok}}}));
+            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::Safe, "{ok}");
+        }
+        // Halaman pindaian biasa: kamus grup transparansi dan label halaman.
+        let scan = doc(json!({
+            "obj:3 0 R": {"value": {"/Type": "/Page", "/Group": {"/S": "/Transparency", "/CS": "/DeviceRGB"}}},
+            "obj:4 0 R": {"value": {"/Nums": [0, {"/S": "/D"}]}},
+        }));
+        assert_eq!(analyze_qpdf_json(&scan), PdfVerdict::Safe);
+        // Jenis aksi yang tidak ada di daftar tolak mana pun tetap ditolak, juga dalam bentuk n: dan non-nama.
+        for bad in [
+            "/Thread",
+            "/ResetForm",
+            "/SetOCGState",
+            "/Hide",
+            "/Trans",
+            "/GoToDp",
+            "/Foo",
+            "n:/Foo",
+        ] {
+            let out = doc(json!({"obj:1 0 R": {"value": {"/S": bad}}}));
+            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::ActiveContent, "{bad}");
+        }
+        for odd in [json!(1), json!("u:URI"), json!(["/URI"]), json!(null)] {
+            let out = doc(json!({"obj:1 0 R": {"value": {"/S": odd}}}));
+            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::ActiveContent, "{odd}");
+        }
+    }
+
+    #[test]
+    fn launch_parameters_and_encryption_dictionary_are_rejected() {
+        for key in ["/Win", "/Mac", "/Unix", "/Encrypt"] {
+            let out = doc(json!({"obj:1 0 R": {"value": {(key): "x"}}}));
+            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::ActiveContent, "{key}");
+        }
+        // /Encrypt di trailer (bentuk dokumentasi qpdf: kamus enkripsi tetap tampil di keluaran).
+        let encrypted = doc(json!({"trailer": {"value": {"/Root": "1 0 R", "/Encrypt": "9 0 R"}}}));
+        assert_eq!(analyze_qpdf_json(&encrypted), PdfVerdict::ActiveContent);
+    }
+
     // ---- proses anak: biner palsu (skrip) untuk menguji penanganan kegagalan, bukan qpdf asli ----
 
     #[cfg(unix)]
@@ -597,6 +800,43 @@ mod tests {
             ));
             assert_eq!(inspect(cfg, b"%PDF-1.7").await, PdfVerdict::Safe);
             assert_eq!(std::fs::read_to_string(&probe).unwrap().trim(), "600");
+        }
+
+        // trace: review T1 F1-T102 (batas sumber daya proses anak, tanpa unsafe)
+        #[tokio::test]
+        async fn resource_limits_are_applied_to_the_child_process() {
+            let s = Scratch::new();
+            let probe = s.0.join("limits.txt");
+            let mut cfg = s.script(&format!(
+                "{{ ulimit -v; ulimit -t; }} > '{}'; cat <<'EOF'\n{SAFE_JSON}\nEOF",
+                probe.display()
+            ));
+            cfg.memory_limit_kib = 1_048_576;
+            cfg.cpu_limit_seconds = 17;
+            assert_eq!(inspect(cfg, b"%PDF-1.7").await, PdfVerdict::Safe);
+            let text = std::fs::read_to_string(&probe).unwrap();
+            let lines: Vec<&str> = text.lines().collect();
+            assert_eq!(lines, ["1048576", "17"], "ulimit -v dan -t");
+        }
+
+        // trace: review T1 F1-T102 (direktori sementara 0700, sisa rs-pdf-* dibersihkan saat start)
+        #[test]
+        fn prepare_creates_private_dir_and_removes_only_stale_pdf_files() {
+            let s = Scratch::new();
+            let dir = s.0.join("kerja-pemeriksa");
+            let mut cfg = QpdfConfig::new(s.0.join("qpdf"));
+            cfg.temp_dir = dir.clone();
+            QpdfInspector::prepare(&cfg).unwrap();
+            let mode =
+                |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode(&dir), 0o700);
+            std::fs::write(dir.join("rs-pdf-sisa.pdf"), b"x").unwrap();
+            std::fs::write(dir.join("lain.txt"), b"y").unwrap();
+            std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+            QpdfInspector::prepare(&cfg).unwrap();
+            assert_eq!(mode(&dir), 0o700, "izin longgar dikembalikan ke 0700");
+            assert!(!dir.join("rs-pdf-sisa.pdf").exists());
+            assert!(dir.join("lain.txt").exists());
         }
     }
 }

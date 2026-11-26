@@ -502,6 +502,8 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
     // F1-T102: pemeriksa PDF (qpdf, KEPUTUSAN-86) hanya bila dikonfigurasi; tanpa itu PDF ditolak.
     if let Some(qpdf) = &config.pdf_inspector {
+        // Direktori berkas sementara 0700 dan sisa `rs-pdf-*` proses sebelumnya dibersihkan (gagal cepat).
+        QpdfInspector::prepare(qpdf).map_err(|_| setup_failed("pdf_inspector_temp_dir"))?;
         file_storage = file_storage.with_pdf_inspector(Arc::new(QpdfInspector::new(qpdf.clone())));
     }
     let files = Arc::new(file_storage);
