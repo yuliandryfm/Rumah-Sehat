@@ -27,9 +27,10 @@ fn ts(t: OffsetDateTime) -> Result<String, DtoError> {
 #[serde(deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub(super) struct QueueParams {
-    /// Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).
+    /// Cursor dari `meta.next_cursor` halaman sebelumnya, dikirim apa adanya (opaque; memuat posisi
+    /// `submitted_at` dan ID item terakhir, review T1 CR-035).
     #[param(
-        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        pattern = "^[0-9]{1,19}\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     )]
     pub(super) cursor: Option<String>,
     /// Jumlah item (1-100, bawaan 20).

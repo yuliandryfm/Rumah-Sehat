@@ -245,6 +245,18 @@ SELECT pg_temp.uji_tolak('A20 NEG perusahaan Aktif kedua dengan NIB sama ditolak
 SELECT pg_temp.uji_tolak('A20 NEG persetujuan pengajuan ber-NIB perusahaan Aktif ditolak database (CR-035, 4090116)', 'rs_api',
   'UPDATE app.corporate_client SET status = ''active'' WHERE id = ''00000000-0000-7000-8000-0000000a2027''',
   '23505', 'uqp_corporate_client_nib_active');
+-- Review T1 CR-035 (DBA 5): pemilik pertama yang Nonaktif atau sudah dihapus lunak tidak menghalangi perusahaan
+-- Aktif kedua dengan NIB yang sama (predikat index: deleted_at IS NULL AND status = 'active').
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama dinonaktifkan (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2024'', ''PT Nonaktif'', ''NIB-UJI-9'', ''NPWP-UJI-4'', ''Jl. Uji 4'', ''0210000004'', ''inactive'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif kedua boleh memakai NIB pemilik pertama yang Nonaktif (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2025'', ''PT Aktif Pengganti'', ''NIB-UJI-9'', ''NPWP-UJI-5'', ''Jl. Uji 5'', ''0210000005'', ''active'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama ber-NIB-UJI-10 (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2026'', ''PT Aktif Dihapus'', ''NIB-UJI-10'', ''NPWP-UJI-6'', ''Jl. Uji 6'', ''0210000006'', ''active'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama dihapus lunak (ADR-003)', 'rs_api',
+  'UPDATE app.corporate_client SET deleted_at = now(), deleted_by = ''00000000-0000-7000-8000-0000000a2001'', delete_reason = ''uji CR-035'' WHERE id = ''00000000-0000-7000-8000-0000000a2026''', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif kedua boleh memakai NIB pemilik Aktif yang sudah dihapus lunak (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2029'', ''PT Aktif Baru'', ''NIB-UJI-10'', ''NPWP-UJI-9'', ''Jl. Uji 9'', ''0210000009'', ''active'', ''created_by_admin'')', 1);
 SELECT pg_temp.uji_tolak('A20 NEG status di luar daftar', 'rs_api',
   'UPDATE app.corporate_client SET status = ''verified'' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_status');
 SELECT pg_temp.uji_tolak('A20 NEG asal di luar daftar', 'rs_api',

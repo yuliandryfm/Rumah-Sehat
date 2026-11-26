@@ -5,7 +5,7 @@
 //! memanggil satu fungsi `api`, dan memetakan hasil ke envelope ADR-023. Teks galat pustaka (serde, sqlx)
 //! tidak pernah diteruskan.
 
-use super::api::{self as corporate, CorporateError, CorporateVerification};
+use super::api::{self as corporate, CorporateError, CorporateVerification, QueueCursor};
 use super::dto::{
     ApproveRequest, DecisionDto, DecisionEnvelope, DetailDto, DetailEnvelope, DocumentKindDto,
     DocumentUrlDto, DocumentUrlEnvelope, DtoError, QueueEnvelope, QueueItemDto, QueueParams,
@@ -124,9 +124,10 @@ async fn queue(
             );
         }
     };
-    let cursor = match p.cursor.as_deref().map(Uuid::parse_str).transpose() {
-        Ok(c) => c,
-        Err(_) => {
+    let cursor = match p.cursor.as_deref().map(QueueCursor::parse) {
+        None => None,
+        Some(Some(c)) => Some(c),
+        Some(None) => {
             return fail(
                 &state,
                 cid,

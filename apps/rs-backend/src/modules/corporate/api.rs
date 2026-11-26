@@ -22,6 +22,7 @@ use std::fmt;
 use time::OffsetDateTime;
 
 pub use super::admin_create::{CreatedCorporateClientView, NewCorporateClientInput};
+pub use super::domain::QueueCursor;
 pub use super::error::CorporateError;
 pub use super::registration::{NewCorporateRegistration, RegistrationDeps};
 
@@ -278,11 +279,11 @@ pub struct RejectionReasonView {
     pub label: String,
 }
 
-/// US-1902 AC1: antrean "Menunggu verifikasi" terlama lebih dulu (`cursor` = ID perusahaan terakhir
-/// halaman sebelumnya, `limit` 1-100).
+/// US-1902 AC1: antrean "Menunggu verifikasi" terlama lebih dulu (`cursor` = posisi `(submitted_at, id)`
+/// item terakhir halaman sebelumnya, [`QueueCursor`]; `limit` 1-100).
 pub async fn corporate_verification_queue(
     deps: &CorporateVerification<'_>,
-    cursor: Option<Uuid>,
+    cursor: Option<QueueCursor>,
     limit: Option<i64>,
     readiness: QueueReadiness,
 ) -> Result<(Vec<CorporateQueueItemView>, envelope::Meta), CorporateError> {

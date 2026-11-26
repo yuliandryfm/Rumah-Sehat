@@ -6,8 +6,8 @@
 //! semua perusahaan (bukan data milik akunnya), jadi ID yang tidak ada atau terhapus = `404` (KU-03 tetap:
 //! tidak ada pembeda lain).
 //!
-//! - Antrean ([`queue`], AC1): perusahaan "Menunggu verifikasi" urut `submitted_at` terlama, cursor = ID
-//!   perusahaan terakhir halaman sebelumnya. Tanpa NPWP. F1-T102 (keputusan user Q8): bawaan hanya pengajuan
+//! - Antrean ([`queue`], AC1): perusahaan "Menunggu verifikasi" urut `submitted_at` terlama, cursor = posisi
+//!   `(submitted_at, id)` item terakhir halaman sebelumnya ([`QueueCursor`]). Tanpa NPWP. F1-T102 (keputusan user Q8): bawaan hanya pengajuan
 //!   yang ketiga jenis dokumennya lengkap ("siap diverifikasi"); [`QueueReadiness`] memilih yang belum lengkap
 //!   atau semuanya, dan setiap item antrean memuat `documents_complete`.
 //! - Detail ([`detail`], AC1): data perusahaan termasuk NPWP (klasifikasi Terbatas, DD A20: tidak pernah ke
@@ -42,7 +42,7 @@ use super::api::{
     QueueReadiness, RejectionReasonView,
 };
 use super::domain::{
-    self, Decision, DocumentKind, REJECTION_CONTEXT, RejectionReason, parse_origin,
+    self, Decision, DocumentKind, QueueCursor, REJECTION_CONTEXT, RejectionReason, parse_origin,
 };
 use super::error::CorporateError;
 use super::repo::{self, NewDecision};
@@ -200,7 +200,7 @@ async fn record_failed(pool: &PgPool, clock: &dyn Clock, event: AuditEvent) {
 /// US-1902 AC1: antrean "Menunggu verifikasi", terlama lebih dulu.
 pub(super) async fn queue(
     s: &CorporateVerification<'_>,
-    cursor: Option<Uuid>,
+    cursor: Option<QueueCursor>,
     limit: Option<i64>,
     readiness: QueueReadiness,
 ) -> Result<(Vec<CorporateQueueItemView>, Meta), CorporateError> {
@@ -210,13 +210,20 @@ pub(super) async fn queue(
         QueueReadiness::Incomplete => Some(false),
         QueueReadiness::All => None,
     };
-    let mut rows = repo::pending_queue(s.pool, cursor, complete_only, limit.saturating_add(1))
-        .await
-        .map_err(db_error)?;
+    let mut rows = repo::pending_queue(
+        s.pool,
+        cursor.map(|c| c.submitted_at),
+        cursor.map(|c| c.id),
+        complete_only,
+        limit.saturating_add(1),
+    )
+    .await
+    .map_err(db_error)?;
     let has_more = i64::try_from(rows.len()).map_or(true, |n| n > limit);
     rows.truncate(usize::try_from(limit).map_err(|_| CorporateError::Internal("limit"))?);
     let next_cursor = if has_more {
-        rows.last().map(|r| r.id.hyphenated().to_string())
+        rows.last()
+            .map(|r| QueueCursor::after(r.submitted_at, r.id).encode())
     } else {
         None
     };

@@ -25,6 +25,7 @@ use foundation::Uuid;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 async fn plain_world() -> World {
     world_with(Arc::new(common::unused_file_storage())).await
@@ -219,4 +220,84 @@ async fn concurrent_approvals_of_two_submissions_with_one_nib_activate_exactly_o
             "hanya pemenang yang punya catatan keputusan"
         );
     }
+}
+
+// trace: CR-035, US-1902 AC4 (negatif; review T1 keamanan L-1): jalur penjaga index unik dibuat deterministik.
+// Transaksi lain mengaktifkan A tanpa commit; persetujuan B lolos cek awal (A belum Aktif bagi transaksi B), lalu
+// UPDATE B menunggu entri index `uqp_corporate_client_nib_active` milik A. Setelah A di-commit, B mendapat 23505
+// yang dipetakan ke 409 4090116: tanpa catatan keputusan, status tetap, E-10 gagal `nib_in_use_by_active_company`
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn approval_waiting_on_an_uncommitted_activation_of_the_same_nib_gets_4090116() {
+    let w = plain_world().await;
+    let verifier = insert_verifier(&w.app).await;
+    let shared = digits(13);
+    let a = company_with_nib(&w.app, "pending_verification", &shared, 30).await;
+    let b = company_with_nib(&w.app, "pending_verification", &shared, 20).await;
+    let vb = w.documents_version(&verifier, b.id).await;
+
+    let app = w.app.clone();
+    let mut holder = app.begin().await.unwrap();
+    let holder_pid = sqlx::query_scalar!(r#"SELECT pg_backend_pid() AS "pid!""#)
+        .fetch_one(&mut *holder)
+        .await
+        .unwrap();
+    sqlx::query!(
+        "UPDATE app.corporate_client SET status = 'active' WHERE id = $1",
+        a.id
+    )
+    .execute(&mut *holder)
+    .await
+    .unwrap();
+
+    let release = async move {
+        // Commit hanya setelah persetujuan B benar-benar tertahan oleh transaksi ini.
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            let blocked = sqlx::query_scalar!(
+                r#"SELECT count(*) AS "n!" FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))"#,
+                holder_pid
+            )
+            .fetch_one(&app)
+            .await
+            .unwrap();
+            if blocked > 0 {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "persetujuan B tidak pernah menunggu transaksi A"
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        holder.commit().await.unwrap();
+    };
+    let (r, ()) = tokio::join!(w.decide_with(&verifier, b.id, None, &vb), release);
+
+    assert_eq!(
+        (r.status, code(&r).as_str()),
+        (409, "4090116"),
+        "{}",
+        r.body
+    );
+    assert!(!r.body.contains(&shared), "NIB tidak digemakan");
+    assert!(
+        !r.body.contains(&a.id.to_string()),
+        "perusahaan lain tidak terbuka"
+    );
+    assert_eq!(client_status(&w.app, a.id).await.0, "active");
+    assert_eq!(
+        client_status(&w.app, b.id).await,
+        ("pending_verification".to_string(), 1)
+    );
+    assert_eq!(decisions(&w.app, b.id).await, 0, "tanpa catatan keputusan");
+    let evs = w
+        .tenant_events("e_10", "corporate_verification_approved", b.id)
+        .await;
+    assert_eq!(evs.len(), 1, "{evs:?}");
+    assert_event_complete(&evs[0], "e_10");
+    assert_eq!(evs[0]["outcome"], "failure");
+    assert_eq!(
+        evs[0]["outcome_reason_code"],
+        "nib_in_use_by_active_company"
+    );
 }

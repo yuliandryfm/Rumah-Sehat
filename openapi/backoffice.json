@@ -1139,7 +1139,7 @@
             }
           },
           "409": {
-            "description": "4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat.",
+            "description": "4090110: NIB sudah dipakai perusahaan Aktif (US-1903 AC4, diubah CR-035). 4090111: email HR sudah dipakai akun lain di realm korporat.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1263,11 +1263,11 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya, dikirim apa adanya (opaque; memuat posisi\n`submitted_at` dan ID item terakhir, review T1 CR-035).",
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              "pattern": "^[0-9]{1,19}\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             }
           },
           {

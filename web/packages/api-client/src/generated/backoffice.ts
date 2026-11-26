@@ -1865,7 +1865,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat. */
+            /** @description 4090110: NIB sudah dipakai perusahaan Aktif (US-1903 AC4, diubah CR-035). 4090111: email HR sudah dipakai akun lain di realm korporat. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1962,7 +1962,10 @@ export interface operations {
     corporate_verification_queue: {
         parameters: {
             query?: {
-                /** @description Cursor dari `meta.next_cursor` halaman sebelumnya (UUID). */
+                /**
+                 * @description Cursor dari `meta.next_cursor` halaman sebelumnya, dikirim apa adanya (opaque; memuat posisi
+                 *     `submitted_at` dan ID item terakhir, review T1 CR-035).
+                 */
                 cursor?: string;
                 /** @description Jumlah item (1-100, bawaan 20). */
                 limit?: number;

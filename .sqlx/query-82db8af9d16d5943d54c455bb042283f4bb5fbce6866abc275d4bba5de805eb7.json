@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT q.id AS \"id!\", q.legal_name AS \"legal_name!\", q.nib AS \"nib!\", q.origin AS \"origin!\",\n                  q.submission_round AS \"submission_round!\", q.submitted_at AS \"submitted_at!\",\n                  q.documents_complete AS \"documents_complete!\",\n                  q.nib_used_by_other_company AS \"nib_used_by_other_company!\"\n           FROM (\n             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,\n                    (SELECT count(*) FILTER (WHERE d.document_kind IN ('nib', 'npwp', 'authority_proof'))\n                       FROM app.corporate_client_document d\n                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) = 3 AS documents_complete,\n                    EXISTS (SELECT 1 FROM app.corporate_client o\n                             WHERE o.nib = c.nib AND o.id <> c.id AND o.deleted_at IS NULL)\n                      AS nib_used_by_other_company\n             FROM app.corporate_client c\n             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'\n           ) q\n           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)\n             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >\n                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))\n           ORDER BY q.submitted_at, q.id\n           LIMIT $3",
+  "query": "SELECT q.id AS \"id!\", q.legal_name AS \"legal_name!\", q.nib AS \"nib!\", q.origin AS \"origin!\",\n                  q.submission_round AS \"submission_round!\", q.submitted_at AS \"submitted_at!\",\n                  q.documents_complete AS \"documents_complete!\",\n                  q.nib_used_by_other_company AS \"nib_used_by_other_company!\"\n           FROM (\n             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,\n                    (SELECT count(*) FILTER (WHERE d.document_kind IN ('nib', 'npwp', 'authority_proof'))\n                       FROM app.corporate_client_document d\n                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) = 3 AS documents_complete,\n                    EXISTS (SELECT 1 FROM app.corporate_client o\n                             WHERE o.nib = c.nib AND o.id <> c.id AND o.deleted_at IS NULL)\n                      AS nib_used_by_other_company\n             FROM app.corporate_client c\n             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'\n           ) q\n           WHERE ($3::boolean IS NULL OR q.documents_complete = $3)\n             AND ($1::timestamptz IS NULL OR $2::uuid IS NULL OR (q.submitted_at, q.id) > ($1, $2))\n           ORDER BY q.submitted_at, q.id\n           LIMIT $4",
   "describe": {
     "columns": [
       {
@@ -84,6 +84,7 @@
     ],
     "parameters": {
       "Left": [
+        "Timestamptz",
         "Uuid",
         "Bool",
         "Int8"
@@ -100,5 +101,5 @@
       null
     ]
   },
-  "hash": "4b4542b0903c489ff33769c8a974272d817aec3a029362ad9761a507d83d3083"
+  "hash": "82db8af9d16d5943d54c455bb042283f4bb5fbce6866abc275d4bba5de805eb7"
 }

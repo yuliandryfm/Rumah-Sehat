@@ -56,7 +56,8 @@ pub(super) struct QueueRow {
 /// `ix_corporate_client_nib` (CR-035).
 pub(super) async fn pending_queue(
     pool: &PgPool,
-    after: Option<Uuid>,
+    after_submitted_at: Option<OffsetDateTime>,
+    after_id: Option<Uuid>,
     complete_only: Option<bool>,
     limit: i64,
 ) -> Result<Vec<QueueRow>, sqlx::Error> {
@@ -77,12 +78,12 @@ pub(super) async fn pending_queue(
              FROM app.corporate_client c
              WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'
            ) q
-           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)
-             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >
-                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))
+           WHERE ($3::boolean IS NULL OR q.documents_complete = $3)
+             AND ($1::timestamptz IS NULL OR $2::uuid IS NULL OR (q.submitted_at, q.id) > ($1, $2))
            ORDER BY q.submitted_at, q.id
-           LIMIT $3"#,
-        after,
+           LIMIT $4"#,
+        after_submitted_at,
+        after_id,
         complete_only,
         limit,
     )
