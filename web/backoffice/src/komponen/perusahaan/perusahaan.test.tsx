@@ -53,6 +53,7 @@ function klienUji(o: Partial<KlienPerusahaan> = {}): KlienPerusahaan {
     dokumenUrl: () => ok({ url: URL_DOK, expires_at: new Date(Date.now() + 60_000).toISOString(), mime_type: "image/jpeg", size_bytes: 10 }),
     setujui: () => ok({ corporate_client_id: ID, status: "active" as const, submission_round: 1 }),
     tolak: () => ok({ corporate_client_id: ID, status: "rejected" as const, submission_round: 1 }),
+    buat: () => ok({ corporate_client_id: ID, status: "active", corporate_member_id: ID, hr_account_id: ID, hr_invitation: "processing" }),
     ...o,
   };
 }
@@ -74,7 +75,7 @@ async function bukaPanel(k: KlienPerusahaan) {
 }
 
 describe("antrean", () => {
-  test("NIB termasking, jam WIB, tanpa NIB/NPWP lengkap sebelum dibuka; fitur belum tersedia ditandai", async () => {
+  test("NIB termasking, jam WIB, tanpa NIB/NPWP lengkap sebelum dibuka; daftar perusahaan ditandai belum tersedia", async () => {
     render(<PanelPerusahaan csrfToken="csrf" klien={klienUji()} />);
     expect(await screen.findByText("************0099")).toBeTruthy();
     expect(screen.getByText(/1 Mar 2027, 08.01 WIB/)).toBeTruthy();
@@ -271,5 +272,155 @@ describe("klien, navigasi, halaman", () => {
     expect(menuUntuk(["Verifikator"]).some((i) => i.href === "/verifikasi-perusahaan")).toBe(true);
     expect(menuUntuk(["Konten"]).some((i) => i.href === "/verifikasi-perusahaan")).toBe(false);
     expect(typeof halaman.default).toBe("function");
+  });
+});
+
+describe("Buat perusahaan (US-1903)", () => {
+  const ISIAN = {
+    "Nama badan usaha": "PT Contoh Sintetis",
+    NIB: "9120000000123",
+    NPWP: "012345678901299",
+    "Alamat kantor": "Jl. Contoh No. 1, Jakarta",
+    "Telepon kantor": "021-0000000",
+    "Email HR pertama": "hr.pertama@perusahaan.example",
+  };
+  const deskripsi = (el: HTMLElement) =>
+    (el.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((i) => document.getElementById(i)?.textContent ?? "")
+      .join(" ");
+
+  async function isiForm(isian: Record<string, string> = ISIAN) {
+    fireEvent.click(await screen.findByRole("button", { name: "Buat perusahaan" }));
+    for (const [label, nilai] of Object.entries(isian)) {
+      fireEvent.change(await screen.findByLabelText(label), { target: { value: nilai } });
+    }
+  }
+  const kirim = () => {
+    const submit = screen.getAllByRole("button", { name: "Buat perusahaan" }).find((b) => b.getAttribute("type") === "submit");
+    if (submit === undefined) throw new Error("tombol submit tidak ada");
+    fireEvent.click(submit);
+  };
+
+  test("sukses 201: kirim isian, pesan Aktif + undangan diproses, formulir tertutup, antrean dimuat ulang, tanpa data sensitif di layar", async () => {
+    const buat = vi.fn(() => ok({ corporate_client_id: ID, status: "active", corporate_member_id: ID, hr_account_id: ID, hr_invitation: "processing" }));
+    const antrean = vi.fn(() => ok({ items: [item()], hasMore: false, nextCursor: null }));
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat, antrean })} />);
+    await isiForm();
+    kirim();
+    expect(await screen.findByText(/Perusahaan dibuat dan berstatus Aktif/)).toBeTruthy();
+    expect(buat).toHaveBeenCalledWith(expect.objectContaining({ nib: ISIAN.NIB, hr_email: ISIAN["Email HR pertama"] }));
+    expect(antrean).toHaveBeenCalledTimes(2);
+    expect(screen.queryByLabelText("NIB")).toBeNull();
+    expect(document.body.textContent).not.toContain(ISIAN.NIB);
+    expect(document.body.textContent).not.toContain(ISIAN["Email HR pertama"]);
+  });
+
+  test("catatan jujur: unggah dokumen menyusul (F1-T102), tidak ada kontrol unggah palsu", async () => {
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji()} />);
+    await isiForm({});
+    expect(screen.getByTestId("dokumen-menyusul").textContent).toMatch(/menyusul/);
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+
+  test("validasi klien: isian salah → galat per kolom terhubung aria-describedby; API tidak dipanggil", async () => {
+    const buat = vi.fn();
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat })} />);
+    await isiForm({ "Email HR pertama": "bukan-email", NIB: "12 34" });
+    kirim();
+    const nib = await screen.findByLabelText("NIB");
+    await waitFor(() => { expect(nib.getAttribute("aria-invalid")).toBe("true"); });
+    expect(deskripsi(nib)).toContain("tidak boleh mengandung spasi");
+    expect(deskripsi(screen.getByLabelText("Email HR pertama"))).toContain("email yang valid");
+    expect(deskripsi(screen.getByLabelText("Nama badan usaha"))).toContain("wajib diisi");
+    expect(buat).not.toHaveBeenCalled();
+  });
+
+  test("409 4090110 → galat pada NIB; 4090111 → galat pada email HR; formulir tetap terbuka dengan isian", async () => {
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(409, "4090110") })} />);
+    await isiForm();
+    kirim();
+    await waitFor(() => { expect(screen.getByLabelText("NIB").getAttribute("aria-invalid")).toBe("true"); });
+    expect(deskripsi(screen.getByLabelText("NIB"))).toContain("NIB sudah terdaftar");
+    expect(screen.getByLabelText<HTMLInputElement>("NIB").value).toBe(ISIAN.NIB);
+    expect(screen.queryByText(/Perusahaan dibuat/)).toBeNull();
+    cleanup();
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(409, "4090111") })} />);
+    await isiForm();
+    kirim();
+    await waitFor(() => { expect(screen.getByLabelText("Email HR pertama").getAttribute("aria-invalid")).toBe("true"); });
+    expect(deskripsi(screen.getByLabelText("Email HR pertama"))).toContain("Email HR sudah dipakai");
+    expect(screen.getByLabelText("NIB").getAttribute("aria-invalid")).toBeNull();
+  });
+
+  test("422 server → alert 'Isian tidak valid'; 403 4030101 → pesan muat ulang, bukan layar tanpa akses", async () => {
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(422, "4220001") })} />);
+    await isiForm();
+    kirim();
+    expect((await screen.findByRole("alert")).textContent).toContain("Isian tidak valid");
+    cleanup();
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(403, "4030101") })} />);
+    await isiForm();
+    kirim();
+    expect((await screen.findByRole("alert")).textContent).toContain("Permintaan tidak dapat diverifikasi");
+    expect(screen.queryByText("Tidak ada akses")).toBeNull();
+    expect(screen.getByLabelText("NIB")).toBeTruthy();
+  });
+
+  test("negatif: 403 non-Verifikator saat membuat → layar tanpa akses, tanpa data dan tanpa formulir", async () => {
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(403) })} />);
+    await isiForm();
+    kirim();
+    expect(await screen.findByText("Tidak ada akses")).toBeTruthy();
+    expect(screen.queryByLabelText("NIB")).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(document.body.textContent).not.toContain(ISIAN.NIB);
+    expect(document.body.textContent).not.toContain("PT Sintetis Sejahtera");
+  });
+
+  test("tidak ada NIB, NPWP, atau email di console pada galat", async () => {
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat: () => gagal(409, "4090110") })} />);
+    await isiForm();
+    kirim();
+    await waitFor(() => { expect(screen.getByLabelText("NIB").getAttribute("aria-invalid")).toBe("true"); });
+    for (const s of Object.values(konsol)) {
+      const teks = JSON.stringify(s.mock.calls);
+      for (const rahasia of [ISIAN.NIB, ISIAN.NPWP, ISIAN["Email HR pertama"]]) expect(teks).not.toContain(rahasia);
+    }
+  });
+
+  test("Batal menutup formulir tanpa memanggil API", async () => {
+    const buat = vi.fn();
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ buat })} />);
+    await isiForm();
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    expect(screen.queryByLabelText("NIB")).toBeNull();
+    expect(buat).not.toHaveBeenCalled();
+  });
+
+  test("klien: POST /bff/backoffice/v1/corporate-clients dengan badan terpangkas dan X-CSRF-Token; 201 diterima, 409 ke pesan dari kode", async () => {
+    const dipanggil: { url: string; method: string; csrf: string | null; body: string }[] = [];
+    let status = 201;
+    const fetchUji = (async (r: Request) => {
+      dipanggil.push({ url: new URL(r.url).pathname, method: r.method, csrf: r.headers.get("x-csrf-token"), body: await r.text() });
+      return new Response(
+        JSON.stringify(
+          status === 201
+            ? { response_code: "2010000", data: { corporate_client_id: ID, status: "active", corporate_member_id: ID, hr_account_id: ID, hr_invitation: "processing" } }
+            : { response_code: "4090111", response_description: "<b>x</b> hr@perusahaan.example" },
+        ),
+        { status, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+    const k = buatKlienPerusahaan("tok", { basis: "http://bff.test/bff", fetch: fetchUji });
+    const isian = { legal_name: " PT X ", nib: "1", npwp: "2", office_address: "a", office_phone: "3", hr_email: " hr@perusahaan.example " };
+    const h = await k.buat(isian);
+    expect(h).toMatchObject({ ok: true, data: { hr_invitation: "processing" } });
+    expect(dipanggil[0]).toMatchObject({ url: "/bff/backoffice/v1/corporate-clients", method: "POST", csrf: "tok" });
+    expect(JSON.parse(dipanggil[0]?.body ?? "")).toEqual({ ...isian, legal_name: "PT X", hr_email: "hr@perusahaan.example" });
+    status = 409;
+    const g = await k.buat(isian);
+    expect(g).toMatchObject({ ok: false, status: 409, kode: "4090111" });
+    expect(JSON.stringify(g)).not.toContain("hr@perusahaan.example");
   });
 });

@@ -15,6 +15,7 @@ import {
   type ItemAntreanPerusahaan,
   type JenisDokumen,
 } from "../../lib/perusahaan/model.ts";
+import { FormBuatPerusahaan } from "./FormBuatPerusahaan.tsx";
 import { formatWib } from "../../lib/verifikasi/model.ts";
 
 export interface PanelPerusahaanProps {
@@ -85,6 +86,7 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
   const [kodeAlasan, setKodeAlasan] = useState("");
   const [galatIsian, setGalatIsian] = useState<string | null>(null);
   const [terkunci, setTerkunci] = useState(false);
+  const [formBuat, setFormBuat] = useState(false);
   const uid = useId();
 
   const tutupPanel = useCallback(() => {
@@ -213,8 +215,41 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
         pembukaan dokumen dicatat. Semua waktu dalam WIB.
       </p>
       <p className="bo-bantu" data-testid="belum-tersedia">
-        Buat perusahaan, daftar perusahaan, dan anggota HR belum tersedia (menunggu backend F1-T105).
+        Daftar perusahaan dan anggota HR belum tersedia (menunggu endpoint backoffice untuk daftar).
       </p>
+      {formBuat ? (
+        <Card>
+          <FormBuatPerusahaan
+            api={api}
+            onGalatAkses={(g) => {
+              setFormBuat(false);
+              setItem(null);
+              setGalat(g);
+            }}
+            onBatal={() => {
+              setFormBuat(false);
+            }}
+            onSelesai={() => {
+              setFormBuat(false);
+              tutupPanel();
+              setInfo("Perusahaan dibuat dan berstatus Aktif. Undangan aktivasi untuk HR pertama sedang diproses.");
+              void muat();
+            }}
+          />
+        </Card>
+      ) : (
+        <div className="bo-aksi">
+          <Button
+            variant="primary"
+            onClick={() => {
+              setInfo(null);
+              setFormBuat(true);
+            }}
+          >
+            Buat perusahaan
+          </Button>
+        </div>
+      )}
       {info === null ? null : <Alert variant="success" title={info} />}
       {galat === null ? null : (
         <Alert variant="danger" title="Antrean gagal dimuat">

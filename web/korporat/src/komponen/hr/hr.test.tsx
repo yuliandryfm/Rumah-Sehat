@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import * as halamanDasbor from "../../app/(terautentikasi)/page.tsx";
 import * as halamanKelola from "../../app/(terautentikasi)/kelola-hr/page.tsx";
 import { buatKlienHr, galat, type AnggotaHr, type KlienHr } from "../../lib/hr/klien.ts";
 import { DasborHr } from "./DasborHr.tsx";
+import { PESAN_UNDANGAN_DIPROSES } from "../../lib/hr/model.ts";
 import { KelolaHr } from "./KelolaHr.tsx";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
@@ -34,6 +35,7 @@ function klien(o: Partial<KlienHr> = {}): KlienHr {
   return {
     daftar: () => ok(DAFTAR),
     nonaktifkan: (id) => ok({ corporate_member_id: id, status: "inactive" as const, identity_provider_synced: true }),
+    undang: () => ok({ status: "processing" }),
     ...o,
   };
 }
@@ -81,7 +83,7 @@ describe("DasborHr", () => {
 });
 
 describe("KelolaHr", () => {
-  test("daftar: status dengan teks, diri sendiri tanpa tombol, nonaktif tanpa tombol, Undang HR ditandai belum tersedia", async () => {
+  test("daftar: status dengan teks, diri sendiri tanpa tombol, nonaktif tanpa tombol, tombol Undang HR aktif", async () => {
     render(<KelolaHr csrfToken="t" klien={klien()} />);
     const tabel = await screen.findByRole("table");
     const baris = within(tabel).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
@@ -95,8 +97,8 @@ describe("KelolaHr", () => {
     expect(within(baris[3]).getByText("Nonaktif")).toBeDefined();
     expect(within(baris[3]).queryByRole("button")).toBeNull();
     const undang = screen.getByRole("button", { name: "Undang HR" });
-    expect(undang.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText(/Belum tersedia: undangan HR baru/)).toBeDefined();
+    expect(undang.hasAttribute("disabled")).toBe(false);
+    expect(document.body.textContent).not.toMatch(/Belum tersedia: undangan HR baru/);
   });
 
   test("nonaktifkan: konfirmasi dampak, Batal mengembalikan fokus ke tombol pemicu dan tidak memanggil API", async () => {
@@ -201,6 +203,136 @@ describe("KelolaHr", () => {
     render(<KelolaHr csrfToken="t" klien={klien({ daftar: () => gagal(503) })} />);
     expect((await screen.findByText("Daftar HR tidak dapat dimuat"))).toBeDefined();
     expect(screen.queryByRole("table")).toBeNull();
+  });
+});
+
+describe("Undang HR (US-1904 AC2)", () => {
+  const EMAIL = "hr.baru@perusahaan.example";
+  const konsol = { log: vi.spyOn(console, "log"), warn: vi.spyOn(console, "warn"), error: vi.spyOn(console, "error"), info: vi.spyOn(console, "info") };
+  beforeEach(() => {
+    for (const s of Object.values(konsol)) s.mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    for (const s of Object.values(konsol)) s.mockReset();
+  });
+
+  async function isiDanKirim(email: string) {
+    fireEvent.click(await screen.findByRole("button", { name: "Undang HR" }));
+    const kolom = await screen.findByLabelText("Email HR yang diundang");
+    fireEvent.change(kolom, { target: { value: email } });
+    fireEvent.click(screen.getByRole("button", { name: "Kirim undangan" }));
+  }
+
+  test("sukses: memanggil API dengan email, pesan tetap, formulir tertutup, daftar dimuat ulang", async () => {
+    const undang = vi.fn(() => ok({ status: "processing" }));
+    const daftar = vi.fn(() => ok(DAFTAR));
+    render(<KelolaHr csrfToken="t" klien={klien({ undang, daftar })} />);
+    await isiDanKirim(`  ${EMAIL} `);
+    expect(await screen.findByText(PESAN_UNDANGAN_DIPROSES)).toBeDefined();
+    expect(undang).toHaveBeenCalledWith(EMAIL);
+    expect(daftar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("form")).toBeNull();
+    expect(document.body.textContent).not.toContain(EMAIL);
+    expect(screen.getByText("Undangan diproses")).toBeDefined();
+  });
+
+  test("anti-enumerasi: dua jawaban 202 identik (email baru vs terpakai) menghasilkan DOM identik", async () => {
+    const hasil: string[] = [];
+    for (const email of ["baru@perusahaan.example", "hr@perusahaan.example"]) {
+      const { container } = render(<KelolaHr csrfToken="t" klien={klien({ undang: () => ok({ status: "processing" }) })} />);
+      await isiDanKirim(email);
+      await screen.findByText(PESAN_UNDANGAN_DIPROSES);
+      const salinan = container.cloneNode(true) as HTMLElement;
+      hasil.push(salinan.innerHTML);
+      cleanup();
+    }
+    expect(hasil[0]).toBe(hasil[1]);
+    expect(hasil[0]).not.toContain("baru@perusahaan.example");
+    expect(PESAN_UNDANGAN_DIPROSES).not.toMatch(/sudah (terdaftar|dipakai)/i);
+  });
+
+  test("validasi klien: email kosong atau salah bentuk → galat terhubung aria-describedby, API tidak dipanggil", async () => {
+    const undang = vi.fn();
+    render(<KelolaHr csrfToken="t" klien={klien({ undang })} />);
+    await isiDanKirim("bukan-email");
+    const kolom = screen.getByLabelText("Email HR yang diundang");
+    await waitFor(() => { expect(kolom.getAttribute("aria-invalid")).toBe("true"); });
+    const idGalat = kolom.getAttribute("aria-describedby") ?? "";
+    expect(idGalat.split(" ").some((i) => document.getElementById(i)?.textContent.includes("email yang valid"))).toBe(true);
+    expect(undang).not.toHaveBeenCalled();
+    fireEvent.change(kolom, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kirim undangan" }));
+    expect(undang).not.toHaveBeenCalled();
+  });
+
+  test("422 dari server → galat pada isian, formulir tetap terbuka", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(422, "4220001") })} />);
+    await isiDanKirim(EMAIL);
+    const kolom = await screen.findByLabelText("Email HR yang diundang");
+    await waitFor(() => { expect(kolom.getAttribute("aria-invalid")).toBe("true"); });
+    expect(document.body.textContent).toContain("Email tidak valid. Periksa penulisan email");
+    expect(screen.queryByText(PESAN_UNDANGAN_DIPROSES)).toBeNull();
+  });
+
+  test("403 4030101 (CSRF) → pesan muat ulang, bukan layar perusahaan belum aktif, tanpa pesan sukses", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(403, "4030101") })} />);
+    await isiDanKirim(EMAIL);
+    expect((await screen.findByRole("alert")).textContent).toContain("Permintaan tidak dapat diverifikasi");
+    expect(screen.queryByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeNull();
+    expect(screen.queryByText(PESAN_UNDANGAN_DIPROSES)).toBeNull();
+  });
+
+  test("401 4010002 → layar akun nonaktif; 401 lain → alihkan ke login", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(401, "4010002") })} />);
+    await isiDanKirim(EMAIL);
+    expect(await screen.findByRole("heading", { level: 1, name: "Akun nonaktif" })).toBeDefined();
+    cleanup();
+    const arahkan = vi.fn();
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(401, "4010001") })} arahkan={arahkan} />);
+    await isiDanKirim(EMAIL);
+    await waitFor(() => { expect(arahkan).toHaveBeenCalledWith("/auth/login"); });
+  });
+
+  test("403 perusahaan belum aktif dan 503 → layar akses / alert galat; email tidak muncul di console", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(403) })} />);
+    await isiDanKirim(EMAIL);
+    expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();
+    cleanup();
+    render(<KelolaHr csrfToken="t" klien={klien({ undang: () => gagal(503) })} />);
+    await isiDanKirim(EMAIL);
+    expect((await screen.findByRole("alert")).textContent).toContain("Layanan sedang tidak tersedia");
+    for (const s of Object.values(konsol)) expect(JSON.stringify(s.mock.calls)).not.toContain("perusahaan.example");
+  });
+
+  test("Batal menutup formulir tanpa memanggil API dan mengosongkan isian", async () => {
+    const undang = vi.fn();
+    render(<KelolaHr csrfToken="t" klien={klien({ undang })} />);
+    await isiDanKirim("bukan-email");
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    expect(screen.queryByLabelText("Email HR yang diundang")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Undang HR" }));
+    expect((await screen.findByLabelText<HTMLInputElement>("Email HR yang diundang")).value).toBe("");
+    expect(undang).not.toHaveBeenCalled();
+  });
+
+  test("klien: POST /bff/v1/corporate/member-invitations dengan body email dan X-CSRF-Token; 202 diterima", async () => {
+    const dipanggil: Request[] = [];
+    const badan: string[] = [];
+    const fetchTiruan = vi.fn(async (r: Request) => {
+      dipanggil.push(r);
+      badan.push(await r.clone().text());
+      return new Response(JSON.stringify({ response_code: "2020000", data: { status: "processing" } }), {
+        status: 202,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const api = buatKlienHr("csrf-uji", { basis: "http://localhost/bff", fetch: fetchTiruan as unknown as typeof fetch });
+    const h = await api.undang(EMAIL);
+    expect(h).toEqual({ ok: true, data: { status: "processing" } });
+    expect(dipanggil[0]?.method).toBe("POST");
+    expect(dipanggil[0]?.url).toBe("http://localhost/bff/v1/corporate/member-invitations");
+    expect(dipanggil[0]?.headers.get("x-csrf-token")).toBe("csrf-uji");
+    expect(JSON.parse(badan[0] ?? "{}")).toEqual({ email: EMAIL });
   });
 });
 

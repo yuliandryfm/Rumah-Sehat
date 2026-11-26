@@ -15,6 +15,8 @@ export type JenisDokumen = S["DocumentKindDto"];
 export type DetailPerusahaan = S["DetailDto"];
 export type DokumenUrl = S["DocumentUrlDto"];
 export type AlasanTolakPerusahaan = S["RejectionReasonDto"];
+export type PermintaanBuatPerusahaan = S["CorporateClientCreateRequest"];
+export type PerusahaanDibuat = S["CorporateClientCreatedDto"];
 
 export interface ItemAntreanPerusahaan {
   readonly corporate_client_id: string;
@@ -58,4 +60,37 @@ export function sumber(item: Pick<ItemAntreanPerusahaan, "origin" | "submission_
 /** NIB di daftar: hanya empat digit terakhir (wireframe C13 `************1234`); lengkap hanya di panel detail. */
 export function nibTermasking(nib: string): string {
   return `************${nib.slice(-4)}`;
+}
+
+/** Batas panjang isian sesuai kontrak `CorporateClientCreateRequest` (`openapi/backoffice.json`). */
+export const BATAS_FORM = { legal_name: 200, nib: 64, npwp: 64, office_address: 500, office_phone: 32, hr_email: 254 } as const;
+
+export type KolomForm = keyof PermintaanBuatPerusahaan;
+
+/**
+ * Validasi bantuan di klien (server tetap penentu, 422). Format resmi NIB/NPWP belum ditetapkan, jadi hanya
+ * memeriksa terisi, tanpa spasi, dan batas panjang; email hanya bentuk dasar.
+ */
+export function validasiForm(f: PermintaanBuatPerusahaan): Partial<Record<KolomForm, string>> {
+  const e: Partial<Record<KolomForm, string>> = {};
+  const wajib: Record<KolomForm, string> = {
+    legal_name: "Nama badan usaha",
+    nib: "NIB",
+    npwp: "NPWP",
+    office_address: "Alamat kantor",
+    office_phone: "Telepon kantor",
+    hr_email: "Email HR pertama",
+  };
+  for (const k of Object.keys(wajib) as KolomForm[]) {
+    const v = f[k].trim();
+    if (v === "") e[k] = `${wajib[k]} wajib diisi.`;
+    else if (v.length > BATAS_FORM[k]) e[k] = `${wajib[k]} maksimal ${String(BATAS_FORM[k])} karakter.`;
+  }
+  for (const k of ["nib", "npwp"] as const) {
+    if (e[k] === undefined && /\s/.test(f[k].trim())) e[k] = `${wajib[k]} tidak boleh mengandung spasi.`;
+  }
+  if (e.hr_email === undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.hr_email.trim())) {
+    e.hr_email = "Masukkan email yang valid, misalnya nama@perusahaan.example.";
+  }
+  return e;
 }
