@@ -524,7 +524,22 @@
         "profile",
         "web-origins"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-rs-backoffice-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "rs-backoffice-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "false",
+            "lightweight.claim": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "rs-portal-bff",

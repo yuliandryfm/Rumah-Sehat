@@ -73,6 +73,9 @@ KC_CONTAINER = env("KC_CHECK_KC_CONTAINER") if EMAIL_MODE == "relay" else None
 SES_CONFIG_SET = env("KC_CHECK_SES_CONFIG_SET") if EMAIL_MODE == "relay" else None
 RINCI = os.environ.get("KC_CHECK_RINCI") == "1"
 
+# Audiens API backend per realm (AUTH_*_AUDIENCE di konfigurasi rs-backend; CR-028).
+AUDIENS_API = {"admin": "rs-backoffice-api", "korporat": "rs-corporate-api"}
+
 KLIEN = {
     "pasien": {
         "client_id": "rs-pasien-mobile",
@@ -397,6 +400,18 @@ def cek_konfigurasi(realm):
             s = ADMIN.get(f"{realm}/clients/{c['id']}/client-secret")
             want = os.environ.get("RS_KC_" + cid.replace("rs-", "").replace("-", "_").upper() + "_SECRET")
             periksa(s.get("value") == want, f"[{realm}] klien {cid}: secret berasal dari variabel lingkungan saat penerapan")
+
+    # CR-028: token akses BFF wajib beraudiens API backend; tanpa mapper API menolak token (wrong_audience).
+    aud = AUDIENS_API.get(realm)
+    if aud is not None:
+        cid = KLIEN[realm]["client_id"]
+        c = next((c for c in klien if c["clientId"] == cid), {})
+        pm = c.get("protocolMappers") or []
+        am = [m for m in pm if m.get("protocolMapper") == "oidc-audience-mapper"]
+        cfg = (am[0].get("config") or {}) if len(am) == 1 else {}
+        periksa(len(pm) == 1 and len(am) == 1 and cfg.get("included.custom.audience") == aud
+                and cfg.get("access.token.claim") == "true" and cfg.get("id.token.claim") == "false",
+                f"[{realm}] klien {cid}: satu audience mapper ke {aud}, hanya di access token (CR-028)", str(cfg))
 
 
 # ------------------------------------------------------------------------------------- pemeriksaan perilaku

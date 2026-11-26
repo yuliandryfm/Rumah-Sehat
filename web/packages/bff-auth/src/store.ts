@@ -78,9 +78,19 @@ export interface ValkeyBackendOptions {
   readonly timeoutMs?: number;
 }
 
+/** Valkey tidak siap dalam batas waktu; penyimpan sesi tidak tersedia (dijawab 503 oleh rute BFF). */
+export class BackendUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackendUnavailableError";
+  }
+}
+
 /** Implementasi `SessionBackend` di atas Valkey/ioredis. */
 export class ValkeyBackend implements SessionBackend {
   readonly #redis: Redis;
+  readonly #timeoutMs: number;
+  #menunggu: Promise<void> | null = null;
 
   constructor(options: ValkeyBackendOptions) {
     const url = options.url;
@@ -89,6 +99,7 @@ export class ValkeyBackend implements SessionBackend {
       throw new RangeError("nomor database Valkey tidak sah");
     }
     const timeout = options.timeoutMs ?? 5_000;
+    this.#timeoutMs = timeout;
     this.#redis = new Redis({
       host: url.hostname.replace(/^\[|\]$/g, ""),
       port: url.port === "" ? 6379 : Number(url.port),
@@ -107,11 +118,63 @@ export class ValkeyBackend implements SessionBackend {
     this.#redis.on("error", () => undefined);
   }
 
+  /**
+   * Menunggu koneksi siap (batas `timeoutMs`). Permintaan pertama setelah start dan permintaan serentak
+   * berbagi satu penantian: tanpa ini perintah yang tiba saat status `connecting` langsung gagal
+   * ("Stream isn't writeable and enableOfflineQueue options is false", CR-028). Bila tetap tidak siap,
+   * dilempar `BackendUnavailableError` (rute BFF menjawabnya 503, bukan 500).
+   */
   async #ready(): Promise<Redis> {
-    if (this.#redis.status === "wait") {
-      await this.#redis.connect();
+    if (this.#redis.status === "ready") {
+      return this.#redis;
     }
+    this.#menunggu ??= this.#tungguSiap().finally(() => {
+      this.#menunggu = null;
+    });
+    await this.#menunggu;
     return this.#redis;
+  }
+
+  async #tungguSiap(): Promise<void> {
+    const r = this.#redis;
+    let timer: NodeJS.Timeout | undefined;
+    const habis = new Promise<never>((_, tolak) => {
+      timer = setTimeout(() => {
+        tolak(new BackendUnavailableError("koneksi Valkey belum siap sebelum batas waktu"));
+      }, this.#timeoutMs);
+    });
+    const siap = new Promise<void>((selesai, tolak) => {
+      const gagal = (): void => {
+        tolak(new BackendUnavailableError("koneksi Valkey gagal"));
+      };
+      if (r.status === "wait") {
+        r.connect().then(() => { selesai(); }, gagal);
+        return;
+      }
+      if (r.status === "end") {
+        gagal();
+        return;
+      }
+      if (r.status === "ready") {
+        selesai();
+        return;
+      }
+      const bersih = (): void => {
+        r.off("ready", berhasil);
+        r.off("end", gagal);
+      };
+      const berhasil = (): void => {
+        bersih();
+        selesai();
+      };
+      r.once("ready", berhasil);
+      r.once("end", () => { bersih(); gagal(); });
+    });
+    try {
+      await Promise.race([siap, habis]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async createHash(key: string, fields: Readonly<Record<string, string>>, ttlMs: number): Promise<boolean> {
