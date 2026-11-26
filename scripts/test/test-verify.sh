@@ -413,7 +413,9 @@ blok_lisensi() {
   mkdir -p "$r/crates/zz-lisensi-uji/src"
   printf '[package]\nname = "zz-lisensi-uji"\nversion = "0.1.0"\nedition = "2024"\nlicense = "GPL-3.0-only"\n\n[dependencies]\n' >"$r/crates/zz-lisensi-uji/Cargo.toml"
   printf '//! Fixture lisensi di luar daftar izin.\n' >"$r/crates/zz-lisensi-uji/src/lib.rs"
-  (cd "$r" && cargo metadata --offline --format-version 1 >/dev/null)
+  # Tanpa --offline: kelompok ini dapat berjalan sendirian (job CI) dengan cache registry kosong; sebelum
+  # pembagian kelompok cache itu sudah dihangatkan oleh fixture lain (KEPUTUSAN-340). Butuh jaringan, seperti rentan.
+  (cd "$r" && cargo metadata --format-version 1 >/dev/null)
   commit_semua "$r" "fixture: crate workspace berlisensi GPL tanpa publish = false"
   k="$(verify_di "$r" "$KERJA/lisensi.log")"
   merah "lisensi-di-luar-daftar-izin" "$k" "$KERJA/lisensi.log" "cargo-deny"
