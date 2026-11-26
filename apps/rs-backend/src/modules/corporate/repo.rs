@@ -434,24 +434,62 @@ pub(super) async fn insert_self_registered_client(
 
 // ----- F1-T102: dokumen NIB, NPWP, dan bukti kewenangan oleh HR (US-1901 AC2) -----
 
-/// Status dan putaran pengajuan perusahaan yang belum dihapus lunak.
-pub(super) struct ClientStatusRow {
+/// Profil perusahaan untuk halaman status HR (US-1901 AC6, TD-47 b). Sengaja tanpa `Debug` (memuat NPWP,
+/// Terbatas); service membungkus NPWP dengan `foundation::Sensitive` segera setelah dibaca.
+pub(super) struct ClientProfileRow {
+    pub(super) legal_name: String,
+    pub(super) nib: String,
+    pub(super) npwp: String,
+    pub(super) office_address: String,
+    pub(super) office_phone: String,
     pub(super) status: String,
     pub(super) submission_round: i32,
+    pub(super) submitted_at: OffsetDateTime,
 }
 
-/// Status perusahaan (PK `corporate_client`); `None` bila tidak ada atau terhapus lunak.
-pub(super) async fn client_status(
-    pool: &PgPool,
+/// Profil perusahaan `corporate_client_id` yang belum dihapus lunak (PK). Pemanggil selalu memberi ID dari
+/// cakupan sesi HR (`CorporateScope`), tidak pernah dari isi permintaan. `executor` boleh pool atau koneksi
+/// transaksi yang sudah mengunci baris.
+pub(super) async fn client_profile<'e, E>(
+    executor: E,
     corporate_client_id: Uuid,
-) -> Result<Option<ClientStatusRow>, sqlx::Error> {
+) -> Result<Option<ClientProfileRow>, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     sqlx::query_as!(
-        ClientStatusRow,
-        "SELECT status, submission_round FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL",
+        ClientProfileRow,
+        "SELECT legal_name, nib, npwp, office_address, office_phone, status, submission_round, submitted_at \
+         FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL",
         corporate_client_id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
+}
+
+/// Pengajuan ulang (US-1902 AC3, F1-T102b): "Ditolak" putaran `submission_round` kembali "Menunggu verifikasi"
+/// putaran berikutnya dengan `submitted_at` baru (antrean urut pengajuan terakhir). Jumlah baris berubah (0 =
+/// baris tidak lagi berada di keadaan yang dikunci pemanggil).
+pub(super) async fn resubmit_client(
+    conn: &mut PgConnection,
+    corporate_client_id: Uuid,
+    submission_round: i32,
+    actor_id: Uuid,
+    now: OffsetDateTime,
+) -> Result<u64, sqlx::Error> {
+    let r = sqlx::query!(
+        "UPDATE app.corporate_client \
+         SET status = 'pending_verification', submission_round = submission_round + 1, submitted_at = $4, \
+             updated_at = $4, updated_by = $3 \
+         WHERE id = $1 AND submission_round = $2 AND status = 'rejected' AND deleted_at IS NULL",
+        corporate_client_id,
+        submission_round,
+        actor_id,
+        now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(r.rows_affected())
 }
 
 /// Dokumen aktif perusahaan.

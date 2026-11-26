@@ -460,7 +460,11 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
     let ready = w.queue_ids(&verifier, None).await;
     assert!(ready.contains(&full_s));
     assert!(!ready.contains(&partial_s) && !ready.contains(&none_s));
-    assert_eq!(w.queue_ids(&verifier, Some("ready")).await, ready);
+    // `readiness=ready` = bawaan. Dibandingkan per anggota, bukan seluruh daftar: test lain di berkas ini berjalan
+    // bersamaan dan dapat menambah pengajuan lengkap di antara dua pembacaan antrean.
+    let explicit = w.queue_ids(&verifier, Some("ready")).await;
+    assert!(explicit.contains(&full_s));
+    assert!(!explicit.contains(&partial_s) && !explicit.contains(&none_s));
     // Belum lengkap: yang kurang dokumen, terlama dulu.
     let incomplete = w.queue_ids(&verifier, Some("incomplete")).await;
     assert!(incomplete.contains(&partial_s) && incomplete.contains(&none_s));

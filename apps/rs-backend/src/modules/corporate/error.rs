@@ -40,6 +40,13 @@ pub const DOCUMENTS_CHANGED: ResponseCode = ResponseCode::new(
     "Dokumen perusahaan berubah sejak Anda membukanya. Muat ulang detail lalu putuskan kembali",
 );
 
+/// `4090115`: HR mengajukan ulang pengajuan yang ditolak padahal NIB, NPWP, dan bukti kewenangan belum lengkap
+/// (US-1902 AC3, F1-T102b; pola keputusan user Q8: antrean hanya memuat pengajuan lengkap).
+pub const RESUBMISSION_DOCUMENTS_INCOMPLETE: ResponseCode = ResponseCode::new(
+    "4090115",
+    "Lengkapi dokumen NIB, NPWP, dan bukti kewenangan sebelum mengajukan ulang",
+);
+
 /// `4090106`: teks persetujuan pendaftaran perusahaan yang dikirim bukan versi berlaku, atau butirnya bukan milik
 /// versi berlaku (US-104 AC3, US-1901 AC1). Klien memuat ulang teks lalu meminta persetujuan lagi. Tidak
 /// berkaitan dengan keberadaan akun atau NIB (bukan pembeda anti-enumerasi).
@@ -74,6 +81,10 @@ pub enum CorporateError {
     DocumentsIncomplete,
     /// Dokumen aktif berbeda dari versi yang dilihat Verifikator saat memutuskan (409, F1-T102).
     DocumentsChanged,
+    /// Pengajuan ulang atas perusahaan yang tidak berstatus Ditolak (409 `4090001`, US-1902 AC3, F1-T102b).
+    NotResubmittable,
+    /// Pengajuan ulang tanpa ketiga dokumen wajib (409 `4090115`, F1-T102b).
+    ResubmissionIncomplete,
     /// Batas laju pendaftaran terlampaui (429).
     RateLimited,
     /// Galat berkas dari modul `platform`.
@@ -98,6 +109,10 @@ impl fmt::Display for CorporateError {
             Self::DocumentsNotManageable => f.write_str("dokumen tidak dapat dikelola"),
             Self::DocumentsIncomplete => f.write_str("dokumen belum lengkap"),
             Self::DocumentsChanged => f.write_str("dokumen berubah sejak dilihat"),
+            Self::NotResubmittable => f.write_str("pengajuan tidak dapat diajukan ulang"),
+            Self::ResubmissionIncomplete => {
+                f.write_str("dokumen belum lengkap untuk pengajuan ulang")
+            }
             Self::RateLimited => f.write_str("batas laju"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::Database => f.write_str("database tidak tersedia"),
@@ -122,6 +137,8 @@ impl ApiError for CorporateError {
             Self::DocumentsNotManageable => DOCUMENTS_NOT_MANAGEABLE,
             Self::DocumentsIncomplete => DOCUMENTS_INCOMPLETE,
             Self::DocumentsChanged => DOCUMENTS_CHANGED,
+            Self::NotResubmittable => codes::STATUS_CONFLICT,
+            Self::ResubmissionIncomplete => RESUBMISSION_DOCUMENTS_INCOMPLETE,
             Self::RateLimited => codes::RATE_LIMITED,
             Self::File(e) => e.response_code(),
             Self::Database => codes::UNAVAILABLE,
@@ -156,6 +173,8 @@ mod tests {
             (CorporateError::DocumentsNotManageable, "4090112"),
             (CorporateError::DocumentsIncomplete, "4090113"),
             (CorporateError::DocumentsChanged, "4090114"),
+            (CorporateError::NotResubmittable, "4090001"),
+            (CorporateError::ResubmissionIncomplete, "4090115"),
             (CorporateError::RateLimited, "4290001"),
             (CorporateError::File(FileError::NotFound), "4040001"),
             (CorporateError::Database, "5030001"),

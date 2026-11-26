@@ -143,6 +143,14 @@ pub(super) fn may_manage_documents(status: CorporateClientStatus) -> bool {
     )
 }
 
+/// Pengajuan ulang oleh HR hanya sah dari status "Ditolak" (US-1902 AC3 "dapat memperbaiki serta mengajukan
+/// ulang", TD-47, F1-T102b): perusahaan Menunggu verifikasi belum diputuskan, Aktif sudah disetujui, Nonaktif
+/// sudah ditolak middleware. Pengajuan ulang menaikkan `submission_round` sehingga keputusan putaran baru tidak
+/// terhalang keputusan putaran lama (UQ `(corporate_client_id, submission_round)`).
+pub(super) fn may_resubmit(status: CorporateClientStatus) -> bool {
+    status == CorporateClientStatus::Rejected
+}
+
 /// Kuota slot unggah dokumen per akun HR per jam (usulan teknis F1-T102; angka bisnis `[TIDAK DIKETAHUI]`):
 /// cukup untuk tiga jenis dengan beberapa percobaan ulang, jauh di bawah yang dibutuhkan penyalahgunaan.
 pub(super) const DOCUMENT_SLOTS_PER_WINDOW: i64 = 30;
@@ -335,5 +343,18 @@ mod tests {
         assert!(may_manage_documents(CorporateClientStatus::Rejected));
         assert!(!may_manage_documents(CorporateClientStatus::Active));
         assert!(!may_manage_documents(CorporateClientStatus::Inactive));
+    }
+
+    // trace: US-1902 AC3, TD-47 (pengajuan ulang hanya dari Ditolak)
+    #[test]
+    fn only_rejected_submissions_can_be_resubmitted() {
+        assert!(may_resubmit(CorporateClientStatus::Rejected));
+        for s in [
+            CorporateClientStatus::PendingVerification,
+            CorporateClientStatus::Active,
+            CorporateClientStatus::Inactive,
+        ] {
+            assert!(!may_resubmit(s), "{s}");
+        }
     }
 }

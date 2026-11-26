@@ -381,9 +381,35 @@ pub struct DocumentStatusView {
     pub uploaded_at: Option<OffsetDateTime>,
 }
 
+/// Profil perusahaan pemanggil untuk halaman status HR (US-1901 AC6, TD-47 b, F1-T102b): hanya perusahaan dari
+/// cakupan sesi. NPWP Terbatas (DD A20): dibungkus [`Sensitive`], `Debug` manual tanpa isian.
+#[derive(Clone)]
+pub struct CompanyProfileView {
+    /// Nama badan usaha.
+    pub legal_name: String,
+    /// NIB.
+    pub nib: String,
+    /// NPWP (Terbatas: tidak pernah ke log, audit, atau pesan galat; hanya ke HR perusahaan itu sendiri).
+    pub npwp: Sensitive<String>,
+    /// Alamat kantor.
+    pub office_address: String,
+    /// Telepon kantor.
+    pub office_phone: String,
+    /// Waktu pengajuan terakhir (naik saat diajukan ulang).
+    pub submitted_at: OffsetDateTime,
+}
+
+impl fmt::Debug for CompanyProfileView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompanyProfileView").finish_non_exhaustive()
+    }
+}
+
 /// Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6, Q8).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct DocumentsOverviewView {
+    /// Profil perusahaan pemanggil (US-1901 AC6, F1-T102b).
+    pub company: CompanyProfileView,
     /// `pending_verification` | `rejected`.
     pub status: &'static str,
     /// Putaran pengajuan berjalan.
@@ -427,6 +453,17 @@ pub async fn confirm_corporate_document(
     upload_slot_id: Uuid,
 ) -> Result<DocumentsOverviewView, CorporateError> {
     documents::confirm(deps, scope, route, document_kind, upload_slot_id).await
+}
+
+/// US-1902 AC3 (F1-T102b, TD-47 a): HR perusahaan Ditolak mengajukan ulang; status kembali "Menunggu
+/// verifikasi" putaran berikutnya dan pengajuan masuk antrean lagi. Dokumen wajib lengkap (`4090115`);
+/// perusahaan Menunggu verifikasi `4090001`, Aktif `4090112`. E-10 `corporate_verification_resubmitted`.
+pub async fn resubmit_corporate_verification(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    documents::resubmit(deps, scope, route).await
 }
 
 /// URL unduh berumur pendek untuk dokumen aktif `document_kind` perusahaan pemanggil (E-12 dulu).
