@@ -5,6 +5,7 @@ type S = KorporatComponents["schemas"];
 export type AnggotaHr = S["HrMemberDto"];
 export type StatusHr = S["HrStatusDto"];
 export type HasilNonaktif = S["HrDeactivatedDto"];
+export type HasilUndangan = S["HrInvitationAcceptedDto"];
 
 export interface Gagal {
   readonly ok: false;
@@ -38,6 +39,7 @@ const PESAN_STATUS: Record<number, string> = {
   401: "Sesi Anda berakhir. Masuk lagi untuk melanjutkan.",
   403: "Perusahaan Anda belum aktif, sehingga menu ini belum dapat dipakai.",
   404: "Data tidak ditemukan.",
+  422: "Email tidak valid. Periksa penulisan email lalu coba lagi.",
   429: "Terlalu banyak permintaan. Coba lagi sebentar lagi.",
   503: "Layanan sedang tidak tersedia. Coba lagi nanti.",
 };
@@ -53,6 +55,8 @@ export function galat(status: number, badan: unknown): Gagal {
 export interface KlienHr {
   daftar(): Promise<Hasil<readonly AnggotaHr[]>>;
   nonaktifkan(id: string): Promise<Hasil<HasilNonaktif>>;
+  /** Jawaban 202 selalu `{status: processing}`, juga untuk email yang sudah terdaftar (anti-enumerasi, KEPUTUSAN-306). */
+  undang(email: string): Promise<Hasil<HasilUndangan>>;
 }
 
 export interface OpsiKlien {
@@ -92,5 +96,7 @@ export function buatKlienHr(csrfToken: string, opsi: OpsiKlien = {}): KlienHr {
         c.POST("/v1/corporate/members/{corporate_member_id}/deactivate", { params: { path: { corporate_member_id: id } } }),
         (d) => d as HasilNonaktif,
       ),
+    undang: (email) =>
+      kerjakan(c.POST("/v1/corporate/member-invitations", { body: { email } }), (d) => d as HasilUndangan),
   };
 }

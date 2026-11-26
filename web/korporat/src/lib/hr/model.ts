@@ -27,3 +27,19 @@ export function namaTampil(a: AnggotaHr): string {
   const nama = a.full_name?.trim();
   return nama === undefined || nama === "" ? a.email : nama;
 }
+
+/**
+ * Pesan tunggal setelah undangan diterima (202). Server menjawab sama untuk email baru dan email yang sudah
+ * terdaftar (anti-enumerasi, KEPUTUSAN-306): UI tidak boleh membedakan keduanya dan tidak menyebut email.
+ */
+export const PESAN_UNDANGAN_DIPROSES =
+  "Undangan sedang diproses. Bila email valid, penerima akan menerima tautan aktivasi yang berlaku 24 jam.";
+
+/** Batas panjang email di kontrak (`maxLength` 254). */
+export const EMAIL_MAKS = 254;
+
+/** Bantuan di klien saja: bentuk dasar `x@y.z` tanpa spasi. Server tetap penentu validitas (422). */
+export function emailTampakValid(email: string): boolean {
+  const e = email.trim();
+  return e.length > 0 && e.length <= EMAIL_MAKS && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
