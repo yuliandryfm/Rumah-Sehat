@@ -10,7 +10,7 @@
 //! pernah dicatat (`Debug` manual menyamarkannya, KEPUTUSAN-122).
 
 use super::api::{
-    self as corporate, CorporateDocuments, CorporateError, DocumentStatusView,
+    self as corporate, CompanyProfileView, CorporateDocuments, CorporateError, DocumentStatusView,
     DocumentsOverviewView,
 };
 use super::policy;
@@ -38,6 +38,7 @@ use utoipa_axum::routes;
 const SLOT_ROUTE: &str = "/v1/corporate/document-upload-slots";
 const CONFIRM_ROUTE: &str = "/v1/corporate/documents";
 const DOWNLOAD_ROUTE: &str = "/v1/corporate/document-download-urls";
+const RESUBMIT_ROUTE: &str = "/v1/corporate/verification-resubmissions";
 
 pub(super) fn router() -> PolicyRouter<AppState> {
     PolicyRouter::new()
@@ -45,6 +46,7 @@ pub(super) fn router() -> PolicyRouter<AppState> {
         .routes(policy::hr_documents(), routes!(create_slot))
         .routes(policy::hr_documents(), routes!(confirm_document))
         .routes(policy::hr_documents(), routes!(download_url))
+        .routes(policy::hr_documents(), routes!(resubmit))
 }
 
 fn deps(state: &AppState) -> CorporateDocuments<'_> {
@@ -136,9 +138,51 @@ impl DocumentStatusDto {
     }
 }
 
+/// Profil perusahaan pemanggil (US-1901 AC6, F1-T102b): hanya perusahaan dari keanggotaan sesi. NPWP Terbatas
+/// (DD A20): hanya untuk HR perusahaan itu sendiri; `Debug` manual tanpa isian.
+#[derive(Serialize, ToSchema)]
+pub(super) struct CompanyProfileDto {
+    /// Nama badan usaha.
+    #[schema(example = "PT Contoh Sehat Sejahtera")]
+    legal_name: String,
+    /// NIB (13 angka).
+    #[schema(example = "1234567890123")]
+    nib: String,
+    /// NPWP badan (16 angka).
+    #[schema(example = "0123456789012345")]
+    npwp: String,
+    /// Alamat kantor.
+    office_address: String,
+    /// Telepon kantor.
+    office_phone: String,
+    /// Waktu pengajuan terakhir (berubah saat diajukan ulang).
+    #[schema(format = DateTime)]
+    submitted_at: String,
+}
+
+impl fmt::Debug for CompanyProfileDto {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompanyProfileDto").finish_non_exhaustive()
+    }
+}
+
+impl CompanyProfileDto {
+    fn from_view(v: CompanyProfileView) -> Result<Self, DtoError> {
+        Ok(Self {
+            legal_name: v.legal_name,
+            nib: v.nib,
+            npwp: v.npwp.into_inner(),
+            office_address: v.office_address,
+            office_phone: v.office_phone,
+            submitted_at: ts(v.submitted_at)?,
+        })
+    }
+}
+
 /// Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).
 #[derive(Debug, Serialize, ToSchema)]
 pub(super) struct DocumentsOverviewDto {
+    company: CompanyProfileDto,
     status: VerificationStatusDto,
     /// Putaran pengajuan berjalan.
     #[schema(example = 1, minimum = 1)]
@@ -155,6 +199,7 @@ pub(super) struct DocumentsOverviewDto {
 impl DocumentsOverviewDto {
     fn from_view(v: DocumentsOverviewView) -> Result<Self, DtoError> {
         Ok(Self {
+            company: CompanyProfileDto::from_view(v.company)?,
             status: VerificationStatusDto::parse(v.status)?,
             submission_round: v.submission_round,
             rejection_reason: v.rejection_reason,
@@ -395,7 +440,8 @@ fn body_error(e: &JsonRejection) -> CorporateError {
     }
 }
 
-/// Status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).
+/// Profil perusahaan, status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil
+/// (US-1901 AC6).
 #[utoipa::path(
     get,
     path = "/v1/corporate/documents",
@@ -403,7 +449,7 @@ fn body_error(e: &JsonRejection) -> CorporateError {
     operation_id = "corporate_document_list",
     security(("bearer" = [])),
     responses(
-        (status = 200, description = "Status dokumen perusahaan pemanggil.", body = DocumentsOverviewEnvelope, content_type = "application/json"),
+        (status = 200, description = "Profil perusahaan pemanggil, status verifikasi, alasan penolakan, dan status dokumen.", body = DocumentsOverviewEnvelope, content_type = "application/json"),
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 409, description = "4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
@@ -577,6 +623,37 @@ async fn download_url(
     }
 }
 
+/// Mengajukan ulang pengajuan yang ditolak (US-1902 AC3): setelah HR memperbaiki dokumen, status kembali
+/// "Menunggu verifikasi" putaran berikutnya dan pengajuan masuk antrean Verifikator lagi. Tanpa isi permintaan:
+/// perusahaan selalu dari keanggotaan sesi.
+#[utoipa::path(
+    post,
+    path = "/v1/corporate/verification-resubmissions",
+    tag = "corporate-documents",
+    operation_id = "corporate_verification_resubmit",
+    security(("bearer" = [])),
+    responses(
+        (status = 200, description = "Pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu).", body = DocumentsOverviewEnvelope, content_type = "application/json"),
+        (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn resubmit(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    scope: CorporateScope,
+) -> Response {
+    let r = corporate::resubmit_corporate_verification(&deps(&state), &scope, RESUBMIT_ROUTE)
+        .await
+        .and_then(|v| DocumentsOverviewDto::from_view(v).map_err(dto_error));
+    match r {
+        Ok(d) => no_store(ApiSuccess(Success::ok(d).with_correlation_id(cid)).into_response()),
+        Err(e) => fail(&state, cid, e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -586,9 +663,9 @@ mod tests {
     fn route_constants_match_registered_paths_and_every_route_is_corporate_hr() {
         let router = router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 4);
+        assert_eq!(entries.len(), 5);
         let paths: Vec<String> = entries.iter().map(|((_, p), _)| p.to_string()).collect();
-        for r in [SLOT_ROUTE, CONFIRM_ROUTE, DOWNLOAD_ROUTE] {
+        for r in [SLOT_ROUTE, CONFIRM_ROUTE, DOWNLOAD_ROUTE, RESUBMIT_ROUTE] {
             assert!(paths.iter().any(|p| p == r), "{r}");
         }
         for ((_, path), policy) in entries {
@@ -623,6 +700,19 @@ mod tests {
             size_bytes: 1,
         };
         assert!(!format!("{url:?}").contains("rahasia"));
+        let profile = CompanyProfileDto {
+            legal_name: "PT Rahasia".to_string(),
+            nib: "1234567890123".to_string(),
+            npwp: "0123456789012345".to_string(),
+            office_address: "Jl. Rahasia".to_string(),
+            office_phone: "021".to_string(),
+            submitted_at: "2030-01-01T00:00:00Z".to_string(),
+        };
+        let d = format!("{profile:?}");
+        assert!(
+            !d.contains("0123456789012345") && !d.contains("Rahasia"),
+            "{d}"
+        );
     }
 
     #[test]

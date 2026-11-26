@@ -141,6 +141,15 @@ const PRODUCTION_CASES: &[Case] = &[
             body: Some(document_download_body),
         },
     },
+    // F1-T102b: pengajuan ulang setelah ditolak. Tanpa parameter path dan tanpa isi: perusahaan selalu dari
+    // keanggotaan pemanggil. Perusahaan fixture Aktif (`409` `4090112`) atau Menunggu verifikasi (`409`
+    // `4090001`), jadi pembanding positif tidak mengubah data; skenario perusahaan Ditolak (A mengajukan ulang, B
+    // tidak tersentuh) ada di `corporate_resubmission.rs`.
+    Case {
+        method: "POST",
+        path: "/v1/corporate/verification-resubmissions",
+        probe: Probe::Hr { body: None },
+    },
 ];
 
 /// Isi permintaan slot unggah dokumen yang sah.

@@ -1,6 +1,8 @@
 //! Aturan murni verifikasi perusahaan (F1-T104, US-1902), tanpa I/O.
 
 use authz::CorporateClientStatus;
+use foundation::Uuid;
+use time::OffsetDateTime;
 
 /// Konteks `reason_code` penolakan perusahaan (CHECK `ck_reason_code_context`, migrasi
 /// `20261124200000_platform_reason_code_corporate_rejection.sql`).
@@ -143,6 +145,14 @@ pub(super) fn may_manage_documents(status: CorporateClientStatus) -> bool {
     )
 }
 
+/// Pengajuan ulang oleh HR hanya sah dari status "Ditolak" (US-1902 AC3 "dapat memperbaiki serta mengajukan
+/// ulang", TD-47, F1-T102b): perusahaan Menunggu verifikasi belum diputuskan, Aktif sudah disetujui, Nonaktif
+/// sudah ditolak middleware. Pengajuan ulang menaikkan `submission_round` sehingga keputusan putaran baru tidak
+/// terhalang keputusan putaran lama (UQ `(corporate_client_id, submission_round)`).
+pub(super) fn may_resubmit(status: CorporateClientStatus) -> bool {
+    status == CorporateClientStatus::Rejected
+}
+
 /// Kuota slot unggah dokumen per akun HR per jam (usulan teknis F1-T102; angka bisnis `[TIDAK DIKETAHUI]`):
 /// cukup untuk tiga jenis dengan beberapa percobaan ulang, jauh di bawah yang dibutuhkan penyalahgunaan.
 pub(super) const DOCUMENT_SLOTS_PER_WINDOW: i64 = 30;
@@ -183,9 +193,84 @@ pub(super) fn parse_origin(code: &str) -> Option<&'static str> {
     }
 }
 
+/// Kursor antrean Verifikator: posisi `(submitted_at, id)` item terakhir halaman sebelumnya, dibawa utuh di
+/// dalam kursor (review T1 CR-035, DBA 3). Kursor lama yang hanya berisi ID membaca ulang `submitted_at`
+/// perusahaan itu saat halaman berikutnya diminta; bila perusahaan tersebut sempat diputuskan lalu diajukan
+/// ulang (`submitted_at` baru), pengajuan lain di antara dua waktu itu terlewati. Bagi klien, kursor ini
+/// tidak bermakna (opaque): cukup dikirim kembali apa adanya dari `meta.next_cursor`.
+///
+/// Bentuk teks: `<mikrodetik epoch Unix>.<UUID ber-tanda-hubung>`. PostgreSQL menyimpan `timestamptz`
+/// dalam mikrodetik, jadi pembulatan ke mikrodetik tidak menggeser posisi.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QueueCursor {
+    pub(super) submitted_at: OffsetDateTime,
+    pub(super) id: Uuid,
+}
+
+impl QueueCursor {
+    /// Posisi item terakhir halaman.
+    pub(super) const fn after(submitted_at: OffsetDateTime, id: Uuid) -> Self {
+        Self { submitted_at, id }
+    }
+
+    /// Teks kursor untuk `meta.next_cursor`.
+    pub(super) fn encode(&self) -> String {
+        format!(
+            "{}.{}",
+            self.submitted_at.unix_timestamp_nanos() / 1_000,
+            self.id.hyphenated()
+        )
+    }
+
+    /// Membaca kursor dari klien; `None` bila bentuknya tidak sah (termasuk kursor lama berisi UUID saja).
+    pub fn parse(text: &str) -> Option<Self> {
+        let (micros, id) = text.split_once('.')?;
+        if micros.is_empty() || micros.len() > 19 || !micros.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        if id.len() != 36 {
+            return None;
+        }
+        let micros: i64 = micros.parse().ok()?;
+        let nanos = i128::from(micros).checked_mul(1_000)?;
+        let submitted_at = OffsetDateTime::from_unix_timestamp_nanos(nanos).ok()?;
+        let id = Uuid::parse_str(id).ok()?;
+        Some(Self { submitted_at, id })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // trace: US-1902 AC1 (antrean berhalaman), review T1 CR-035 DBA 3 (kursor membawa posisi utuh)
+    #[test]
+    fn queue_cursor_round_trips_and_rejects_malformed_text() {
+        let at = OffsetDateTime::from_unix_timestamp_nanos(1_795_000_000_123_456_000).unwrap();
+        let id = Uuid::parse_str("0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b").unwrap();
+        let c = QueueCursor::after(at, id);
+        let text = c.encode();
+        assert_eq!(
+            text,
+            "1795000000123456.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+        );
+        assert_eq!(QueueCursor::parse(&text), Some(c));
+        for bad in [
+            "",
+            "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "bukan-kursor",
+            ".0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "-1.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "+1.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "1795000000123456.0193a1b2c3d47e5f8a9b0c1d2e3f4a5b",
+            "1795000000123456.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5z",
+            "99999999999999999999.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "9223372036854775807.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+            "1.2.0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+        ] {
+            assert_eq!(QueueCursor::parse(bad), None, "{bad:?}");
+        }
+    }
 
     // trace: US-1902 AC4 (keputusan hanya atas pengajuan yang masih menunggu)
     #[test]
@@ -335,5 +420,18 @@ mod tests {
         assert!(may_manage_documents(CorporateClientStatus::Rejected));
         assert!(!may_manage_documents(CorporateClientStatus::Active));
         assert!(!may_manage_documents(CorporateClientStatus::Inactive));
+    }
+
+    // trace: US-1902 AC3, TD-47 (pengajuan ulang hanya dari Ditolak)
+    #[test]
+    fn only_rejected_submissions_can_be_resubmitted() {
+        assert!(may_resubmit(CorporateClientStatus::Rejected));
+        for s in [
+            CorporateClientStatus::PendingVerification,
+            CorporateClientStatus::Active,
+            CorporateClientStatus::Inactive,
+        ] {
+            assert!(!may_resubmit(s), "{s}");
+        }
     }
 }

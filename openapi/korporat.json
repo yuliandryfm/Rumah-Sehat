@@ -243,11 +243,11 @@
         "tags": [
           "corporate-documents"
         ],
-        "summary": "Status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).",
+        "summary": "Profil perusahaan, status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil\n(US-1901 AC6).",
         "operationId": "corporate_document_list",
         "responses": {
           "200": {
-            "description": "Status dokumen perusahaan pemanggil.",
+            "description": "Profil perusahaan pemanggil, status verifikasi, alasan penolakan, dan status dokumen.",
             "content": {
               "application/json": {
                 "schema": {
@@ -676,10 +676,118 @@
           }
         ]
       }
+    },
+    "/v1/corporate/verification-resubmissions": {
+      "post": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "Mengajukan ulang pengajuan yang ditolak (US-1902 AC3): setelah HR memperbaiki dokumen, status kembali\n\"Menunggu verifikasi\" putaran berikutnya dan pengajuan masuk antrean Verifikator lagi. Tanpa isi permintaan:\nperusahaan selalu dari keanggotaan sesi.",
+        "operationId": "corporate_verification_resubmit",
+        "responses": {
+          "200": {
+            "description": "Pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsOverviewEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "CompanyProfileDto": {
+        "type": "object",
+        "description": "Profil perusahaan pemanggil (US-1901 AC6, F1-T102b): hanya perusahaan dari keanggotaan sesi. NPWP Terbatas\n(DD A20): hanya untuk HR perusahaan itu sendiri; `Debug` manual tanpa isian.",
+        "required": [
+          "legal_name",
+          "nib",
+          "npwp",
+          "office_address",
+          "office_phone",
+          "submitted_at"
+        ],
+        "properties": {
+          "legal_name": {
+            "type": "string",
+            "description": "Nama badan usaha.",
+            "example": "PT Contoh Sehat Sejahtera"
+          },
+          "nib": {
+            "type": "string",
+            "description": "NIB (13 angka).",
+            "example": "1234567890123"
+          },
+          "npwp": {
+            "type": "string",
+            "description": "NPWP badan (16 angka).",
+            "example": "0123456789012345"
+          },
+          "office_address": {
+            "type": "string",
+            "description": "Alamat kantor."
+          },
+          "office_phone": {
+            "type": "string",
+            "description": "Telepon kantor."
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Waktu pengajuan terakhir (berubah saat diajukan ulang)."
+          }
+        }
+      },
       "CorporateNameValueDto": {
         "type": "object",
         "description": "Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah\n(rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).",
@@ -943,12 +1051,16 @@
         "type": "object",
         "description": "Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).",
         "required": [
+          "company",
           "status",
           "submission_round",
           "documents",
           "complete"
         ],
         "properties": {
+          "company": {
+            "$ref": "#/components/schemas/CompanyProfileDto"
+          },
           "complete": {
             "type": "boolean",
             "description": "Ketiganya sudah diunggah: pengajuan \"siap diverifikasi\" dan tampil di antrean Verifikator."

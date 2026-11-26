@@ -52,7 +52,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6). */
+        /**
+         * Profil perusahaan, status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil
+         *     (US-1901 AC6).
+         */
         get: operations["corporate_document_list"];
         put?: never;
         /**
@@ -125,10 +128,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/corporate/verification-resubmissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mengajukan ulang pengajuan yang ditolak (US-1902 AC3): setelah HR memperbaiki dokumen, status kembali
+         *     "Menunggu verifikasi" putaran berikutnya dan pengajuan masuk antrean Verifikator lagi. Tanpa isi permintaan:
+         *     perusahaan selalu dari keanggotaan sesi.
+         */
+        post: operations["corporate_verification_resubmit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Profil perusahaan pemanggil (US-1901 AC6, F1-T102b): hanya perusahaan dari keanggotaan sesi. NPWP Terbatas
+         *     (DD A20): hanya untuk HR perusahaan itu sendiri; `Debug` manual tanpa isian.
+         */
+        CompanyProfileDto: {
+            /**
+             * @description Nama badan usaha.
+             * @example PT Contoh Sehat Sejahtera
+             */
+            legal_name: string;
+            /**
+             * @description NIB (13 angka).
+             * @example 1234567890123
+             */
+            nib: string;
+            /**
+             * @description NPWP badan (16 angka).
+             * @example 0123456789012345
+             */
+            npwp: string;
+            /** @description Alamat kantor. */
+            office_address: string;
+            /** @description Telepon kantor. */
+            office_phone: string;
+            /**
+             * Format: date-time
+             * @description Waktu pengajuan terakhir (berubah saat diajukan ulang).
+             */
+            submitted_at: string;
+        };
         /**
          * @description Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah
          *     (rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).
@@ -244,6 +298,7 @@ export interface components {
         };
         /** @description Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6). */
         DocumentsOverviewDto: {
+            company: components["schemas"]["CompanyProfileDto"];
             /** @description Ketiganya sudah diunggah: pengajuan "siap diverifikasi" dan tampil di antrean Verifikator. */
             complete: boolean;
             /** @description Ketiga jenis dokumen wajib, urut `nib`, `npwp`, `authority_proof`. */
@@ -606,7 +661,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Status dokumen perusahaan pemanggil. */
+            /** @description Profil perusahaan pemanggil, status verifikasi, alasan penolakan, dan status dokumen. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -932,6 +987,62 @@ export interface operations {
                 };
             };
             /** @description 4090101: HR menonaktifkan dirinya sendiri. 4090105: HR aktif terakhir perusahaan. 4090001: akun sudah nonaktif. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_verification_resubmit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentsOverviewEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap. */
             409: {
                 headers: {
                     [name: string]: unknown;

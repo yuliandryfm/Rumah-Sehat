@@ -140,7 +140,7 @@ fn fail(state: &AppState, cid: CorrelationId, e: CorporateError) -> Response {
         (status = 400, description = "Badan permintaan tidak dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090110: NIB sudah dipakai perusahaan Aktif (US-1903 AC4, diubah CR-035). 4090111: email HR sudah dipakai akun lain di realm korporat.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Isian tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),

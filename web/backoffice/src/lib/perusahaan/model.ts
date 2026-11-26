@@ -25,7 +25,12 @@ export interface ItemAntreanPerusahaan {
   readonly origin: OriginPerusahaan;
   readonly submission_round: number;
   readonly submitted_at: string;
+  /** NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035). */
+  readonly nib_used_by_other_company?: boolean;
 }
+
+/** Teks penanda CR-035 di antrean dan detail (tanpa nama atau data perusahaan lain). */
+export const TEKS_NIB_DIPAKAI = "NIB sudah dipakai perusahaan lain";
 
 export interface KeputusanPerusahaan {
   readonly corporate_client_id: string;

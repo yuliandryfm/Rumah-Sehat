@@ -15,18 +15,22 @@
 //!    belum terhapus, akun HR `pending_provisioning` tanpa password (KEPUTUSAN-303 R1), niat `create_user` dan job
 //!    `idp_create_user` (tujuan `hr_self_registration`). Email aktivasi (VERIFY_EMAIL, UPDATE_PASSWORD,
 //!    CONFIGURE_TOTP) dikirim worker setelah pengguna dibuat.
-//! 2. NIB diperiksa dan perusahaan disisipkan `pending_verification` (`origin = self_registered`, putaran 1);
-//!    `ON CONFLICT DO NOTHING` menjaga balapan NIB.
+//! 2. Perusahaan disisipkan `pending_verification` (`origin = self_registered`, putaran 1). NIB **tidak**
+//!    diperiksa terhadap perusahaan lain (CR-035, keputusan user Q10 = B2): NIB unik hanya di antara perusahaan
+//!    Aktif dan ditegakkan saat Verifikator menyetujui (`4090116`); pengajuan dengan NIB yang sudah dipakai
+//!    perusahaan lain tampil di antrean dengan penanda `nib_used_by_other_company`.
 //! 3. Keanggotaan HR beserta jabatan, di transaksi yang sama (akun terikat ke perusahaan sejak awal).
 //! 4. Bukti persetujuan per butir (`privacy::api::record_granted_consent`, subjek `CorporateHr`) dan event.
 //!
-//! Anti-enumerasi (KEPUTUSAN-324): email yang sudah dipakai, atau NIB yang sudah dipakai perusahaan belum terhapus
-//! (status apa pun), TIDAK menghasilkan respons berbeda. Transaksi dibatalkan (nol efek: tanpa akun, niat, job,
-//! perusahaan, bukti persetujuan) dan use case mengembalikan hasil yang sama dengan pendaftaran baru; penolakan
-//! hanya tercatat di audit (E-10 hasil gagal, transaksi tersendiri, aktor `system`, objek = ID percobaan
-//! baru tanpa NIB atau email di payload, sehingga tidak membuka perusahaan atau akun lain). Ini berbeda dari
-//! `4090110` dan `4090111` jalur Verifikator (`admin_create.rs`): di sana pemanggil staf berwenang yang
-//! terautentikasi dan perlu tahu penyebabnya; di sini pemanggil anonim.
+//! Anti-enumerasi (KEPUTUSAN-324, CR-035): NIB yang sudah dipakai perusahaan lain (status apa pun) diproses
+//! **persis sama** dengan NIB baru: perusahaan, akun HR, niat, job penyediaan, dan bukti persetujuan dibuat, dan
+//! email aktivasi dikirim worker IdP seperti biasa, sehingga status, isi, header, waktu, dan email yang diterima
+//! pendaftar identik (menutup oracle NIB TD-45). Email yang sudah dipakai TIDAK menghasilkan respons berbeda:
+//! transaksi dibatalkan (nol efek: tanpa akun, niat, job, perusahaan, bukti persetujuan) dan use case
+//! mengembalikan hasil yang sama dengan pendaftaran baru; penolakan hanya tercatat di audit (E-10 hasil gagal,
+//! transaksi tersendiri, aktor `system`, objek = ID percobaan baru tanpa email di payload). Oracle email ini
+//! diterima user (Q7=A). Ini berbeda dari `4090110` dan `4090111` jalur Verifikator (`admin_create.rs`): di sana
+//! pemanggil staf berwenang yang terautentikasi dan perlu tahu penyebabnya; di sini pemanggil anonim.
 //!
 //! Pemberitahuan "Anda sudah punya akun" ke email terdaftar BELUM dikirim (jalur email aplikasi, modul Notifikasi,
 //! `[TIDAK DIKETAHUI]`; keputusan user Q5=A: Fase 1 cukup pesan seragam di respons/UI).
@@ -59,7 +63,6 @@ const CLIENT_REGISTERED_ACTION: &str = "corporate_client_self_registered";
 const HR_REGISTERED_ACTION: &str = "corporate_admin_account_registered";
 const MEMBERSHIP_GRANTED_ACTION: &str = "corporate_membership_granted";
 const REGISTRATION_REJECTED_ACTION: &str = "corporate_registration_rejected";
-const NIB_TAKEN_REASON: &str = "nib_already_registered";
 const EMAIL_TAKEN_REASON: &str = "hr_email_in_use";
 
 /// Batas panjang nama dan jabatan HR (jabatan = CHECK `ck_corporate_member_job_title_length`).
@@ -253,8 +256,9 @@ fn build_event(
         .context(ctx))
 }
 
-/// US-1901 AC1, AC3-AC7: mendaftarkan perusahaan. `Ok(())` untuk pendaftaran baru MAUPUN untuk NIB atau email
-/// yang sudah terdaftar (jawaban seragam, KEPUTUSAN-324). Lihat dokumentasi modul.
+/// US-1901 AC1, AC3-AC7: mendaftarkan perusahaan. `Ok(())` untuk pendaftaran baru, NIB yang sudah dipakai
+/// perusahaan lain (diproses sama, CR-035), MAUPUN email yang sudah terdaftar (jawaban seragam, KEPUTUSAN-324).
+/// Lihat dokumentasi modul.
 pub(super) async fn register(
     deps: &RegistrationDeps<'_>,
     input: &NewCorporateRegistration,
@@ -323,16 +327,9 @@ pub(super) async fn register(
                 )]),
                 HrInviteError::Database | HrInviteError::Queue => CorporateError::Database,
             })?;
-            // 2. NIB ganda.
-            if repo::client_with_nib(conn, &v.nib)
-                .await
-                .map_err(db_error)?
-                .is_some()
-            {
-                return Err(CorporateError::NibAlreadyRegistered);
-            }
+            // 2. Perusahaan Menunggu verifikasi; NIB boleh sama dengan perusahaan lain (CR-035).
             let client_id = new_id();
-            let inserted = repo::insert_self_registered_client(
+            repo::insert_self_registered_client(
                 conn,
                 &NewSelfRegisteredClient {
                     id: client_id,
@@ -347,9 +344,6 @@ pub(super) async fn register(
             )
             .await
             .map_err(db_error)?;
-            if !inserted {
-                return Err(CorporateError::NibAlreadyRegistered);
-            }
             // 3. Keanggotaan HR pendaftar.
             let member_id = new_id();
             repo::insert_member_with_title(
@@ -449,18 +443,17 @@ pub(super) async fn register(
                 AuditedTxError::Database { .. } => CorporateError::Database,
             };
             let reason = match e {
-                CorporateError::NibAlreadyRegistered => NIB_TAKEN_REASON,
                 CorporateError::HrEmailAlreadyRegistered => EMAIL_TAKEN_REASON,
                 other => return Err(other),
             };
-            // Jawaban seragam: NIB atau email terdaftar tidak dapat dibedakan dari pendaftaran baru.
+            // Jawaban seragam: email terdaftar tidak dapat dibedakan dari pendaftaran baru.
             record_rejected(deps.pool, deps.clock, &ctx, reason).await;
             Ok(())
         }
     }
 }
 
-/// E-10 hasil gagal (NIB atau email sudah terdaftar) di transaksi tersendiri, dicoba ulang; kegagalan tidak
+/// E-10 hasil gagal (email sudah terdaftar) di transaksi tersendiri, dicoba ulang; kegagalan tidak
 /// mengubah jawaban (coding-standards §4.4 butir 3).
 async fn record_rejected(
     pool: &PgPool,
@@ -567,7 +560,6 @@ mod tests {
             HR_REGISTERED_ACTION,
             MEMBERSHIP_GRANTED_ACTION,
             REGISTRATION_REJECTED_ACTION,
-            NIB_TAKEN_REASON,
             EMAIL_TAKEN_REASON,
         ] {
             assert!(audit::Code::new(a).is_ok(), "{a}");

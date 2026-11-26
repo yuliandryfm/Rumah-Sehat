@@ -5,7 +5,7 @@
 //! memanggil satu fungsi `api`, dan memetakan hasil ke envelope ADR-023. Teks galat pustaka (serde, sqlx)
 //! tidak pernah diteruskan.
 
-use super::api::{self as corporate, CorporateError, CorporateVerification};
+use super::api::{self as corporate, CorporateError, CorporateVerification, QueueCursor};
 use super::dto::{
     ApproveRequest, DecisionDto, DecisionEnvelope, DetailDto, DetailEnvelope, DocumentKindDto,
     DocumentUrlDto, DocumentUrlEnvelope, DtoError, QueueEnvelope, QueueItemDto, QueueParams,
@@ -124,9 +124,10 @@ async fn queue(
             );
         }
     };
-    let cursor = match p.cursor.as_deref().map(Uuid::parse_str).transpose() {
-        Ok(c) => c,
-        Err(_) => {
+    let cursor = match p.cursor.as_deref().map(QueueCursor::parse) {
+        None => None,
+        Some(Some(c)) => Some(c),
+        Some(None) => {
             return fail(
                 &state,
                 cid,
@@ -246,7 +247,7 @@ async fn document_url(
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")

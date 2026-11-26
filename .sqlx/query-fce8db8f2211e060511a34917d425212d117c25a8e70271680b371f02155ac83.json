@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, legal_name, nib, npwp, office_address, office_phone, status, origin, submission_round, submitted_at FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL",
+  "query": "SELECT c.id, c.legal_name, c.nib, c.npwp, c.office_address, c.office_phone, c.status, c.origin,\n                  c.submission_round, c.submitted_at,\n                  EXISTS (SELECT 1 FROM app.corporate_client o\n                           WHERE o.nib = c.nib AND o.id <> c.id AND o.deleted_at IS NULL)\n                    AS \"nib_used_by_other_company!\"\n           FROM app.corporate_client c WHERE c.id = $1 AND c.deleted_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -112,6 +112,12 @@
             "name": "submitted_at"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "nib_used_by_other_company!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -129,8 +135,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "ba76eaaa8e190ae35d98f8599875133ece45ed7d56fa19370ffbfa04c9577d1c"
+  "hash": "fce8db8f2211e060511a34917d425212d117c25a8e70271680b371f02155ac83"
 }

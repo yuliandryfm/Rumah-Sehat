@@ -1139,7 +1139,7 @@
             }
           },
           "409": {
-            "description": "4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat.",
+            "description": "4090110: NIB sudah dipakai perusahaan Aktif (US-1903 AC4, diubah CR-035). 4090111: email HR sudah dipakai akun lain di realm korporat.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1263,11 +1263,11 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya (UUID).",
+            "description": "Cursor dari `meta.next_cursor` halaman sebelumnya, dikirim apa adanya (opaque; memuat posisi\n`submitted_at` dan ID item terakhir, review T1 CR-035).",
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              "pattern": "^[0-9]{1,19}\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             }
           },
           {
@@ -1514,7 +1514,7 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2875,7 +2875,8 @@
           "submitted_at",
           "documents",
           "documents_version",
-          "can_decide"
+          "can_decide",
+          "nib_used_by_other_company"
         ],
         "properties": {
           "can_decide": {
@@ -2913,6 +2914,10 @@
           "nib": {
             "type": "string",
             "example": "9120000000001"
+          },
+          "nib_used_by_other_company": {
+            "type": "boolean",
+            "description": "Penanda \"NIB sudah dipakai perusahaan lain\" (status apa pun, CR-035). Persetujuan dijawab `4090116` bila\nNIB sudah dipakai perusahaan Aktif lain."
           },
           "npwp": {
             "type": "string",

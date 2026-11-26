@@ -59,10 +59,11 @@ SELECT pg_temp.uji_nol('A20 hak tabel persis (M: rs_app S,I,U + pekerja privasi 
          WHERE att.attrelid IN ('app.corporate_client'::regclass, 'app.corporate_client_document'::regclass,
                                 'app.corporate_verification_decision'::regclass)
            AND att.attnum > 0 AND att.attacl IS NOT NULL));
-SELECT pg_temp.uji_nol('A20 corporate_client: index persis pk, uqp nib aktif (US-1901 AC7), ix antrean pending',
+SELECT pg_temp.uji_nol('A20 corporate_client: index persis pk, uqp nib hanya perusahaan Aktif (CR-035), ix nib, ix antrean pending',
   ARRAY(SELECT pg_temp.uji_indeks('app.corporate_client', ARRAY[
     'CREATE UNIQUE INDEX pk_corporate_client ON app.corporate_client USING btree (id)',
-    'CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)',
+    'CREATE UNIQUE INDEX uqp_corporate_client_nib_active ON app.corporate_client USING btree (nib) WHERE ((deleted_at IS NULL) AND (status = ''active''::text))',
+    'CREATE INDEX ix_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)',
     'CREATE INDEX ix_corporate_client_submitted_at_pending ON app.corporate_client USING btree (submitted_at) WHERE ((deleted_at IS NULL) AND (status = ''pending_verification''::text))'])));
 SELECT pg_temp.uji_nol('A20 corporate_client_document: index persis pk, uq stored_file_id, uqp satu dokumen aktif per jenis',
   ARRAY(SELECT pg_temp.uji_indeks('app.corporate_client_document', ARRAY[
@@ -205,9 +206,12 @@ BEGIN
       ('T-08 trigger penolak keputusan dinonaktifkan', 'ALTER TABLE app.corporate_verification_decision DISABLE TRIGGER tg_corporate_verification_decision_reject_truncate', kelas, 'T-08 corporate_verification_decision'),
       ('T-07 UPDATE kolom non-anonymize keanggotaan untuk pekerja privasi', 'GRANT UPDATE (corporate_client_id) ON app.corporate_member TO rs_privacy_worker', kelas, 'T-07 corporate_member'),
       ('T-06 DELETE keanggotaan untuk rs_app (Master, ADR-003)', 'GRANT DELETE ON app.corporate_member TO rs_app', kelas, 'T-06 corporate_member .*lebih rs_app:DELETE'),
-      ('index uqp nib tanpa WHERE deleted_at terdeteksi', 'DROP INDEX app.uqp_corporate_client_nib; CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client (nib)',
-       $q$SELECT pg_temp.uji_indeks('app.corporate_client', ARRAY['CREATE UNIQUE INDEX pk_corporate_client ON app.corporate_client USING btree (id)', 'CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_corporate_client_submitted_at_pending ON app.corporate_client USING btree (submitted_at) WHERE ((deleted_at IS NULL) AND (status = ''pending_verification''::text))'])$q$,
-       'index app.corporate_client kurang: .*WHERE \(deleted_at IS NULL\)')
+      ('index uqp nib aktif tanpa syarat status terdeteksi (CR-035)', 'DROP INDEX app.uqp_corporate_client_nib_active; CREATE UNIQUE INDEX uqp_corporate_client_nib_active ON app.corporate_client (nib) WHERE deleted_at IS NULL',
+       $q$SELECT pg_temp.uji_indeks('app.corporate_client', ARRAY['CREATE UNIQUE INDEX pk_corporate_client ON app.corporate_client USING btree (id)', 'CREATE UNIQUE INDEX uqp_corporate_client_nib_active ON app.corporate_client USING btree (nib) WHERE ((deleted_at IS NULL) AND (status = ''active''::text))', 'CREATE INDEX ix_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_corporate_client_submitted_at_pending ON app.corporate_client USING btree (submitted_at) WHERE ((deleted_at IS NULL) AND (status = ''pending_verification''::text))'])$q$,
+       'index app.corporate_client kurang: .*status = ''active'''),
+      ('index uqp nib lama (status apa pun) kembali terdeteksi (CR-035)', 'CREATE UNIQUE INDEX uqp_corporate_client_nib ON app.corporate_client (nib) WHERE deleted_at IS NULL',
+       $q$SELECT pg_temp.uji_indeks('app.corporate_client', ARRAY['CREATE UNIQUE INDEX pk_corporate_client ON app.corporate_client USING btree (id)', 'CREATE UNIQUE INDEX uqp_corporate_client_nib_active ON app.corporate_client USING btree (nib) WHERE ((deleted_at IS NULL) AND (status = ''active''::text))', 'CREATE INDEX ix_corporate_client_nib ON app.corporate_client USING btree (nib) WHERE (deleted_at IS NULL)', 'CREATE INDEX ix_corporate_client_submitted_at_pending ON app.corporate_client USING btree (submitted_at) WHERE ((deleted_at IS NULL) AND (status = ''pending_verification''::text))'])$q$,
+       'index app.corporate_client lebih: .*uqp_corporate_client_nib ')
     ) AS t(label, stmt, pemeriksa, pola)
   LOOP
     PERFORM pg_temp.uji_rusak(c.label, c.stmt, c.pemeriksa, c.pola);
@@ -230,9 +234,29 @@ SELECT pg_temp.uji_boleh('A20 rs_api mendaftarkan perusahaan menunggu verifikasi
   'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2021'', ''PT Sintetis Satu'', ''NIB-UJI-1'', ''NPWP-UJI-1'', ''Jl. Uji 1'', ''0210000001'', ''pending_verification'', ''self_registered'')', 1);
 SELECT pg_temp.uji_boleh('A20 rs_api membuat perusahaan aktif oleh admin (US-1903 AC1)', 'rs_api',
   'INSERT INTO app.corporate_client (id, created_by, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2022'', ''00000000-0000-7000-8000-0000000a2001'', ''PT Sintetis Dua'', ''NIB-UJI-2'', ''NPWP-UJI-2'', ''Jl. Uji 2'', ''0210000002'', ''active'', ''created_by_admin'')', 1);
-SELECT pg_temp.uji_tolak('A20 NEG NIB ganda pada perusahaan aktif ditolak (US-1901 AC7, US-1903 AC4)', 'rs_api',
-  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2023'', ''PT Lain'', ''NIB-UJI-1'', ''NPWP-UJI-3'', ''Jl. Uji 3'', ''0210000003'', ''pending_verification'', ''self_registered'')',
-  '23505', 'uqp_corporate_client_nib');
+-- CR-035 (Q10 = B2): NIB unik hanya di antara perusahaan Aktif yang belum dihapus lunak.
+SELECT pg_temp.uji_boleh('A20 pengajuan menunggu verifikasi boleh memakai NIB perusahaan Aktif (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2027'', ''PT Lain Menunggu'', ''NIB-UJI-2'', ''NPWP-UJI-7'', ''Jl. Uji 7'', ''0210000007'', ''pending_verification'', ''self_registered'')', 1);
+SELECT pg_temp.uji_boleh('A20 pengajuan ditolak boleh memakai NIB yang sama (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2028'', ''PT Lain Ditolak'', ''NIB-UJI-2'', ''NPWP-UJI-8'', ''Jl. Uji 8'', ''0210000008'', ''rejected'', ''self_registered'')', 1);
+SELECT pg_temp.uji_tolak('A20 NEG perusahaan Aktif kedua dengan NIB sama ditolak (CR-035, US-1903 AC4)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2023'', ''PT Lain'', ''NIB-UJI-2'', ''NPWP-UJI-3'', ''Jl. Uji 3'', ''0210000003'', ''active'', ''created_by_admin'')',
+  '23505', 'uqp_corporate_client_nib_active');
+SELECT pg_temp.uji_tolak('A20 NEG persetujuan pengajuan ber-NIB perusahaan Aktif ditolak database (CR-035, 4090116)', 'rs_api',
+  'UPDATE app.corporate_client SET status = ''active'' WHERE id = ''00000000-0000-7000-8000-0000000a2027''',
+  '23505', 'uqp_corporate_client_nib_active');
+-- Review T1 CR-035 (DBA 5): pemilik pertama yang Nonaktif atau sudah dihapus lunak tidak menghalangi perusahaan
+-- Aktif kedua dengan NIB yang sama (predikat index: deleted_at IS NULL AND status = 'active').
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama dinonaktifkan (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2024'', ''PT Nonaktif'', ''NIB-UJI-9'', ''NPWP-UJI-4'', ''Jl. Uji 4'', ''0210000004'', ''inactive'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif kedua boleh memakai NIB pemilik pertama yang Nonaktif (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2025'', ''PT Aktif Pengganti'', ''NIB-UJI-9'', ''NPWP-UJI-5'', ''Jl. Uji 5'', ''0210000005'', ''active'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama ber-NIB-UJI-10 (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2026'', ''PT Aktif Dihapus'', ''NIB-UJI-10'', ''NPWP-UJI-6'', ''Jl. Uji 6'', ''0210000006'', ''active'', ''created_by_admin'')', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif pertama dihapus lunak (ADR-003)', 'rs_api',
+  'UPDATE app.corporate_client SET deleted_at = now(), deleted_by = ''00000000-0000-7000-8000-0000000a2001'', delete_reason = ''uji CR-035'' WHERE id = ''00000000-0000-7000-8000-0000000a2026''', 1);
+SELECT pg_temp.uji_boleh('A20 perusahaan Aktif kedua boleh memakai NIB pemilik Aktif yang sudah dihapus lunak (CR-035)', 'rs_api',
+  'INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) VALUES (''00000000-0000-7000-8000-0000000a2029'', ''PT Aktif Baru'', ''NIB-UJI-10'', ''NPWP-UJI-9'', ''Jl. Uji 9'', ''0210000009'', ''active'', ''created_by_admin'')', 1);
 SELECT pg_temp.uji_tolak('A20 NEG status di luar daftar', 'rs_api',
   'UPDATE app.corporate_client SET status = ''verified'' WHERE id = ''00000000-0000-7000-8000-0000000a2021''', '23514', 'ck_corporate_client_status');
 SELECT pg_temp.uji_tolak('A20 NEG asal di luar daftar', 'rs_api',

@@ -1,28 +1,28 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM app.corporate_client WHERE nib = $1 AND deleted_at IS NULL",
+  "query": "SELECT submitted_at FROM app.corporate_client WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Uuid",
+        "name": "submitted_at",
+        "type_info": "Timestamptz",
         "origin": {
           "Table": {
             "table": "corporate_client",
-            "name": "id"
+            "name": "submitted_at"
           }
         }
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "7327c6bb07290aaa5609aa537161c5868a113ef96b3303e05dba981371496a60"
+  "hash": "31afc5786472a45fbd7b9c4dc2a5c31e5e9a9cb1b3a9c4f9345277394ce54784"
 }

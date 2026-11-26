@@ -23,9 +23,12 @@
 //! yang ditolak validasi isi (413/415, termasuk PDF berkonten aktif) tercatat E-10 hasil gagal dengan kode
 //! tertutup di transaksi tersendiri. Unduhan HR dicatat E-12 oleh modul `platform` sebelum URL terbit.
 
-use super::api::{CorporateDocuments, DocumentStatusView, DocumentsOverviewView};
+use super::api::{
+    CompanyProfileView, CorporateDocuments, DocumentStatusView, DocumentsOverviewView,
+};
 use super::domain::{
     self, DOCUMENT_SLOT_WINDOW, DOCUMENT_SLOTS_PER_WINDOW, DocumentKind, may_manage_documents,
+    may_resubmit,
 };
 use super::error::CorporateError;
 use super::repo::{self, NewDocument};
@@ -39,7 +42,7 @@ use audit::{
 };
 use authz::{CorporateClientStatus, CorporateScope};
 use envelope::FieldError;
-use foundation::{Clock, FixedClock, Uuid, new_id};
+use foundation::{Clock, FixedClock, Sensitive, Uuid, new_id};
 use observability::security;
 use sqlx::PgPool;
 use std::convert::Infallible;
@@ -49,6 +52,7 @@ use std::sync::Arc;
 /// Percobaan menulis event hasil gagal di transaksi tersendiri (coding-standards §4.4 butir 3).
 const FAILED_AUDIT_ATTEMPTS: usize = 3;
 const UPLOADED_ACTION: &str = "corporate_document_uploaded";
+const RESUBMITTED_ACTION: &str = "corporate_verification_resubmitted";
 /// Alasan penghapusan lunak dokumen yang digantikan (kolom `delete_reason`).
 const REPLACED_REASON: &str = "replaced";
 
@@ -64,6 +68,15 @@ static DOCUMENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
 );
 /// Kebijakan audit objek perusahaan untuk event hasil gagal (tanpa perubahan field).
 static CLIENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical("corporate_client", &[]);
+/// Kebijakan audit pengajuan ulang (F1-T102b): hanya status dan putaran, sama dengan kebijakan keputusan
+/// Verifikator (`verification.rs`). Nama, NIB, NPWP, alamat, dan telepon tidak terdaftar.
+static RESUBMISSION_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
+    "corporate_client",
+    &[
+        FieldRule::value("status"),
+        FieldRule::value("submission_round"),
+    ],
+);
 
 fn db_error(_: sqlx::Error) -> CorporateError {
     // Pesan sqlx dapat memuat isi baris (DETAIL); tidak diteruskan ke log maupun respons (TD-03).
@@ -144,37 +157,40 @@ pub(super) async fn overview(
 ) -> Result<DocumentsOverviewView, CorporateError> {
     gate(scope)?;
     let client_id = scope.corporate_client_id();
-    let client = repo::client_status(s.pool, client_id)
+    let mut conn = s.pool.acquire().await.map_err(db_error)?;
+    read_overview(&mut conn, client_id).await
+}
+
+/// Membaca profil, dokumen aktif, dan alasan penolakan perusahaan `client_id` lalu menyusun ringkasan. Dipakai
+/// juga di dalam transaksi yang mengunci baris perusahaan (respons konfirmasi dan pengajuan ulang dibangun dari
+/// data di dalam transaksi, review T1 F1-T102). Status di luar Menunggu verifikasi/Ditolak = `4090112`.
+async fn read_overview(
+    conn: &mut sqlx::PgConnection,
+    client_id: Uuid,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    let profile = repo::client_profile(&mut *conn, client_id)
         .await
         .map_err(db_error)?
         .ok_or(CorporateError::NotFound)?;
-    let status = corrupt(CorporateClientStatus::parse(&client.status))?;
+    let status = corrupt(CorporateClientStatus::parse(&profile.status))?;
     if !may_manage_documents(status) {
         return Err(CorporateError::DocumentsNotManageable);
     }
-    read_overview(s.pool, client_id, status, client.submission_round)
+    let docs = repo::active_documents(&mut *conn, client_id)
         .await
-        .map_err(db_error)
-}
-
-/// Membaca dokumen aktif dan alasan penolakan lalu menyusun ringkasan. `executor` boleh pool atau koneksi
-/// transaksi pemanggil (respons konfirmasi dibangun dari data di dalam transaksi, review T1 F1-T102).
-async fn read_overview(
-    executor: &PgPool,
-    client_id: Uuid,
-    status: CorporateClientStatus,
-    submission_round: i32,
-) -> Result<DocumentsOverviewView, sqlx::Error> {
-    let docs = repo::active_documents(executor, client_id).await?;
+        .map_err(db_error)?;
     let rejection_reason = if status == CorporateClientStatus::Rejected {
-        repo::round_decision(executor, client_id, submission_round)
-            .await?
+        repo::round_decision(&mut *conn, client_id, profile.submission_round)
+            .await
+            .map_err(db_error)?
             .filter(|d| d.decision == domain::Decision::Rejected.as_str())
             .and_then(|d| d.reason_code)
     } else {
         None
     };
+    let submission_round = profile.submission_round;
     Ok(build_overview(
+        profile,
         status,
         submission_round,
         &docs,
@@ -182,8 +198,9 @@ async fn read_overview(
     ))
 }
 
-/// Ringkasan dari data yang sudah dibaca.
+/// Ringkasan dari data yang sudah dibaca. NPWP dibungkus [`Sensitive`] segera.
 fn build_overview(
+    profile: repo::ClientProfileRow,
     status: CorporateClientStatus,
     submission_round: i32,
     docs: &[repo::DocumentRow],
@@ -202,6 +219,14 @@ fn build_overview(
         .collect();
     let complete = documents.iter().all(|d| d.uploaded);
     DocumentsOverviewView {
+        company: CompanyProfileView {
+            legal_name: profile.legal_name,
+            nib: profile.nib,
+            npwp: Sensitive::new(profile.npwp),
+            office_address: profile.office_address,
+            office_phone: profile.office_phone,
+            submitted_at: profile.submitted_at,
+        },
         status: status.as_str(),
         submission_round,
         rejection_reason,
@@ -435,19 +460,7 @@ pub(super) async fn confirm(
             ));
             // Respons dibangun dari data di dalam transaksi (baris perusahaan masih terkunci), bukan dibaca
             // ulang setelah commit.
-            let docs = repo::active_documents(&mut *conn, client_id)
-                .await
-                .map_err(db_error)?;
-            let rejection_reason = if status == CorporateClientStatus::Rejected {
-                repo::round_decision(&mut *conn, client_id, locked.submission_round)
-                    .await
-                    .map_err(db_error)?
-                    .filter(|d| d.decision == domain::Decision::Rejected.as_str())
-                    .and_then(|d| d.reason_code)
-            } else {
-                None
-            };
-            let view = build_overview(status, locked.submission_round, &docs, rejection_reason);
+            let view = read_overview(&mut *conn, client_id).await?;
             Ok((view, vec![event]))
         })
     })
@@ -462,6 +475,106 @@ pub(super) async fn confirm(
             discard(s, upload).await;
             Err(audited_error(e))
         }
+    }
+}
+
+/// Pengajuan ulang setelah ditolak (US-1902 AC3, F1-T102b, TD-47 a; keputusan user Q14=A): HR perusahaan
+/// Ditolak menekan "Ajukan ulang" setelah memperbaiki dokumen. Satu transaksi `in_audited_tx`: kunci baris
+/// perusahaan (berurutan dengan unggahan dokumen dan keputusan Verifikator yang mengunci baris yang sama), status
+/// diperiksa ulang (`domain::may_resubmit`), ketiga dokumen wajib ada (`4090115`, pola Q8), lalu status kembali
+/// "Menunggu verifikasi" dengan `submission_round` + 1 dan `submitted_at` baru (`UPDATE ... WHERE status =
+/// 'rejected' AND submission_round = $n` wajib mengubah tepat satu baris), bersama E-10
+/// `corporate_verification_resubmitted` (status dan putaran; tanpa data perusahaan). Pengajuan ulang ganda (klik
+/// dua kali) = yang kedua `4090001` tanpa efek. Jalur status mengikuti pola keputusan Verifikator
+/// (`verification.rs`: kolom status Master + kunci baris, bukan `status-flow`, karena skema F1-T98 tidak memakai
+/// pasangan `_status_event`/`_state`).
+///
+/// Data perusahaan (nama, NIB, NPWP, alamat, telepon) TIDAK diubah di sini: PRD tidak mengatur koreksi data saat
+/// pengajuan ulang (pertanyaan untuk user, F1-T102b). Dokumen sudah dapat diganti saat Ditolak (F1-T102).
+pub(super) async fn resubmit(
+    s: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    let ip = client_ip(scope, route)?;
+    // Gerbang cepat dari cakupan sesi: Aktif = 4090112 (seperti endpoint dokumen lain), Menunggu = 4090001.
+    gate(scope)?;
+    if !may_resubmit(scope.client_status()) {
+        return Err(CorporateError::NotResubmittable);
+    }
+    let context = audit_context(scope, ip);
+    let account_id = scope.account_id();
+    let client_id = scope.corporate_client_id();
+    let tx_actor = actor(scope)?;
+    let now = s.clock.now();
+    let result = in_audited_tx(s.pool, s.clock, move |conn| {
+        Box::pin(async move {
+            let locked = repo::lock_client(conn, client_id)
+                .await
+                .map_err(db_error)?
+                .ok_or(CorporateError::NotFound)?;
+            let from = corrupt(CorporateClientStatus::parse(&locked.status))?;
+            if !may_manage_documents(from) {
+                return Err(CorporateError::DocumentsNotManageable);
+            }
+            if !may_resubmit(from) {
+                return Err(CorporateError::NotResubmittable);
+            }
+            let docs = repo::active_documents(&mut *conn, client_id)
+                .await
+                .map_err(db_error)?;
+            let kinds: Vec<&str> = docs.iter().map(|d| d.document_kind.as_str()).collect();
+            if !domain::documents_complete(&kinds) {
+                return Err(CorporateError::ResubmissionIncomplete);
+            }
+            let changed =
+                repo::resubmit_client(conn, client_id, locked.submission_round, account_id, now)
+                    .await
+                    .map_err(db_error)?;
+            if changed != 1 {
+                // Baris terkunci dan statusnya sudah diperiksa; selisih berarti data tidak konsisten.
+                return Err(CorporateError::Internal("status_not_updated"));
+            }
+            let next_round = locked
+                .submission_round
+                .checked_add(1)
+                .ok_or(CorporateError::Internal("submission_round_overflow"))?;
+            let to = CorporateClientStatus::PendingVerification;
+            let action = Code::new(RESUBMITTED_ACTION)
+                .map_err(|_| CorporateError::Internal("audit_action"))?;
+            let event = AuditEvent::new(
+                EventCode::E10,
+                action,
+                tx_actor,
+                ObjectRef::with_uuid(&RESUBMISSION_POLICY, client_id),
+            )
+            .tenant(client_id)
+            .outcome(Outcome::success())
+            .context(&context)
+            .change(FieldChange::new(
+                "status",
+                Some(code_value(from.as_str())?),
+                Some(code_value(to.as_str())?),
+            ))
+            .change(FieldChange::new(
+                "submission_round",
+                Some(Value::Int(i64::from(locked.submission_round))),
+                Some(Value::Int(i64::from(next_round))),
+            ));
+            let view = read_overview(&mut *conn, client_id).await?;
+            Ok((view, vec![event]))
+        })
+    })
+    .await;
+    match result {
+        Ok(view) => {
+            tracing::info!(
+                submission_round = view.submission_round,
+                "corporate_verification_resubmitted"
+            );
+            Ok(view)
+        }
+        Err(e) => Err(audited_error(e)),
     }
 }
 
@@ -527,6 +640,20 @@ mod tests {
             );
         }
         assert!(Code::new(UPLOADED_ACTION).is_ok());
+        assert!(Code::new(RESUBMITTED_ACTION).is_ok());
+        assert!(RESUBMISSION_POLICY.validate().is_ok());
+        for f in [
+            "npwp",
+            "nib",
+            "legal_name",
+            "office_address",
+            "office_phone",
+        ] {
+            assert!(
+                RESUBMISSION_POLICY.fields().iter().all(|r| r.name() != f),
+                "{f}"
+            );
+        }
         for reason in ["file_too_large", "file_type_rejected"] {
             assert!(Code::new(reason).is_ok(), "{reason}");
         }

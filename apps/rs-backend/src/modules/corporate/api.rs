@@ -22,6 +22,7 @@ use std::fmt;
 use time::OffsetDateTime;
 
 pub use super::admin_create::{CreatedCorporateClientView, NewCorporateClientInput};
+pub use super::domain::QueueCursor;
 pub use super::error::CorporateError;
 pub use super::registration::{NewCorporateRegistration, RegistrationDeps};
 
@@ -188,6 +189,8 @@ pub struct CorporateQueueItemView {
     pub submitted_at: OffsetDateTime,
     /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua (pengajuan "siap diverifikasi", F1-T102).
     pub documents_complete: bool,
+    /// NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035, Q10 = B2).
+    pub nib_used_by_other_company: bool,
 }
 
 /// Pilihan isi antrean verifikasi menurut kelengkapan dokumen (F1-T102, keputusan user Q8).
@@ -238,6 +241,9 @@ pub struct CorporateDetailView {
     pub decided_at: Option<OffsetDateTime>,
     /// Setuju/tolak tersedia (masih menunggu verifikasi).
     pub can_decide: bool,
+    /// NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035, Q10 = B2). Persetujuan
+    /// ditolak `4090116` bila salah satunya Aktif.
+    pub nib_used_by_other_company: bool,
 }
 
 impl fmt::Debug for CorporateDetailView {
@@ -273,11 +279,11 @@ pub struct RejectionReasonView {
     pub label: String,
 }
 
-/// US-1902 AC1: antrean "Menunggu verifikasi" terlama lebih dulu (`cursor` = ID perusahaan terakhir
-/// halaman sebelumnya, `limit` 1-100).
+/// US-1902 AC1: antrean "Menunggu verifikasi" terlama lebih dulu (`cursor` = posisi `(submitted_at, id)`
+/// item terakhir halaman sebelumnya, [`QueueCursor`]; `limit` 1-100).
 pub async fn corporate_verification_queue(
     deps: &CorporateVerification<'_>,
-    cursor: Option<Uuid>,
+    cursor: Option<QueueCursor>,
     limit: Option<i64>,
     readiness: QueueReadiness,
 ) -> Result<(Vec<CorporateQueueItemView>, envelope::Meta), CorporateError> {
@@ -381,9 +387,35 @@ pub struct DocumentStatusView {
     pub uploaded_at: Option<OffsetDateTime>,
 }
 
+/// Profil perusahaan pemanggil untuk halaman status HR (US-1901 AC6, TD-47 b, F1-T102b): hanya perusahaan dari
+/// cakupan sesi. NPWP Terbatas (DD A20): dibungkus [`Sensitive`], `Debug` manual tanpa isian.
+#[derive(Clone)]
+pub struct CompanyProfileView {
+    /// Nama badan usaha.
+    pub legal_name: String,
+    /// NIB.
+    pub nib: String,
+    /// NPWP (Terbatas: tidak pernah ke log, audit, atau pesan galat; hanya ke HR perusahaan itu sendiri).
+    pub npwp: Sensitive<String>,
+    /// Alamat kantor.
+    pub office_address: String,
+    /// Telepon kantor.
+    pub office_phone: String,
+    /// Waktu pengajuan terakhir (naik saat diajukan ulang).
+    pub submitted_at: OffsetDateTime,
+}
+
+impl fmt::Debug for CompanyProfileView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompanyProfileView").finish_non_exhaustive()
+    }
+}
+
 /// Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6, Q8).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct DocumentsOverviewView {
+    /// Profil perusahaan pemanggil (US-1901 AC6, F1-T102b).
+    pub company: CompanyProfileView,
     /// `pending_verification` | `rejected`.
     pub status: &'static str,
     /// Putaran pengajuan berjalan.
@@ -429,6 +461,17 @@ pub async fn confirm_corporate_document(
     documents::confirm(deps, scope, route, document_kind, upload_slot_id).await
 }
 
+/// US-1902 AC3 (F1-T102b, TD-47 a): HR perusahaan Ditolak mengajukan ulang; status kembali "Menunggu
+/// verifikasi" putaran berikutnya dan pengajuan masuk antrean lagi. Dokumen wajib lengkap (`4090115`);
+/// perusahaan Menunggu verifikasi `4090001`, Aktif `4090112`. E-10 `corporate_verification_resubmitted`.
+pub async fn resubmit_corporate_verification(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    documents::resubmit(deps, scope, route).await
+}
+
 /// URL unduh berumur pendek untuk dokumen aktif `document_kind` perusahaan pemanggil (E-12 dulu).
 pub async fn corporate_document_download_url(
     deps: &CorporateDocuments<'_>,
@@ -451,8 +494,9 @@ pub async fn create_corporate_client_by_admin(
     admin_create::create(deps, principal, route, input).await
 }
 
-/// US-1901 AC1, AC3-AC7 (F1-T101): mendaftarkan perusahaan mandiri tanpa login. `Ok(())` juga untuk NIB atau
-/// email yang sudah terdaftar (jawaban seragam, KEPUTUSAN-324; tanpa efek data, hanya audit gagal).
+/// US-1901 AC1, AC3-AC7 (F1-T101): mendaftarkan perusahaan mandiri tanpa login. NIB yang sudah dipakai perusahaan
+/// lain diproses sama dengan NIB baru (CR-035); email yang sudah terdaftar `Ok(())` tanpa efek data, hanya audit
+/// gagal (jawaban seragam, KEPUTUSAN-324).
 pub async fn register_corporate_client(
     deps: &RegistrationDeps<'_>,
     input: &NewCorporateRegistration,

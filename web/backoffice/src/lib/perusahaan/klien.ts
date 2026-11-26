@@ -23,6 +23,8 @@ export const KODE_EMAIL_HR_DIPAKAI = "4090111";
 export const KODE_DOKUMEN_BELUM_LENGKAP = "4090113";
 /** 409: dokumen berubah sejak detail dilihat; muat ulang lalu putuskan kembali (F1-T102). */
 export const KODE_DOKUMEN_BERUBAH = "4090114";
+/** 409: NIB sudah dipakai perusahaan Aktif lain; pengajuan tidak dapat disetujui (CR-035). */
+export const KODE_NIB_DIPAKAI_AKTIF = "4090116";
 
 /** Teks per `response_code` (409 `4090001` US-1902 AC4; 403 `4030101` dari BFF). */
 const PESAN_KODE: Record<string, string> = {
@@ -31,6 +33,8 @@ const PESAN_KODE: Record<string, string> = {
   [KODE_EMAIL_HR_DIPAKAI]: "Email HR sudah dipakai akun lain di portal perusahaan. Gunakan email HR yang lain.",
   "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
   [KODE_DOKUMEN_BELUM_LENGKAP]: "Dokumen belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui.",
+  [KODE_NIB_DIPAKAI_AKTIF]:
+    "NIB sudah dipakai perusahaan Aktif lain, jadi pengajuan ini tidak dapat disetujui. Periksa kepemilikan NIB; bila tidak berhak, tolak dengan alasan yang sesuai.",
   [KODE_DOKUMEN_BERUBAH]: "Dokumen perusahaan berubah sejak Anda membukanya. Detail dimuat ulang dan dokumen yang terbuka ditutup; buka dokumen kembali, periksa, lalu putuskan.",
 };
 

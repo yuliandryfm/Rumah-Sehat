@@ -409,6 +409,83 @@ async fn queue_lists_pending_submissions_oldest_first_without_npwp() {
     assert_eq!((r.status, code(&r).as_str()), (422, "4220001"));
     let r = f.get(&format!("{BASE}?cursor=bukan-uuid"), &tok).await;
     assert_eq!((r.status, code(&r).as_str()), (422, "4220001"));
+    // Kursor lama yang hanya berisi ID perusahaan tidak lagi diterima (review T1 CR-035, DBA 3).
+    let r = f
+        .get(&format!("{BASE}?cursor={}", oldest.id.hyphenated()), &tok)
+        .await;
+    assert_eq!((r.status, code(&r).as_str()), (422, "4220001"));
+}
+
+// trace: US-1902 AC1 (antrean berhalaman), US-1902 AC3 (pengajuan ulang = `submitted_at` baru), review T1 CR-035
+// DBA 3 (negatif): perusahaan yang menjadi kursor diajukan ulang di antara dua halaman; pengajuan lain yang
+// lebih baru dari posisi kursor tetap muncul di halaman berikutnya, tidak terlewati
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn queue_cursor_keeps_its_position_when_the_cursor_company_is_resubmitted_between_pages() {
+    let _g = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    let (_v, tok) = f.verifier().await;
+    let x = company(&f.pool, "pending_verification", 300).await;
+    let y = company(&f.pool, "pending_verification", 200).await;
+    let z = company(&f.pool, "pending_verification", 100).await;
+    let id_of = |c: &Company| c.id.hyphenated().to_string();
+
+    // Halaman satu item sampai X menjadi item terakhir halaman.
+    let mut cursor: Option<String> = None;
+    loop {
+        let path = match &cursor {
+            Some(c) => format!("{BASE}?limit=1&cursor={c}"),
+            None => format!("{BASE}?limit=1"),
+        };
+        let r = f.get(&path, &tok).await;
+        assert_eq!(r.status, 200, "{}", r.body);
+        let j = r.json();
+        let item = j["data"][0]["corporate_client_id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(item != id_of(&y) && item != id_of(&z), "X harus lebih dulu");
+        assert_eq!(j["meta"]["has_more"], true);
+        cursor = Some(j["meta"]["next_cursor"].as_str().unwrap().to_string());
+        if item == id_of(&x) {
+            break;
+        }
+    }
+
+    // X ditolak lalu diajukan ulang di antara dua halaman: putaran baru dengan `submitted_at` sekarang.
+    sqlx::query!(
+        "UPDATE app.corporate_client \
+            SET submitted_at = now(), submission_round = submission_round + 1 WHERE id = $1",
+        x.id
+    )
+    .execute(&f.pool)
+    .await
+    .unwrap();
+
+    let mut rest = Vec::new();
+    loop {
+        let r = f
+            .get(
+                &format!("{BASE}?limit=1&cursor={}", cursor.as_deref().unwrap()),
+                &tok,
+            )
+            .await;
+        assert_eq!(r.status, 200, "{}", r.body);
+        let j = r.json();
+        for item in j["data"].as_array().unwrap() {
+            rest.push(item["corporate_client_id"].as_str().unwrap().to_string());
+        }
+        if j["meta"]["has_more"] == true {
+            cursor = Some(j["meta"]["next_cursor"].as_str().unwrap().to_string());
+        } else {
+            break;
+        }
+    }
+    let pos = |c: &Company| rest.iter().position(|i| *i == id_of(c));
+    let (py, pz, px) = (pos(&y), pos(&z), pos(&x));
+    assert!(
+        matches!((py, pz, px), (Some(a), Some(b), Some(c)) if a < b && b < c),
+        "Y dan Z tidak terlewati; X muncul lagi di akhir sebagai pengajuan terbaru: {py:?} {pz:?} {px:?}"
+    );
 }
 
 // trace: US-1902 AC1 (data perusahaan, dokumen NIB/NPWP/bukti kewenangan), US-1902 AC3 (alasan dari daftar)

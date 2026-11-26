@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT status, submission_round FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL",
+  "query": "SELECT status, submission_round, nib FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "submission_round"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "nib",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "nib"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       false,
+      false,
       false
     ]
   },
-  "hash": "80f9e76600ba9d04c2b208b14a07b2466e69c31758c9b03078bd9b97c589abfd"
+  "hash": "6c7f941a3c80e5ed44193c7a00cf2c24262feea4198129f997d726fde3ff71da"
 }

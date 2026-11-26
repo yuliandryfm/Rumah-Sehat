@@ -418,14 +418,15 @@ async fn verifier_creates_an_active_company_with_one_provisioning_intent_and_aud
     }
 }
 
-// trace: US-1903 AC4, US-1901 AC7 (NIB ganda ditolak dengan pesan umum; tanpa efek; tercatat gagal)
+// trace: US-1903 AC4, CR-035 (Q10 = B2: NIB unik hanya di antara perusahaan Aktif; NIB perusahaan Aktif ditolak
+// dengan pesan umum, tanpa efek, tercatat gagal)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn duplicate_nib_is_rejected_generically_without_any_side_effect() {
     let w = world().await;
     let (verifier, sub) = admin(&w.app, &["verifier"], "active").await;
     let nib = nib();
-    // Terdaftar sebagai Ditolak pun tetap memblokir NIB (uqp_corporate_client_nib).
-    insert_client(&w.app, &nib, "rejected").await;
+    // NIB perusahaan Aktif memblokir (uqp_corporate_client_nib_active).
+    insert_client(&w.app, &nib, "active").await;
     let hr_email = email();
     for tried in [nib.clone(), format!("  {nib}  ")] {
         let r = w.create(&sub, &body(&tried, &hr_email)).await;
@@ -456,6 +457,25 @@ async fn duplicate_nib_is_rejected_generically_without_any_side_effect() {
         assert!(e["changed_fields"].is_null());
         assert!(!e.to_string().contains(&nib));
     }
+}
+
+// trace: CR-035 (Q10 = B2, TD-46): pengajuan Menunggu verifikasi, Ditolak, atau Nonaktif dengan NIB yang sama tidak
+// mengunci NIB; Verifikator tetap dapat membuat perusahaan Aktif, dan pengajuan lain itu tidak dapat disetujui lagi
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn nib_held_only_by_non_active_companies_does_not_block_creation() {
+    let w = world().await;
+    let (_, sub) = admin(&w.app, &["verifier"], "active").await;
+    let nib = nib();
+    for status in ["pending_verification", "rejected", "inactive"] {
+        insert_client(&w.app, &nib, status).await;
+    }
+    let r = w.create(&sub, &body(&nib, &email())).await;
+    assert_eq!(r.status, 201, "{}", r.body);
+    assert_eq!(w.clients_with_nib(&nib).await, 4);
+    // Perusahaan Aktif kedua dengan NIB yang sama: 409.
+    let r = w.create(&sub, &body(&nib, &email())).await;
+    assert_eq!((r.status, code(&r)), (409, "4090110".to_string()));
+    assert_eq!(w.clients_with_nib(&nib).await, 4);
 }
 
 // trace: US-1903 AC1, ADR-030 butir 5 (email HR sudah dipakai di realm korporat: 409 untuk Verifikator, tanpa

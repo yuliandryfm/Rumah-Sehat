@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_client (id, created_at, created_by, updated_at, updated_by, legal_name, nib, npwp, office_address, office_phone, status, origin, submission_round, submitted_at) VALUES ($1, $8, $2, $8, $2, $3, $4, $5, $6, $7, 'active', 'created_by_admin', 1, $8) ON CONFLICT (nib) WHERE deleted_at IS NULL AND status = 'active' DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "95391645a098e7d53877a956bf82664019efe220ce7c7708a0799c4007965b8a"
+}

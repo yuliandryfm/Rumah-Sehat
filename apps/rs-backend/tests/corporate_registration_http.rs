@@ -5,8 +5,9 @@
 //!
 //! Yang diuji: pendaftaran baru membuat perusahaan Menunggu verifikasi, akun HR `pending_provisioning` tanpa
 //! password, keanggotaan, satu niat `create_user` + satu job berisi ID niat saja, bukti persetujuan per butir, dan
-//! event E-10/E-11/E-13 lengkap tanpa data pribadi; jawaban seragam untuk NIB dan email terdaftar (nol efek, E-10
-//! gagal) dengan waktu respons yang disamakan; isolasi perusahaan lain; persetujuan wajib dan versi basi; teks draf
+//! event E-10/E-11/E-13 lengkap tanpa data pribadi; NIB yang sudah dipakai perusahaan lain diproses persis sama
+//! dengan NIB baru (CR-035, Q10 = B2: status, isi, header, efek, dan email aktivasi identik); jawaban seragam untuk
+//! email terdaftar (nol efek, E-10 gagal) dengan waktu respons yang disamakan; isolasi perusahaan lain; persetujuan wajib dan versi basi; teks draf
 //! ditolak di production; validasi per field (NIB 13 angka, NPWP 16 angka, password tidak diterima); batas laju;
 //! balapan NIB.
 #![allow(
@@ -479,9 +480,9 @@ async fn corporate_registration_creates_pending_company_hr_account_consent_and_c
     assert!(!intent_dump.contains("password"));
 }
 
-// trace: US-1901 AC4, AC7; KEPUTUSAN-324 (anti-enumerasi); isolasi perusahaan lain; ADR-005 (audit tanpa data)
+// trace: US-1901 AC4; KEPUTUSAN-324 (anti-enumerasi email); isolasi perusahaan lain; ADR-005 (audit tanpa data)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn corporate_registration_existing_nib_or_email_gets_identical_answer_and_changes_nothing() {
+async fn corporate_registration_existing_email_gets_identical_answer_and_changes_nothing() {
     let w = world(Options::quick()).await;
     let first = Form::new();
     let baseline = w.post(&first.body()).await;
@@ -505,22 +506,16 @@ async fn corporate_registration_existing_nib_or_email_gets_identical_answer_and_
     .await
     .unwrap();
 
-    // 1. NIB sudah dipakai perusahaan Menunggu verifikasi (email baru).
-    let mut dup_nib = Form::new();
-    dup_nib.nib = first.nib.clone();
-    // 2. NIB perusahaan Ditolak (status apa pun tetap memblokir), email baru.
-    let mut dup_rejected_nib = Form::new();
-    dup_rejected_nib.nib = nib_rejected.clone();
-    // 3. Email pendaftar pertama dipakai ulang (NIB baru), huruf besar/kecil berbeda.
+    // NIB terdaftar tidak lagi ditolak (CR-035); lihat
+    // `corporate_registration_registered_nib_is_processed_exactly_like_a_new_one`.
+    // 1. Email pendaftar pertama dipakai ulang (NIB baru), huruf besar/kecil berbeda.
     let mut dup_email = Form::new();
     dup_email.email = first.email.to_uppercase();
-    // 4. Email HR aktif perusahaan lain (NIB baru): tidak boleh mengikat HR itu ke perusahaan baru.
+    // 2. Email HR aktif perusahaan lain (NIB baru): tidak boleh mengikat HR itu ke perusahaan baru.
     let mut foreign_email = Form::new();
     foreign_email.email = hr_email.clone();
     let mut correlations = Vec::new();
     for (label, f) in [
-        ("nib menunggu", &dup_nib),
-        ("nib ditolak", &dup_rejected_nib),
         ("email pendaftar", &dup_email),
         ("email hr perusahaan lain", &foreign_email),
     ] {
@@ -536,7 +531,7 @@ async fn corporate_registration_existing_nib_or_email_gets_identical_answer_and_
     // Nol efek: tidak ada perusahaan, akun, keanggotaan, niat, job, atau bukti persetujuan baru.
     let after = w.counts(&nibs, &emails).await;
     assert_eq!(after, before);
-    for f in [&dup_nib, &dup_rejected_nib, &dup_email, &foreign_email] {
+    for f in [&dup_email, &foreign_email] {
         let c = w.counts(&[f.nib.clone()], &[f.email.to_lowercase()]).await;
         // Hanya NIB/email yang memang sudah terdaftar yang terhitung; milik pendaftar yang ditolak tidak ada.
         assert!(c.clients <= 1 && c.accounts <= 1, "{c:?}");
@@ -586,11 +581,7 @@ async fn corporate_registration_existing_nib_or_email_gets_identical_answer_and_
         assert_eq!(e["event_code"], "e_10", "{label}");
         assert_eq!(e["action_name"], "corporate_registration_rejected");
         assert_eq!(e["outcome"], "failure");
-        let reason = e["outcome_reason_code"].as_str().unwrap();
-        assert!(
-            ["nib_already_registered", "hr_email_in_use"].contains(&reason),
-            "{label}: {reason}"
-        );
+        assert_eq!(e["outcome_reason_code"], "hr_email_in_use", "{label}");
         assert_eq!(e["actor_type"], "system");
         assert!(
             e["tenant_id"].is_null(),
@@ -610,6 +601,170 @@ async fn corporate_registration_existing_nib_or_email_gets_identical_answer_and_
             !dump.contains(&other.hyphenated().to_string()),
             "{label}: ID perusahaan lain tidak boleh muncul"
         );
+    }
+}
+
+/// Header respons yang boleh berbeda antarpermintaan (waktu dan ID korelasi); selebihnya harus identik.
+fn comparable_headers(r: &Resp) -> Vec<(String, String)> {
+    let cid = r.json()["correlation_id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    let mut h: Vec<(String, String)> = r
+        .headers
+        .iter()
+        .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
+        .filter(|(k, v)| k != "date" && (cid.is_empty() || !v.contains(&cid)))
+        .collect();
+    h.sort();
+    h
+}
+
+/// Bentuk niat dan job penyediaan akun (yang menentukan email aktivasi dari worker IdP) untuk satu email.
+async fn provisioning_shape(w: &World, email: &str) -> Vec<(String, String, Vec<String>)> {
+    let rows = sqlx::query!(
+        r#"SELECT i.operation AS "operation!", i.purpose AS "purpose!", j.payload AS "payload!"
+           FROM app.idp_provisioning_intent i
+           JOIN app.account a ON a.id = i.account_id
+           JOIN app.job j ON j.job_type = 'idp_create_user' AND (j.payload ->> 'intent_id')::uuid = i.id
+           WHERE a.idp_realm = 'korporat' AND lower(a.email) = $1"#,
+        email,
+    )
+    .fetch_all(&w.app)
+    .await
+    .unwrap();
+    rows.into_iter()
+        .map(|r| {
+            let mut keys: Vec<String> = r
+                .payload
+                .as_object()
+                .map(|o| o.keys().cloned().collect())
+                .unwrap_or_default();
+            keys.sort();
+            (r.operation, r.purpose, keys)
+        })
+        .collect()
+}
+
+/// Nama aksi event audit satu permintaan, terurut.
+async fn action_names(w: &World, correlation: &str) -> Vec<String> {
+    let mut v: Vec<String> = w
+        .events_by_correlation(correlation)
+        .await
+        .iter()
+        .map(|e| {
+            format!(
+                "{}:{}:{}",
+                e["event_code"].as_str().unwrap_or(""),
+                e["action_name"].as_str().unwrap_or(""),
+                e["outcome"].as_str().unwrap_or("")
+            )
+        })
+        .collect();
+    v.sort();
+    v
+}
+
+// trace: CR-035 (keputusan user Q10 = B2), TD-45 (oracle NIB ditutup), US-1901 AC4: NIB yang sudah dipakai perusahaan
+// lain (Menunggu verifikasi, Ditolak, Aktif, Nonaktif) diproses persis sama dengan NIB baru: status, isi, header,
+// efek data, event audit, dan niat/job email aktivasi identik; perusahaan lain tidak berubah dan tidak terbuka
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn corporate_registration_registered_nib_is_processed_exactly_like_a_new_one() {
+    let w = world(Options::quick()).await;
+    let fresh = Form::new();
+    let baseline = w.post(&fresh.body()).await;
+    assert_eq!(baseline.status, 202, "{}", baseline.body);
+    let base_cid = baseline.json()["correlation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let base_effects = w
+        .counts(&[fresh.nib.clone()], &[fresh.email.to_lowercase()])
+        .await;
+    assert_eq!(
+        base_effects,
+        Counts {
+            clients: 1,
+            accounts: 1,
+            members: 1,
+            intents: 1,
+            jobs: 1,
+            consents: base_effects.consents,
+        }
+    );
+    assert!(base_effects.consents >= 1);
+    let base_provisioning = provisioning_shape(&w, &fresh.email.to_lowercase()).await;
+    assert_eq!(base_provisioning.len(), 1);
+    let base_actions = action_names(&w, &base_cid).await;
+    assert!(
+        !base_actions.iter().any(|a| a.contains("rejected")),
+        "{base_actions:?}"
+    );
+
+    // Pemilik NIB lain dengan berbagai status (beserta HR aktif) + NIB pendaftaran baru di atas (menunggu).
+    let mut holders = Vec::new();
+    for status in ["rejected", "active", "inactive"] {
+        let nib = random_digits(13);
+        let id = w.insert_client(status, &nib).await;
+        w.insert_hr(id, &format!("hr-pemilik-{}@example.com", random_hex(5)))
+            .await;
+        holders.push((status, nib, id));
+    }
+    let pending_holder = w.client_of(&fresh.nib).await.unwrap();
+    holders.push(("pending_verification", fresh.nib.clone(), pending_holder));
+
+    for (status, nib, holder) in &holders {
+        let mut f = Form::new();
+        f.nib = nib.clone();
+        let r = w.post(&f.body()).await;
+        assert_eq!(answer(&r), answer(&baseline), "{status}: isi identik");
+        assert_eq!(
+            comparable_headers(&r),
+            comparable_headers(&baseline),
+            "{status}: header identik"
+        );
+        // Efek data sama dengan pendaftaran NIB baru: akun HR, keanggotaan, niat, job, persetujuan.
+        let c = w.counts(&[], &[f.email.to_lowercase()]).await;
+        assert_eq!(
+            (c.accounts, c.members, c.intents, c.jobs, c.consents),
+            (1, 1, 1, 1, base_effects.consents),
+            "{status}"
+        );
+        assert_eq!(
+            provisioning_shape(&w, &f.email.to_lowercase()).await,
+            base_provisioning,
+            "{status}: email aktivasi dari niat/job yang sama bentuknya"
+        );
+        let cid = r.json()["correlation_id"].as_str().unwrap().to_string();
+        assert_eq!(
+            action_names(&w, &cid).await,
+            base_actions,
+            "{status}: event audit sama dengan pendaftaran baru"
+        );
+        // Perusahaan baru Menunggu verifikasi dengan NIB yang sama; pemilik lama tidak berubah dan tidak terbuka.
+        let rows = sqlx::query!(
+            r#"SELECT id AS "id!", status AS "status!" FROM app.corporate_client
+               WHERE nib = $1 AND deleted_at IS NULL ORDER BY created_at"#,
+            nib
+        )
+        .fetch_all(&w.app)
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 2, "{status}");
+        let holder_row = rows.iter().find(|x| x.id == *holder).unwrap();
+        assert_eq!(holder_row.status, *status);
+        let newcomer = rows.iter().find(|x| x.id != *holder).unwrap();
+        assert_eq!(newcomer.status, "pending_verification");
+        let events = w.events_by_correlation(&cid).await;
+        for e in &events {
+            audit_support::assert_event_complete(e, e["event_code"].as_str().unwrap());
+        }
+        let dump = serde_json::to_string(&events).unwrap();
+        assert!(
+            !dump.contains(&holder.hyphenated().to_string()),
+            "{status}: ID perusahaan lain tidak muncul di audit"
+        );
+        assert!(!dump.contains(nib.as_str()), "{status}: NIB tidak di audit");
     }
 }
 
@@ -938,9 +1093,10 @@ async fn corporate_registration_consent_text_flood_does_not_block_registration()
     );
 }
 
-// trace: ADR-030 butir 5 (kunci advisory email), US-1901 AC7 (balapan NIB = satu perusahaan)
+// trace: ADR-030 butir 5 (kunci advisory email), CR-035 (NIB sama bersamaan = satu pengajuan Menunggu verifikasi per
+// pendaftar, semuanya identik)
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn corporate_registration_concurrent_same_nib_creates_one_company() {
+async fn corporate_registration_concurrent_same_nib_creates_one_pending_company_per_registrant() {
     let w = world(Options::quick()).await;
     let nib = random_digits(13);
     let forms: Vec<Form> = (0..6)
@@ -969,9 +1125,17 @@ async fn corporate_registration_concurrent_same_nib_creates_one_company() {
     assert_eq!(answers[0].0, 202);
     let emails: Vec<String> = forms.iter().map(|f| f.email.to_lowercase()).collect();
     let c = w.counts(&[nib.clone()], &emails).await;
-    assert_eq!(c.clients, 1);
-    assert_eq!(c.accounts, 1, "hanya pemenang yang punya akun");
-    assert_eq!((c.members, c.intents, c.jobs, c.consents), (1, 1, 1, 1));
+    assert_eq!(c.clients, 6, "setiap pendaftar punya pengajuan sendiri");
+    assert_eq!(c.accounts, 6);
+    assert_eq!((c.members, c.intents, c.jobs), (6, 6, 6));
+    let active = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.corporate_client WHERE nib = $1 AND status <> 'pending_verification'"#,
+        nib
+    )
+    .fetch_one(&w.app)
+    .await
+    .unwrap();
+    assert_eq!(active, 0, "tidak ada yang langsung Aktif");
 
     // Dua pendaftaran bersamaan dengan email sama (NIB berbeda): satu akun.
     let email = format!("balap-{}@example.com", random_hex(5));
