@@ -13,6 +13,22 @@ const JUDUL_CONTOH: Readonly<Record<HalamanSitus, string>> = {
 };
 
 /**
+ * Isi contoh `services` berbentuk konvensi kartu `##` (KEPUTUSAN-354) supaya pratinjau dan `periksa-build`
+ * melewati jalur kartu layanan. Judul dan isi hanya penanda contoh, bukan daftar layanan bisnis.
+ */
+const BODY_LAYANAN_CONTOH = [
+  "Isi contoh untuk pratinjau lokal. Bukan konten bisnis.",
+  "",
+  "## Contoh bagian satu",
+  "",
+  "Ringkasan contoh untuk pratinjau lokal. Bukan konten bisnis.",
+  "",
+  "## Contoh bagian dua",
+  "",
+  "Ringkasan contoh untuk pratinjau lokal. Bukan konten bisnis.",
+].join("\n");
+
+/**
  * Klien contoh untuk test dan pratinjau lokal. Bukan konten bisnis: judul hanya label navigasi, isi hanya
  * kalimat penanda bahwa ini contoh; Beranda dan Artikel kosong supaya penanda `[TIDAK DIKETAHUI]` tampil.
  * Tidak pernah dipakai di produksi (lihat `index.ts`).
@@ -24,7 +40,7 @@ export class KlienKontenContoh implements KlienKonten {
       content_id: "00000000-0000-7000-8000-000000000000",
       content_type: "info_page",
       title: JUDUL_CONTOH[halaman],
-      body: "Isi contoh untuk pratinjau lokal. Bukan konten bisnis.",
+      body: halaman === "services" ? BODY_LAYANAN_CONTOH : "Isi contoh untuk pratinjau lokal. Bukan konten bisnis.",
       published_at: "2026-01-01T00:00:00Z",
       site_page: halaman,
     });

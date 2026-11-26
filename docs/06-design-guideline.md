@@ -1,7 +1,7 @@
 # Design Guideline: Ruang Sehat
 
 Tanggal: 2026-11-18
-Versi: 1.2 (2026-11-19, CR-021, F1-T83/F1-T84): wireframe HTML baru S01 (situs publik sembilan halaman), K01 (member area HR), C13 (verifikasi dan daftar perusahaan), C14 (CMS kanal situs); deskripsi D-S01, D-K01, D-C13, D-C14 di §10.2; permukaan web situs dan korporat di §2; KEPUTUSAN-270–274. Konten bisnis situs (teks Tentang Kami, daftar rekanan, kontak, teks hukum) tetap `[TIDAK DIKETAHUI]`; PT-40 dan sisa PT-45 terbuka. Versi 1.1 (2026-11-18, tindak lanjut Checkpoint 2): alur baru A15 (pendaftaran TOTP pasien, kode pemulihan, perangkat hilang) dan G01 (perangkat dan sesi aktif) sebagai deskripsi terstruktur; §9 MFA mencakup pasien; D-C05 reset MFA pasien; PT-43 dan PT-44 terjawab. Versi 0.1 (draf Tahap 6) disetujui di Checkpoint 2: arah visual, font, logo, navigasi, ubin, mode gelap, pengingat jadwal (UP-58–UP-64) dan KEPUTUSAN-160–177 `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`. PT-40, PT-41, dan sisa PT-45 tetap terbuka
+Versi: 1.3 (2026-11-26, CR-033 C-01–C-03, keputusan user Q15/Q16; font situs Plus Jakarta Sans Q18): token khusus situs publik `web/situs` di §3.3a (skala tipografi situs) dan §3.4a (ritme seksi, kontainer, radius, gerak), KEPUTUSAN-353–359; tidak mengubah token bersama §3.1–§3.4 maupun web lain. Versi 1.2 (2026-11-19, CR-021, F1-T83/F1-T84): wireframe HTML baru S01 (situs publik sembilan halaman), K01 (member area HR), C13 (verifikasi dan daftar perusahaan), C14 (CMS kanal situs); deskripsi D-S01, D-K01, D-C13, D-C14 di §10.2; permukaan web situs dan korporat di §2; KEPUTUSAN-270–274. Konten bisnis situs (teks Tentang Kami, daftar rekanan, kontak, teks hukum) tetap `[TIDAK DIKETAHUI]`; PT-40 dan sisa PT-45 terbuka. Versi 1.1 (2026-11-18, tindak lanjut Checkpoint 2): alur baru A15 (pendaftaran TOTP pasien, kode pemulihan, perangkat hilang) dan G01 (perangkat dan sesi aktif) sebagai deskripsi terstruktur; §9 MFA mencakup pasien; D-C05 reset MFA pasien; PT-43 dan PT-44 terjawab. Versi 0.1 (draf Tahap 6) disetujui di Checkpoint 2: arah visual, font, logo, navigasi, ubin, mode gelap, pengingat jadwal (UP-58–UP-64) dan KEPUTUSAN-160–177 `[USER] C2-B8, C2-B9, C2-B10, C2-B11, C2-B15`. PT-40, PT-41, dan sisa PT-45 tetap terbuka
 Penyusun: Claude (persona UI/UX Designer / Design System Lead), Mode Otomatis
 Pemilik dan penyetuju: user (project manager, meneruskan ke CEO dan CTO) `[DOK: 00-project-brief.md]`
 Dasar: PRD v1.1 `[DOK: 03-prd.md]`, stack v1.0 `[DOK: 05-stack.md]`, coding standards `[DOK: coding-standards.md]`, backlog CR-007, CR-009, CR-012, CR-013, CR-015 `[DOK: backlog.md]`, pamflet `[DOK: input/Rumah Sehat Apps.jpeg]`, catatan T5-Q12 `[DOK: 05-catatan-stack.md]`
@@ -143,6 +143,22 @@ Luminance per warna (dihitung dengan rumus di atas, dibulatkan 4 desimal): `#FFF
 
 Aturan: tinggi baris ≥ 1,3 kali ukuran; kontainer teks tidak bertinggi tetap, sehingga pengaturan spasi teks pengguna tidak memotong isi (SC 1.4.12) `[SRC-256]`; angka uang dan tabel memakai angka tabular di web.
 
+### 3.3a Skala tipografi situs publik (v1.3, CR-033)
+
+Berlaku hanya untuk `web/situs` (situs pemasaran), sebagai CSS custom properties `--situs-*` di `web/situs/src/app/situs.css`; skala §3.3 tetap untuk web lain `[KEPUTUSAN-358]`. Nilai dari brief situs §7.3 (disetujui lewat Q15/Q16 `[USER]` 2026-11-26).
+
+| Token situs | Desktop (≥ 768) | Seluler (< 768) | Pemakaian |
+| --- | --- | --- | --- |
+| `--situs-hero` | 48/56, 800 | 32/40, 800 | Judul hero Beranda |
+| `--situs-h1` | 36/44, 800 | 28/36, 800 | Judul halaman (pita judul) |
+| `--situs-h2` | 28/36, 800 | 24/32, 800 | Judul seksi, `##` Markdown teratas |
+| `--situs-h3` | 20/28, 700 | 18/26, 700 | Judul kartu |
+| `--situs-lead` | 18/28, 400 | 17/26, 400 | Kalimat pembuka (`text.secondary`, K2) |
+| `--situs-body` | 16/26, 400 | 16/26, 400 | Teks isi dan artikel |
+| `--situs-eyebrow` | 13/18, 700, kapital, spasi huruf 0,08em | sama | Label kecil di atas judul (`primaryStrong`, K6) |
+
+Font situs: **Plus Jakarta Sans** (keputusan user Q18 2026-11-26 `[USER]`, menutup UP-59 untuk situs; `[KEPUTUSAN-356]`), satu berkas woff2 variabel `wght` 200–800 di-host sendiri lewat `next/font/local`, `font-display: swap`, cadangan tumpukan sistem §3.3 `[SRC-881]` `[SRC-882]`. Web lain (backoffice, korporat, portal, RME) tetap font sistem `[KEPUTUSAN-164]`. Judul memakai spasi huruf −0,015 sampai −0,025em. Catatan: tinggi baris judul situs (hero 1,17; h1 1,22; h2 1,29) di bawah aturan "≥ 1,3 kali ukuran" §3.3, sama seperti `type.display` web 28/36 (1,29) yang sudah ada; teks isi dan pembuka memenuhi (1,56–1,63). Apakah aturan 1,3 berlaku untuk judul perlu ditegaskan user/desainer (dicatat di laporan CR-033); kontainer tetap tanpa tinggi tetap (SC 1.4.12).
+
 ### 3.4 Spacing, radius, elevation
 
 `[KEPUTUSAN-165]`
@@ -159,6 +175,18 @@ Aturan: tinggi baris ≥ 1,3 kali ukuran; kontainer teks tidak bertinggi tetap, 
 | `elevation.1` | Bayangan 0 1 2 (12% `text.primary`) + garis 1 px `border.divider` | Kartu. Batas kartu tidak bergantung bayangan saja |
 | `elevation.2` | 0 4 12 (16%) | Menu, bingkai |
 | `elevation.3` | 0 8 24 (20%) + scrim 48% | Dialog, lembar bawah, toast |
+
+### 3.4a Ritme dan bentuk situs publik (v1.3, CR-033)
+
+Hanya `web/situs` `[KEPUTUSAN-358]`:
+- Jarak vertikal seksi 96 (rapat 64) di desktop, 56 (rapat 48) di seluler; nilai > 64 hanya sebagai token situs, `space.*` §3.4 tidak berubah.
+- Kontainer isi maksimum 1200 px, kolom baca 720 px; tepi 24 (desktop) dan 16 (seluler).
+- Radius kartu situs 20, bingkai gambar dan panel besar 24 (pamflet "sudut membulat" `[UP-58]`); chip dan tombol situs `radius.full`.
+- Bayangan hanya `elevation.1–3`; kartu naik 4 px + `elevation.2` saat hover, cincin fokus di kartu lewat `:focus-within` (§7.2 A8).
+- Ritme latar: gradien `bg.app → mint` (hero, pita judul) → putih → `bg.app` → `primaryStrong` (seksi gelap Untuk Perusahaan, teks putih K7 7,53 dan mint 6,56) → footer `text.primary` (K13, judul kolom mint 12,81). Lapisan putih 8% di atas `primaryStrong` (kartu "kaca") memberi warna #1A6C66: teks putih 6,21 dan mint 5,41 (dihitung di `web/situs/src/kontras.test.ts`).
+- Gerak: CSS saja, sekali saat dimuat (fade + geser 12 px), transisi 180 ms; semua gerak dan pergeseran dimatikan untuk `prefers-reduced-motion: reduce` `[SRC-880]`.
+- Titik henti situs: < 768 satu kolom, 768–1279 dua kolom kartu, ≥ 1280 empat kolom kartu layanan/tiga kolom artikel; menu `details` di bawah 1024.
+- Ikon situs: SVG sebaris buatan sendiri di `web/situs` (`[KEPUTUSAN-355]`, pengecualian lokasi dari §3.5 sampai dipindah ke paket UI).
 
 ### 3.5 Ikon, ilustrasi, dan logo
 
