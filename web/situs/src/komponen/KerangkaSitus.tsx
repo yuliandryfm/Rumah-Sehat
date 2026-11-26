@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { NAV_KEBIJAKAN } from "../navigasi.ts";
 import { NavUtama } from "./NavUtama.tsx";
-import { TidakDiketahui } from "./TidakDiketahui.tsx";
 
 /**
  * Tata letak situs: tautan lewati, header (logo, navigasi), `<main id="isi">`, footer. Mengikuti
@@ -49,7 +48,8 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
         </nav>
         <div className="situs-kecil">Dioperasikan oleh PT. Arunika</div>
         <p className="situs-legal">
-          [Hak cipta dan alamat badan usaha] <TidakDiketahui />
+          {/* Teks hak cipta: keputusan user 2026-11-26 (opsi A, tanpa alamat badan usaha). */}
+          © 2026 PT. Arunika. Hak cipta dilindungi.
         </p>
       </footer>
     </>

@@ -37,6 +37,7 @@ Catatan orkestrator selama Fase 1 (bahan `docs/fase-1-laporan.md` di F1-T71). St
 
 | Tanggal | Arahan `[USER]` | Dampak |
 | --- | --- | --- |
+| 2026-11-26 | Footer situs: "A" (Telegram), yaitu "© 2026 PT. Arunika. Hak cipta dilindungi." tanpa alamat | `web/situs` KerangkaSitus; alamat badan usaha tetap belum diketahui, ditambahkan bila user memberikannya |
 | 2026-11-25 | "oke fokus web korporat dulu" (terminal) | Urutan sisa Fase 1: ADR-030/CR-026 (fondasi worker IdP) → F1-T101/T102 → F1-T103 → F1-T106 → F1-T108 + undangan HR (F1-T107 sisa) → F1-T105, F1-T109 → F1-T110. F1-T49–T51 (registrasi pasien) dan bagian pasien/admin ADR-030 ditunda sesudahnya. Maksimal 3 agent paralel |
 | 2026-11-22 | "batasi agent maksimal 3 saja" / "maksimal 3 agent tidak lebihh" (Telegram, terminal) | Paling banyak 3 subagent berjalan bersamaan |
 | 2026-11-19 | "blm ada server storage gunakan server saat ini dengan membuat folder khusus" (Telegram) | Pengembangan dan test memakai SeaweedFS di server pengembangan, data di folder host khusus (`RS_OBJECT_STORAGE_DIR`, default `~/ruang-sehat-data/object-storage`). Target production tetap NEO sesuai ADR-018/`docs/05-stack.md`; verifikasi NEO (11 celah spike F1-T03) menjadi PT-58, wajib sebelum production (EN-26) |
