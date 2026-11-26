@@ -121,7 +121,7 @@ jobs:
   # KEPUTUSAN-340 (CR-029): test-verify.sh menjalankan verify.sh lengkap untuk hampir setiap fixture (puluhan pemanggilan;
   # satu fixture pertama di runner bersih sekitar 23 menit, fixture berikutnya belasan menit), jadi satu job
   # tidak muat dalam batas waktu. Fixture dibagi ke kelompok (kelompok_blok di scripts/test/test-verify.sh,
-  # maksimal dua fixture penuh per kelompok) dan dijalankan sebagai job matrix paralel di runner standar GitHub
+  # satu fixture penuh per kelompok, kecuali pasangan yang murah) dan dijalankan sebagai job matrix paralel di runner standar GitHub
   # (ubuntu-24.04, bukan larger runner berbayar). fail-fast mati supaya semua kelompok terlapor, bukan hanya yang
   # pertama merah. Batas waktu job tetap 60 menit; ukuran kelompok yang diperkecil, bukan batasnya dinaikkan.
   # Daftar kelompok di bawah dijaga sama dengan skrip oleh scripts/test/test-verify-kelompok.sh (job verify).
@@ -133,26 +133,36 @@ jobs:
       fail-fast: false
       matrix:
         kelompok:
-          - dasar
-          - hook-test
-          - lingkungan
-          - config-rust
-          - clippy
-          - gitleaks-a
-          - gitleaks-b
-          - gitleaks-config
-          - osv-audit
-          - lockfile-deny
-          - lisensi-rentan
-          - alat
-          - web-a
-          - web-b
           - cache-isi
           - cache-ci
-          - cache-penuh
           - cache-batal
           - cache-merah
+          - cache-gagal
+          - cache-penuh
           - cache-tanpa-rujukan
+          - dasar
+          - hook-test
+          - lisensi-rentan
+          - web-a
+          - clippy
+          - env-rustflags
+          - env-gitleaks
+          - cargo-config
+          - fmt
+          - gitleaks-riwayat
+          - gitleaks-staged
+          - gitleaks-unstaged
+          - gitleaks-allow
+          - gitleaks-config-liar
+          - gitleaks-config-hilang
+          - osv-config-liar
+          - audit-toml
+          - lockfile-asing
+          - deny-hilang
+          - alat-hilang
+          - alat-versi
+          - web-kontras
+          - migrasi
     steps:
       - name: Checkout (riwayat penuh untuk gitleaks dan basis migrasi)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

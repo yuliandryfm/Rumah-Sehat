@@ -620,7 +620,7 @@ Deskripsi: CI menjalankan seluruh `scripts/test/test-verify.sh` dalam satu job. 
 Perbaikan: fixture dikelompokkan (`kelompok_blok`), dipilih lewat `RS_TEST_VERIFY_KELOMPOK` (tanpa pilihan: semua, perilaku lokal tidak berubah; nama tidak dikenal gagal); job matrix `test-verify` di `.github/workflows/ci.yml` (runner `ubuntu-24.04` standar, `fail-fast: false`, batas 60 menit tidak dinaikkan); job `verify` dipertahankan; test kelengkapan `scripts/test/test-verify-kelompok.sh` (gabungan kelompok = seluruh fixture; matrix = kelompok skrip). KEPUTUSAN-340 sampai KEPUTUSAN-342; SRC-856 sampai SRC-858; `docs/05-stack.md` §3.2.
 Alasan: perbaikan alur CI; tidak mengubah `scripts/verify.sh`, tidak mengubah cakupan test, tanpa runner berbayar.
 Keputusan: disetujui user (opsi A)
-Status: kode selesai; run CI nyata pertama menemukan dua cacat laten test-verify.sh (lisensi `--offline`, path cache di cache-isi) dan dua kelompok terlalu panjang (dipecah); hasil run berikutnya dicatat di KEPUTUSAN-342
+Status: kode selesai; run CI nyata pertama menemukan dua cacat laten test-verify.sh (lisensi `--offline`, path cache di cache-isi) dan kelompok terlalu panjang (dipecah menjadi satu fixture penuh per kelompok, 30 kelompok); ukuran dan data run di KEPUTUSAN-342
 
 ## Tech Debt
 

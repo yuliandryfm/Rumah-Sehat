@@ -125,19 +125,19 @@ hasil "negatif-blok-lupa-didaftarkan-gagal" "$k" 1
 grep -q 'blok_lupa_didaftarkan' "$KERJA/lupa.err" && hasil "negatif-blok-lupa-pesan-menyebut-blok" 0 0 || hasil "negatif-blok-lupa-pesan-menyebut-blok" 1 0
 
 # Blok dicabut dari kelompok.
-sed 's/^    web-b) echo "web_kontras migrasi" ;;$/    web-b) echo "web_kontras" ;;/' "$ASLI" >"$KERJA/dicabut.sh"
+sed 's/^    web-a) echo "web_artefak web_lock_basi" ;;$/    web-a) echo "web_artefak" ;;/' "$ASLI" >"$KERJA/dicabut.sh"
 k=0
 periksa_skrip "$KERJA/dicabut.sh" 2>/dev/null || k=$?
 hasil "negatif-blok-dicabut-dari-kelompok-gagal" "$k" 1
 
 # Blok tercantum di dua kelompok.
-sed 's/^    web-b) echo "web_kontras migrasi" ;;$/    web-b) echo "web_kontras migrasi fmt" ;;/' "$ASLI" >"$KERJA/ganda.sh"
+sed 's/^    web-a) echo "web_artefak web_lock_basi" ;;$/    web-a) echo "web_artefak web_lock_basi fmt" ;;/' "$ASLI" >"$KERJA/ganda.sh"
 k=0
 periksa_skrip "$KERJA/ganda.sh" 2>/dev/null || k=$?
 hasil "negatif-blok-ganda-gagal" "$k" 1
 
 # Kelompok mereferensikan blok yang tidak ada fungsinya.
-sed 's/^    web-b) echo "web_kontras migrasi" ;;$/    web-b) echo "web_kontras migrasi hantu" ;;/' "$ASLI" >"$KERJA/hantu.sh"
+sed 's/^    web-a) echo "web_artefak web_lock_basi" ;;$/    web-a) echo "web_artefak web_lock_basi hantu" ;;/' "$ASLI" >"$KERJA/hantu.sh"
 k=0
 periksa_skrip "$KERJA/hantu.sh" 2>/dev/null || k=$?
 hasil "negatif-blok-tanpa-fungsi-gagal" "$k" 1
@@ -149,11 +149,11 @@ periksa_skrip "$KERJA/liar.sh" 2>/dev/null || k=$?
 hasil "negatif-fixture-liar-tingkat-atas-gagal" "$k" 1
 
 # Kelompok di ci.yml hilang, atau ada kelompok asing.
-grep -v '^ *- web-b *$' "$CI_ASLI" >"$KERJA/ci-kurang.yml"
+grep -v '^ *- web-a *$' "$CI_ASLI" >"$KERJA/ci-kurang.yml"
 k=0
 periksa_matrix "$KERJA/ci-kurang.yml" "$ASLI" 2>/dev/null || k=$?
 hasil "negatif-matrix-kurang-kelompok-gagal" "$k" 1
-awk '{ print } /^ +- web-b[[:space:]]*$/ { sub(/web-b/, "asing"); print }' "$CI_ASLI" >"$KERJA/ci-lebih.yml"
+awk '{ print } /^ +- web-a[[:space:]]*$/ { sub(/web-a/, "asing"); print }' "$CI_ASLI" >"$KERJA/ci-lebih.yml"
 k=0
 periksa_matrix "$KERJA/ci-lebih.yml" "$ASLI" 2>/dev/null || k=$?
 hasil "negatif-matrix-kelompok-asing-gagal" "$k" 1
@@ -164,13 +164,13 @@ RS_TEST_VERIFY_KELOMPOK=tidak-ada bash "$ASLI" >"$KERJA/pilih.out" 2>"$KERJA/pil
 hasil "kelompok-tidak-dikenal-gagal-kode-2" "$k" 2
 grep -q 'kelompok tidak dikenal' "$KERJA/pilih.err" && hasil "kelompok-tidak-dikenal-pesan" 0 0 || hasil "kelompok-tidak-dikenal-pesan" 1 0
 k=0
-RS_TEST_VERIFY_KELOMPOK="alat,tidak-ada" bash "$ASLI" --daftar >/dev/null 2>&1 || k=$?
+RS_TEST_VERIFY_KELOMPOK="lisensi-rentan,tidak-ada" bash "$ASLI" --daftar >/dev/null 2>&1 || k=$?
 hasil "salah-satu-kelompok-tidak-dikenal-gagal" "$k" 2
 k=0
 bash "$ASLI" --bukan-opsi >/dev/null 2>&1 || k=$?
 hasil "argumen-asing-ditolak" "$k" 2
 semua="$(bash "$ASLI" --daftar | wc -l | tr -d ' ')"
-satu="$(RS_TEST_VERIFY_KELOMPOK=alat bash "$ASLI" --daftar | wc -l | tr -d ' ')"
+satu="$(RS_TEST_VERIFY_KELOMPOK=lisensi-rentan bash "$ASLI" --daftar | wc -l | tr -d ' ')"
 tak_kosong=1
 if [ "$semua" -gt "$satu" ] && [ "$satu" -gt 0 ]; then tak_kosong=0; fi
 hasil "pilihan-satu-kelompok-subset-dan-tidak-kosong" "$tak_kosong" 0

@@ -620,8 +620,20 @@ blok_cache_merah() {
   k="$(verify_di "$r" "$KERJA/cache-merah.log" "${NYALA[@]}")"
   merah "cache-fixture-merah-tetap-merah" "$k" "$KERJA/cache-merah.log" "web-kontras"
   nilai "cache-fixture-merah-rust-dari-cache" 1 "$k" "$KERJA/cache-merah.log" "^  LULUS +cargo-clippy \(cache, sidik [0-9a-f]{8}\)$"
+}
 
-  # GAGAL tidak di-cache: isi merah yang sama dijalankan lagi, web-kontras berjalan lagi dan tetap GAGAL.
+blok_cache_gagal() {
+  local r k
+  # GAGAL tidak di-cache: isi merah dijalankan dua kali pada salinan yang sama (cache kosong di awal),
+  # web-kontras berjalan lagi di run kedua dan tetap GAGAL.
+  CACHE_UJI="$KERJA/cache-uji-gagal"
+  rm -rf "$CACHE_UJI"
+  nyala_cache "$CACHE_UJI"
+  r="$(fixture_baru cache-gagal)"
+  sed 's/--c-text-secondary: #5c6b6f;/--c-text-secondary: #aaaaaa;/' "$r/web/packages/ui/src/tokens.css" >"$r/web/packages/ui/src/tokens.css.baru"
+  mv "$r/web/packages/ui/src/tokens.css.baru" "$r/web/packages/ui/src/tokens.css"
+  k="$(verify_di "$r" "$KERJA/cache-gagal-1.log" "${NYALA[@]}")"
+  merah "cache-gagal-run-pertama-merah" "$k" "$KERJA/cache-gagal-1.log" "web-kontras"
   k="$(verify_di "$r" "$KERJA/cache-merah-2.log" "${NYALA[@]}")"
   tandai_cache "$KERJA/cache-merah-2.log" "CACHE-KONTRAS" "web-kontras.*\(cache, sidik"
   merah "cache-gagal-tidak-di-cache" "$k" "$KERJA/cache-merah-2.log" "web-kontras"
@@ -673,33 +685,45 @@ blok_cache_tanpa_rujukan() {
 
 # --- Kelompok (KEPUTUSAN-340) ---
 # Setiap kelompok dijalankan sebagai satu job matrix di CI (.github/workflows/ci.yml). Hampir setiap fixture
-# menjalankan verify.sh lengkap (puluhan menit di runner standar GitHub, lihat docs/05-stack.md §3.2), jadi
-# satu kelompok memuat paling banyak dua fixture penuh; rangkaian cache dipecah per skenario dan setiap skenario
-# mengisi cache sendiri. Urutan di KELOMPOK_URUTAN = urutan jalan lokal tanpa pilihan.
-KELOMPOK_URUTAN="dasar hook-test lingkungan config-rust clippy gitleaks-a gitleaks-b gitleaks-config osv-audit lockfile-deny lisensi-rentan alat web-a web-b cache-isi cache-ci cache-penuh cache-batal cache-merah cache-tanpa-rujukan"
+# menjalankan verify.sh lengkap (20-25 menit di runner standar GitHub, lihat docs/05-stack.md §3.2 dan
+# KEPUTUSAN-342), jadi satu kelompok memuat satu fixture penuh; hanya pasangan fixture yang gagal lebih awal
+# (murah) digabung. Rangkaian cache tidak dapat dipecah di dalam satu skenario (tiap run memakai cache run
+# sebelumnya) dan dibagi per skenario; tiap skenario mengisi cache sendiri. Rangkaian cache ditaruh paling depan
+# supaya job terpanjang mulai di gelombang pertama. Urutan KELOMPOK_URUTAN = urutan jalan lokal tanpa pilihan.
+KELOMPOK_URUTAN="cache-isi cache-ci cache-batal cache-merah cache-gagal cache-penuh cache-tanpa-rujukan dasar hook-test lisensi-rentan web-a clippy env-rustflags env-gitleaks cargo-config fmt gitleaks-riwayat gitleaks-staged gitleaks-unstaged gitleaks-allow gitleaks-config-liar gitleaks-config-hilang osv-config-liar audit-toml lockfile-asing deny-hilang alat-hilang alat-versi web-kontras migrasi"
 
 kelompok_blok() { # kelompok_blok <kelompok>: cetak nama blok kelompok itu; gagal bila kelompok tidak dikenal
   case "$1" in
-    dasar) echo "bersih argumen" ;;
-    hook-test) echo "env_hook test" ;;
-    lingkungan) echo "env_rustflags env_gitleaks" ;;
-    config-rust) echo "cargo_config fmt" ;;
-    clippy) echo "clippy" ;;
-    gitleaks-a) echo "gitleaks_riwayat gitleaks_staged" ;;
-    gitleaks-b) echo "gitleaks_unstaged gitleaks_allow" ;;
-    gitleaks-config) echo "gitleaks_config_liar gitleaks_config_hilang" ;;
-    osv-audit) echo "osv_config_liar audit_toml" ;;
-    lockfile-deny) echo "lockfile_asing deny_hilang" ;;
-    lisensi-rentan) echo "lisensi rentan" ;;
-    alat) echo "alat_hilang alat_versi" ;;
-    web-a) echo "web_artefak web_lock_basi" ;;
-    web-b) echo "web_kontras migrasi" ;;
     cache-isi) echo "cache_isi" ;;
     cache-ci) echo "cache_ci" ;;
-    cache-penuh) echo "cache_penuh" ;;
     cache-batal) echo "cache_batal" ;;
     cache-merah) echo "cache_merah" ;;
+    cache-gagal) echo "cache_gagal" ;;
+    cache-penuh) echo "cache_penuh" ;;
     cache-tanpa-rujukan) echo "cache_tanpa_rujukan" ;;
+    dasar) echo "bersih argumen" ;;
+    hook-test) echo "env_hook test" ;;
+    lisensi-rentan) echo "lisensi rentan" ;;
+    web-a) echo "web_artefak web_lock_basi" ;;
+    clippy) echo "clippy" ;;
+    env-rustflags) echo "env_rustflags" ;;
+    env-gitleaks) echo "env_gitleaks" ;;
+    cargo-config) echo "cargo_config" ;;
+    fmt) echo "fmt" ;;
+    gitleaks-riwayat) echo "gitleaks_riwayat" ;;
+    gitleaks-staged) echo "gitleaks_staged" ;;
+    gitleaks-unstaged) echo "gitleaks_unstaged" ;;
+    gitleaks-allow) echo "gitleaks_allow" ;;
+    gitleaks-config-liar) echo "gitleaks_config_liar" ;;
+    gitleaks-config-hilang) echo "gitleaks_config_hilang" ;;
+    osv-config-liar) echo "osv_config_liar" ;;
+    audit-toml) echo "audit_toml" ;;
+    lockfile-asing) echo "lockfile_asing" ;;
+    deny-hilang) echo "deny_hilang" ;;
+    alat-hilang) echo "alat_hilang" ;;
+    alat-versi) echo "alat_versi" ;;
+    web-kontras) echo "web_kontras" ;;
+    migrasi) echo "migrasi" ;;
     *) return 1 ;;
   esac
 }
