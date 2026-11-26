@@ -81,81 +81,25 @@ pub const ACTIVE_CONTENT_NAMES: &[&str] = &[
     "/Mac",
     "/Unix",
     "/Encrypt",
+    // Jenis aksi ISO 32000 berbahaya lain (di mana pun muncul sebagai nama).
+    "/ResetForm",
+    "/Hide",
+    "/SetOCGState",
+    "/GoTo3DView",
+    "/RichMediaExecute",
+    "/Thread",
 ];
 
-/// Nilai `/S` (jenis aksi atau subtipe kamus) yang diizinkan (daftar izin, review T1 F1-T102): kamus yang punya
-/// `/S` selain nilai ini ditolak, sehingga jenis aksi baru atau yang tidak dikenal tidak lolos hanya karena
-/// belum ada di daftar tolak. Aksi yang diizinkan: `/URI` (tautan), `/GoTo` (lompat di dokumen), `/Named`
-/// (navigasi baku). Nilai sah non-aksi (supaya PDF pindaian dan PDF bertag biasa tidak ditolak): `/Transparency`
-/// (kamus grup), jenis label halaman `/D /R /r /A /a`, gaya garis `/S /D /B /I /U` (kamus border), dan tipe
-/// struktur baku PDF 32000-1 §14.8.4 (`/Document /P /Span /Figure` dan seterusnya). Tipe struktur khusus
-/// (dipetakan lewat RoleMap) tidak ada di daftar, sehingga PDF bertag dengan tipe khusus ditolak; batas yang
-/// diketahui dan dicatat di TD-48. Kunci `/S` ganda dalam satu kamus tidak terlihat di JSON qpdf (hanya satu
-/// nilai); perilaku qpdf atasnya `[TIDAK DIKETAHUI]` dan diuji di `corporate_documents_pdf_qpdf.rs`.
-pub const ALLOWED_S_VALUES: &[&str] = &[
-    "/URI",
-    "/GoTo",
-    "/Named",
-    "/Transparency",
-    "/D",
-    "/R",
-    "/r",
-    "/A",
-    "/a",
-    "/S",
-    "/B",
-    "/I",
-    "/U",
-    "/Document",
-    "/Part",
-    "/Art",
-    "/Sect",
-    "/Div",
-    "/BlockQuote",
-    "/Caption",
-    "/TOC",
-    "/TOCI",
-    "/Index",
-    "/NonStruct",
-    "/Private",
-    "/P",
-    "/H",
-    "/H1",
-    "/H2",
-    "/H3",
-    "/H4",
-    "/H5",
-    "/H6",
-    "/L",
-    "/LI",
-    "/Lbl",
-    "/LBody",
-    "/Table",
-    "/TR",
-    "/TH",
-    "/TD",
-    "/THead",
-    "/TBody",
-    "/TFoot",
-    "/Span",
-    "/Quote",
-    "/Note",
-    "/Reference",
-    "/BibEntry",
-    "/Code",
-    "/Link",
-    "/Annot",
-    "/Ruby",
-    "/RB",
-    "/RT",
-    "/RP",
-    "/Warichu",
-    "/WT",
-    "/WP",
-    "/Figure",
-    "/Formula",
-    "/Form",
-];
+/// Jenis aksi (`/S` pada **kamus aksi**) yang diizinkan (daftar izin, review T1 F1-T102): `/URI` (tautan), `/GoTo`
+/// (lompat di dokumen), `/Named` (navigasi baku). Kamus aksi = kamus ber-`/Type /Action`, atau yang dirujuk dari
+/// `/A`, `/Next`, `/OpenAction`, atau nilai kamus `/AA` (rantai `/Next` ikut). Jenis aksi lain, termasuk yang
+/// tidak ada di daftar tolak mana pun, ditolak. `/S` pada kamus lain bukan aksi dan tidak dibatasi: hint stream
+/// PDF terlinearisasi (`/S <angka>`), OutputIntent (`/GTS_PDFA1`, `/GTS_PDFX`), soft mask (`/Luminosity`,
+/// `/Alpha`), transisi halaman, grup (`/Transparency`), label halaman, tipe struktur; nama berbahaya di tempat
+/// itu tetap tertangkap daftar nama [`ACTIVE_CONTENT_NAMES`]. Batas yang diketahui: atribut struktur (`/A` pada
+/// elemen struktur) dinilai sebagai aksi bila memuat `/S`; kunci `/S` ganda tidak terlihat di JSON qpdf (hanya
+/// satu nilai; perilaku qpdf atasnya `[TIDAK DIKETAHUI]`, diuji di `corporate_documents_pdf_qpdf.rs`).
+pub const ALLOWED_ACTION_TYPES: &[&str] = &["/URI", "/GoTo", "/Named"];
 
 /// Batas waktu bawaan satu pemeriksaan (detik). Usulan teknis F1-T102.
 pub const DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS: u64 = 10;
@@ -307,12 +251,14 @@ fn write_temp(config: &QpdfConfig, data: &[u8]) -> Result<TempFile, RunFailure> 
     Ok(guard)
 }
 
-/// Pembungkus POSIX tanpa `unsafe`: memasang batas ruang alamat dan waktu CPU (`ulimit`, upaya terbaik: platform
-/// tanpa `ulimit -v`, misalnya macOS, melewatinya diam-diam) lalu `exec` qpdf. Argumen: batas KiB, batas detik,
-/// program, lalu argumen program. Kode keluar 126/127 (tidak dapat dieksekusi / tidak ditemukan) dibaca
-/// sebagai pemeriksa tidak tersedia.
+/// Pembungkus POSIX tanpa `unsafe`: memasang batas ruang alamat dan waktu CPU (`ulimit`) lalu `exec` qpdf.
+/// Argumen: batas KiB, batas detik, program, lalu argumen program. Batas yang gagal dipasang (galat `ulimit`
+/// tampil di stderr proses, yang dibuang pemanggil) menghentikan proses dengan kode 125; kode 125/126/127
+/// (batas gagal, tidak dapat dieksekusi, tidak ditemukan) dibaca sebagai pemeriksa tidak tersedia, bukan
+/// menjalankan qpdf tanpa batas. Platform tanpa `ulimit -v` (misalnya macOS) karena itu tidak didukung untuk
+/// server: image backend wajib memuat `/bin/sh` dan qpdf (docs/05-stack.md).
 const LIMIT_WRAPPER: &str =
-    r#"ulimit -v "$1" 2>/dev/null; ulimit -t "$2" 2>/dev/null; shift 2; exec "$@""#;
+    r#"ulimit -v "$1" || exit 125; ulimit -t "$2" || exit 125; shift 2; exec "$@""#;
 
 fn spawn_qpdf(config: &QpdfConfig, input: &std::path::Path) -> Result<std::process::Child, ()> {
     for attempt in 0..SPAWN_RETRIES {
@@ -405,7 +351,7 @@ fn run_qpdf(config: &QpdfConfig, data: &[u8]) -> Result<Vec<u8>, RunFailure> {
         let _ = child.wait();
     }
     match status {
-        Some(s) if matches!(s.code(), Some(126 | 127)) => {
+        Some(s) if matches!(s.code(), Some(125..=127)) => {
             tracing::error!("pdf_inspector_not_executable");
             Err(RunFailure::Unavailable)
         }
@@ -425,32 +371,141 @@ fn is_active_name(s: &str) -> bool {
     ACTIVE_CONTENT_NAMES.contains(&name)
 }
 
-/// Apakah nilai `/S` termasuk [`ALLOWED_S_VALUES`] (nama kanonik, awalan `n:` dibuang).
-fn is_allowed_s(v: &Value) -> bool {
-    v.as_str().is_some_and(|s| {
-        let name = s.strip_prefix("n:").unwrap_or(s);
-        ALLOWED_S_VALUES.contains(&name)
-    })
+/// Mengambil nama (tanpa awalan `n:`) dari nilai JSON string.
+fn bare_name(s: &str) -> &str {
+    s.strip_prefix("n:").unwrap_or(s)
 }
 
-/// Menelusuri seluruh pohon JSON (kunci dan nilai string) tanpa rekursi; `true` bila ada nama konten aktif.
-fn contains_active_name(root: &Value) -> bool {
-    let mut stack = vec![root];
+/// `"N G R"` (rujukan tak langsung di JSON qpdf).
+fn is_reference(s: &str) -> bool {
+    s.ends_with(" R") && s.bytes().next().is_some_and(|b| b.is_ascii_digit())
+}
+
+/// Menambahkan rujukan di `v` (string atau larik string) ke `out`.
+fn add_refs(v: &Value, out: &mut std::collections::HashSet<String>) {
+    match v {
+        Value::String(s) if is_reference(s) => {
+            out.insert(s.clone());
+        }
+        Value::Array(items) => {
+            for item in items {
+                add_refs(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Himpunan rujukan objek yang berperan sebagai kamus aksi: nilai `/A`, `/Next`, `/OpenAction`, dan nilai kamus
+/// `/AA` (inline atau lewat rujukan).
+fn action_references(
+    objects: &serde_json::Map<String, Value>,
+) -> std::collections::HashSet<String> {
+    let mut actions = std::collections::HashSet::new();
+    let mut trigger_dicts = std::collections::HashSet::new();
+    let mut stack: Vec<&Value> = objects.values().collect();
     while let Some(v) = stack.pop() {
         match v {
             Value::Object(map) => {
-                // Daftar izin `/S`: nilai di luar [`ALLOWED_S_VALUES`] (atau bukan nama) ditolak.
-                if map.get("/S").is_some_and(|s| !is_allowed_s(s)) {
+                for (k, child) in map {
+                    match k.as_str() {
+                        "/A" | "/Next" | "/OpenAction" => add_refs(child, &mut actions),
+                        "/AA" => match child {
+                            Value::Object(inner) => {
+                                for x in inner.values() {
+                                    add_refs(x, &mut actions);
+                                }
+                            }
+                            Value::String(r) if is_reference(r) => {
+                                trigger_dicts.insert(r.clone());
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    }
+                    stack.push(child);
+                }
+            }
+            Value::Array(items) => stack.extend(items.iter()),
+            _ => {}
+        }
+    }
+    for r in trigger_dicts {
+        if let Some(Value::Object(dict)) = objects
+            .get(&format!("obj:{r}"))
+            .and_then(|o| o.get("value"))
+        {
+            for x in dict.values() {
+                add_refs(x, &mut actions);
+            }
+        }
+    }
+    actions
+}
+
+/// Konteks sebuah nilai JSON dalam pohon objek.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Ctx {
+    /// Bukan kamus aksi.
+    Plain,
+    /// Kamus aksi (atau larik kamus aksi).
+    Action,
+    /// Kamus pemicu `/AA`: nilainya kamus aksi.
+    Triggers,
+}
+
+/// Menelusuri seluruh objek (kunci dan nilai string) tanpa rekursi; `true` bila ada nama konten aktif atau
+/// kamus aksi dengan jenis di luar [`ALLOWED_ACTION_TYPES`].
+fn contains_active(objects: &serde_json::Map<String, Value>) -> bool {
+    let actions = action_references(objects);
+    let mut stack: Vec<(&Value, Ctx)> = objects
+        .iter()
+        .map(|(key, entry)| {
+            let is_action = key
+                .strip_prefix("obj:")
+                .is_some_and(|r| actions.contains(r));
+            (entry, if is_action { Ctx::Action } else { Ctx::Plain })
+        })
+        .collect();
+    while let Some((v, ctx)) = stack.pop() {
+        match v {
+            Value::Object(map) => {
+                let is_action_dict = ctx == Ctx::Action
+                    || map
+                        .get("/Type")
+                        .and_then(Value::as_str)
+                        .is_some_and(|t| bare_name(t) == "/Action");
+                if is_action_dict
+                    && map.get("/S").is_some_and(|t| {
+                        !t.as_str()
+                            .is_some_and(|n| ALLOWED_ACTION_TYPES.contains(&bare_name(n)))
+                    })
+                {
                     return true;
                 }
                 for (k, child) in map {
                     if is_active_name(k) {
                         return true;
                     }
-                    stack.push(child);
+                    let child_ctx = match (ctx, k.as_str()) {
+                        (Ctx::Triggers, _) => Ctx::Action,
+                        (_, "/A" | "/Next" | "/OpenAction") => Ctx::Action,
+                        (_, "/AA") => Ctx::Triggers,
+                        // Pembungkus JSON qpdf (`value`, `stream`, `dict`) mewarisi konteks objeknya.
+                        (_, "value" | "stream" | "dict") => ctx,
+                        _ => Ctx::Plain,
+                    };
+                    stack.push((child, child_ctx));
                 }
             }
-            Value::Array(items) => stack.extend(items.iter()),
+            Value::Array(items) => {
+                let inherited = if ctx == Ctx::Triggers {
+                    Ctx::Plain
+                } else {
+                    ctx
+                };
+                stack.extend(items.iter().map(|i| (i, inherited)));
+            }
             Value::String(s) if is_active_name(s) => return true,
             _ => {}
         }
@@ -477,11 +532,10 @@ pub fn analyze_qpdf_json(output: &[u8]) -> PdfVerdict {
         .and_then(Value::as_u64)
         == Some(2);
     let objects = parts.get(1).and_then(Value::as_object);
-    let has_trailer = objects.is_some_and(|o| o.contains_key("trailer"));
-    if !version_ok || !has_trailer {
+    let (true, Some(objects)) = (version_ok, objects.filter(|o| o.contains_key("trailer"))) else {
         return PdfVerdict::Unreadable;
-    }
-    if contains_active_name(&root) {
+    };
+    if contains_active(objects) {
         PdfVerdict::ActiveContent
     } else {
         PdfVerdict::Safe
@@ -610,48 +664,149 @@ mod tests {
         assert_eq!(analyze_qpdf_json(deep.as_bytes()), PdfVerdict::Unreadable);
     }
 
-    // trace: review T1 F1-T102 (daftar izin /S: aksi tak dikenal ditolak, dokumen pindaian/bertag biasa lolos)
+    // trace: review T1 F1-T102 (daftar izin /S hanya untuk kamus aksi; PDF sah non-aksi tidak ditolak)
     #[test]
-    fn s_values_follow_an_allow_list_not_a_deny_list() {
-        for ok in [
-            "/URI",
-            "/GoTo",
-            "/Named",
-            "/Transparency",
-            "/D",
-            "/r",
-            "/P",
-            "/Span",
-            "/Figure",
-            "/Table",
-        ] {
-            let out = doc(json!({"obj:1 0 R": {"value": {"/S": ok}}}));
-            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::Safe, "{ok}");
+    fn s_outside_action_dictionaries_is_not_restricted() {
+        let safe = [
+            // Hint stream PDF terlinearisasi: /S bernilai angka (offset tabel hint bersama).
+            json!({"obj:5 0 R": {"stream": {"dict": {"/S": 123, "/Length": 40}}}}),
+            json!({"obj:5 0 R": {"stream": {"dict": {"/S": 1024, "/T": 2048, "/O": 3000}}}}),
+            // OutputIntent PDF/A dan PDF/X.
+            json!({"obj:6 0 R": {"value": {"/Type": "/OutputIntent", "/S": "/GTS_PDFA1", "/OutputConditionIdentifier": "u:sRGB"}}}),
+            json!({"obj:6 0 R": {"value": {"/Type": "/OutputIntent", "/S": "/GTS_PDFX"}}}),
+            // Soft mask.
+            json!({"obj:7 0 R": {"value": {"/Type": "/ExtGState", "/SMask": {"/Type": "/Mask", "/S": "/Luminosity", "/G": "8 0 R"}}}}),
+            json!({"obj:7 0 R": {"value": {"/SMask": {"/S": "/Alpha", "/G": "8 0 R"}}}}),
+            // Grup transparansi, label halaman, gaya garis, tipe struktur baku dan khusus.
+            json!({"obj:3 0 R": {"value": {"/Type": "/Page", "/Group": {"/S": "/Transparency", "/CS": "/DeviceRGB"}}}}),
+            json!({"obj:4 0 R": {"value": {"/Nums": [0, {"/S": "/D"}]}}}),
+            json!({"obj:4 0 R": {"value": {"/BS": {"/S": "/S", "/W": 1}}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/StructElem", "/S": "/Span"}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/StructElem", "/S": "/TagKhusus"}}}),
+        ];
+        for objects in safe {
+            assert_eq!(
+                analyze_qpdf_json(&doc(objects.clone())),
+                PdfVerdict::Safe,
+                "{objects}"
+            );
         }
-        // Halaman pindaian biasa: kamus grup transparansi dan label halaman.
-        let scan = doc(json!({
-            "obj:3 0 R": {"value": {"/Type": "/Page", "/Group": {"/S": "/Transparency", "/CS": "/DeviceRGB"}}},
-            "obj:4 0 R": {"value": {"/Nums": [0, {"/S": "/D"}]}},
-        }));
-        assert_eq!(analyze_qpdf_json(&scan), PdfVerdict::Safe);
-        // Jenis aksi yang tidak ada di daftar tolak mana pun tetap ditolak, juga dalam bentuk n: dan non-nama.
-        for bad in [
-            "/Thread",
+        // Transisi halaman: semua gaya sah di luar kamus aksi.
+        for style in [
+            "/Split",
+            "/Blinds",
+            "/Box",
+            "/Wipe",
+            "/Dissolve",
+            "/Glitter",
+            "/R",
+            "/Fly",
+            "/Push",
+            "/Cover",
+            "/Uncover",
+            "/Fade",
+        ] {
+            let out = doc(
+                json!({"obj:3 0 R": {"value": {"/Type": "/Page", "/Trans": {"/Type": "/Trans", "/S": style}}}}),
+            );
+            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::Safe, "{style}");
+        }
+    }
+
+    #[test]
+    fn action_dictionaries_allow_only_uri_goto_named() {
+        for ok in ["/URI", "/GoTo", "/Named", "n:/URI"] {
+            for via in [
+                // inline di /A, lewat rujukan dari /A atau rantai /Next, kamus ber-/Type /Action. (/OpenAction dan /AA
+                // ditolak oleh daftar nama di mana pun, jadi hanya muncul di kasus ditolak.)
+                json!({"obj:1 0 R": {"value": {"/A": {"/S": ok}}}}),
+                json!({"obj:1 0 R": {"value": {"/A": "4 0 R"}}, "obj:4 0 R": {"value": {"/S": ok}}}),
+                json!({"obj:1 0 R": {"value": {"/A": {"/S": "/URI", "/Next": "4 0 R"}}}, "obj:4 0 R": {"value": {"/S": ok}}}),
+                json!({"obj:4 0 R": {"value": {"/Type": "/Action", "/S": ok}}}),
+            ] {
+                assert_eq!(
+                    analyze_qpdf_json(&doc(via.clone())),
+                    PdfVerdict::Safe,
+                    "{ok} {via}"
+                );
+            }
+        }
+        // Jenis tak dikenal (bukan di daftar tolak nama mana pun) pada kamus aksi ditolak, lewat setiap jalur.
+        let bad = [
+            json!({"obj:1 0 R": {"value": {"/A": {"/S": "/Foo"}}}}),
+            json!({"obj:1 0 R": {"value": {"/A": "4 0 R"}}, "obj:4 0 R": {"value": {"/S": "/Foo"}}}),
+            json!({"obj:1 0 R": {"value": {"/OpenAction": "4 0 R"}}, "obj:4 0 R": {"value": {"/S": "/Foo"}}}),
+            json!({"obj:1 0 R": {"value": {"/OpenAction": {"/S": "/Foo"}}}}),
+            json!({"obj:1 0 R": {"value": {"/AA": {"/O": {"/S": "/Foo"}}}}}),
+            json!({"obj:1 0 R": {"value": {"/AA": {"/O": "4 0 R"}}}, "obj:4 0 R": {"value": {"/S": "/Foo"}}}),
+            json!({"obj:1 0 R": {"value": {"/AA": "5 0 R"}}, "obj:5 0 R": {"value": {"/E": "4 0 R"}}, "obj:4 0 R": {"value": {"/S": "/Foo"}}}),
+            // Rantai /Next: aksi pertama URI, aksi berikutnya tak dikenal.
+            json!({"obj:1 0 R": {"value": {"/A": {"/S": "/URI", "/Next": "4 0 R"}}}, "obj:4 0 R": {"value": {"/S": "/Foo"}}}),
+            json!({"obj:1 0 R": {"value": {"/A": {"/S": "/URI", "/Next": [{"/S": "/GoTo"}, {"/S": "/Foo"}]}}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/Action", "/S": "/Foo"}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/Action", "/S": "/Trans"}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/Action", "/S": 7}}}),
+            json!({"obj:4 0 R": {"value": {"/Type": "/Action", "/S": null}}}),
+        ];
+        for objects in bad {
+            assert_eq!(
+                analyze_qpdf_json(&doc(objects.clone())),
+                PdfVerdict::ActiveContent,
+                "{objects}"
+            );
+        }
+        // Jenis berbahaya lewat jalur yang sama dan sebagai nama di mana pun.
+        for name in [
+            "/Launch",
+            "/JavaScript",
+            "/SubmitForm",
+            "/ImportData",
             "/ResetForm",
-            "/SetOCGState",
+            "/GoToR",
+            "/GoToE",
+            "/Rendition",
+            "/Movie",
+            "/Sound",
             "/Hide",
-            "/Trans",
-            "/GoToDp",
-            "/Foo",
-            "n:/Foo",
+            "/SetOCGState",
+            "/GoTo3DView",
+            "/RichMediaExecute",
+            "/Thread",
         ] {
-            let out = doc(json!({"obj:1 0 R": {"value": {"/S": bad}}}));
-            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::ActiveContent, "{bad}");
+            for via in [
+                json!({"obj:1 0 R": {"value": {"/OpenAction": "4 0 R"}}, "obj:4 0 R": {"value": {"/S": name}}}),
+                json!({"obj:1 0 R": {"value": {"/AA": {"/O": {"/S": name}}}}}),
+                json!({"obj:1 0 R": {"value": {"/A": {"/S": "/URI", "/Next": "4 0 R"}}}, "obj:4 0 R": {"value": {"/S": name}}}),
+                json!({"obj:9 0 R": {"value": {"/S": name}}}),
+            ] {
+                assert_eq!(
+                    analyze_qpdf_json(&doc(via.clone())),
+                    PdfVerdict::ActiveContent,
+                    "{name} {via}"
+                );
+            }
         }
-        for odd in [json!(1), json!("u:URI"), json!(["/URI"]), json!(null)] {
-            let out = doc(json!({"obj:1 0 R": {"value": {"/S": odd}}}));
-            assert_eq!(analyze_qpdf_json(&out), PdfVerdict::ActiveContent, "{odd}");
-        }
+    }
+
+    // Kunci `/S` ganda: pengurai JSON mempertahankan nilai terakhir (qpdf sendiri hanya memuat satu nilai).
+    // Bila yang bertahan berbahaya, ditolak; sisi sebaliknya adalah batas yang diketahui (TD-48) dan diuji
+    // dengan qpdf asli.
+    #[test]
+    fn duplicate_s_keys_keep_the_last_value_and_dangerous_survivors_are_rejected() {
+        let raw = |body: &str| {
+            format!(
+                r#"{{"qpdf":[{{"jsonversion":2}},{{"obj:1 0 R":{{"value":{{"/A":{body}}}}},"trailer":{{"value":{{"/Root":"1 0 R"}}}}}}]}}"#
+            )
+        };
+        assert_eq!(
+            analyze_qpdf_json(raw(r#"{"/S":"/URI","/S":"/Foo"}"#).as_bytes()),
+            PdfVerdict::ActiveContent
+        );
+        assert_eq!(
+            analyze_qpdf_json(raw(r#"{"/S":"/Launch","/S":"/URI"}"#).as_bytes()),
+            PdfVerdict::Safe,
+            "batas yang diketahui: nilai awal yang hilang tidak terlihat (TD-48)"
+        );
     }
 
     #[test]
@@ -817,6 +972,32 @@ mod tests {
             let text = std::fs::read_to_string(&probe).unwrap();
             let lines: Vec<&str> = text.lines().collect();
             assert_eq!(lines, ["1048576", "17"], "ulimit -v dan -t");
+        }
+
+        // trace: review T1 F1-T102 (batas yang gagal dipasang tidak dilewati diam-diam: pemeriksa tidak tersedia)
+        #[tokio::test]
+        async fn failing_resource_limit_means_unavailable_not_unlimited() {
+            // Pembungkus sungguhan dengan batas tidak sah: berhenti dengan 125 sebelum menjalankan program.
+            let s = Scratch::new();
+            let ran = s.0.join("ran.txt");
+            let out = Command::new("/bin/sh")
+                .arg("-c")
+                .arg(LIMIT_WRAPPER)
+                .args(["sh", "abc", "5", "/bin/sh", "-c"])
+                .arg(format!("echo ok > '{}'", ran.display()))
+                .output()
+                .unwrap();
+            assert_eq!(out.status.code(), Some(125), "{out:?}");
+            assert!(!ran.exists(), "program tidak boleh jalan tanpa batas");
+            // Kode 125 (juga 126/127) dari proses dibaca sebagai pemeriksa tidak tersedia, bukan berkas ditolak.
+            for code in [125, 126, 127] {
+                let cfg = s.script(&format!("exit {code}"));
+                assert_eq!(
+                    inspect(cfg, b"%PDF-1.7").await,
+                    PdfVerdict::Unavailable,
+                    "{code}"
+                );
+            }
         }
 
         // trace: review T1 F1-T102 (direktori sementara 0700, sisa rs-pdf-* dibersihkan saat start)

@@ -385,7 +385,7 @@ export interface components {
         /** @description Persetujuan (US-1902 AC2), terikat versi dokumen yang dilihat. */
         ApproveRequest: {
             /**
-             * @description `documents_version` dari detail yang dilihat Verifikator.
+             * @description `documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.
              * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
              */
             documents_version: string;
@@ -616,6 +616,7 @@ export interface components {
             documents: components["schemas"]["DocumentKindDto"][];
             /**
              * @description Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
+             *     Nilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.
              * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
              */
             documents_version: string;
@@ -2154,7 +2155,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Token versi dokumen tidak ada atau tidak valid. */
+            /** @description Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114). */
             422: {
                 headers: {
                     [name: string]: unknown;

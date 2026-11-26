@@ -31,7 +31,7 @@ const PESAN_KODE: Record<string, string> = {
   [KODE_EMAIL_HR_DIPAKAI]: "Email HR sudah dipakai akun lain di portal perusahaan. Gunakan email HR yang lain.",
   "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
   [KODE_DOKUMEN_BELUM_LENGKAP]: "Dokumen belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui.",
-  [KODE_DOKUMEN_BERUBAH]: "Dokumen perusahaan berubah sejak Anda membukanya. Detail dimuat ulang; periksa dokumen lalu putuskan kembali.",
+  [KODE_DOKUMEN_BERUBAH]: "Dokumen perusahaan berubah sejak Anda membukanya. Detail dimuat ulang dan dokumen yang terbuka ditutup; buka dokumen kembali, periksa, lalu putuskan.",
 };
 
 const PESAN_STATUS: Record<number, string> = {

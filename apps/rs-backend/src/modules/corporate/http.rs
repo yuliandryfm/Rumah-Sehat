@@ -248,7 +248,7 @@ async fn document_url(
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 422, description = "Token versi dokumen tidak ada atau tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
     )
 )]

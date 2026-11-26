@@ -203,6 +203,25 @@ describe("keputusan", () => {
     expect(detailFn).toHaveBeenCalledTimes(2);
   });
 
+  test("4090114: dokumen yang terbuka ditutup, pesan harus membuka ulang, dan keputusan berikutnya memakai versi baru", async () => {
+    const versiBaru = "b".repeat(64);
+    let panggilan = 0;
+    const detailFn = vi.fn(() => ok(detail(++panggilan === 1 ? {} : { documents_version: versiBaru })));
+    const setujui = vi.fn((_id: string, versi: string) =>
+      versi === VERSI ? gagal(409, "4090114") : ok({ corporate_client_id: ID, status: "active" as const, submission_round: 1 }),
+    );
+    await bukaPanel(klienUji({ detail: detailFn, setujui }));
+    fireEvent.click(screen.getByRole("button", { name: /Buka\s*Dokumen NIB/ }));
+    await waitFor(() => { expect(document.querySelector("img")?.getAttribute("src")).toBe(URL_DOK); });
+    fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+    expect(await screen.findByText(/dokumen yang terbuka ditutup; buka dokumen kembali/)).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull();
+    expect(detailFn).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+    expect(await screen.findByText(/disetujui dan berstatus Aktif/)).toBeTruthy();
+    expect(setujui).toHaveBeenLastCalledWith(ID, versiBaru);
+  });
+
   test("4090001 keputusan pertama berlaku: pesan, tombol hilang, antrean disegarkan", async () => {
     const antrean = vi.fn(() => ok({ items: [item()], hasMore: false, nextCursor: null }));
     await bukaPanel(klienUji({ antrean, setujui: () => gagal(409, "4090001") }));

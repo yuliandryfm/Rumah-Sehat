@@ -144,6 +144,33 @@ async fn plain_pdf_passes_and_active_content_is_rejected() {
     );
     assert_eq!(verdict(&scan).await, PdfVerdict::Safe);
 
+    // PDF sah yang memuat `/S` di luar kamus aksi (review T1 N1): hint stream PDF terlinearisasi (`/S <angka>`),
+    // OutputIntent PDF/A, soft mask, dan transisi halaman tidak boleh ditolak.
+    let linearized = qpdf_tool(&["--linearize"], &build_pdf("", &[]));
+    assert_eq!(
+        verdict(&linearized).await,
+        PdfVerdict::Safe,
+        "terlinearisasi"
+    );
+    let pdfa = build_pdf(
+        "/OutputIntents [<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier (sRGB) >>]",
+        &[],
+    );
+    assert_eq!(verdict(&pdfa).await, PdfVerdict::Safe, "PDF/A");
+    let softmask = build_pdf(
+        "",
+        &["<< /Type /ExtGState /SMask << /Type /Mask /S /Luminosity /G 3 0 R >> >>"],
+    );
+    assert_eq!(verdict(&softmask).await, PdfVerdict::Safe, "soft mask");
+    let transition = build_pdf(
+        "",
+        &["<< /Type /Page /Parent 2 0 R /Trans << /Type /Trans /S /Wipe /D 1 >> >>"],
+    );
+    assert_eq!(verdict(&transition).await, PdfVerdict::Safe, "transisi");
+    // Aksi `/Launch` lewat /OpenAction yang dirujuk, dan jenis aksi tak dikenal di kamus ber-/Type /Action.
+    let unknown_action = build_pdf("/OpenAction 4 0 R", &["<< /Type /Action /S /Foo >>"]);
+    assert_eq!(verdict(&unknown_action).await, PdfVerdict::ActiveContent);
+
     let bad: Vec<(&str, Vec<u8>)> = vec![
         (
             "jenis aksi di luar daftar izin (/S /Thread)",

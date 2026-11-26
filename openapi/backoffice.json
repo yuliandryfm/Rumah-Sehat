@@ -1534,7 +1534,7 @@
             }
           },
           "422": {
-            "description": "Token versi dokumen tidak ada atau tidak valid.",
+            "description": "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2322,9 +2322,8 @@
         "properties": {
           "documents_version": {
             "type": "string",
-            "description": "`documents_version` dari detail yang dilihat Verifikator.",
-            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-            "maxLength": 64
+            "description": "`documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
           }
         },
         "additionalProperties": false
@@ -2904,9 +2903,8 @@
           },
           "documents_version": {
             "type": "string",
-            "description": "Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).",
-            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-            "maxLength": 64
+            "description": "Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).\nNilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
           },
           "legal_name": {
             "type": "string",

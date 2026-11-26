@@ -171,6 +171,8 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
     }
     if (g.kode === KODE_DOKUMEN_BERUBAH && bukaId !== null) {
       // Dokumen diganti HR sejak detail dibuka: muat ulang detail (token versi baru) agar keputusan berikutnya sah.
+      // Dokumen yang sedang tampil bisa sudah tidak berlaku: ditutup, harus dibuka ulang dari detail baru.
+      setDokumenAktif(null);
       const baru = await api.detail(bukaId);
       if (baru.ok) setDetail(baru.data);
     }

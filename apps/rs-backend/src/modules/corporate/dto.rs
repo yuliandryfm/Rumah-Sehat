@@ -205,10 +205,8 @@ pub(super) struct DetailDto {
     /// `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
     pub(super) documents: Vec<DocumentKindDto>,
     /// Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
-    #[schema(
-        example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        max_length = 64
-    )]
+    /// Nilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
     pub(super) documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     #[schema(example = "authority_proof_insufficient")]
@@ -326,11 +324,8 @@ pub(super) struct RejectRequest {
     /// Kode alasan dari `GET /backoffice/v1/corporate-verification-reasons`.
     #[schema(example = "authority_proof_insufficient", max_length = 64)]
     pub(super) reason_code: String,
-    /// `documents_version` dari detail yang dilihat Verifikator.
-    #[schema(
-        example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        max_length = 64
-    )]
+    /// `documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
     pub(super) documents_version: String,
 }
 
@@ -338,11 +333,8 @@ pub(super) struct RejectRequest {
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ApproveRequest {
-    /// `documents_version` dari detail yang dilihat Verifikator.
-    #[schema(
-        example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        max_length = 64
-    )]
+    /// `documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
     pub(super) documents_version: String,
 }
 
