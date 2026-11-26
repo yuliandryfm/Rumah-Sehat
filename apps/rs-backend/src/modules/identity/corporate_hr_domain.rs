@@ -2,7 +2,14 @@
 //! Tanpa I/O; dipanggil di transaksi berkunci (`corporate::api::lock_members`, pola KEPUTUSAN-290).
 //!
 //! - "HR aktif" = keanggotaan belum dicabut **dan** akun berstatus `active`. HR yang diundang tetapi belum
-//!   aktivasi (`pending_activation`) tidak dihitung.
+//!   aktivasi (`pending_activation`) atau yang penggunanya belum dibuat worker (`pending_provisioning`,
+//!   ADR-030 butir 5) tidak dihitung.
+//! - Undangan HR lain (US-1904 AC2): pemanggil wajib masih HR aktif saat transaksi berkunci membaca ulang
+//!   daftar ([`check_invite`]); sama dengan penonaktifan, supaya HR yang baru dinonaktifkan tidak sempat
+//!   menambah anggota.
+//! - HR yang penggunanya belum dibuat (`provisioning`) tidak dapat dinonaktifkan sampai worker menyelesaikan
+//!   penyediaan (`TargetProvisioning`): tanpa `idp_subject` belum ada pengguna Keycloak untuk dinonaktifkan dan
+//!   adopsi worker akan ditolak untuk akun yang sudah `inactive`.
 //! - HR aktif terakhir perusahaan tidak dapat dinonaktifkan (US-1904 AC2). Selama pemanggil wajib HR aktif
 //!   dan tidak boleh menonaktifkan dirinya sendiri, aturan ini sudah tersirat; tetap diperiksa eksplisit
 //!   ([`active_after_removal`]) supaya invarian tidak bergantung pada urutan pemeriksaan lain.
@@ -21,8 +28,10 @@ pub struct HrMember {
     pub member_id: Uuid,
     /// `account.id`.
     pub account_id: Uuid,
-    /// Status akun.
+    /// Status akun. Akun `pending_provisioning` dinyatakan `PendingActivation` dengan [`Self::provisioning`].
     pub status: AccountStatus,
+    /// Akun `pending_provisioning`: pengguna Keycloak belum dibuat worker (ADR-030 butir 5).
+    pub provisioning: bool,
 }
 
 /// Semua anggota HR (keanggotaan belum dicabut) satu perusahaan.
@@ -64,6 +73,8 @@ pub enum HrRuleViolation {
     TargetInactive,
     /// Sasaran adalah HR aktif terakhir perusahaan (US-1904 AC2).
     LastActiveHr,
+    /// Sasaran masih menunggu pembuatan pengguna Keycloak oleh worker (`pending_provisioning`).
+    TargetProvisioning,
 }
 
 impl HrRuleViolation {
@@ -75,6 +86,7 @@ impl HrRuleViolation {
             Self::SelfDeactivation => "self_deactivation",
             Self::TargetInactive => "target_inactive",
             Self::LastActiveHr => "last_active_hr",
+            Self::TargetProvisioning => "target_provisioning",
         }
     }
 }
@@ -97,6 +109,9 @@ pub fn check_deactivation(
     if target.account_id == actor {
         return Err(HrRuleViolation::SelfDeactivation);
     }
+    if target.provisioning {
+        return Err(HrRuleViolation::TargetProvisioning);
+    }
     if target.status == AccountStatus::Inactive {
         return Err(HrRuleViolation::TargetInactive);
     }
@@ -104,6 +119,18 @@ pub fn check_deactivation(
         return Err(HrRuleViolation::LastActiveHr);
     }
     Ok(target.clone())
+}
+
+/// Keputusan undangan HR lain oleh akun `actor` (US-1904 AC2): pemanggil masih HR aktif perusahaan itu.
+pub fn check_invite(roster: &HrRoster, actor: Uuid) -> Result<(), HrRuleViolation> {
+    let actor_active = roster
+        .by_account(actor)
+        .is_some_and(|m| m.status == AccountStatus::Active && !m.provisioning);
+    if actor_active {
+        Ok(())
+    } else {
+        Err(HrRuleViolation::ActorNotActive)
+    }
 }
 
 #[cfg(test)]
@@ -116,6 +143,7 @@ mod tests {
             member_id: new_id(),
             account_id: new_id(),
             status,
+            provisioning: false,
         }
     }
 
@@ -192,5 +220,60 @@ mod tests {
             check_deactivation(&r, a.account_id, gone.member_id),
             Err(HrRuleViolation::TargetInactive)
         );
+    }
+}
+
+#[cfg(test)]
+mod invite_tests {
+    use super::*;
+    use foundation::new_id;
+
+    fn member(status: AccountStatus, provisioning: bool) -> HrMember {
+        HrMember {
+            member_id: new_id(),
+            account_id: new_id(),
+            status,
+            provisioning,
+        }
+    }
+
+    fn roster(members: &[&HrMember]) -> HrRoster {
+        HrRoster {
+            members: members.iter().map(|m| (*m).clone()).collect(),
+        }
+    }
+
+    // trace: US-1904 AC2 (hanya HR aktif yang mengundang; undangan, nonaktif, dan bukan anggota ditolak)
+    #[test]
+    fn only_an_active_member_may_invite() {
+        let active = member(AccountStatus::Active, false);
+        let invited = member(AccountStatus::PendingActivation, false);
+        let provisioning = member(AccountStatus::PendingActivation, true);
+        let gone = member(AccountStatus::Inactive, false);
+        let r = roster(&[&active, &invited, &provisioning, &gone]);
+        assert_eq!(check_invite(&r, active.account_id), Ok(()));
+        for m in [&invited, &provisioning, &gone] {
+            assert_eq!(
+                check_invite(&r, m.account_id),
+                Err(HrRuleViolation::ActorNotActive)
+            );
+        }
+        assert_eq!(
+            check_invite(&r, new_id()),
+            Err(HrRuleViolation::ActorNotActive)
+        );
+    }
+
+    // trace: ADR-030 butir 5 (HR yang penggunanya belum dibuat tidak dapat dinonaktifkan; tidak dihitung aktif)
+    #[test]
+    fn provisioning_hr_cannot_be_deactivated_and_is_not_active() {
+        let a = member(AccountStatus::Active, false);
+        let p = member(AccountStatus::PendingActivation, true);
+        let r = roster(&[&a, &p]);
+        assert_eq!(
+            check_deactivation(&r, a.account_id, p.member_id),
+            Err(HrRuleViolation::TargetProvisioning)
+        );
+        assert_eq!(active_after_removal(&r, a.member_id), 0);
     }
 }

@@ -46,6 +46,10 @@ pub enum IdentityError {
     NotFound,
     /// Isian tidak valid.
     Invalid(Vec<FieldError>),
+    /// Badan permintaan bukan JSON yang dapat dibaca (400, F1-T107 undangan HR).
+    BadRequest,
+    /// Badan permintaan tanpa `Content-Type: application/json` (415).
+    UnsupportedMediaType,
     /// Keycloak menolak atau tidak dapat dihubungi (502). Perubahan yang sudah di-commit tetap berlaku;
     /// langkah Keycloak dicoba ulang (lihat dokumentasi use case).
     IdentityProvider,
@@ -63,6 +67,8 @@ impl fmt::Display for IdentityError {
             Self::HrRule(v) => write!(f, "aturan anggota HR dilanggar: {v:?}"),
             Self::NotFound => f.write_str("akun admin tidak ditemukan"),
             Self::Invalid(_) => f.write_str("isian tidak valid"),
+            Self::BadRequest => f.write_str("permintaan tidak dapat dibaca"),
+            Self::UnsupportedMediaType => f.write_str("jenis media tidak didukung"),
             Self::IdentityProvider => f.write_str("Keycloak gagal"),
             Self::Audit => f.write_str("pencatatan audit gagal"),
         }
@@ -82,6 +88,8 @@ impl IdentityError {
             Self::HrRule(_) => "hr_rule",
             Self::NotFound => "not_found",
             Self::Invalid(_) => "invalid",
+            Self::BadRequest => "bad_request",
+            Self::UnsupportedMediaType => "unsupported_media_type",
             Self::IdentityProvider => "identity_provider",
             Self::Audit => "audit",
         }
@@ -122,11 +130,15 @@ impl ApiError for IdentityError {
             Self::InvalidRevocation | Self::Audit => codes::INTERNAL,
             Self::NotFound => codes::NOT_FOUND,
             Self::Invalid(_) => codes::INVALID,
+            Self::BadRequest => codes::BAD_REQUEST,
+            Self::UnsupportedMediaType => codes::UNSUPPORTED_MEDIA_TYPE,
             Self::IdentityProvider => codes::UPSTREAM_BAD_GATEWAY,
             Self::HrRule(v) => match v {
                 HrRuleViolation::SelfDeactivation => SELF_ACTION_REJECTED,
                 HrRuleViolation::LastActiveHr => LAST_ACTIVE_CORPORATE_HR,
-                HrRuleViolation::TargetInactive => codes::STATUS_CONFLICT,
+                HrRuleViolation::TargetInactive | HrRuleViolation::TargetProvisioning => {
+                    codes::STATUS_CONFLICT
+                }
                 HrRuleViolation::TargetNotFound => codes::NOT_FOUND,
                 // Pemanggil baru saja dinonaktifkan HR lain: sama dengan penolakan middleware (KU-10).
                 HrRuleViolation::ActorNotActive => codes::UNAUTHENTICATED,
@@ -185,6 +197,15 @@ mod tests {
         assert_eq!(hr(HrRuleViolation::SelfDeactivation), "4090101");
         assert_eq!(hr(HrRuleViolation::LastActiveHr), "4090105");
         assert_eq!(hr(HrRuleViolation::TargetInactive), "4090001");
+        assert_eq!(hr(HrRuleViolation::TargetProvisioning), "4090001");
+        assert_eq!(
+            IdentityError::BadRequest.response_code().as_str(),
+            "4000001"
+        );
+        assert_eq!(
+            IdentityError::UnsupportedMediaType.response_code().as_str(),
+            "4150001"
+        );
         assert_eq!(hr(HrRuleViolation::TargetNotFound), "4040001");
         assert_eq!(hr(HrRuleViolation::ActorNotActive), "4010001");
         assert_eq!(

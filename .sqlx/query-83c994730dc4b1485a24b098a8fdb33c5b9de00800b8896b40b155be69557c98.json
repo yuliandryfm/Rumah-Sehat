@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.operation AS \"operation!\", i.purpose AS \"purpose!\", s.status AS \"status!\"\n               FROM app.idp_provisioning_intent i\n               JOIN app.idp_provisioning_intent_state s ON s.idp_provisioning_intent_id = i.id\n               WHERE i.account_id = $1 ORDER BY i.created_at, i.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "operation!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "operation"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "purpose!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent_state",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "83c994730dc4b1485a24b098a8fdb33c5b9de00800b8896b40b155be69557c98"
+}

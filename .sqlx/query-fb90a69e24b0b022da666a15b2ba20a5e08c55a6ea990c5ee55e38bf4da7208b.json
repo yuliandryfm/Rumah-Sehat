@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id AS \"id!\", corporate_client_id FROM app.corporate_member\n           WHERE account_id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_member",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "corporate_client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_member",
+            "name": "corporate_client_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fb90a69e24b0b022da666a15b2ba20a5e08c55a6ea990c5ee55e38bf4da7208b"
+}

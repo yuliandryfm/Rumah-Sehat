@@ -9,26 +9,27 @@ use time::OffsetDateTime;
 /// Akun HR (belum dihapus) beserta data yang ditampilkan ke HR perusahaan yang sama.
 pub(super) struct HrAccountRow {
     pub(super) id: Uuid,
-    pub(super) idp_subject: String,
+    /// Kosong hanya untuk akun `pending_provisioning` (`ck_account_idp_subject`).
+    pub(super) idp_subject: Option<String>,
     pub(super) email: String,
     pub(super) full_name: Option<String>,
     pub(super) status: String,
 }
 
 /// Akun HR `ids` (hanya jenis `corporate_admin`, belum dihapus lunak). Akun yang tidak memenuhi tidak
-/// dikembalikan (pemanggil menganggapnya bukan HR). Akun `pending_provisioning` (ADR-030 butir 5, belum punya
-/// pengguna Keycloak) juga tidak dikembalikan sampai worker IdP mengadopsi pengguna Keycloak-nya; tampilannya di
-/// daftar HR ditetapkan task undangan (F1-T105/F1-T107 undangan). Dengan saringan itu `idp_subject` pasti terisi
-/// (`ck_account_idp_subject`).
+/// dikembalikan (pemanggil menganggapnya bukan HR). Akun `pending_provisioning` (ADR-030 butir 5, undangan yang
+/// penggunanya belum dibuat worker, `idp_subject` kosong) ikut dikembalikan supaya tampil di daftar HR dan
+/// dihitung use case undangan (F1-T105/F1-T107); akun yang penyediaannya gagal sudah dihapus lunak dan tidak
+/// muncul.
 pub(super) async fn hr_accounts(
     conn: &mut PgConnection,
     ids: &[Uuid],
 ) -> Result<Vec<HrAccountRow>, sqlx::Error> {
     sqlx::query_as!(
         HrAccountRow,
-        r#"SELECT id, idp_subject AS "idp_subject!", email, full_name, status FROM app.account
+        r#"SELECT id, idp_subject, email, full_name, status FROM app.account
          WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat'
-           AND deleted_at IS NULL AND status <> 'pending_provisioning'"#,
+           AND deleted_at IS NULL"#,
         ids,
     )
     .fetch_all(conn)

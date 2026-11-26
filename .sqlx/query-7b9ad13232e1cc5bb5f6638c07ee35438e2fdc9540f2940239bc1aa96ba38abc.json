@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT payload AS \"payload!\" FROM app.audit_outbox\n               WHERE payload ->> 'actor_account_id' = $1\n                 AND payload ->> 'action_name' = 'corporate_client_create_rejected'\n               ORDER BY occurred_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "payload!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_outbox",
+            "name": "payload"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7b9ad13232e1cc5bb5f6638c07ee35438e2fdc9540f2940239bc1aa96ba38abc"
+}

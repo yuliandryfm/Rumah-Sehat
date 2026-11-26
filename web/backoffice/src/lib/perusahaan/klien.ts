@@ -7,6 +7,8 @@ import type {
   ItemAntreanPerusahaan,
   JenisDokumen,
   KeputusanPerusahaan,
+  PerusahaanDibuat,
+  PermintaanBuatPerusahaan,
 } from "./model.ts";
 
 export type { Gagal, Hasil };
@@ -14,9 +16,15 @@ export type { Gagal, Hasil };
 /** Kode 403 BFF untuk penolakan CSRF/Origin (`web/packages/bff-auth/src/http.ts`): bukan soal sub-peran. */
 export const KODE_CSRF_DITOLAK = "4030101";
 
+/** Kode 409 pembuatan perusahaan (`docs/05-response-codes.md`, US-1903 AC1/AC4). */
+export const KODE_NIB_TERDAFTAR = "4090110";
+export const KODE_EMAIL_HR_DIPAKAI = "4090111";
+
 /** Teks per `response_code` (409 `4090001` US-1902 AC4; 403 `4030101` dari BFF). */
 const PESAN_KODE: Record<string, string> = {
   [KODE_CSRF_DITOLAK]: "Permintaan tidak dapat diverifikasi. Muat ulang halaman lalu coba lagi.",
+  [KODE_NIB_TERDAFTAR]: "NIB sudah terdaftar. Hubungi Layanan Pelanggan bila perusahaan ini belum pernah didaftarkan.",
+  [KODE_EMAIL_HR_DIPAKAI]: "Email HR sudah dipakai akun lain di portal perusahaan. Gunakan email HR yang lain.",
   "4090001": "Pengajuan sudah diputuskan Verifikator lain. Keputusan pertama yang tersimpan yang berlaku.",
 };
 
@@ -24,7 +32,7 @@ const PESAN_STATUS: Record<number, string> = {
   401: "Sesi Anda berakhir. Masuk lagi untuk melanjutkan.",
   403: "Akun Anda tidak memiliki sub-peran Verifikator.",
   404: "Perusahaan atau dokumen tidak ditemukan.",
-  422: "Alasan tidak valid. Periksa isian lalu coba lagi.",
+  422: "Isian tidak valid. Periksa isian lalu coba lagi.",
   429: "Terlalu banyak permintaan. Coba lagi sebentar lagi.",
   503: "Layanan sedang tidak tersedia. Coba lagi nanti.",
 };
@@ -51,6 +59,8 @@ export interface KlienPerusahaan {
   dokumenUrl(id: string, jenis: JenisDokumen): Promise<Hasil<DokumenUrl>>;
   setujui(id: string): Promise<Hasil<KeputusanPerusahaan>>;
   tolak(id: string, kodeAlasan: string): Promise<Hasil<KeputusanPerusahaan>>;
+  /** Membuat perusahaan Aktif dan mengundang HR pertama (US-1903). Isian tidak pernah dicatat ke console. */
+  buat(isian: PermintaanBuatPerusahaan): Promise<Hasil<PerusahaanDibuat>>;
 }
 
 interface Respons {
@@ -104,5 +114,21 @@ export function buatKlienPerusahaan(csrfToken: string, opsi: OpsiKlien = {}): Kl
         c.POST("/backoffice/v1/corporate-verifications/{corporate_client_id}/reject", { ...path(id), body: { reason_code: kodeAlasan } }),
         (d) => d as KeputusanPerusahaan,
       ),
+    buat: async (isian) => {
+      const h = await kerjakan(
+        c.POST("/backoffice/v1/corporate-clients", {
+          body: {
+            legal_name: isian.legal_name.trim(),
+            nib: isian.nib.trim(),
+            npwp: isian.npwp.trim(),
+            office_address: isian.office_address.trim(),
+            office_phone: isian.office_phone.trim(),
+            hr_email: isian.hr_email.trim(),
+          },
+        }),
+        (d) => d as PerusahaanDibuat,
+      );
+      return h;
+    },
   };
 }

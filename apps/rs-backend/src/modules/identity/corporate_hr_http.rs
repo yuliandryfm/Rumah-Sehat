@@ -3,6 +3,10 @@
 //! keanggotaan aktif ditegakkan middleware `authz` sebelum handler; cakupan perusahaan
 //! (`authz::CorporateScope`) selalu dari keanggotaan, tidak pernah dari permintaan. Setiap rute terdaftar di
 //! harness isolasi `tests/corporate_isolation.rs` (H-18).
+//!
+//! F1-T107 sisa: `POST /v1/corporate/member-invitations` (undang HR lain, US-1904 AC2). Jawaban `202` seragam
+//! dengan isi tetap tanpa ID, baik email baru maupun yang sudah dipakai (ADR-030 butir 7, P30-2,
+//! KEPUTUSAN-329); daftar anggota menampilkan undangan yang diproses.
 
 use super::corporate_hr_service::{HrDeactivated, HrMemberView};
 use super::error::IdentityError;
@@ -11,18 +15,21 @@ use crate::http_support::{ApiFailure, ApiSuccess};
 use crate::openapi::ErrorEnvelope;
 use authz::{AccountStatus, CorporateScope, Policy, PolicyRouter};
 use axum::Extension;
-use axum::extract::{Path, State};
+use axum::extract::rejection::JsonRejection;
+use axum::extract::{Json, Path, State};
 use axum::http::HeaderValue;
 use axum::http::header::CACHE_CONTROL;
 use axum::response::{IntoResponse, Response};
-use envelope::Success;
+use envelope::{FieldError, Success};
 use foundation::{CorrelationId, Uuid};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use utoipa::ToSchema;
 use utoipa_axum::routes;
 
 /// Pola rute untuk security log (bukan URL berisi ID).
 const DEACTIVATE_ROUTE: &str = "/v1/corporate/members/{corporate_member_id}/deactivate";
+const INVITE_ROUTE: &str = "/v1/corporate/member-invitations";
 
 /// HR perusahaan Aktif (US-1904 AC2; perusahaan Menunggu verifikasi/Ditolak hanya melihat status, US-1901
 /// AC6).
@@ -34,14 +41,17 @@ pub(super) fn router() -> PolicyRouter<AppState> {
     PolicyRouter::new()
         .routes(manage_hr(), routes!(list_members))
         .routes(manage_hr(), routes!(deactivate_member))
+        .routes(manage_hr(), routes!(invite_member))
 }
 
 /// Status akun HR.
 #[derive(Debug, Clone, Copy, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum HrStatusDto {
-    /// Undangan belum diaktivasi.
+    /// Undangan belum diaktivasi (email aktivasi sudah dikirim).
     PendingActivation,
+    /// Undangan diproses: pengguna HR belum dibuat dan email aktivasi belum dikirim (beberapa detik, ADR-030).
+    InvitationProcessing,
     /// Aktif.
     Active,
     /// Nonaktif.
@@ -76,12 +86,17 @@ pub(super) struct HrMemberDto {
 
 impl From<HrMemberView> for HrMemberDto {
     fn from(v: HrMemberView) -> Self {
+        let status = if v.invitation_processing {
+            HrStatusDto::InvitationProcessing
+        } else {
+            v.status.into()
+        };
         Self {
             corporate_member_id: v.corporate_member_id.hyphenated().to_string(),
             email: v.email,
             full_name: v.full_name,
             job_title: v.job_title,
-            status: v.status.into(),
+            status,
             is_self: v.is_self,
         }
     }
@@ -106,6 +121,43 @@ impl From<HrDeactivated> for HrDeactivatedDto {
             identity_provider_synced: v.identity_provider_synced,
         }
     }
+}
+
+/// Undangan HR (US-1904 AC2).
+#[derive(Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct HrInvitationRequest {
+    /// Email HR yang diundang (penerima tautan aktivasi: password dan TOTP, berlaku 24 jam, sekali pakai).
+    #[schema(example = "hr.baru@perusahaan.example", max_length = 254)]
+    email: String,
+}
+
+impl fmt::Debug for HrInvitationRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HrInvitationRequest")
+            .finish_non_exhaustive()
+    }
+}
+
+/// Undangan diterima. Isi selalu sama, juga untuk email yang sudah terdaftar (anti-enumerasi).
+#[derive(Debug, Serialize, ToSchema)]
+pub(super) struct HrInvitationAcceptedDto {
+    /// Selalu `processing`: pengguna dibuat dan email dikirim beberapa saat kemudian; pantau di daftar anggota.
+    #[schema(example = "processing")]
+    status: &'static str,
+}
+
+/// Bentuk dokumentasi respons undangan HR.
+#[derive(ToSchema)]
+#[allow(dead_code)] // hanya untuk pembangkitan skema
+pub(super) struct HrInvitationAcceptedEnvelope {
+    #[schema(example = "2020000")]
+    response_code: String,
+    #[schema(example = "Diterima untuk diproses")]
+    response_description: String,
+    data: HrInvitationAcceptedDto,
+    #[schema(nullable = false)]
+    correlation_id: Option<String>,
 }
 
 /// Bentuk dokumentasi respons daftar anggota HR.
@@ -216,6 +268,70 @@ async fn deactivate_member(
     }
 }
 
+fn body_error(e: &JsonRejection) -> IdentityError {
+    match e {
+        JsonRejection::MissingJsonContentType(_) => IdentityError::UnsupportedMediaType,
+        JsonRejection::JsonDataError(_) => IdentityError::Invalid(vec![FieldError::new(
+            "$",
+            "invalid_format",
+            "Isian tidak lengkap, bertipe salah, atau tidak dikenal",
+        )]),
+        _ => IdentityError::BadRequest,
+    }
+}
+
+/// Mengundang HR lain ke perusahaan pemanggil (US-1904 AC2). Akun baru terikat ke perusahaan pemanggil;
+/// tautan aktivasi (password dan TOTP) berlaku 24 jam dan sekali pakai. Jawaban sama untuk email baru dan email
+/// yang sudah terdaftar.
+#[utoipa::path(
+    post,
+    path = "/v1/corporate/member-invitations",
+    tag = "corporate-hr",
+    operation_id = "corporate_member_invite",
+    security(("bearer" = [])),
+    request_body(content = HrInvitationRequest, content_type = "application/json"),
+    responses(
+        (status = 202, description = "Undangan diterima untuk diproses.", body = HrInvitationAcceptedEnvelope, content_type = "application/json"),
+        (status = 400, description = "Badan permintaan tidak dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut (termasuk pemanggil yang baru saja dinonaktifkan HR lain).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 403, description = "Perusahaan belum Aktif (menunggu verifikasi atau ditolak).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "Email tidak valid.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn invite_member(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    scope: CorporateScope,
+    body: Result<Json<HrInvitationRequest>, JsonRejection>,
+) -> Response {
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => return fail(&state, cid, body_error(&e)),
+    };
+    match state
+        .corporate_hr()
+        .invite_member(&scope, INVITE_ROUTE, &req.email)
+        .await
+    {
+        Ok(()) => {
+            let mut r = ApiSuccess(
+                Success::accepted(HrInvitationAcceptedDto {
+                    status: "processing",
+                })
+                .with_correlation_id(cid),
+            )
+            .into_response();
+            r.headers_mut()
+                .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+            r
+        }
+        Err(e) => fail(&state, cid, e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -224,8 +340,9 @@ mod tests {
     fn route_constant_matches_registered_path_and_every_route_is_corporate_hr() {
         let router = router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 3);
         assert!(entries.iter().any(|((_, p), _)| p == DEACTIVATE_ROUTE));
+        assert!(entries.iter().any(|((_, p), _)| p == INVITE_ROUTE));
         for ((_, path), policy) in entries {
             assert!(path.starts_with("/v1/corporate/"), "{path}");
             assert_eq!(policy, &Policy::corporate_hr(), "{path}");

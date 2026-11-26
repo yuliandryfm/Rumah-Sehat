@@ -1,7 +1,7 @@
 "use client";
 
-import { Alert, Badge, Button, Skeleton } from "@rs/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Badge, Button, Skeleton, TextField } from "@rs/ui";
+import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import {
   KODE_SUDAH_NONAKTIF,
   buatKlienHr,
@@ -9,7 +9,14 @@ import {
   type Gagal,
   type KlienHr,
 } from "../../lib/hr/klien.ts";
-import { LABEL_STATUS, dapatDinonaktifkan, namaTampil } from "../../lib/hr/model.ts";
+import {
+  EMAIL_MAKS,
+  LABEL_STATUS,
+  PESAN_UNDANGAN_DIPROSES,
+  dapatDinonaktifkan,
+  emailTampakValid,
+  namaTampil,
+} from "../../lib/hr/model.ts";
 import { GalatAkses, adalahGalatAkses } from "./GalatAkses.tsx";
 
 export interface KelolaHrProps {
@@ -24,7 +31,8 @@ export interface KelolaHrProps {
  * penonaktifan dengan konfirmasi dampak. Penolakan invarian server (HR aktif terakhir 4090105, diri sendiri
  * 4090101) ditampilkan apa adanya sebagai galat, bukan dicegah diam-diam di klien: server yang memutuskan.
  * Konfirmasi memakai panel sebaris (bukan dialog modal): fokus pindah ke panel dan kembali ke tombol pemicu
- * saat dibatalkan. "Undang HR" belum tersedia: backend undangan menunggu ADR-030/CR-026, tidak dipalsukan.
+ * saat dibatalkan. "Undang HR" (AC2) membuka formulir email sebaris; jawaban 202 server seragam untuk email baru
+ * dan email terpakai, dan UI menampilkan satu pesan tetap tanpa menyebut email (anti-enumerasi, KEPUTUSAN-306).
  */
 export function KelolaHr({ csrfToken, klien, arahkan }: KelolaHrProps) {
   const api = useMemo(() => klien ?? buatKlienHr(csrfToken), [klien, csrfToken]);
@@ -34,6 +42,12 @@ export function KelolaHr({ csrfToken, klien, arahkan }: KelolaHrProps) {
   const [info, setInfo] = useState<string | null>(null);
   const [target, setTarget] = useState<AnggotaHr | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [formUndang, setFormUndang] = useState(false);
+  const [emailUndang, setEmailUndang] = useState("");
+  const [galatEmail, setGalatEmail] = useState<string | null>(null);
+  const [galatUndang, setGalatUndang] = useState<Gagal | null>(null);
+  const [undangSibuk, setUndangSibuk] = useState(false);
+  const [infoUndang, setInfoUndang] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const pemicu = useRef<HTMLElement | null>(null);
 
@@ -57,11 +71,50 @@ export function KelolaHr({ csrfToken, klien, arahkan }: KelolaHrProps) {
 
   if (adalahGalatAkses(galat)) return <GalatAkses galat={galat} {...(arahkan === undefined ? {} : { arahkan })} />;
   // 401 saat aksi (sesi dicabut atau akun nonaktif di tengah jalan) sama dengan saat memuat.
+  if (adalahGalatAkses(galatUndang)) return <GalatAkses galat={galatUndang} {...(arahkan === undefined ? {} : { arahkan })} />;
   if (adalahGalatAkses(galatAksi)) return <GalatAkses galat={galatAksi} {...(arahkan === undefined ? {} : { arahkan })} />;
 
+  const bukaUndang = () => {
+    setInfoUndang(false);
+    setGalatUndang(null);
+    setGalatEmail(null);
+    setFormUndang(true);
+  };
+  const tutupUndang = () => {
+    setFormUndang(false);
+    setEmailUndang("");
+    setGalatEmail(null);
+    setGalatUndang(null);
+  };
+  const kirimUndang = async (e: SyntheticEvent) => {
+    e.preventDefault();
+    if (undangSibuk) return;
+    setGalatUndang(null);
+    setInfoUndang(false);
+    if (!emailTampakValid(emailUndang)) {
+      setGalatEmail("Masukkan email yang valid, misalnya nama@perusahaan.example.");
+      return;
+    }
+    setGalatEmail(null);
+    setUndangSibuk(true);
+    const h = await api.undang(emailUndang.trim());
+    setUndangSibuk(false);
+    if (!h.ok) {
+      if (h.status === 422) setGalatEmail(h.pesan);
+      else setGalatUndang(h);
+      return;
+    }
+    // Pesan tetap, tidak bergantung isi respons: sama untuk email baru dan email yang sudah terdaftar.
+    setFormUndang(false);
+    setEmailUndang("");
+    setInfoUndang(true);
+    setInfo(null);
+    await muat();
+  };
   const mulaiNonaktif = (a: AnggotaHr, el: HTMLElement) => {
     pemicu.current = el;
     setInfo(null);
+    setInfoUndang(false);
     setGalatAksi(null);
     setTarget(a);
   };
@@ -94,16 +147,51 @@ export function KelolaHr({ csrfToken, klien, arahkan }: KelolaHrProps) {
     <>
       <div className="kp-baris">
         <h1>Kelola HR</h1>
-        <div className="kp-aksi-judul">
-          <Button variant="primary" disabled aria-describedby="alasan-undang">
-            Undang HR
-          </Button>
-          <span id="alasan-undang" className="kp-kecil">
-            Belum tersedia: undangan HR baru menunggu keputusan arsitektur (CR-026).
-          </span>
-        </div>
+        <Button variant="primary" onClick={bukaUndang} disabled={formUndang} aria-expanded={formUndang}>
+          Undang HR
+        </Button>
       </div>
 
+      {formUndang ? (
+        <form className="kp-konfirmasi" aria-labelledby="judul-undang" noValidate onSubmit={(e) => void kirimUndang(e)}>
+          <h2 id="judul-undang">Undang HR</h2>
+          <TextField
+            label="Email HR yang diundang"
+            type="email"
+            name="email"
+            autoComplete="off"
+            autoFocus
+            maxLength={EMAIL_MAKS}
+            required
+            value={emailUndang}
+            hint="Penerima mendapat tautan aktivasi (password dan TOTP) yang berlaku 24 jam dan sekali pakai."
+            {...(galatEmail === null ? {} : { error: galatEmail })}
+            onChange={(e) => {
+              setEmailUndang(e.target.value);
+              setGalatEmail(null);
+            }}
+          />
+          {galatUndang === null ? null : (
+            <Alert variant="danger" title="Undangan tidak dapat dikirim">
+              {galatUndang.pesan}
+            </Alert>
+          )}
+          <div className="kp-baris-aksi">
+            <Button variant="secondary" type="button" onClick={tutupUndang} disabled={undangSibuk}>
+              Batal
+            </Button>
+            <Button variant="primary" type="submit" loading={undangSibuk} loadingLabel="Mengirim...">
+              Kirim undangan
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {infoUndang ? (
+        <Alert variant="success" title="Undangan diproses">
+          {PESAN_UNDANGAN_DIPROSES}
+        </Alert>
+      ) : null}
       {info === null ? null : <Alert variant="success" title="Berhasil">{info}</Alert>}
       {galat === null ? null : <Alert variant="danger" title="Daftar HR tidak dapat dimuat">{galat.pesan}</Alert>}
       {galatAksi === null ? null : (

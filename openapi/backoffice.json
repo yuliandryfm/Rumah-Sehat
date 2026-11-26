@@ -1080,6 +1080,122 @@
         ]
       }
     },
+    "/backoffice/v1/corporate-clients": {
+      "post": {
+        "tags": [
+          "corporate-verification"
+        ],
+        "summary": "Membuat perusahaan Aktif dan mengundang HR pertama (US-1903 AC1-AC4). Perusahaan langsung Aktif tanpa\nantrean verifikasi; HR menerima tautan aktivasi (password dan TOTP) berlaku 24 jam dan sekali pakai.",
+        "operationId": "corporate_client_create_by_admin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorporateClientCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Perusahaan Aktif dibuat; undangan HR diproses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorporateClientCreatedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tanpa sub-peran Verifikator.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090110: NIB sudah terdaftar (US-1903 AC4). 4090111: email HR sudah dipakai akun lain di realm korporat.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/backoffice/v1/corporate-verification-reasons": {
       "get": {
         "tags": [
@@ -2443,6 +2559,117 @@
           "article",
           "promo"
         ]
+      },
+      "CorporateClientCreateRequest": {
+        "type": "object",
+        "description": "Perusahaan baru dari Verifikator (US-1903 AC1).",
+        "required": [
+          "legal_name",
+          "nib",
+          "npwp",
+          "office_address",
+          "office_phone",
+          "hr_email"
+        ],
+        "properties": {
+          "hr_email": {
+            "type": "string",
+            "description": "Email HR pertama: penerima undangan aktivasi (password dan TOTP) di realm `korporat`.",
+            "example": "hr@perusahaan.example",
+            "maxLength": 254
+          },
+          "legal_name": {
+            "type": "string",
+            "description": "Nama badan usaha (maks 200 karakter).",
+            "example": "PT Contoh Sintetis",
+            "maxLength": 200
+          },
+          "nib": {
+            "type": "string",
+            "description": "NIB (maks 64 karakter, tanpa spasi; format resmi belum ditetapkan).",
+            "example": "1234567890123",
+            "maxLength": 64
+          },
+          "npwp": {
+            "type": "string",
+            "description": "NPWP (Terbatas; maks 64 karakter, tanpa spasi).",
+            "example": "012345678901234",
+            "maxLength": 64
+          },
+          "office_address": {
+            "type": "string",
+            "description": "Alamat kantor (maks 500 karakter).",
+            "example": "Jl. Contoh No. 1, Jakarta",
+            "maxLength": 500
+          },
+          "office_phone": {
+            "type": "string",
+            "description": "Telepon kantor (maks 32 karakter).",
+            "example": "021-0000000",
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
+      },
+      "CorporateClientCreatedDto": {
+        "type": "object",
+        "description": "Hasil pembuatan perusahaan.",
+        "required": [
+          "corporate_client_id",
+          "status",
+          "corporate_member_id",
+          "hr_account_id",
+          "hr_invitation"
+        ],
+        "properties": {
+          "corporate_client_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "corporate_member_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c"
+          },
+          "hr_account_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2d"
+          },
+          "hr_invitation": {
+            "type": "string",
+            "description": "Selalu `processing`: pengguna HR dibuat dan email aktivasi dikirim worker beberapa saat setelah respons\n(ADR-030 butir 7-8); tautan berlaku 24 jam dan sekali pakai.",
+            "example": "processing"
+          },
+          "status": {
+            "type": "string",
+            "description": "Selalu `active`: perusahaan dibuat Verifikator langsung Aktif (US-1903 AC1).",
+            "example": "active"
+          }
+        }
+      },
+      "CorporateClientCreatedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons pembuatan perusahaan.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CorporateClientCreatedDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
       },
       "CorporateStatusDto": {
         "type": "string",
