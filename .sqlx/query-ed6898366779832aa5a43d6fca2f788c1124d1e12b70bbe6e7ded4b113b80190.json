@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_client_document SET deleted_at = $4, deleted_by = $3, delete_reason = $5, updated_at = $4, updated_by = $3 WHERE id = $1 AND corporate_client_id = $2 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ed6898366779832aa5a43d6fca2f788c1124d1e12b70bbe6e7ded4b113b80190"
+}

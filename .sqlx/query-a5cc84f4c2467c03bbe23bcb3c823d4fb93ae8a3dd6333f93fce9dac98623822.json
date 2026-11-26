@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin, submitted_at) VALUES ($1, $2, $3, $4, 'Jl. Sintetis No. 1', '0210000001', $5, 'self_registered', now() - make_interval(mins => $6))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a5cc84f4c2467c03bbe23bcb3c823d4fb93ae8a3dd6333f93fce9dac98623822"
+}

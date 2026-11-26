@@ -9,10 +9,14 @@
 //! F1-T105: perusahaan dibuatkan Verifikator (US-1903, `admin_create.rs`): langsung Aktif + undangan HR pertama.
 //! F1-T101: pendaftaran perusahaan mandiri oleh calon HR tanpa login (US-1901, `registration.rs`): perusahaan
 //! Menunggu verifikasi + akun HR `pending_provisioning` + bukti persetujuan; jawaban seragam.
+//! F1-T102: dokumen NIB, NPWP, dan bukti kewenangan diunggah HR setelah aktivasi akun (`documents.rs`,
+//! `/v1/corporate/documents`); antrean Verifikator hanya memuat pengajuan yang dokumennya lengkap.
 
 mod admin_create;
 mod admin_create_http;
 pub mod api;
+mod documents;
+mod documents_http;
 mod domain;
 mod dto;
 mod error;
@@ -30,6 +34,12 @@ use authz::PolicyRouter;
 /// F1-T101): tanpa login, jawaban seragam, batas laju.
 pub(crate) fn public_router() -> PolicyRouter<AppState> {
     registration_http::router()
+}
+
+/// Rute API korporat dokumen perusahaan oleh HR (`/v1/corporate/documents`, `openapi/korporat.json`, F1-T102):
+/// realm `korporat`, perusahaan dari keanggotaan sesi.
+pub(crate) fn corporate_router() -> PolicyRouter<AppState> {
+    documents_http::router()
 }
 
 /// Rute backoffice verifikasi perusahaan (`/backoffice/v1`, realm `admin`, sub-peran Verifikator).

@@ -3,7 +3,8 @@
 //! yang tidak dikenal. NPWP (Terbatas, DD A20) hanya di detail, dengan `Debug` manual tanpa NPWP.
 
 use super::api::{
-    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, RejectionReasonView,
+    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, QueueReadiness,
+    RejectionReasonView,
 };
 use crate::modules::platform::api::DownloadTicket;
 use crate::openapi::MetaSchema;
@@ -34,6 +35,31 @@ pub(super) struct QueueParams {
     /// Jumlah item (1-100, bawaan 20).
     #[param(minimum = 1, maximum = 100)]
     pub(super) limit: Option<i64>,
+    /// Isi antrean menurut kelengkapan dokumen (bawaan `ready`, F1-T102).
+    #[param(inline)]
+    pub(super) readiness: Option<QueueReadinessParam>,
+}
+
+/// Pilihan isi antrean menurut kelengkapan dokumen NIB, NPWP, dan bukti kewenangan (F1-T102, keputusan user Q8).
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum QueueReadinessParam {
+    /// Hanya pengajuan yang ketiga dokumennya lengkap ("siap diverifikasi"); bawaan.
+    Ready,
+    /// Hanya pengajuan yang dokumennya belum lengkap.
+    Incomplete,
+    /// Semua pengajuan menunggu verifikasi.
+    All,
+}
+
+impl From<QueueReadinessParam> for QueueReadiness {
+    fn from(p: QueueReadinessParam) -> Self {
+        match p {
+            QueueReadinessParam::Ready => Self::Ready,
+            QueueReadinessParam::Incomplete => Self::Incomplete,
+            QueueReadinessParam::All => Self::All,
+        }
+    }
 }
 
 /// Asal perusahaan.
@@ -120,6 +146,8 @@ pub(super) struct QueueItemDto {
     pub(super) submission_round: i32,
     #[schema(format = DateTime)]
     pub(super) submitted_at: String,
+    /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua ("siap diverifikasi", F1-T102).
+    pub(super) documents_complete: bool,
 }
 
 impl QueueItemDto {
@@ -131,6 +159,7 @@ impl QueueItemDto {
             origin: OriginDto::parse(v.origin)?,
             submission_round: v.submission_round,
             submitted_at: ts(v.submitted_at)?,
+            documents_complete: v.documents_complete,
         })
     }
 }
@@ -172,8 +201,13 @@ pub(super) struct DetailDto {
     pub(super) submission_round: i32,
     #[schema(format = DateTime)]
     pub(super) submitted_at: String,
-    /// Jenis dokumen aktif; dibuka lewat endpoint URL dokumen.
+    /// Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,
+    /// `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
     pub(super) documents: Vec<DocumentKindDto>,
+    /// Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
+    /// Nilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
+    pub(super) documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     #[schema(example = "authority_proof_insufficient")]
     pub(super) rejection_reason: Option<String>,
@@ -214,6 +248,7 @@ impl DetailDto {
                 .into_iter()
                 .map(DocumentKindDto::parse)
                 .collect::<Result<_, _>>()?,
+            documents_version: v.documents_version,
             rejection_reason: v.rejection_reason,
             decided_at: v.decided_at.map(ts).transpose()?,
             can_decide: v.can_decide,
@@ -289,6 +324,18 @@ pub(super) struct RejectRequest {
     /// Kode alasan dari `GET /backoffice/v1/corporate-verification-reasons`.
     #[schema(example = "authority_proof_insufficient", max_length = 64)]
     pub(super) reason_code: String,
+    /// `documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
+    pub(super) documents_version: String,
+}
+
+/// Persetujuan (US-1902 AC2), terikat versi dokumen yang dilihat.
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ApproveRequest {
+    /// `documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.
+    #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
+    pub(super) documents_version: String,
 }
 
 /// Hasil keputusan.
@@ -381,6 +428,7 @@ mod tests {
             submission_round: 1,
             submitted_at: OffsetDateTime::UNIX_EPOCH,
             documents: vec!["nib"],
+            documents_version: "0".repeat(64),
             rejection_reason: None,
             decided_at: None,
             can_decide: true,

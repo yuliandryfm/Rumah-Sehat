@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.upload_slot (id, created_at, expires_at, owner_account_id, bucket, object_key, allowed_mime_type, max_size_bytes) VALUES ($1, $8, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c17249a2afb1900127ee859ec4c44799f0c07bc1aa4f5afa7252dd026c4767c5"
+}

@@ -4,6 +4,69 @@
  */
 
 export interface paths {
+    "/v1/corporate/document-download-urls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * URL unduh berumur pendek (5 menit) untuk dokumen perusahaan pemanggil sendiri. Dicatat E-12 sebelum URL
+         *     terbit.
+         */
+        post: operations["corporate_document_download_url_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/corporate/document-upload-slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Slot unggah dokumen perusahaan (langkah 1 dari 3): berkas diunggah langsung ke object storage, lalu
+         *     dikonfirmasi lewat `POST /v1/corporate/documents`. JPG/PNG paling besar 5.242.880 byte atau PDF paling besar
+         *     10.485.760 byte.
+         */
+        post: operations["corporate_document_upload_slot_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/corporate/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6). */
+        get: operations["corporate_document_list"];
+        put?: never;
+        /**
+         * Mengonfirmasi unggahan (langkah 3 dari 3): isi berkas divalidasi (jenis dari isi, ukuran, PDF diperiksa
+         *     konten aktif) lalu dicatat sebagai dokumen aktif jenis itu, menggantikan yang lama. Setelah NIB, NPWP, dan
+         *     bukti kewenangan lengkap, pengajuan tampil di antrean Verifikator.
+         */
+        post: operations["corporate_document_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/corporate/member-invitations": {
         parameters: {
             query?: never;
@@ -66,6 +129,147 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah
+         *     (rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).
+         */
+        CorporateNameValueDto: {
+            name: string;
+            value: string;
+        };
+        /**
+         * @description Cara unggah langsung ke object storage.
+         * @enum {string}
+         */
+        CorporateUploadMethodDto: "post" | "put";
+        /**
+         * @description Slot unggah yang diterbitkan. `url`, `fields`, dan `headers` rahasia berumur pendek: `Debug` manual
+         *     menyamarkannya (KEPUTUSAN-122).
+         */
+        CorporateUploadSlotDto: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @description Field formulir (POST); kosong untuk PUT. */
+            fields: components["schemas"]["CorporateNameValueDto"][];
+            /** @description Header wajib (PUT); kosong untuk POST. */
+            headers: components["schemas"]["CorporateNameValueDto"][];
+            method: components["schemas"]["CorporateUploadMethodDto"];
+            /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
+            upload_slot_id: string;
+            url: string;
+        };
+        /** @description Bentuk dokumentasi respons slot unggah. */
+        CorporateUploadSlotEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["CorporateUploadSlotDto"];
+            /** @example 2010000 */
+            response_code: string;
+            /** @example Berhasil dibuat */
+            response_description: string;
+        };
+        /** @description Konfirmasi unggahan dokumen. */
+        DocumentConfirmRequest: {
+            document_kind: components["schemas"]["DocumentKindDto"];
+            /**
+             * @description ID slot dari `POST /v1/corporate/document-upload-slots` yang berkasnya sudah diunggah.
+             * @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b
+             */
+            upload_slot_id: string;
+        };
+        /** @description Permintaan URL unduh dokumen perusahaan sendiri. */
+        DocumentDownloadRequest: {
+            document_kind: components["schemas"]["DocumentKindDto"];
+        };
+        /**
+         * @description Jenis dokumen wajib perusahaan.
+         * @enum {string}
+         */
+        DocumentKindDto: "nib" | "npwp" | "authority_proof";
+        /** @description Permintaan slot unggah dokumen. */
+        DocumentSlotRequest: {
+            /**
+             * @description Jenis yang dinyatakan: `image/jpeg`, `image/png`, atau `application/pdf` (isi tetap diperiksa saat
+             *     konfirmasi; ekstensi dan header tidak dipercaya).
+             * @example application/pdf
+             */
+            content_type: string;
+            /**
+             * Format: int64
+             * @description Ukuran berkas (byte): maksimal 5.242.880 untuk foto dan 10.485.760 untuk PDF (NFR-SEC-08).
+             * @example 204800
+             */
+            size_bytes: number;
+        };
+        /** @description Status satu jenis dokumen wajib. */
+        DocumentStatusDto: {
+            kind: components["schemas"]["DocumentKindDto"];
+            /** @description Dokumen jenis ini sudah diunggah dan lolos validasi isi. */
+            uploaded: boolean;
+            /**
+             * Format: date-time
+             * @description Waktu dokumen aktif dicatat.
+             */
+            uploaded_at?: string | null;
+        };
+        /** @description URL unduh dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat. */
+        DocumentUrlDto: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @example application/pdf */
+            mime_type: string;
+            /**
+             * Format: int32
+             * @example 204800
+             */
+            size_bytes: number;
+            url: string;
+        };
+        /** @description Bentuk dokumentasi respons URL unduh. */
+        DocumentUrlEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DocumentUrlDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
+        /** @description Bentuk dokumentasi respons dokumen tercatat. */
+        DocumentsCreatedEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DocumentsOverviewDto"];
+            /** @example 2010000 */
+            response_code: string;
+            /** @example Berhasil dibuat */
+            response_description: string;
+        };
+        /** @description Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6). */
+        DocumentsOverviewDto: {
+            /** @description Ketiganya sudah diunggah: pengajuan "siap diverifikasi" dan tampil di antrean Verifikator. */
+            complete: boolean;
+            /** @description Ketiga jenis dokumen wajib, urut `nib`, `npwp`, `authority_proof`. */
+            documents: components["schemas"]["DocumentStatusDto"][];
+            /**
+             * @description Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
+             * @example authority_proof_insufficient
+             */
+            rejection_reason?: string | null;
+            status: components["schemas"]["VerificationStatusDto"];
+            /**
+             * Format: int32
+             * @description Putaran pengajuan berjalan.
+             * @example 1
+             */
+            submission_round: number;
+        };
+        /** @description Bentuk dokumentasi respons status dokumen. */
+        DocumentsOverviewEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["DocumentsOverviewDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
+        };
         /**
          * @description Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya
          *     dibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.
@@ -187,6 +391,11 @@ export interface components {
          * @enum {string}
          */
         HrStatusDto: "pending_activation" | "invitation_processing" | "active" | "inactive";
+        /**
+         * @description Status verifikasi perusahaan yang dapat mengelola dokumen.
+         * @enum {string}
+         */
+        VerificationStatusDto: "pending_verification" | "rejected";
     };
     responses: never;
     parameters: never;
@@ -196,6 +405,350 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    corporate_document_download_url_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description URL unduh berumur pendek. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentUrlEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Dokumen jenis itu belum diunggah. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Jenis dokumen tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (tanpa URL). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_document_upload_slot_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentSlotRequest"];
+            };
+        };
+        responses: {
+            /** @description Slot unggah diterbitkan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorporateUploadSlotEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Ukuran melebihi 5.242.880 byte (foto) atau 10.485.760 byte (PDF). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Jenis bukan image/jpeg, image/png, atau application/pdf, PDF belum didukung server, atau badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Kuota slot unggah per akun terlampaui (4290001). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_document_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status dokumen perusahaan pemanggil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentsOverviewEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_document_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Dokumen tercatat; status terbaru semua dokumen. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentsCreatedEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Slot unggah tidak ada, kedaluwarsa, sudah dipakai, atau milik akun lain (KU-03). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Berkas melebihi 5.242.880 byte (foto) atau 10.485.760 byte (PDF). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Jenis berkas menurut isinya bukan JPG, PNG, atau PDF aman (PDF berkonten aktif, terenkripsi, atau rusak ditolak), atau badan bukan JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Jenis dokumen atau ID slot tidak valid, atau berkas belum diunggah. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     corporate_member_invite: {
         parameters: {
             query?: never;

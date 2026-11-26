@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM app.upload_slot WHERE id = $1 AND expires_at < $2 AND created_at < $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2c68bfbfbf71000617093ce75b1550321bc656a7a1da6d2586afb9fde55b4040"
+}

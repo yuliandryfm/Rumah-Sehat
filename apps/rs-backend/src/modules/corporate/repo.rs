@@ -42,26 +42,41 @@ pub(super) struct QueueRow {
     pub(super) origin: String,
     pub(super) submission_round: i32,
     pub(super) submitted_at: OffsetDateTime,
+    /// Ketiga jenis dokumen wajib ada (F1-T102, Q8).
+    pub(super) documents_complete: bool,
 }
 
 /// US-1902 AC1: pengajuan "Menunggu verifikasi" urut dari yang terlama (`submitted_at`, lalu `id`),
-/// keyset setelah perusahaan `after`. Index parsial `ix_corporate_client_submitted_at_pending` melayani
-/// filter dan urutan.
+/// keyset setelah perusahaan `after`. `complete_only`: `Some(true)` hanya yang dokumennya lengkap ("siap
+/// diverifikasi"), `Some(false)` hanya yang belum lengkap, `None` semuanya (F1-T102, Q8). Index parsial
+/// `ix_corporate_client_submitted_at_pending` melayani filter status dan urutan; hitungan dokumen memakai
+/// `uqp_corp_client_doc_corporate_client_id_document_kind` per baris.
 pub(super) async fn pending_queue(
     pool: &PgPool,
     after: Option<Uuid>,
+    complete_only: Option<bool>,
     limit: i64,
 ) -> Result<Vec<QueueRow>, sqlx::Error> {
     sqlx::query_as!(
         QueueRow,
-        "SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at \
-         FROM app.corporate_client c \
-         WHERE c.deleted_at IS NULL AND c.status = 'pending_verification' \
-           AND ($1::uuid IS NULL OR (c.submitted_at, c.id) > \
-                (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1)) \
-         ORDER BY c.submitted_at, c.id \
-         LIMIT $2",
+        r#"SELECT q.id AS "id!", q.legal_name AS "legal_name!", q.nib AS "nib!", q.origin AS "origin!",
+                  q.submission_round AS "submission_round!", q.submitted_at AS "submitted_at!",
+                  q.documents_complete AS "documents_complete!"
+           FROM (
+             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,
+                    (SELECT count(*) FILTER (WHERE d.document_kind IN ('nib', 'npwp', 'authority_proof'))
+                       FROM app.corporate_client_document d
+                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) = 3 AS documents_complete
+             FROM app.corporate_client c
+             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'
+           ) q
+           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)
+             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >
+                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))
+           ORDER BY q.submitted_at, q.id
+           LIMIT $3"#,
         after,
+        complete_only,
         limit,
     )
     .fetch_all(pool)
@@ -107,11 +122,14 @@ pub(super) struct DecisionRow {
 }
 
 /// Keputusan putaran `submission_round` (paling banyak satu, `uq_corp_verif_decision_*`).
-pub(super) async fn round_decision(
-    pool: &PgPool,
+pub(super) async fn round_decision<'e, E>(
+    executor: E,
     corporate_client_id: Uuid,
     submission_round: i32,
-) -> Result<Option<DecisionRow>, sqlx::Error> {
+) -> Result<Option<DecisionRow>, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     sqlx::query_as!(
         DecisionRow,
         "SELECT decision, reason_code, created_at FROM app.corporate_verification_decision \
@@ -119,21 +137,7 @@ pub(super) async fn round_decision(
         corporate_client_id,
         submission_round,
     )
-    .fetch_optional(pool)
-    .await
-}
-
-/// Jenis dokumen aktif perusahaan (urut jenis).
-pub(super) async fn active_document_kinds(
-    pool: &PgPool,
-    corporate_client_id: Uuid,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar!(
-        "SELECT document_kind FROM app.corporate_client_document \
-         WHERE corporate_client_id = $1 AND deleted_at IS NULL ORDER BY document_kind",
-        corporate_client_id,
-    )
-    .fetch_all(pool)
+    .fetch_optional(executor)
     .await
 }
 
@@ -426,6 +430,111 @@ pub(super) async fn insert_self_registered_client(
     .execute(conn)
     .await?;
     Ok(r.rows_affected() == 1)
+}
+
+// ----- F1-T102: dokumen NIB, NPWP, dan bukti kewenangan oleh HR (US-1901 AC2) -----
+
+/// Status dan putaran pengajuan perusahaan yang belum dihapus lunak.
+pub(super) struct ClientStatusRow {
+    pub(super) status: String,
+    pub(super) submission_round: i32,
+}
+
+/// Status perusahaan (PK `corporate_client`); `None` bila tidak ada atau terhapus lunak.
+pub(super) async fn client_status(
+    pool: &PgPool,
+    corporate_client_id: Uuid,
+) -> Result<Option<ClientStatusRow>, sqlx::Error> {
+    sqlx::query_as!(
+        ClientStatusRow,
+        "SELECT status, submission_round FROM app.corporate_client WHERE id = $1 AND deleted_at IS NULL",
+        corporate_client_id,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Dokumen aktif perusahaan.
+pub(super) struct DocumentRow {
+    pub(super) id: Uuid,
+    pub(super) document_kind: String,
+    pub(super) stored_file_id: Uuid,
+    pub(super) created_at: OffsetDateTime,
+}
+
+/// Dokumen aktif perusahaan, urut jenis (`uqp_corp_client_doc_corporate_client_id_document_kind`).
+pub(super) async fn active_documents<'e, E>(
+    executor: E,
+    corporate_client_id: Uuid,
+) -> Result<Vec<DocumentRow>, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
+    sqlx::query_as!(
+        DocumentRow,
+        "SELECT id, document_kind, stored_file_id, created_at FROM app.corporate_client_document \
+         WHERE corporate_client_id = $1 AND deleted_at IS NULL ORDER BY document_kind",
+        corporate_client_id,
+    )
+    .fetch_all(executor)
+    .await
+}
+
+/// Menghapus lunak satu dokumen aktif karena diganti (ADR-003): selalu difilter perusahaan pemanggil.
+/// `false` bila tidak ada baris aktif yang cocok.
+pub(super) async fn soft_delete_document(
+    conn: &mut PgConnection,
+    document_id: Uuid,
+    corporate_client_id: Uuid,
+    by: Uuid,
+    reason: &str,
+    now: OffsetDateTime,
+) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query!(
+        "UPDATE app.corporate_client_document \
+         SET deleted_at = $4, deleted_by = $3, delete_reason = $5, updated_at = $4, updated_by = $3 \
+         WHERE id = $1 AND corporate_client_id = $2 AND deleted_at IS NULL",
+        document_id,
+        corporate_client_id,
+        by,
+        now,
+        reason,
+    )
+    .execute(conn)
+    .await?;
+    Ok(r.rows_affected() == 1)
+}
+
+/// Dokumen baru.
+pub(super) struct NewDocument<'a> {
+    pub(super) id: Uuid,
+    pub(super) corporate_client_id: Uuid,
+    pub(super) document_kind: &'a str,
+    pub(super) stored_file_id: Uuid,
+    pub(super) by: Uuid,
+    pub(super) now: OffsetDateTime,
+}
+
+/// Menyisipkan dokumen aktif. Satu dokumen aktif per jenis per perusahaan dijamin
+/// `uqp_corp_client_doc_corporate_client_id_document_kind`; pemanggil menghapus lunak yang lama lebih dulu.
+pub(super) async fn insert_document(
+    conn: &mut PgConnection,
+    d: &NewDocument<'_>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO app.corporate_client_document \
+           (id, created_at, created_by, updated_at, updated_by, corporate_client_id, document_kind, stored_file_id) \
+         VALUES ($1, $6, $5, $6, $5, $2, $3, $4)",
+        d.id,
+        d.corporate_client_id,
+        d.document_kind,
+        d.stored_file_id,
+        d.by,
+        d.now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 /// Menyisipkan keanggotaan HR pendaftar beserta jabatannya (US-1901 AC1).

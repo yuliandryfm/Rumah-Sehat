@@ -91,6 +91,9 @@ pub(super) enum DocumentKind {
 }
 
 impl DocumentKind {
+    /// Ketiga jenis dokumen wajib, urut tampilan (Q8: perusahaan "siap diverifikasi" bila ketiganya ada).
+    pub(super) const ALL: [Self; 3] = [Self::Nib, Self::Npwp, Self::AuthorityProof];
+
     /// Kode di database dan di path endpoint.
     pub(super) const fn as_str(self) -> &'static str {
         match self {
@@ -102,11 +105,50 @@ impl DocumentKind {
 
     /// Mengurai kode; di luar daftar = `None`.
     pub(super) fn parse(code: &str) -> Option<Self> {
-        [Self::Nib, Self::Npwp, Self::AuthorityProof]
-            .into_iter()
-            .find(|k| k.as_str() == code)
+        Self::ALL.into_iter().find(|k| k.as_str() == code)
     }
 }
+
+/// Ketiga jenis dokumen wajib sudah ada di `kinds` (kode jenis dokumen aktif; duplikat tidak menambah hitungan).
+pub(super) fn documents_complete<S: AsRef<str>>(kinds: &[S]) -> bool {
+    DocumentKind::ALL
+        .into_iter()
+        .all(|k| kinds.iter().any(|c| c.as_ref() == k.as_str()))
+}
+
+/// Token versi dokumen aktif (review T1 F1-T102): SHA-256 (heksadesimal) atas ID baris dokumen aktif terurut.
+/// Penggantian dokumen selalu membuat baris baru (ID baru), sehingga token berubah pada setiap unggah atau
+/// penggantian. Verifikator mengirim token dari detail yang dilihatnya bersama keputusan; keputusan atas dokumen
+/// yang berbeda dari yang dilihat ditolak (`4090114`).
+pub(super) fn documents_version(ids: &[foundation::Uuid]) -> String {
+    let mut sorted = ids.to_vec();
+    sorted.sort();
+    let mut bytes = Vec::with_capacity(sorted.len() * 16);
+    for id in &sorted {
+        bytes.extend_from_slice(id.as_bytes());
+    }
+    crypto::sha256(&bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// Dokumen hanya dapat diunggah, diganti, dan dilihat HR saat perusahaan "Menunggu verifikasi" atau "Ditolak"
+/// (US-1901 AC6, keputusan user Q8 2026-11-26). Perusahaan Aktif tidak mengubah dokumen yang sudah diverifikasi;
+/// perusahaan Nonaktif sudah ditolak middleware (`401`).
+pub(super) fn may_manage_documents(status: CorporateClientStatus) -> bool {
+    matches!(
+        status,
+        CorporateClientStatus::PendingVerification | CorporateClientStatus::Rejected
+    )
+}
+
+/// Kuota slot unggah dokumen per akun HR per jam (usulan teknis F1-T102; angka bisnis `[TIDAK DIKETAHUI]`):
+/// cukup untuk tiga jenis dengan beberapa percobaan ulang, jauh di bawah yang dibutuhkan penyalahgunaan.
+pub(super) const DOCUMENT_SLOTS_PER_WINDOW: i64 = 30;
+/// Jendela kuota slot unggah dokumen.
+pub(super) const DOCUMENT_SLOT_WINDOW: std::time::Duration =
+    crate::modules::platform::api::UPLOAD_SLOT_QUOTA_RETENTION;
 
 /// Panjang NIB: tiga belas digit angka `[SRC-854]` (Peraturan BKPM 3/2021, KEPUTUSAN-325). Angka pengaman
 /// (digit ke-13) dan tanggal (enam digit pertama) TIDAK divalidasi: algoritma angka pengaman tidak
@@ -239,5 +281,59 @@ mod tests {
         assert_eq!(DocumentKind::parse("ktp"), None);
         assert_eq!(parse_origin("self_registered"), Some("self_registered"));
         assert_eq!(parse_origin("x"), None);
+    }
+    // trace: Q8 (perusahaan siap diverifikasi setelah ketiga jenis dokumen lengkap)
+    #[test]
+    fn completeness_needs_all_three_kinds() {
+        assert!(documents_complete(&["authority_proof", "nib", "npwp"]));
+        assert!(documents_complete(&[
+            "npwp",
+            "nib",
+            "authority_proof",
+            "nib"
+        ]));
+        for partial in [
+            vec![],
+            vec!["nib"],
+            vec!["nib", "npwp"],
+            vec!["nib", "authority_proof"],
+            vec!["npwp", "authority_proof"],
+            vec!["nib", "nib", "nib"],
+            vec!["ktp", "nib", "npwp"],
+        ] {
+            assert!(!documents_complete(&partial), "{partial:?}");
+        }
+    }
+
+    // trace: review T1 F1-T102 (keputusan terikat versi dokumen yang dilihat Verifikator)
+    #[test]
+    fn documents_version_is_order_independent_and_changes_with_any_document() {
+        let (a, b, c) = (
+            foundation::new_id(),
+            foundation::new_id(),
+            foundation::new_id(),
+        );
+        let v = documents_version(&[a, b, c]);
+        assert_eq!(v.len(), 64);
+        assert!(v.bytes().all(|x| x.is_ascii_hexdigit()));
+        assert_eq!(v, documents_version(&[c, a, b]));
+        assert_ne!(
+            v,
+            documents_version(&[a, b, foundation::new_id()]),
+            "dokumen diganti"
+        );
+        assert_ne!(v, documents_version(&[a, b]), "dokumen dihapus");
+        assert_ne!(documents_version(&[]), documents_version(&[a]));
+    }
+
+    // trace: US-1901 AC6, Q8 (dokumen hanya saat menunggu verifikasi atau ditolak)
+    #[test]
+    fn documents_are_managed_only_while_pending_or_rejected() {
+        assert!(may_manage_documents(
+            CorporateClientStatus::PendingVerification
+        ));
+        assert!(may_manage_documents(CorporateClientStatus::Rejected));
+        assert!(!may_manage_documents(CorporateClientStatus::Active));
+        assert!(!may_manage_documents(CorporateClientStatus::Inactive));
     }
 }

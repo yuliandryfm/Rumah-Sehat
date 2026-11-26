@@ -105,15 +105,18 @@ pub async fn slot_consumed(pool: &PgPool, id: Uuid) -> bool {
     .unwrap_or(false)
 }
 
-/// Memundurkan `expires_at` slot sehingga sudah lewat batas pembersihan (`expires_at` + jeda 15 menit)
+/// Memundurkan `expires_at` (dan `created_at`) slot sehingga sudah lewat batas pembersihan (`expires_at` + jeda
+/// 15 menit dan `created_at` + jendela kuota 1 jam)
 /// menurut jam sungguhan. Jam aplikasi tidak dimajukan: permintaan bertanda tangan SigV4 dengan waktu
 /// ±25 menit di depan jam penyedia diamati ditolak 403 oleh SeaweedFS [SRC-562], jadi pembersih di test
 /// memakai `SystemClock`.
 pub async fn expire_slot_past_grace(pool: &PgPool, id: Uuid) {
     let n = sqlx::query!(
-        "UPDATE app.upload_slot SET expires_at = $2 WHERE id = $1",
+        "UPDATE app.upload_slot SET expires_at = $2, created_at = $3 WHERE id = $1",
         id,
         now() - time::Duration::minutes(16),
+        // Juga lewat jendela kuota slot (pembersih menahan baris sampai `created_at` + 1 jam, F1-T102).
+        now() - time::Duration::hours(2),
     )
     .execute(pool)
     .await

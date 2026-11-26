@@ -25,6 +25,7 @@ export interface PanelPerusahaanProps {
 }
 
 const KODE_SUDAH_DIPUTUSKAN = "4090001";
+const KODE_DOKUMEN_BERUBAH = "4090114";
 
 /**
  * Dokumen perusahaan (ADR-018 butir 3, US-1902 AC1). Hanya dari URL unduh bertanda tangan berumur pendek yang
@@ -168,12 +169,19 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
       setTerkunci(true);
       await muat();
     }
+    if (g.kode === KODE_DOKUMEN_BERUBAH && bukaId !== null) {
+      // Dokumen diganti HR sejak detail dibuka: muat ulang detail (token versi baru) agar keputusan berikutnya sah.
+      // Dokumen yang sedang tampil bisa sudah tidak berlaku: ditutup, harus dibuka ulang dari detail baru.
+      setDokumenAktif(null);
+      const baru = await api.detail(bukaId);
+      if (baru.ok) setDetail(baru.data);
+    }
   };
 
   const setujui = async () => {
-    if (bukaId === null) return;
+    if (bukaId === null || detail === null) return;
     setSibuk(true);
-    const h = await api.setujui(bukaId);
+    const h = await api.setujui(bukaId, detail.documents_version);
     setSibuk(false);
     if (!h.ok) {
       await tanganiGalat(h);
@@ -185,14 +193,14 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
   };
 
   const tolak = async () => {
-    if (bukaId === null) return;
+    if (bukaId === null || detail === null) return;
     if (kodeAlasan === "") {
       setGalatIsian("Pilih alasan untuk menolak.");
       return;
     }
     setGalatIsian(null);
     setSibuk(true);
-    const h = await api.tolak(bukaId, kodeAlasan);
+    const h = await api.tolak(bukaId, kodeAlasan, detail.documents_version);
     setSibuk(false);
     if (!h.ok) {
       await tanganiGalat(h);

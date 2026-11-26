@@ -16,3 +16,10 @@ pub(super) fn registration() -> Policy {
 pub(super) fn verifier() -> Policy {
     Policy::rs_admin(&[AdminSubRole::Verifier])
 }
+
+/// Dokumen perusahaan oleh HR (`/v1/corporate/documents*`, F1-T102): HR perusahaan Menunggu verifikasi, Ditolak,
+/// atau Aktif lolos middleware (perusahaan Nonaktif `401`, bukan HR `401`); use case membatasi lagi ke
+/// Menunggu verifikasi dan Ditolak (`409` `4090112` untuk Aktif), sehingga dokumen terverifikasi tidak diubah.
+pub(super) fn hr_documents() -> Policy {
+    Policy::corporate_hr_any_verification_state()
+}

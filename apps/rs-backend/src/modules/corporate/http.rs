@@ -7,9 +7,9 @@
 
 use super::api::{self as corporate, CorporateError, CorporateVerification};
 use super::dto::{
-    DecisionDto, DecisionEnvelope, DetailDto, DetailEnvelope, DocumentKindDto, DocumentUrlDto,
-    DocumentUrlEnvelope, DtoError, QueueEnvelope, QueueItemDto, QueueParams, RejectRequest,
-    RejectionReasonDto, RejectionReasonsEnvelope,
+    ApproveRequest, DecisionDto, DecisionEnvelope, DetailDto, DetailEnvelope, DocumentKindDto,
+    DocumentUrlDto, DocumentUrlEnvelope, DtoError, QueueEnvelope, QueueItemDto, QueueParams,
+    RejectRequest, RejectionReasonDto, RejectionReasonsEnvelope,
 };
 use super::policy;
 use crate::app::AppState;
@@ -138,7 +138,8 @@ async fn queue(
             );
         }
     };
-    match corporate::corporate_verification_queue(&deps(&state), cursor, p.limit).await {
+    let readiness = p.readiness.map(Into::into).unwrap_or_default();
+    match corporate::corporate_verification_queue(&deps(&state), cursor, p.limit, readiness).await {
         Ok((items, meta)) => {
             match items
                 .into_iter()
@@ -238,12 +239,16 @@ async fn document_url(
     operation_id = "corporate_verification_approve",
     security(("bearer" = [])),
     params(("corporate_client_id" = String, Path, description = "ID perusahaan (UUID).")),
+    request_body(content = ApproveRequest, content_type = "application/json"),
     responses(
         (status = 200, description = "Disetujui.", body = DecisionEnvelope, content_type = "application/json"),
+        (status = 400, description = "Badan permintaan tidak dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
     )
 )]
@@ -252,14 +257,25 @@ async fn approve(
     Extension(cid): Extension<CorrelationId>,
     principal: Principal,
     Path(raw): Path<String>,
+    body: Result<Json<ApproveRequest>, JsonRejection>,
 ) -> Response {
     let id = match client_id(&raw) {
         Ok(id) => id,
         Err(e) => return fail(&state, cid, e),
     };
-    let r = corporate::approve_corporate_client(&deps(&state), &principal, APPROVE_ROUTE, id)
-        .await
-        .and_then(|v| DecisionDto::from_view(v).map_err(dto_error));
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => return fail(&state, cid, body_error(&e)),
+    };
+    let r = corporate::approve_corporate_client(
+        &deps(&state),
+        &principal,
+        APPROVE_ROUTE,
+        id,
+        &req.documents_version,
+    )
+    .await
+    .and_then(|v| DecisionDto::from_view(v).map_err(dto_error));
     match r {
         Ok(d) => ok(cid, d),
         Err(e) => fail(&state, cid, e),
@@ -281,7 +297,7 @@ async fn approve(
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Alasan di luar daftar.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
@@ -308,6 +324,7 @@ async fn reject(
         REJECT_ROUTE,
         id,
         &req.reason_code,
+        &req.documents_version,
     )
     .await
     .and_then(|v| DecisionDto::from_view(v).map_err(dto_error));

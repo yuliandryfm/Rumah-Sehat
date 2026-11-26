@@ -1281,6 +1281,21 @@
               "maximum": 100,
               "minimum": 1
             }
+          },
+          {
+            "name": "readiness",
+            "in": "query",
+            "description": "Isi antrean menurut kelengkapan dokumen (bawaan `ready`, F1-T102).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Pilihan isi antrean menurut kelengkapan dokumen NIB, NPWP, dan bukti kewenangan (F1-T102, keputusan user Q8).",
+              "enum": [
+                "ready",
+                "incomplete",
+                "all"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1437,6 +1452,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Disetujui.",
@@ -1444,6 +1469,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DecisionEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -1479,7 +1514,27 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1672,7 +1727,7 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2258,6 +2313,21 @@
   },
   "components": {
     "schemas": {
+      "ApproveRequest": {
+        "type": "object",
+        "description": "Persetujuan (US-1902 AC2), terikat versi dokumen yang dilihat.",
+        "required": [
+          "documents_version"
+        ],
+        "properties": {
+          "documents_version": {
+            "type": "string",
+            "description": "`documents_version` dari detail yang dilihat Verifikator; nilai yang berbeda dari token saat ini dijawab `409`.",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+          }
+        },
+        "additionalProperties": false
+      },
       "AttachImageRequest": {
         "type": "object",
         "description": "Memasang gambar yang sudah diunggah ke draf.",
@@ -2804,6 +2874,7 @@
           "submission_round",
           "submitted_at",
           "documents",
+          "documents_version",
           "can_decide"
         ],
         "properties": {
@@ -2828,7 +2899,12 @@
             "items": {
               "$ref": "#/components/schemas/DocumentKindDto"
             },
-            "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen."
+            "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,\n`authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102)."
+          },
+          "documents_version": {
+            "type": "string",
+            "description": "Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).\nNilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
           },
           "legal_name": {
             "type": "string",

@@ -13,14 +13,15 @@ use super::api::{
     DOWNLOAD_URL_TTL, DownloadRequest, DownloadTicket, FILE_RECONCILE_JOB, FileAccess,
     FileContainer, FileStorage, PublicFile, ReadinessCheck, ReasonCode, ReasonCodeUnavailable,
     ReconcileReport, SlotPurgeReport, UPLOAD_SLOT_PURGE_BATCH, UPLOAD_SLOT_PURGE_JOB,
-    UPLOAD_SLOT_TOMBSTONE_GRACE, UploadInstruction, UploadMethod, UploadSlotRequest, UploadTicket,
-    ValidatedUpload,
+    UPLOAD_SLOT_QUOTA_RETENTION, UPLOAD_SLOT_TOMBSTONE_GRACE, UploadInstruction, UploadMethod,
+    UploadSlotRequest, UploadTicket, ValidatedUpload,
 };
 use super::domain::{
-    ContentRejection, FILES_PREFIX, INCOMING_PREFIX, LogicalBucket, MAX_PHOTO_BYTES, PhotoFormat,
-    UploadPurpose, sanitize_photo,
+    ContentRejection, FILES_PREFIX, FileFormat, INCOMING_PREFIX, LogicalBucket, MAX_PHOTO_BYTES,
+    UploadPurpose, precheck_pdf, sanitize_photo,
 };
 use super::error::FileError;
+use super::pdf::PdfVerdict;
 use super::repo;
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, ObjectPolicy, ObjectRef,
@@ -115,9 +116,13 @@ pub(super) async fn create_upload_slot(
     request: UploadSlotRequest,
 ) -> Result<UploadTicket, FileError> {
     let purpose = request.purpose;
-    let format = PhotoFormat::from_mime(&request.content_type)
+    let format = FileFormat::from_mime(&request.content_type)
         .filter(|f| purpose.allows(*f))
         .ok_or(FileError::UnsupportedType)?;
+    // Tanpa pemeriksa PDF, PDF tidak dapat dijamin aman (ADR-018 butir 6): ditolak sejak slot (gagal-tertutup).
+    if format == FileFormat::Pdf && storage.pdf_inspector.is_none() {
+        return Err(FileError::UnsupportedType);
+    }
     if request.size_bytes == 0 {
         return Err(FileError::Validation(vec![FieldError::new(
             "size_bytes",
@@ -125,7 +130,7 @@ pub(super) async fn create_upload_slot(
             "Ukuran berkas tidak valid",
         )]));
     }
-    let max = purpose.max_size_bytes();
+    let max = purpose.max_size_for(format);
     if request.size_bytes > max {
         return Err(FileError::TooLarge);
     }
@@ -143,6 +148,7 @@ pub(super) async fn create_upload_slot(
         pool,
         &repo::NewSlot {
             id,
+            created_at: now,
             expires_at,
             owner_account_id: request.owner_account_id,
             bucket: bucket.as_str(),
@@ -258,7 +264,9 @@ async fn reject(
     purge_original(clock, storage, physical, &slot.object_key, slot.id).await;
     match reason {
         ContentRejection::TooLarge => FileError::TooLarge,
-        ContentRejection::UnsupportedType => FileError::UnsupportedType,
+        ContentRejection::UnsupportedType | ContentRejection::ActiveContent => {
+            FileError::UnsupportedType
+        }
     }
 }
 
@@ -310,15 +318,15 @@ pub(super) async fn validate_upload(
     {
         return Err(FileError::NotFound);
     }
-    let max = purpose.max_size_bytes();
+    let declared = FileFormat::from_mime(&slot.allowed_mime_type)
+        .filter(|f| purpose.allows(*f))
+        .ok_or(FileError::NotFound)?;
+    let max = purpose.max_size_for(declared);
     if slot.bucket != purpose.bucket().as_str()
         || u64::try_from(slot.max_size_bytes).ok() != Some(max)
     {
         return Err(FileError::NotFound);
     }
-    let declared = PhotoFormat::from_mime(&slot.allowed_mime_type)
-        .filter(|f| purpose.allows(*f))
-        .ok_or(FileError::Internal("allowed_mime_type"))?;
     let physical = storage.bucket_name(purpose.bucket());
     let store = &storage.store;
 
@@ -343,6 +351,19 @@ pub(super) async fn validate_upload(
         Some(_) => {}
     }
     let max_usize = usize::try_from(max).map_err(|_| FileError::Internal("max_size_bytes"))?;
+    if declared == FileFormat::Pdf {
+        return validate_pdf(
+            pool,
+            clock,
+            storage,
+            &slot,
+            owner_account_id,
+            purpose,
+            &physical,
+            max,
+        )
+        .await;
+    }
 
     // Permit sebelum isi diunduh (TD-17): isi + dekode + kode ulang dibatasi semaphore dengan batas tunggu.
     let permit = acquire_validation_permit(storage).await?;
@@ -366,7 +387,8 @@ pub(super) async fn validate_upload(
         }
         GetOutcome::Body(b) => b,
     };
-    // Dekode + kode ulang di thread blocking; permit dilepas saat thread selesai (domain::MAX_DECODED_BYTES).
+    // Dekode + kode ulang di thread blocking; permit dilepas saat thread selesai
+    // (domain::MAX_DECODED_BYTES).
     let sanitized = tokio::task::spawn_blocking(move || {
         let _permit = permit;
         sanitize_photo(&original, declared, max)
@@ -377,10 +399,6 @@ pub(super) async fn validate_upload(
         Ok(s) => s,
         Err(reason) => return Err(reject(pool, clock, storage, &slot, &physical, reason).await),
     };
-
-    let size_bytes =
-        i32::try_from(sanitized.bytes.len()).map_err(|_| FileError::Internal("size_bytes"))?;
-    let sha256 = crypto::sha256(&sanitized.bytes);
     let object_key = format!("{FILES_PREFIX}{}", new_id().hyphenated());
     // Klaim sebelum objek ditulis: objek `files/` tidak pernah ada tanpa catatan di database, dan dari
     // validasi bersamaan atas slot yang sama hanya satu yang menang.
@@ -390,27 +408,172 @@ pub(super) async fn validate_upload(
     {
         return Err(FileError::NotFound);
     }
+    store_validated(
+        pool,
+        clock,
+        storage,
+        &slot,
+        owner_account_id,
+        purpose,
+        &physical,
+        object_key,
+        sanitized,
+    )
+    .await
+}
+
+/// Hasil pemeriksaan isi PDF.
+enum PdfCheck {
+    /// Aman: isi asli disimpan apa adanya.
+    Safe(Vec<u8>),
+    /// Ditolak karena isi.
+    Rejected(ContentRejection),
+}
+
+/// Unduh, pemeriksaan awal, dan pemeriksaan konten aktif satu PDF. Izin konkurensi diambil sebelum unduh dan
+/// **dipindahkan ke task yang menjalankan pemeriksa**: bila permintaan dibatalkan (klien memutus, batas waktu),
+/// task tetap berjalan sampai proses pemeriksa selesai atau dihentikan dan baru itu izin dilepas, sehingga
+/// jumlah proses qpdf serentak tidak pernah melebihi batas konkurensi (review T1 F1-T102).
+async fn pdf_check(
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    slot: &repo::SlotRow,
+    physical: &str,
+    max: u64,
+) -> Result<PdfCheck, FileError> {
+    let Some(inspector) = storage.pdf_inspector.clone() else {
+        return Ok(PdfCheck::Rejected(ContentRejection::UnsupportedType));
+    };
+    let max_usize = usize::try_from(max).map_err(|_| FileError::Internal("max_size_bytes"))?;
+    let permit = acquire_validation_permit(storage).await?;
+    let original = match storage
+        .store
+        .get_object(physical, &slot.object_key, max_usize, clock.now())
+        .await
+        .map_err(storage_error)?
+    {
+        GetOutcome::NotFound => return Err(not_uploaded()),
+        GetOutcome::TooLarge => return Ok(PdfCheck::Rejected(ContentRejection::TooLarge)),
+        GetOutcome::Body(b) => b,
+    };
+    if let Err(reason) = precheck_pdf(&original, max) {
+        return Ok(PdfCheck::Rejected(reason));
+    }
+    let original = Arc::new(original);
+    let task_bytes = Arc::clone(&original);
+    let handle = tokio::spawn(async move {
+        let _permit = permit;
+        inspector.inspect(&task_bytes).await
+    });
+    let verdict = handle
+        .await
+        .map_err(|_| FileError::Internal("pdf_inspect_task"))?;
+    match verdict {
+        PdfVerdict::Safe => Ok(PdfCheck::Safe(
+            Arc::try_unwrap(original).unwrap_or_else(|shared| (*shared).clone()),
+        )),
+        PdfVerdict::ActiveContent | PdfVerdict::Unreadable => {
+            Ok(PdfCheck::Rejected(ContentRejection::ActiveContent))
+        }
+        // Pemeriksa tidak berjalan: bukan salah berkas, jadi tidak ditolak dan tidak dihapus; klien dapat
+        // mengonfirmasi ulang selama slot berlaku.
+        PdfVerdict::Unavailable => {
+            tracing::error!(upload_slot_id = %slot.id, "pdf_inspector_unavailable");
+            Err(FileError::StorageUnavailable)
+        }
+    }
+}
+
+/// Validasi PDF (F1-T102). Slot **diklaim atomik lebih dulu** (`UPDATE` bersyarat pada `sanitized_object_key`):
+/// satu slot hanya diperiksa sekali pada satu waktu, permintaan paralel atas slot yang sama dijawab `404`
+/// tanpa mengunduh atau menjalankan pemeriksa lagi. Kegagalan bukan-isi (pemeriksa mati, object storage
+/// bermasalah, belum diunggah) melepas klaim sehingga konfirmasi dapat diulang; permintaan yang dibatalkan
+/// meninggalkan klaim sampai slot kedaluwarsa dan dibersihkan (klien membuat slot baru).
+#[allow(clippy::too_many_arguments)] // konteks satu alur validasi
+async fn validate_pdf(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    slot: &repo::SlotRow,
+    owner_account_id: Uuid,
+    purpose: UploadPurpose,
+    physical: &str,
+    max: u64,
+) -> Result<ValidatedUpload, FileError> {
+    let object_key = format!("{FILES_PREFIX}{}", new_id().hyphenated());
+    if !repo::claim_slot(pool, slot.id, owner_account_id, &object_key, clock.now())
+        .await
+        .map_err(db_error)?
+    {
+        return Err(FileError::NotFound);
+    }
+    let bytes = match pdf_check(clock, storage, slot, physical, max).await {
+        Ok(PdfCheck::Safe(bytes)) => bytes,
+        Ok(PdfCheck::Rejected(reason)) => {
+            return Err(reject(pool, clock, storage, slot, physical, reason).await);
+        }
+        Err(e) => {
+            abandon_claim(pool, clock, storage, slot.id, physical, &object_key).await;
+            return Err(e);
+        }
+    };
+    store_validated(
+        pool,
+        clock,
+        storage,
+        slot,
+        owner_account_id,
+        purpose,
+        physical,
+        object_key,
+        super::domain::SanitizedPhoto {
+            bytes,
+            format: FileFormat::Pdf,
+        },
+    )
+    .await
+}
+
+/// Menulis hasil validasi ke `files/<uuid>` (yang sudah diklaim slot) dan menghapus berkas asli beserta semua
+/// versinya; gagal di tengah melepas klaim dan membuang hasil sehingga konfirmasi dapat diulang.
+#[allow(clippy::too_many_arguments)] // konteks satu alur validasi
+async fn store_validated(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    storage: &FileStorage,
+    slot: &repo::SlotRow,
+    owner_account_id: Uuid,
+    purpose: UploadPurpose,
+    physical: &str,
+    object_key: String,
+    sanitized: super::domain::SanitizedPhoto,
+) -> Result<ValidatedUpload, FileError> {
+    let store = &storage.store;
+    let size_bytes =
+        i32::try_from(sanitized.bytes.len()).map_err(|_| FileError::Internal("size_bytes"))?;
+    let sha256 = crypto::sha256(&sanitized.bytes);
+    let format = sanitized.format;
     if let Err(e) = store
         .put_object(
-            &physical,
+            physical,
             &object_key,
-            sanitized.format.mime(),
+            format.mime(),
             sanitized.bytes,
             clock.now(),
         )
         .await
     {
-        abandon_claim(pool, clock, storage, slot.id, &physical, &object_key).await;
+        abandon_claim(pool, clock, storage, slot.id, physical, &object_key).await;
         return Err(storage_error(e));
     }
     // Berkas asli (dengan metadata) dihapus beserta semua versinya; bila gagal, hasil kode ulang ikut
     // dibuang dan klaim dilepas sehingga konfirmasi dapat diulang.
     if let Err(e) = store
-        .delete_all_versions(&physical, &slot.object_key, clock.now())
+        .delete_all_versions(physical, &slot.object_key, clock.now())
         .await
     {
         tracing::error!(upload_slot_id = %slot.id, error = %e, "upload_object_purge_failed");
-        abandon_claim(pool, clock, storage, slot.id, &physical, &object_key).await;
+        abandon_claim(pool, clock, storage, slot.id, physical, &object_key).await;
         return Err(storage_error(e));
     }
     tracing::info!(upload_slot_id = %slot.id, "upload_validated");
@@ -419,7 +582,7 @@ pub(super) async fn validate_upload(
         owner_account_id,
         purpose,
         object_key,
-        format: sanitized.format,
+        format,
         size_bytes,
         sha256,
         validated_at: clock.now(),
@@ -469,6 +632,41 @@ pub(super) async fn record_stored_file(
     Ok(id)
 }
 
+pub(super) async fn soft_delete_stored_file(
+    conn: &mut PgConnection,
+    clock: &dyn Clock,
+    stored_file_id: Uuid,
+    by: Uuid,
+    reason: &str,
+) -> Result<(), FileError> {
+    if repo::soft_delete_file(conn, stored_file_id, by, reason, clock.now())
+        .await
+        .map_err(db_error)?
+    {
+        Ok(())
+    } else {
+        Err(FileError::NotFound)
+    }
+}
+
+pub(super) async fn count_recent_upload_slots(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    owner_account_id: Uuid,
+    purpose: UploadPurpose,
+    window: std::time::Duration,
+) -> Result<i64, FileError> {
+    let window =
+        time::Duration::try_from(window).map_err(|_| FileError::Internal("slot_window"))?;
+    let since = clock
+        .now()
+        .checked_sub(window)
+        .ok_or(FileError::Internal("slot_window"))?;
+    repo::count_slots_since(pool, owner_account_id, purpose.bucket().as_str(), since)
+        .await
+        .map_err(db_error)
+}
+
 pub(super) async fn active_reason_codes(
     conn: &mut PgConnection,
     context: &str,
@@ -502,7 +700,14 @@ pub(super) async fn purge_expired_upload_slots(
         .now()
         .checked_sub(grace()?)
         .ok_or(FileError::Internal("grace"))?;
-    let rows = repo::expired_slots(pool, cutoff, i64::from(limit))
+    let quota_cutoff = clock
+        .now()
+        .checked_sub(
+            time::Duration::try_from(UPLOAD_SLOT_QUOTA_RETENTION)
+                .map_err(|_| FileError::Internal("quota_retention"))?,
+        )
+        .ok_or(FileError::Internal("quota_retention"))?;
+    let rows = repo::expired_slots(pool, cutoff, quota_cutoff, i64::from(limit))
         .await
         .map_err(db_error)?;
     let mut report = SlotPurgeReport::default();
@@ -527,7 +732,7 @@ pub(super) async fn purge_expired_upload_slots(
             report.failed += 1;
             continue;
         }
-        match repo::delete_expired_slot(pool, row.id, cutoff).await {
+        match repo::delete_expired_slot(pool, row.id, cutoff, quota_cutoff).await {
             Ok(_) => report.purged += 1,
             Err(_) => {
                 tracing::error!(upload_slot_id = %row.id, "upload_slot_delete_failed");
@@ -648,6 +853,8 @@ static CORPORATE_DOCUMENT_FILE_POLICY: ObjectPolicy =
     ObjectPolicy::clinical_or_document(audit::CORPORATE_DOCUMENT_OBJECT_TYPE, &[]);
 /// Nama aksi E-05 membuka berkas.
 const FILE_OPENED_ACTION: &str = "stored_file_opened";
+/// Nama aksi E-12 mengunduh berkas dokumen perusahaan oleh HR perusahaan itu (F1-T102).
+const FILE_DOWNLOADED_ACTION: &str = "stored_file_downloaded";
 /// Kode alasan E-05 hasil gagal.
 const ACCESS_DENIED_REASON: &str = "access_denied";
 /// Percobaan menulis E-05 hasil gagal (coding-standards §4.4 butir 3: "dicoba ulang").
@@ -677,6 +884,9 @@ fn actor(principal: &Principal) -> Result<Actor, FileError> {
 fn audit_scope(access: FileAccess) -> (Option<Subject>, Option<Uuid>) {
     match access {
         FileAccess::Owner => (None, None),
+        FileAccess::CorporateHr {
+            corporate_client_id,
+        } => (None, Some(corporate_client_id)),
         FileAccess::Staff { subject, .. } => (Some(subject), None),
         FileAccess::StaffCorporate {
             corporate_client_id,
@@ -694,12 +904,19 @@ fn file_event(
 ) -> Result<AuditEvent, FileError> {
     let (subject, tenant) = audit_scope(access);
     let policy = match access {
-        FileAccess::StaffCorporate { .. } => &CORPORATE_DOCUMENT_FILE_POLICY,
+        FileAccess::StaffCorporate { .. } | FileAccess::CorporateHr { .. } => {
+            &CORPORATE_DOCUMENT_FILE_POLICY
+        }
         FileAccess::Owner | FileAccess::Staff { .. } => &STORED_FILE_POLICY,
     };
-    let action = Code::new(FILE_OPENED_ACTION).map_err(|_| FileError::Internal("audit_action"))?;
+    // E-05: dibuka pihak selain subjek data; E-12: unduhan HR atas dokumen perusahaannya sendiri (PRD §7.1).
+    let (code, action_name) = match access {
+        FileAccess::CorporateHr { .. } => (EventCode::E12, FILE_DOWNLOADED_ACTION),
+        _ => (EventCode::E05, FILE_OPENED_ACTION),
+    };
+    let action = Code::new(action_name).map_err(|_| FileError::Internal("audit_action"))?;
     let mut event = AuditEvent::new(
-        EventCode::E05,
+        code,
         action,
         actor(principal)?,
         ObjectRef::with_uuid(policy, file_id),
@@ -770,6 +987,8 @@ fn extension(mime: &str) -> &'static str {
 fn may_access(principal: &Principal, access: FileAccess, file: &repo::FileForDownload) -> bool {
     match access {
         FileAccess::Owner => file.owner_account_id == Some(principal.account_id()),
+        // Relasi berkas ke perusahaan pemanggil sudah diputuskan modul pemanggil (keanggotaan dari sesi).
+        FileAccess::CorporateHr { .. } => principal.account_type() == AccountType::CorporateAdmin,
         FileAccess::Staff { roles, .. } | FileAccess::StaffCorporate { roles, .. } => {
             principal.account_type() == AccountType::RsAdmin
                 && roles.iter().any(|r| principal.has_sub_role(*r))
@@ -814,7 +1033,9 @@ pub(super) async fn issue_download_url(
     };
     if matches!(
         request.access,
-        FileAccess::Staff { .. } | FileAccess::StaffCorporate { .. }
+        FileAccess::Staff { .. }
+            | FileAccess::StaffCorporate { .. }
+            | FileAccess::CorporateHr { .. }
     ) {
         let event = file_event(
             principal,
@@ -966,7 +1187,7 @@ pub(super) async fn read_public_content_file(
     else {
         return Ok(None);
     };
-    let Some(format) = PhotoFormat::from_mime(&row.mime_type) else {
+    let Some(format) = FileFormat::from_mime(&row.mime_type) else {
         return Ok(None);
     };
     // Batas baca = ukuran tercatat (hasil kode ulang), dibatasi batas foto x2 sebagai pengaman memori.

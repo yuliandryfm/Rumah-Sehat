@@ -152,16 +152,36 @@ impl Fixture {
         .await
     }
 
+    /// Token versi dokumen dari detail (keputusan terikat versi dokumen, F1-T102); perusahaan yang tidak ada
+    /// mendapat token nol sehingga jawaban 404 tetap yang diuji.
+    async fn version(&self, token: &str, id: Uuid) -> String {
+        let r = self.get(&format!("{BASE}/{id}"), token).await;
+        if r.status == 200 {
+            r.json()["data"]["documents_version"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        } else {
+            "0".repeat(64)
+        }
+    }
+
     async fn approve(&self, token: &str, id: Uuid) -> Resp {
-        self.post(&format!("{BASE}/{id}/approve"), token, &json!({}))
-            .await
+        let v = self.version(token, id).await;
+        self.post(
+            &format!("{BASE}/{id}/approve"),
+            token,
+            &json!({ "documents_version": v }),
+        )
+        .await
     }
 
     async fn reject(&self, token: &str, id: Uuid, reason: &str) -> Resp {
+        let v = self.version(token, id).await;
         self.post(
             &format!("{BASE}/{id}/reject"),
             token,
-            &json!({ "reason_code": reason }),
+            &json!({ "reason_code": reason, "documents_version": v }),
         )
         .await
     }
@@ -561,11 +581,13 @@ async fn rejection_requires_an_active_listed_reason() {
 
     // Di luar daftar, badan rusak, dan field tak dikenal: ditolak tanpa efek.
     let before = outbox_total(&f).await;
+    let ver = f.version(&tok, c.id).await;
     for body in [
-        json!({ "reason_code": "other" }),
-        json!({ "reason_code": "photo_unreadable" }),
-        json!({ "reason_code": "" }),
-        json!({ "reason_code": "authority_proof_insufficient", "note": "x" }),
+        json!({ "reason_code": "other", "documents_version": ver }),
+        json!({ "reason_code": "photo_unreadable", "documents_version": ver }),
+        json!({ "reason_code": "", "documents_version": ver }),
+        json!({ "reason_code": "authority_proof_insufficient", "documents_version": ver, "note": "x" }),
+        json!({ "reason_code": "authority_proof_insufficient" }),
         json!({}),
     ] {
         let r = f
@@ -800,7 +822,7 @@ async fn npwp_never_reaches_audit_payloads_or_error_bodies() {
         f.post(
             &format!("{BASE}/{}/reject", c.id),
             &tok,
-            &json!({ "reason_code": "authority_proof_insufficient", "npwp": c.npwp }),
+            &json!({ "reason_code": "authority_proof_insufficient", "documents_version": "0", "npwp": c.npwp }),
         )
         .await,
         f.get(&format!("{BASE}/{}", c.npwp), &tok).await,
@@ -842,11 +864,17 @@ fn endpoints(id: Uuid) -> Vec<(&'static str, String, Option<Value>)> {
             format!("{BASE}/{id}/documents/nib/download-url"),
             Some(json!({})),
         ),
-        ("POST", format!("{BASE}/{id}/approve"), Some(json!({}))),
+        (
+            "POST",
+            format!("{BASE}/{id}/approve"),
+            Some(json!({ "documents_version": "0".repeat(64) })),
+        ),
         (
             "POST",
             format!("{BASE}/{id}/reject"),
-            Some(json!({ "reason_code": "nib_document_invalid" })),
+            Some(
+                json!({ "reason_code": "nib_document_invalid", "documents_version": "0".repeat(64) }),
+            ),
         ),
         ("GET", REASONS.to_string(), None),
     ]
@@ -968,11 +996,17 @@ async fn access_is_denied_to_everyone_but_active_verifiers() {
                 format!("{BASE}/{target}/documents/nib/download-url"),
                 Some(json!({})),
             ),
-            ("POST", format!("{BASE}/{target}/approve"), Some(json!({}))),
+            (
+                "POST",
+                format!("{BASE}/{target}/approve"),
+                Some(json!({ "documents_version": "0".repeat(64) })),
+            ),
             (
                 "POST",
                 format!("{BASE}/{target}/reject"),
-                Some(json!({ "reason_code": "nib_document_invalid" })),
+                Some(
+                    json!({ "reason_code": "nib_document_invalid", "documents_version": "0".repeat(64) }),
+                ),
             ),
         ] {
             let r = call(&f, &(m, path.clone(), body), Some(&tok)).await;

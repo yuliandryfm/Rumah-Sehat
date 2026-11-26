@@ -13,7 +13,9 @@ use crate::http_support::EnvelopeRenderer;
 use crate::modules::identity::api::{
     AccountDirectory, CorporateHrAccounts, ProvisionerNotConfigured,
 };
-use crate::modules::platform::api::{DatabaseReadiness, FileStorage, ReadinessCheck};
+use crate::modules::platform::api::{
+    DatabaseReadiness, FileStorage, QpdfInspector, ReadinessCheck,
+};
 use crate::modules::privacy::api::ConsentTextReadiness;
 use crate::modules::profile::api::IdentityServices;
 use crate::rate_limit::RateLimiter;
@@ -496,8 +498,15 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         .max_lifetime(Duration::from_secs(1800))
         .connect_lazy(config.database_url.expose())
         .map_err(|_| setup_failed("api_database_url"))?;
-    let files =
-        Arc::new(FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?);
+    let mut file_storage =
+        FileStorage::new(&config.files).map_err(|_| setup_failed("object_storage"))?;
+    // F1-T102: pemeriksa PDF (qpdf, KEPUTUSAN-86) hanya bila dikonfigurasi; tanpa itu PDF ditolak.
+    if let Some(qpdf) = &config.pdf_inspector {
+        // Direktori berkas sementara 0700 dan sisa `rs-pdf-*` proses sebelumnya dibersihkan (gagal cepat).
+        QpdfInspector::prepare(qpdf).map_err(|_| setup_failed("pdf_inspector_temp_dir"))?;
+        file_storage = file_storage.with_pdf_inspector(Arc::new(QpdfInspector::new(qpdf.clone())));
+    }
+    let files = Arc::new(file_storage);
     let jwks = HttpJwksSource::new(&config.admin_realm.jwks_url, Duration::from_secs(5))
         .map_err(|_| setup_failed("auth_admin_jwks_url"))?;
     let patient_jwks = HttpJwksSource::new(&config.patient_realm.jwks_url, Duration::from_secs(5))

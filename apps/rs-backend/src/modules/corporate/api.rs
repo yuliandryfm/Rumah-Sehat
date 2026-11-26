@@ -10,11 +10,11 @@
 //! F1-T107: operasi keanggotaan HR untuk use case kelola anggota HR di modul `identity` (pemilik akun):
 //! kunci tabel, daftar keanggotaan aktif per perusahaan, pemilik keanggotaan, dan pencabutan (hapus lunak).
 
-use super::{admin_create, registration, repo, verification};
-use crate::modules::platform::api::{DownloadTicket, FileStorage};
+use super::{admin_create, documents, registration, repo, verification};
+use crate::modules::platform::api::{DownloadTicket, FileStorage, UploadTicket};
 use authz::{
-    CorporateClientStatus, CorporateMembership, CorporateScopeResolver, MembershipFuture,
-    Principal, ResolveError,
+    CorporateClientStatus, CorporateMembership, CorporateScope, CorporateScopeResolver,
+    MembershipFuture, Principal, ResolveError,
 };
 use foundation::{Clock, Sensitive, Uuid};
 use sqlx::{PgConnection, PgPool};
@@ -186,6 +186,20 @@ pub struct CorporateQueueItemView {
     pub submission_round: i32,
     /// Waktu pengajuan terakhir.
     pub submitted_at: OffsetDateTime,
+    /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua (pengajuan "siap diverifikasi", F1-T102).
+    pub documents_complete: bool,
+}
+
+/// Pilihan isi antrean verifikasi menurut kelengkapan dokumen (F1-T102, keputusan user Q8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum QueueReadiness {
+    /// Hanya pengajuan yang ketiga jenis dokumennya lengkap ("siap diverifikasi"); bawaan.
+    #[default]
+    Ready,
+    /// Hanya pengajuan yang dokumennya belum lengkap.
+    Incomplete,
+    /// Semua pengajuan menunggu verifikasi.
+    All,
 }
 
 /// Detail perusahaan untuk Verifikator (US-1902 AC1). NPWP Terbatas (DD A20): dibungkus [`Sensitive`],
@@ -212,8 +226,12 @@ pub struct CorporateDetailView {
     pub submission_round: i32,
     /// Waktu pengajuan terakhir.
     pub submitted_at: OffsetDateTime,
-    /// Jenis dokumen aktif (`authority_proof`, `nib`, `npwp`).
+    /// Jenis dokumen aktif (`authority_proof`, `nib`, `npwp`); lengkap bila ketiganya ada (persetujuan ditolak
+    /// `4090113` bila belum, F1-T102).
     pub documents: Vec<&'static str>,
+    /// Token versi dokumen aktif; wajib dikirim kembali saat menyetujui atau menolak (`4090114` bila dokumen
+    /// berubah sejak detail dilihat).
+    pub documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     pub rejection_reason: Option<String>,
     /// Waktu keputusan putaran berjalan, bila sudah diputuskan.
@@ -261,8 +279,9 @@ pub async fn corporate_verification_queue(
     deps: &CorporateVerification<'_>,
     cursor: Option<Uuid>,
     limit: Option<i64>,
+    readiness: QueueReadiness,
 ) -> Result<(Vec<CorporateQueueItemView>, envelope::Meta), CorporateError> {
-    verification::queue(deps, cursor, limit).await
+    verification::queue(deps, cursor, limit, readiness).await
 }
 
 /// US-1902 AC1: detail perusahaan termasuk NPWP dan jenis dokumen aktif.
@@ -290,8 +309,16 @@ pub async fn approve_corporate_client(
     principal: &Principal,
     route: &str,
     corporate_client_id: Uuid,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
-    verification::approve(deps, principal, route, corporate_client_id).await
+    verification::approve(
+        deps,
+        principal,
+        route,
+        corporate_client_id,
+        documents_version,
+    )
+    .await
 }
 
 /// US-1902 AC3, AC4: menolak pengajuan dengan kode alasan.
@@ -301,8 +328,17 @@ pub async fn reject_corporate_client(
     route: &str,
     corporate_client_id: Uuid,
     reason_code: &str,
+    documents_version: &str,
 ) -> Result<CorporateDecisionView, CorporateError> {
-    verification::reject(deps, principal, route, corporate_client_id, reason_code).await
+    verification::reject(
+        deps,
+        principal,
+        route,
+        corporate_client_id,
+        reason_code,
+        documents_version,
+    )
+    .await
 }
 
 /// US-1902 AC3: daftar alasan penolakan aktif.
@@ -310,6 +346,97 @@ pub async fn corporate_rejection_reasons(
     deps: &CorporateVerification<'_>,
 ) -> Result<Vec<RejectionReasonView>, CorporateError> {
     verification::rejection_reasons(deps).await
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Dokumen perusahaan oleh HR (F1-T102, US-1901 AC2). Dipanggil handler `/v1/corporate` modul ini; kebijakan
+// rute = HR perusahaan Menunggu verifikasi, Ditolak, atau Aktif (status dibatasi lagi oleh use case:
+// hanya Menunggu verifikasi dan Ditolak). Perusahaan selalu dari cakupan sesi (`CorporateScope`).
+
+/// Dependensi use case dokumen perusahaan (dipinjam dari keadaan aplikasi per permintaan).
+#[derive(Clone, Copy)]
+pub struct CorporateDocuments<'a> {
+    /// Pool role aplikasi (`rs_app`).
+    pub pool: &'a PgPool,
+    /// Jam server (KEPUTUSAN-131).
+    pub clock: &'a dyn Clock,
+    /// Layanan berkas (slot unggah, validasi isi, URL unduh).
+    pub files: &'a FileStorage,
+}
+
+impl fmt::Debug for CorporateDocuments<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CorporateDocuments").finish_non_exhaustive()
+    }
+}
+
+/// Status satu jenis dokumen wajib.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentStatusView {
+    /// `nib` | `npwp` | `authority_proof`.
+    pub kind: &'static str,
+    /// Dokumen aktif jenis ini sudah diunggah.
+    pub uploaded: bool,
+    /// Waktu dokumen aktif dicatat.
+    pub uploaded_at: Option<OffsetDateTime>,
+}
+
+/// Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6, Q8).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentsOverviewView {
+    /// `pending_verification` | `rejected`.
+    pub status: &'static str,
+    /// Putaran pengajuan berjalan.
+    pub submission_round: i32,
+    /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
+    pub rejection_reason: Option<String>,
+    /// Ketiga jenis dokumen wajib, urut `nib`, `npwp`, `authority_proof`.
+    pub documents: Vec<DocumentStatusView>,
+    /// Ketiganya sudah diunggah (pengajuan "siap diverifikasi").
+    pub complete: bool,
+}
+
+/// US-1901 AC2, AC6: status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil.
+/// Perusahaan Aktif: [`CorporateError::DocumentsNotManageable`].
+pub async fn corporate_documents_overview(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    documents::overview(deps, scope).await
+}
+
+/// US-1901 AC2, langkah 1: slot unggah untuk akun HR pemanggil (JPG/PNG ≤ 5 MiB atau PDF ≤ 10 MiB; kuota
+/// per akun per jam).
+pub async fn create_corporate_document_slot(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    content_type: String,
+    size_bytes: u64,
+) -> Result<UploadTicket, CorporateError> {
+    documents::create_slot(deps, scope, route, content_type, size_bytes).await
+}
+
+/// US-1901 AC2, langkah 3: memvalidasi berkas yang sudah diunggah dan mencatatnya sebagai dokumen aktif
+/// `document_kind` (menggantikan yang lama), dengan E-10.
+pub async fn confirm_corporate_document(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    document_kind: &str,
+    upload_slot_id: Uuid,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    documents::confirm(deps, scope, route, document_kind, upload_slot_id).await
+}
+
+/// URL unduh berumur pendek untuk dokumen aktif `document_kind` perusahaan pemanggil (E-12 dulu).
+pub async fn corporate_document_download_url(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    document_kind: &str,
+) -> Result<DownloadTicket, CorporateError> {
+    documents::download_url(deps, scope, route, document_kind).await
 }
 
 /// US-1903 AC1-AC4 (F1-T105): Verifikator membuat perusahaan langsung Aktif dan mengundang HR pertama

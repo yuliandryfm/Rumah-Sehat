@@ -9,6 +9,7 @@ mod domain;
 mod dto;
 mod error;
 mod http;
+mod pdf;
 mod policy;
 mod repo;
 mod service;

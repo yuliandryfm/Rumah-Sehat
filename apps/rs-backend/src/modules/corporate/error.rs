@@ -20,6 +20,26 @@ pub const HR_EMAIL_ALREADY_REGISTERED: ResponseCode = ResponseCode::new(
     "Email HR sudah dipakai akun lain di realm korporat",
 );
 
+/// `4090112`: dokumen perusahaan hanya dapat dikelola HR saat perusahaan Menunggu verifikasi atau Ditolak
+/// (US-1901 AC6, keputusan user Q8 2026-11-26, F1-T102).
+pub const DOCUMENTS_NOT_MANAGEABLE: ResponseCode = ResponseCode::new(
+    "4090112",
+    "Dokumen perusahaan hanya dapat dikelola saat perusahaan menunggu verifikasi atau ditolak",
+);
+/// `4090113`: Verifikator menyetujui pengajuan yang dokumennya belum lengkap (NIB, NPWP, dan bukti kewenangan
+/// wajib ada; keputusan user Q8 2026-11-26, F1-T102).
+pub const DOCUMENTS_INCOMPLETE: ResponseCode = ResponseCode::new(
+    "4090113",
+    "Dokumen perusahaan belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui",
+);
+
+/// `4090114`: dokumen perusahaan berubah sejak detail dilihat Verifikator (keputusan terikat versi dokumen,
+/// review T1 F1-T102). Verifikator memuat ulang detail, memeriksa dokumen yang baru, lalu memutuskan kembali.
+pub const DOCUMENTS_CHANGED: ResponseCode = ResponseCode::new(
+    "4090114",
+    "Dokumen perusahaan berubah sejak Anda membukanya. Muat ulang detail lalu putuskan kembali",
+);
+
 /// `4090106`: teks persetujuan pendaftaran perusahaan yang dikirim bukan versi berlaku, atau butirnya bukan milik
 /// versi berlaku (US-104 AC3, US-1901 AC1). Klien memuat ulang teks lalu meminta persetujuan lagi. Tidak
 /// berkaitan dengan keberadaan akun atau NIB (bukan pembeda anti-enumerasi).
@@ -48,6 +68,12 @@ pub enum CorporateError {
     HrEmailAlreadyRegistered,
     /// Teks persetujuan pendaftaran sudah berganti (409, US-104 AC3).
     ConsentOutdated,
+    /// Dokumen tidak dapat dikelola pada status perusahaan ini (409, US-1901 AC6, F1-T102).
+    DocumentsNotManageable,
+    /// Pengajuan belum memuat NIB, NPWP, dan bukti kewenangan sehingga tidak dapat disetujui (409, F1-T102).
+    DocumentsIncomplete,
+    /// Dokumen aktif berbeda dari versi yang dilihat Verifikator saat memutuskan (409, F1-T102).
+    DocumentsChanged,
     /// Batas laju pendaftaran terlampaui (429).
     RateLimited,
     /// Galat berkas dari modul `platform`.
@@ -69,6 +95,9 @@ impl fmt::Display for CorporateError {
             Self::NibAlreadyRegistered => f.write_str("NIB sudah terdaftar"),
             Self::HrEmailAlreadyRegistered => f.write_str("email HR sudah dipakai"),
             Self::ConsentOutdated => f.write_str("teks persetujuan sudah berganti"),
+            Self::DocumentsNotManageable => f.write_str("dokumen tidak dapat dikelola"),
+            Self::DocumentsIncomplete => f.write_str("dokumen belum lengkap"),
+            Self::DocumentsChanged => f.write_str("dokumen berubah sejak dilihat"),
             Self::RateLimited => f.write_str("batas laju"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::Database => f.write_str("database tidak tersedia"),
@@ -90,6 +119,9 @@ impl ApiError for CorporateError {
             Self::NibAlreadyRegistered => NIB_ALREADY_REGISTERED,
             Self::HrEmailAlreadyRegistered => HR_EMAIL_ALREADY_REGISTERED,
             Self::ConsentOutdated => REGISTRATION_CONSENT_OUTDATED,
+            Self::DocumentsNotManageable => DOCUMENTS_NOT_MANAGEABLE,
+            Self::DocumentsIncomplete => DOCUMENTS_INCOMPLETE,
+            Self::DocumentsChanged => DOCUMENTS_CHANGED,
             Self::RateLimited => codes::RATE_LIMITED,
             Self::File(e) => e.response_code(),
             Self::Database => codes::UNAVAILABLE,
@@ -121,6 +153,9 @@ mod tests {
             (CorporateError::NibAlreadyRegistered, "4090110"),
             (CorporateError::HrEmailAlreadyRegistered, "4090111"),
             (CorporateError::ConsentOutdated, "4090106"),
+            (CorporateError::DocumentsNotManageable, "4090112"),
+            (CorporateError::DocumentsIncomplete, "4090113"),
+            (CorporateError::DocumentsChanged, "4090114"),
             (CorporateError::RateLimited, "4290001"),
             (CorporateError::File(FileError::NotFound), "4040001"),
             (CorporateError::Database, "5030001"),

@@ -1,11 +1,14 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
 use crate::modules::identity::api::{IdpWorkerConfig, KeycloakEventConfig};
-use crate::modules::platform::api::FileStorageConfig;
+use crate::modules::platform::api::{
+    DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS, FileStorageConfig, QpdfConfig,
+};
 use crate::rate_limit::RateBudget;
 use foundation::Sensitive;
 use observability::{BaseConfig, ConfigError, EnvSource};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// Awalan URI `type` RFC 9457 bila `PROBLEM_TYPE_BASE` tidak diisi. Domain dokumentasi jenis masalah
 /// `[TIDAK DIKETAHUI]` (docs/05-response-codes.md §4.7); TLD `.invalid` dicadangkan RFC 2606 sehingga
@@ -40,6 +43,11 @@ pub struct ApiConfig {
     pub identity_keys: IdentityKeysConfig,
     /// Object storage untuk berkas (F1-T29; gambar konten F1-T93).
     pub files: FileStorageConfig,
+    /// Pemeriksa PDF qpdf (F1-T102, KEPUTUSAN-86): `PDF_INSPECTOR_QPDF_PATH` (path biner `qpdf`; kosong atau tidak
+    /// diisi = PDF belum didukung, slot unggah PDF ditolak `415`) dan `PDF_INSPECTOR_TIMEOUT_SECONDS` (bawaan
+    /// 10, 1..=60), `PDF_INSPECTOR_TEMP_DIR` (direktori khusus berkas sementara, dibuat 0700 saat start; bawaan
+    /// `<tmp>/rs-pdf-inspect`).
+    pub pdf_inspector: Option<QpdfConfig>,
     /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
     /// (bawaan 300) dan `PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE` (bawaan 3000). Angka bawaan adalah usulan
     /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten, gambar, dan teks
@@ -188,12 +196,40 @@ impl ApiConfig {
                 dek_cache_capacity: env.required("API_DEK_CACHE_CAPACITY")?,
             },
             files: FileStorageConfig::load(env)?,
+            pdf_inspector: load_pdf_inspector(env)?,
             public_rate: RateBudget {
                 per_source: env.optional_or("PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE", 300)?,
                 global: env.optional_or("PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE", 3_000)?,
             },
         })
     }
+}
+
+/// Memuat konfigurasi pemeriksa PDF; path kosong atau tidak diisi = tidak dipasang (PDF ditolak).
+fn load_pdf_inspector(env: &EnvSource) -> Result<Option<QpdfConfig>, ConfigError> {
+    let path: String = env.optional_or("PDF_INSPECTOR_QPDF_PATH", String::new())?;
+    let timeout: u64 = env.optional_or(
+        "PDF_INSPECTOR_TIMEOUT_SECONDS",
+        DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS,
+    )?;
+    if path.trim().is_empty() {
+        return Ok(None);
+    }
+    // Jalur absolut wajib: jalur relatif bergantung pada direktori kerja proses dan PATH (lingkungan anak dikosongkan).
+    if !Path::new(path.trim()).is_absolute() {
+        return Err(ConfigError::invalid("PDF_INSPECTOR_QPDF_PATH"));
+    }
+    if !(1..=60).contains(&timeout) {
+        return Err(ConfigError::invalid("PDF_INSPECTOR_TIMEOUT_SECONDS"));
+    }
+    let temp_dir: String = env.optional_or("PDF_INSPECTOR_TEMP_DIR", String::new())?;
+    let mut config = QpdfConfig::new(path.trim());
+    config.timeout = Duration::from_secs(timeout);
+    config.cpu_limit_seconds = timeout + 5;
+    if !temp_dir.trim().is_empty() {
+        config.temp_dir = PathBuf::from(temp_dir.trim());
+    }
+    Ok(Some(config))
 }
 
 /// Ukuran batch relay audit `1..=64` (`audit_store::MAX_BATCH_EVENTS`); di luar rentang = tidak valid.
@@ -936,5 +972,39 @@ mod tests {
             WorkerConfig::load(&no_secret).unwrap_err().name(),
             "KEYCLOAK_EVENT_SECRET_ADMIN"
         );
+    }
+
+    // trace: review T1 F1-T102 (jalur qpdf wajib absolut; kosong = tidak dipasang; temp dir dari env)
+    #[test]
+    fn pdf_inspector_requires_an_absolute_qpdf_path() {
+        let load = |pairs: &[(&'static str, &'static str)]| {
+            load_pdf_inspector(&EnvSource::from_pairs(pairs.to_vec()))
+        };
+        assert!(load(&[]).unwrap().is_none());
+        assert!(
+            load(&[("PDF_INSPECTOR_QPDF_PATH", "  ")])
+                .unwrap()
+                .is_none()
+        );
+        for relative in ["qpdf", "./qpdf", "bin/qpdf", "../qpdf"] {
+            let e = load(&[("PDF_INSPECTOR_QPDF_PATH", relative)]).unwrap_err();
+            assert_eq!(e.name(), "PDF_INSPECTOR_QPDF_PATH", "{relative}");
+        }
+        let c = load(&[
+            ("PDF_INSPECTOR_QPDF_PATH", "/usr/bin/qpdf"),
+            ("PDF_INSPECTOR_TEMP_DIR", "/var/lib/ruang-sehat/pdf"),
+            ("PDF_INSPECTOR_TIMEOUT_SECONDS", "20"),
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(c.program, PathBuf::from("/usr/bin/qpdf"));
+        assert_eq!(c.temp_dir, PathBuf::from("/var/lib/ruang-sehat/pdf"));
+        assert_eq!((c.timeout.as_secs(), c.cpu_limit_seconds), (20, 25));
+        let e = load(&[
+            ("PDF_INSPECTOR_QPDF_PATH", "/usr/bin/qpdf"),
+            ("PDF_INSPECTOR_TIMEOUT_SECONDS", "0"),
+        ])
+        .unwrap_err();
+        assert_eq!(e.name(), "PDF_INSPECTOR_TIMEOUT_SECONDS");
     }
 }
