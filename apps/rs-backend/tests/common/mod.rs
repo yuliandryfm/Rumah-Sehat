@@ -258,6 +258,7 @@ pub async fn spawn(readiness: Vec<Arc<dyn ReadinessCheck>>) -> SocketAddr {
             public_content_limit: roomy_limiter(),
             public_image_limit: roomy_limiter(),
             corporate_hr: corporate_hr(unreachable_pool()),
+            consent_text_limit: roomy_limiter(),
         },
     );
     spawn_app(

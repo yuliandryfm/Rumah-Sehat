@@ -145,3 +145,12 @@ tests = [
   "apps/rs-backend/tests/profile_patient_profile_http.rs::addresses_keep_exactly_one_default_and_soft_delete",
   "apps/rs-backend/tests/profile_patient_profile_http.rs::foreign_address_is_not_found_identically_and_audited",
 ]
+
+# E-13 persetujuan diberikan (F1-T49, US-104 AC2): bukti `consent_record` + event per butir, ditulis pemanggil
+# (pendaftaran pasien, pendaftaran perusahaan) di transaksinya lewat `privacy::api::record_granted_consent`.
+[[emitter]]
+file = "apps/rs-backend/src/modules/privacy/service.rs"
+codes = ["E13"]
+tests = [
+  "apps/rs-backend/tests/privacy_consent_text.rs::other_modules_read_active_text_check_selection_and_record_consent_with_e13",
+]

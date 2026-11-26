@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) FROM app.consent_record WHERE patient_id = $1 AND action = 'granted' AND channel = 'patient_app' AND consent_text_version_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "42b9e430126b4d89697da61cb4d69e63f453d30b9f7316af1844cff2f0c2f680"
+}

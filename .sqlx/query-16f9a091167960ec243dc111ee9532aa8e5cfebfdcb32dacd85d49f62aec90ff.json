@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.consent_item (id, consent_text_version_id, item_code, label, is_primary, is_required, sort_order) VALUES ($1, $2, 'data_processing', 'Butir sintetis', $3, $3, 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "16f9a091167960ec243dc111ee9532aa8e5cfebfdcb32dacd85d49f62aec90ff"
+}

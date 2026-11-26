@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.consent_text_version SET content = 'diubah', updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1af4f7adb6934c511b9c4a020b9f50c82e2784ff5cc052fd85d16ce6ed0ce879"
+}

@@ -140,6 +140,7 @@ async fn world() -> World {
             files,
             public_content_limit: common::roomy_limiter(),
             public_image_limit: common::roomy_limiter(),
+            consent_text_limit: common::roomy_limiter(),
             corporate_hr: common::corporate_hr(app.clone()),
         },
     );

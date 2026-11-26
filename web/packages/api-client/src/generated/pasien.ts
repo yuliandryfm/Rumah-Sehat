@@ -108,6 +108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patient/v1/consent-texts/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teks persetujuan pemrosesan data yang berlaku untuk layar pendaftaran (US-104 AC1, AC3): tujuh bagian
+         *     Pasal 21 ayat (1) UU PDP, kontak, dan butir persetujuan. Tanpa login, dengan batas laju.
+         */
+        get: operations["consent_text_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patient/v1/ktp-photos/upload-slots": {
         parameters: {
             query?: never;
@@ -248,6 +268,69 @@ export interface components {
              * @example Asia/Jakarta
              */
             time_zone?: string | null;
+        };
+        /** @description Kontak Ruang Sehat. */
+        ConsentContactDto: {
+            body: string;
+            /** @example Kontak Ruang Sehat */
+            title: string;
+        };
+        /** @description Butir persetujuan: satu kotak centang yang tidak tercentang otomatis. */
+        ConsentItemDto: {
+            /** @example 01a2008d-7400-7000-8000-000000000a4a */
+            consent_item_id: string;
+            /** @description Butir utama (penarikannya membuat akun "Persetujuan ditarik", US-1601 AC2). */
+            is_primary: boolean;
+            /** @description Wajib dipilih untuk mendaftar (US-101 AC4). */
+            is_required: boolean;
+            /** @example data_processing */
+            item_code: string;
+            label: string;
+            /** Format: int32 */
+            sort_order: number;
+        };
+        /** @description Satu bagian teks persetujuan. */
+        ConsentSectionDto: {
+            /** @description Isi bagian, teks biasa (bukan HTML). */
+            body: string;
+            /**
+             * @description Kode tetap bagian Pasal 21 ayat (1) UU PDP: `legal_basis` (a), `purpose` (b), `data_types` (c),
+             *     `document_retention` (d), `collected_information` (e), `processing_period` (f), `subject_rights` (g).
+             * @example purpose
+             */
+            code: string;
+            /** @example (b) Tujuan pemrosesan */
+            title: string;
+        };
+        /** @description Versi teks persetujuan pemrosesan data yang berlaku (US-104 AC1). */
+        ConsentTextDto: {
+            /** @example 01a2008d-7400-7000-8000-000000000a49 */
+            consent_text_version_id: string;
+            /** @example patient_data_processing */
+            consent_type: string;
+            contact: components["schemas"]["ConsentContactDto"];
+            /** @description Penanda teks draf yang belum final (`null` untuk teks final yang disetujui legal dan Petugas PDP). */
+            draft_notice?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-11-22T00:00:01Z
+             */
+            effective_from: string;
+            /** @description Butir persetujuan, urut tampilan. */
+            items: components["schemas"]["ConsentItemDto"][];
+            /** @description Tujuh bagian, urut (a)–(g). */
+            sections: components["schemas"]["ConsentSectionDto"][];
+            /** @example 0.1-draf */
+            version_label: string;
+        };
+        /** @description Bentuk dokumentasi respons teks persetujuan (ADR-023 butir 1); isi sebenarnya `envelope::Success`. */
+        ConsentTextEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["ConsentTextDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
         };
         /**
          * @description Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya
@@ -950,6 +1033,53 @@ export interface operations {
                 };
             };
             /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    consent_text_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versi teks yang berlaku. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentTextEnvelope"];
+                };
+            };
+            /** @description Batas laju terlampaui. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat tak terduga. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum ada versi teks yang berlaku atau layanan tidak tersedia. */
             503: {
                 headers: {
                     [name: string]: unknown;
