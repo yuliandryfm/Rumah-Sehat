@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT job_type AS \"job_type!\", payload AS \"payload!\", status AS \"status!\"\n           FROM app.job WHERE payload ->> 'intent_id' = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "job_type!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "job",
+            "name": "job_type"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "payload!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "job",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "job",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d5b8ebcccfaa3290f8f46134685f01e49f9a03132136975930439f2924d648c8"
+}

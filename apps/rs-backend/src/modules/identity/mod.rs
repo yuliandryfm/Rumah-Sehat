@@ -20,6 +20,10 @@
 //!   `idp_domain`, query niat `idp_repo`, API internal pencatatan niat `idp_service` (dipanggil use case di
 //!   transaksinya), klien pengguna Keycloak `idp_worker_client` (hanya worker), dan worker `idp_worker`.
 //!
+//! - F1-T105/F1-T107 (ADR-030, KEPUTUSAN-303/306): undangan HR lewat `corporate_hr_invite` (akun
+//!   `pending_provisioning` + niat `create_user`; email aktivasi dicatat worker) dipakai pembuatan perusahaan
+//!   oleh Verifikator (modul `corporate`) dan endpoint undang HR (`corporate_hr_service`).
+//!
 //! Endpoint HTTP lain modul ini (registrasi, keluar, kelola akun admin) menyusul di task masing-masing.
 
 mod admin_domain;
@@ -29,6 +33,7 @@ pub mod api;
 mod cache;
 mod corporate_hr_domain;
 mod corporate_hr_http;
+mod corporate_hr_invite;
 mod corporate_hr_repo;
 mod corporate_hr_service;
 mod domain;

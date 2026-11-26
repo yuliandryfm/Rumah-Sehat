@@ -101,7 +101,21 @@ const PRODUCTION_CASES: &[Case] = &[
         path: "/v1/corporate/members/{corporate_member_id}/deactivate",
         probe: Probe::Hr { body: None },
     },
+    // F1-T107 sisa: undang HR lain. Perusahaan selalu dari keanggotaan pemanggil; isian ID perusahaan/keanggotaan
+    // yang diselipkan harness ditolak (`deny_unknown_fields`, 422) tanpa efek pada perusahaan B.
+    Case {
+        method: "POST",
+        path: "/v1/corporate/member-invitations",
+        probe: Probe::Hr {
+            body: Some(invitation_body),
+        },
+    },
 ];
+
+/// Isi undangan sah dengan email sintetis unik per panggilan.
+fn invitation_body(_t: &Tenant) -> Value {
+    json!({ "email": format!("harness-{}@example.com", new_id().simple()) })
+}
 
 /// Pelanggaran cakupan harness terhadap endpoint terdaftar.
 fn coverage_violations(registered: &[(EndpointKey, Policy)], cases: &[Case]) -> Vec<String> {

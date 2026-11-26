@@ -1,22 +1,33 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, idp_subject AS \"idp_subject!\", email, full_name, status FROM app.account\n         WHERE id = ANY($1) AND account_type = 'corporate_admin' AND idp_realm = 'korporat'\n           AND deleted_at IS NULL AND status <> 'pending_provisioning'",
+  "query": "SELECT account_type AS \"account_type!\", idp_realm AS \"realm!\", idp_subject, status AS \"status!\",\n                  email AS \"email!\", created_by\n           FROM app.account WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Uuid",
+        "name": "account_type!",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "account",
-            "name": "id"
+            "name": "account_type"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "idp_subject!",
+        "name": "realm!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "idp_realm"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "idp_subject",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -26,8 +37,19 @@
         }
       },
       {
-        "ordinal": 2,
-        "name": "email",
+        "ordinal": 3,
+        "name": "status!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "account",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "email!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -37,40 +59,30 @@
         }
       },
       {
-        "ordinal": 3,
-        "name": "full_name",
-        "type_info": "Text",
+        "ordinal": 5,
+        "name": "created_by",
+        "type_info": "Uuid",
         "origin": {
           "Table": {
             "table": "account",
-            "name": "full_name"
-          }
-        }
-      },
-      {
-        "ordinal": 4,
-        "name": "status",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "account",
-            "name": "status"
+            "name": "created_by"
           }
         }
       }
     ],
     "parameters": {
       "Left": [
-        "UuidArray"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
-      true,
       false,
       true,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "2915bcbff1f898579e87612c47907d76abca1d8eb43ce3e888caf88fd8e8ebcb"
+  "hash": "0d8ee96b097fa28ca0724e050970c4ec28bc8dea5054d662b89f6d2581d9c51f"
 }

@@ -6,7 +6,10 @@
 //! baru wajib terdaftar di harness isolasi `apps/rs-backend/tests/corporate_isolation.rs` (H-18).
 //! F1-T104: verifikasi perusahaan oleh Verifikator (US-1902) di `/backoffice/v1`
 //! (`openapi/backoffice.json`): antrean, detail, URL dokumen, setujui/tolak, daftar alasan penolakan.
+//! F1-T105: perusahaan dibuatkan Verifikator (US-1903, `admin_create.rs`): langsung Aktif + undangan HR pertama.
 
+mod admin_create;
+mod admin_create_http;
 pub mod api;
 mod domain;
 mod dto;
@@ -21,5 +24,5 @@ use authz::PolicyRouter;
 
 /// Rute backoffice verifikasi perusahaan (`/backoffice/v1`, realm `admin`, sub-peran Verifikator).
 pub(crate) fn backoffice_router() -> PolicyRouter<AppState> {
-    http::router()
+    http::router().merge(admin_create_http::router())
 }

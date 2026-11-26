@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT payload AS \"payload!\" FROM app.audit_outbox\n               WHERE payload ->> 'tenant_id' = $1 ORDER BY occurred_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "payload!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_outbox",
+            "name": "payload"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1b295f914c57b42c4e3381c3c5cf26acdfa194d376d713c1d8bc14a09cc4c798"
+}

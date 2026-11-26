@@ -1679,6 +1679,112 @@ def cek_pekerja_idp(realm):
         pulihkan_smtp(realm, asli)
 
 
+def cek_undangan_hr(realm):
+    """F1-T105/F1-T107 (US-1903 AC1-AC2, US-1904 AC2; ADR-030; KEPUTUSAN-306): undangan aktivasi HR realm korporat
+    seperti yang dijalankan worker IdP (apps/rs-backend modul identity, idp_worker_client.rs): pengguna tanpa
+    kredensial beratribut rs_intent_id, email aksi VERIFY_EMAIL + UPDATE_PASSWORD + CONFIGURE_TOTP dengan
+    lifespan 86400. Diuji di Keycloak sungguhan: masa berlaku tautan 24 jam (klaim exp token aksi), aktivasi lewat
+    tautan (email terverifikasi, password dan TOTP terdaftar), tautan yang sudah dipakai ditolak (sekali pakai),
+    dan tautan yang kedaluwarsa ditolak tanpa mengubah pengguna (lifespan pendek, perilaku token aksi yang sama)."""
+    if realm != "korporat":
+        return
+    print(f"== [{realm}] undangan aktivasi HR: kedaluwarsa dan sekali pakai (F1-T105/F1-T107)")
+    klien = {c["clientId"]: c for c in ADMIN.get(f"{realm}/clients")}
+    if not periksa(PEKERJA_IDP in klien, f"[{realm}] klien {PEKERJA_IDP} ada"):
+        return
+    rahasia = os.environ.get("RS_KC_IDP_WORKER_KORPORAT_SECRET")
+    r = k.request("POST", f"{BASE}/realms/{realm}/protocol/openid-connect/token",
+                  form={"grant_type": "client_credentials", "client_id": PEKERJA_IDP, "client_secret": rahasia or ""})
+    if not periksa(r.status == 200, f"[{realm}] token worker IdP untuk undangan terbit", f"HTTP {r.status}"):
+        return
+    h = {"Authorization": "Bearer " + r.json()["access_token"]}
+
+    def panggil(metode, path, body=None):
+        return k.request(metode, f"{BASE}/admin/realms/{path}", headers=h, data=body)
+
+    def buat_dan_undang(lifespan):
+        """Pengguna baru seperti `idp_create_user` lalu email aksi seperti `idp_send_activation`."""
+        niat = str(uuid.uuid4())
+        surel = f"a105-{secrets.token_hex(4)}@uji.invalid"
+        r = panggil("POST", f"{realm}/users", {"username": surel, "email": surel, "enabled": True, "emailVerified": False,
+                                               "attributes": {"rs_intent_id": [niat]}})
+        if not periksa(r.status == 201 and "/users/" in (r.location or ""),
+                       f"[{realm}] worker membuat pengguna HR undangan (201)", f"HTTP {r.status}"):
+            return None
+        uid = r.location.rsplit("/", 1)[1]
+        USER_UJI.append((realm, uid))
+        sebelum = daftar_email()
+        r = panggil("PUT", f"{realm}/users/{uid}/execute-actions-email?lifespan={lifespan}",
+                    ["VERIFY_EMAIL", "UPDATE_PASSWORD", "CONFIGURE_TOTP"])
+        if not periksa(r.status == 204, f"[{realm}] email aktivasi HR lifespan {lifespan} diterima (204)", f"HTTP {r.status}"):
+            return None
+        nama, raw = baca_email(sebelum)
+        link = tautan_atur_ulang(raw) if raw else None
+        if not periksa(link is not None, f"[{realm}] email aktivasi HR (lifespan {lifespan}) memuat tautan token aksi"):
+            return None
+        return uid, surel, link
+
+    def halaman_ditolak(link):
+        """Tautan tidak lagi membuka form password/TOTP atau tautan token aksi lanjutan."""
+        b = k.Browser(BASE)
+        p = k.Page(ikuti(b, b.open(link)).body)
+        return (p.form("kc-passwd-update-form") is None and p.form("kc-totp-settings-form") is None
+                and not [hh for _, hh in p.links if "action-token" in (hh or "")])
+
+    asli = smtp_ke_penangkap(realm)
+    try:
+        # 1. Tautan 24 jam: masa berlaku, aktivasi, lalu dipakai ulang ditolak.
+        hasil = buat_dan_undang(86400)
+        if hasil:
+            uid, surel, link = hasil
+            kunci = urllib.parse.parse_qs(urllib.parse.urlparse(html.unescape(link)).query).get("key", [""])[0]
+            try:
+                sisa = klaim(kunci).get("exp", 0) - time.time()
+            except Exception:  # noqa: BLE001 (token aksi tidak terbaca = GAGAL di bawah)
+                sisa = -1
+            periksa(86400 - 600 <= sisa <= 86400 + 600,
+                    f"[{realm}] token aksi undangan HR berlaku 24 jam (exp = sekarang + 86400 detik)", f"sisa {sisa:.0f} detik")
+            user = UserUji.__new__(UserUji)
+            user.realm, user.email, user.otp_key, user.recovery, user._dipakai = realm, surel, None, [], set()
+            user.password = "Aktivasi-" + secrets.token_urlsafe(12)
+            b = k.Browser(BASE)
+            r = ikuti(b, b.open(link))
+            for _ in range(8):
+                p = k.Page(r.body)
+                tautan = [hh for _, hh in p.links if "action-token" in (hh or "")]
+                if p.form("kc-totp-settings-form"):
+                    r = daftar_mfa(b, r, user)
+                elif p.form("kc-recovery-codes-settings-form"):
+                    r = simpan_kode_pemulihan(b, r, user)
+                elif p.form("kc-passwd-update-form"):
+                    f = p.form("kc-passwd-update-form")
+                    time.sleep(JEDA)
+                    r = ikuti(b, b.open(f["action"], dict(f["inputs"], **{"password-new": user.password, "password-confirm": user.password})))
+                elif tautan:
+                    r = ikuti(b, b.open(html.unescape(tautan[0])))
+                else:
+                    break
+            info = ADMIN.get(f"{realm}/users/{uid}")
+            jenis = sorted(x["type"] for x in ADMIN.get(f"{realm}/users/{uid}/credentials"))
+            periksa(info.get("emailVerified") is True and "otp" in jenis and "password" in jenis and not info.get("requiredActions"),
+                    f"[{realm}] aktivasi HR lewat tautan: email terverifikasi, password dan TOTP terdaftar",
+                    f"{jenis} {info.get('requiredActions')} emailVerified={info.get('emailVerified')}")
+            periksa(halaman_ditolak(link), f"[{realm}] tautan undangan HR yang sudah dipakai ditolak (sekali pakai)")
+        # 2. Tautan kedaluwarsa: lifespan pendek, dibuka setelah lewat batas; pengguna tidak berubah.
+        hasil = buat_dan_undang(2)
+        if hasil:
+            uid, surel, link = hasil
+            time.sleep(5)
+            periksa(halaman_ditolak(link), f"[{realm}] tautan undangan HR yang kedaluwarsa ditolak")
+            info = ADMIN.get(f"{realm}/users/{uid}")
+            kred = ADMIN.get(f"{realm}/users/{uid}/credentials")
+            periksa(info.get("emailVerified") is False and kred == [],
+                    f"[{realm}] tautan kedaluwarsa tidak memverifikasi email atau membuat kredensial",
+                    f"emailVerified={info.get('emailVerified')} kredensial={len(kred)}")
+    finally:
+        pulihkan_smtp(realm, asli)
+
+
 def jalankan(nama, fungsi, *args):
     """Satu skenario; galat tak terduga dihitung GAGAL tanpa menghentikan skenario lain."""
     try:
@@ -1703,6 +1809,7 @@ def main():
             jalankan(f"[{realm}] pembaca event", cek_pembaca_event, realm)
             jalankan(f"[{realm}] pengelola pengguna admin", cek_pengelola_admin, realm)
             jalankan(f"[{realm}] worker IdP", cek_pekerja_idp, realm)
+            jalankan(f"[{realm}] undangan HR", cek_undangan_hr, realm)
             print(f"== [{realm}] pendaftaran, PKCE")
             jalankan(f"[{realm}] pendaftaran mati", cek_pendaftaran_mati, realm)
             jalankan(f"[{realm}] PKCE wajib", cek_pkce_wajib, realm)

@@ -38,6 +38,7 @@ pub use super::admin_service::{
     NewAdminInput, NoAccountCache, StaffNikIndex, staff_nik_index,
 };
 pub use super::corporate_hr_domain::HrRuleViolation;
+pub use super::corporate_hr_invite::{HrInviteError, normalize_hr_email, register_hr_invitation};
 pub use super::corporate_hr_service::{
     CorporateHrAccounts, CorporateIdentityProvisioner, HrDeactivated, HrIdpFailure, HrIdpFuture,
     HrMemberView, ProvisionerNotConfigured,

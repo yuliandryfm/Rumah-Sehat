@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/v1/corporate/member-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mengundang HR lain ke perusahaan pemanggil (US-1904 AC2). Akun baru terikat ke perusahaan pemanggil;
+         *     tautan aktivasi (password dan TOTP) berlaku 24 jam dan sekali pakai. Jawaban sama untuk email baru dan email
+         *     yang sudah terdaftar.
+         */
+        post: operations["corporate_member_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/corporate/members": {
         parameters: {
             query?: never;
@@ -113,6 +134,31 @@ export interface components {
             /** @example Berhasil */
             response_description: string;
         };
+        /** @description Undangan diterima. Isi selalu sama, juga untuk email yang sudah terdaftar (anti-enumerasi). */
+        HrInvitationAcceptedDto: {
+            /**
+             * @description Selalu `processing`: pengguna dibuat dan email dikirim beberapa saat kemudian; pantau di daftar anggota.
+             * @example processing
+             */
+            status: string;
+        };
+        /** @description Bentuk dokumentasi respons undangan HR. */
+        HrInvitationAcceptedEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["HrInvitationAcceptedDto"];
+            /** @example 2020000 */
+            response_code: string;
+            /** @example Diterima untuk diproses */
+            response_description: string;
+        };
+        /** @description Undangan HR (US-1904 AC2). */
+        HrInvitationRequest: {
+            /**
+             * @description Email HR yang diundang (penerima tautan aktivasi: password dan TOTP, berlaku 24 jam, sekali pakai).
+             * @example hr.baru@perusahaan.example
+             */
+            email: string;
+        };
         /** @description Satu anggota HR perusahaan pemanggil. */
         HrMemberDto: {
             /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
@@ -140,7 +186,7 @@ export interface components {
          * @description Status akun HR.
          * @enum {string}
          */
-        HrStatusDto: "pending_activation" | "active" | "inactive";
+        HrStatusDto: "pending_activation" | "invitation_processing" | "active" | "inactive";
     };
     responses: never;
     parameters: never;
@@ -150,6 +196,93 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    corporate_member_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Undangan diterima untuk diproses. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrInvitationAcceptedEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut (termasuk pemanggil yang baru saja dinonaktifkan HR lain). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Perusahaan belum Aktif (menunggu verifikasi atau ditolak). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Email tidak valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     corporate_member_list: {
         parameters: {
             query?: never;
