@@ -56,19 +56,25 @@ pub struct AppServices {
 pub struct RegistrationGuard {
     /// Batas laju (anggaran terpisah dari konten publik dan teks persetujuan pasien, M-47).
     pub limiter: RateLimiter,
+    /// Batas laju GET teks persetujuan, terpisah dari POST supaya banjir salah satunya tidak memblokir yang lain.
+    pub consent_text_limiter: RateLimiter,
     /// Waktu respons minimum jawaban seragam pendaftaran (ADR-030 butir 7: ditahan sampai 900 ms), supaya
     /// jalur "NIB atau email sudah terdaftar" tidak lebih cepat dari pendaftaran baru.
     pub min_response: Duration,
 }
 
 impl RegistrationGuard {
-    /// Anggaran bawaan: 20 permintaan per sumber dan 120 seluruh sumber per menit; 900 ms. Angka teknis
+    /// Anggaran bawaan: POST 20 per sumber dan 120 seluruh sumber per menit, GET teks persetujuan 60 dan 600 (anggaran terpisah); 900 ms. Angka teknis
     /// keputusan implementasi (KEPUTUSAN-326), bukan angka PRD (RT-45 `[TIDAK DIKETAHUI]`).
     pub fn standard() -> Self {
         Self {
             limiter: RateLimiter::new(RateBudget {
                 per_source: 20,
                 global: 120,
+            }),
+            consent_text_limiter: RateLimiter::new(RateBudget {
+                per_source: 60,
+                global: 600,
             }),
             min_response: Duration::from_millis(900),
         }

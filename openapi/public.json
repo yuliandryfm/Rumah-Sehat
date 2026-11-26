@@ -398,7 +398,7 @@
         "tags": [
           "corporate-registration"
         ],
-        "summary": "Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.\nTanpa login, dengan batas laju yang sama dengan pendaftaran. Teks draf tidak disajikan di production.",
+        "summary": "Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.\nTanpa login, dengan batas laju sendiri (terpisah dari POST). Teks draf tidak disajikan di production.",
         "operationId": "corporate_registration_consent_text",
         "responses": {
           "200": {

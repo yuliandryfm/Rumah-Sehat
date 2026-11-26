@@ -65,17 +65,22 @@ pub(super) async fn items(
     .await
 }
 
-/// Jumlah butir aktif milik versi `version_id` di antara `ids` (butir asing tidak dihitung).
+/// Jumlah butir aktif milik versi `version_id` di antara `ids` (butir asing tidak dihitung), hanya bila versi itu
+/// belum terhapus dan berjenis salah satu `allowed_types` (kesesuaian jenis teks dengan subjek, KEPUTUSAN-321).
 pub(super) async fn count_items_of_version(
     conn: &mut PgConnection,
     version_id: Uuid,
     ids: &[Uuid],
+    allowed_types: &[String],
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar!(
-        "SELECT count(*) FROM app.consent_item \
-         WHERE consent_text_version_id = $1 AND deleted_at IS NULL AND id = ANY($2)",
+        "SELECT count(*) FROM app.consent_item i \
+         JOIN app.consent_text_version v ON v.id = i.consent_text_version_id \
+         WHERE i.consent_text_version_id = $1 AND i.deleted_at IS NULL AND i.id = ANY($2) \
+           AND v.deleted_at IS NULL AND v.consent_type = ANY($3)",
         version_id,
         ids,
+        allowed_types,
     )
     .fetch_one(conn)
     .await

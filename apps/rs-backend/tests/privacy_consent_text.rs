@@ -608,3 +608,116 @@ async fn record_rejects_item_not_belonging_to_version_and_writes_nothing() {
     .unwrap();
     assert_eq!(n, Some(0));
 }
+
+// trace: KEPUTUSAN-321 (jenis teks harus cocok dengan subjek, dua arah; tidak ada consent_record maupun event)
+#[tokio::test]
+async fn record_rejects_text_type_that_does_not_match_the_subject_and_writes_nothing() {
+    let _g = SERIAL.lock().await;
+    let pool = app_pool().await;
+    let clock = FixedClock::new(SystemClock.now());
+    let patient_text = active_consent_text(
+        &pool,
+        &clock,
+        ConsentType::PatientDataProcessing,
+        DraftPolicy::Allow,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let hr_text = active_consent_text(
+        &pool,
+        &clock,
+        ConsentType::CorporateHrRegistration,
+        DraftPolicy::Allow,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let ctx = AuditContext::new(
+        CorrelationId::new(),
+        Source::component(SourceComponent::PatientApp).ip("198.51.100.7".parse().unwrap()),
+    );
+    // Akun HR (realm korporat).
+    let hr_account = new_id();
+    sqlx::query!(
+        "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) \
+         VALUES ($1, 'corporate_admin', 'korporat', $2, $3, 'active', now())",
+        hr_account,
+        format!("hr-{}", hr_account.simple()),
+        format!("hr-{}@example.com", hr_account.simple()),
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let (patient_id, account_id, owner_recipient) = make_patient(&pool).await;
+
+    // 1. Subjek HR dengan versi dan butir teks pasien.
+    let mut tx = pool.begin().await.unwrap();
+    let r = record_granted_consent(
+        &mut tx,
+        ConsentSubject::CorporateHr {
+            account_id: hr_account,
+            corporate_client_id: new_id(),
+        },
+        patient_text.version_id,
+        &patient_text.items,
+        &ctx,
+        new_id(),
+    )
+    .await;
+    assert!(
+        matches!(r, Err(PrivacyError::Internal("consent_item_foreign"))),
+        "HR + teks pasien harus ditolak"
+    );
+    tx.commit().await.unwrap();
+
+    // 2. Subjek pasien dengan versi dan butir teks HR.
+    let mut tx = pool.begin().await.unwrap();
+    let r = record_granted_consent(
+        &mut tx,
+        ConsentSubject::Patient {
+            patient_id,
+            account_id,
+            owner_care_recipient_id: owner_recipient,
+        },
+        hr_text.version_id,
+        &hr_text.items,
+        &ctx,
+        new_id(),
+    )
+    .await;
+    assert!(
+        matches!(r, Err(PrivacyError::Internal("consent_item_foreign"))),
+        "pasien + teks HR harus ditolak"
+    );
+    tx.commit().await.unwrap();
+
+    let n = sqlx::query_scalar!(
+        "SELECT count(*) FROM app.consent_record WHERE patient_id = $1 OR account_id = $2",
+        patient_id,
+        hr_account
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, Some(0), "tidak ada bukti yang ditulis");
+
+    // Kontrol positif: subjek HR dengan teks HR diterima (menghasilkan satu event E-13 per butir).
+    let mut tx = pool.begin().await.unwrap();
+    let events = record_granted_consent(
+        &mut tx,
+        ConsentSubject::CorporateHr {
+            account_id: hr_account,
+            corporate_client_id: new_id(),
+        },
+        hr_text.version_id,
+        &hr_text.items,
+        &ctx,
+        new_id(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(events.len(), hr_text.items.len());
+    assert!(events.iter().all(|e| e.code() == EventCode::E13));
+    tx.rollback().await.unwrap();
+}

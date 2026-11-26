@@ -151,6 +151,10 @@ BEGIN
       ('published_lock butir nonaktif', 'ALTER TABLE app.consent_item DISABLE TRIGGER tg_consent_item_published_lock', trg, '.'),
       ('trigger jam server bukti hilang', 'DROP TRIGGER tg_consent_record_server_time ON app.consent_record',
        $q$SELECT 'server_time hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'app.consent_record'::regclass AND tgname = 'tg_consent_record_server_time' AND tgenabled = 'O')$q$, 'server_time hilang'),
+      ('F1-T101 CHECK subjek bukti (pasien XOR akun) dihapus', 'ALTER TABLE app.consent_record DROP CONSTRAINT ck_consent_record_subject',
+       $q$SELECT 'ck subjek hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_consent_record_subject' AND conrelid = 'app.consent_record'::regclass)$q$, 'ck subjek hilang'),
+      ('F1-T101 CHECK kanal-subjek bukti dihapus', 'ALTER TABLE app.consent_record DROP CONSTRAINT ck_consent_record_channel_subject',
+       $q$SELECT 'ck kanal-subjek hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_consent_record_channel_subject' AND conrelid = 'app.consent_record'::regclass)$q$, 'ck kanal-subjek hilang'),
       ('FOR SHARE dihapus dari kunci butir', 'CREATE OR REPLACE FUNCTION app.fn_consent_item_published_lock() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS ''BEGIN RETURN NEW; END''',
        $q$SELECT 'tanpa FOR SHARE' WHERE (SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure('app.fn_consent_item_published_lock()')) !~ 'FOR SHARE'$q$, 'tanpa FOR SHARE')
     ) AS t(label, stmt, pemeriksa, pola)

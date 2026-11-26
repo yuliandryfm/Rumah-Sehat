@@ -234,6 +234,20 @@ enum SubjectOrTenant {
     Tenant(Uuid),
 }
 
+impl ConsentSubject {
+    /// Jenis teks yang sah untuk subjek ini.
+    fn allowed_consent_types(&self) -> &'static [ConsentType] {
+        match self {
+            Self::Patient { .. } => &[
+                ConsentType::PatientDataProcessing,
+                ConsentType::FamilyAdultStatement,
+                ConsentType::GuardianConsent,
+            ],
+            Self::CorporateHr { .. } => &[ConsentType::CorporateHrRegistration],
+        }
+    }
+}
+
 /// Menulis bukti persetujuan `granted` untuk setiap butir terpilih `items` versi `version_id` oleh `subject`
 /// di transaksi pemanggil (KEPUTUSAN-114), lalu mengembalikan event E-13 per butir untuk ditulis pustaka
 /// audit di transaksi yang sama (ADR-009 butir 2). Pemanggil lebih dulu memeriksa pilihan dengan
@@ -250,7 +264,14 @@ pub async fn record_granted_consent(
     let audit_err = |_| PrivacyError::Internal("audit_event");
     // Semua butir wajib milik `version_id` dan aktif: butir asing ditolak sebelum ada yang ditulis.
     let wanted: Vec<Uuid> = items.iter().map(|i| i.id).collect();
-    let owned = repo::count_items_of_version(&mut *conn, version_id, &wanted)
+    // Jenis teks harus cocok dengan subjek: teks HR hanya untuk akun HR, teks pasien hanya untuk pasien
+    // (KEPUTUSAN-321; database tidak menegakkannya lintas tabel).
+    let allowed: Vec<String> = subject
+        .allowed_consent_types()
+        .iter()
+        .map(|t| t.as_str().to_string())
+        .collect();
+    let owned = repo::count_items_of_version(&mut *conn, version_id, &wanted, &allowed)
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
     let distinct = wanted

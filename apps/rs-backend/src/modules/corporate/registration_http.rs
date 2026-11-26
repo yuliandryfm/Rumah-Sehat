@@ -35,8 +35,7 @@ const CONSENT_ROUTE: &str = "/v1/public/corporate-registrations/consent-text";
 /// Pesan jawaban seragam untuk pendaftaran baru, NIB terdaftar, dan email terdaftar (KEPUTUSAN-324). Tidak
 /// membedakan ketiganya; memuat arahan Layanan Pelanggan (US-1901 AC7) tanpa menyebut sebab.
 pub(super) const UNIFORM_MESSAGE: &str = "Permintaan pendaftaran diterima. Periksa email Anda untuk melanjutkan. \
-Jika email tidak tiba dalam beberapa menit atau perusahaan Anda diduga sudah pernah didaftarkan, \
-hubungi Layanan Pelanggan.";
+Jika Anda membutuhkan bantuan, hubungi Layanan Pelanggan.";
 
 pub(super) fn router() -> PolicyRouter<AppState> {
     PolicyRouter::new()
@@ -247,8 +246,12 @@ fn fail(state: &AppState, cid: CorrelationId, e: CorporateError) -> Response {
 }
 
 /// Batas laju per sumber dan global; penolakan pertama per jendela dicatat di security log.
-fn limited(state: &AppState, addr: &ClientAddr, route: &'static str) -> bool {
-    if let Verdict::Limited { first } = state.registration().limiter.check(addr.0) {
+fn limited(
+    limiter: &crate::rate_limit::RateLimiter,
+    addr: &ClientAddr,
+    route: &'static str,
+) -> bool {
+    if let Verdict::Limited { first } = limiter.check(addr.0) {
         if first {
             security::rate_limited(None, route);
         }
@@ -316,7 +319,7 @@ async fn register_corporate_client(
     body: Result<Json<CorporateRegistrationRequest>, JsonRejection>,
 ) -> Response {
     let started = Instant::now();
-    if limited(&state, &addr, REGISTER_ROUTE) {
+    if limited(&state.registration().limiter, &addr, REGISTER_ROUTE) {
         return fail(&state, cid, CorporateError::RateLimited);
     }
     let Json(req) = match body {
@@ -355,7 +358,7 @@ async fn register_corporate_client(
 }
 
 /// Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.
-/// Tanpa login, dengan batas laju yang sama dengan pendaftaran. Teks draf tidak disajikan di production.
+/// Tanpa login, dengan batas laju sendiri (terpisah dari POST). Teks draf tidak disajikan di production.
 #[utoipa::path(
     get,
     path = "/v1/public/corporate-registrations/consent-text",
@@ -373,7 +376,11 @@ async fn registration_consent_text(
     Extension(cid): Extension<CorrelationId>,
     addr: ClientAddr,
 ) -> Response {
-    if limited(&state, &addr, CONSENT_ROUTE) {
+    if limited(
+        &state.registration().consent_text_limiter,
+        &addr,
+        CONSENT_ROUTE,
+    ) {
         return fail(&state, cid, CorporateError::RateLimited);
     }
     let r = corporate::corporate_registration_consent_text(
@@ -429,6 +436,10 @@ mod tests {
             "nib ",
             "ditolak",
             "akun anda sudah",
+            "tidak tiba",
+            "diduga",
+            "didaftarkan",
+            "beberapa menit",
         ] {
             assert!(!m.contains(w), "{w}");
         }

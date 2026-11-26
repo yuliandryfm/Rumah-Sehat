@@ -65,6 +65,13 @@ fn random_digits(n: usize) -> String {
     b.iter().map(|x| char::from(b'0' + x % 10)).collect()
 }
 
+fn roomy() -> RateLimiter {
+    RateLimiter::new(RateBudget {
+        per_source: 10_000,
+        global: 10_000,
+    })
+}
+
 struct Options {
     guard: RegistrationGuard,
     reject_drafts: bool,
@@ -74,10 +81,8 @@ impl Options {
     fn quick() -> Self {
         Self {
             guard: RegistrationGuard {
-                limiter: RateLimiter::new(RateBudget {
-                    per_source: 10_000,
-                    global: 10_000,
-                }),
+                limiter: roomy(),
+                consent_text_limiter: roomy(),
                 min_response: Duration::ZERO,
             },
             reject_drafts: false,
@@ -614,10 +619,8 @@ async fn corporate_registration_new_and_duplicate_take_at_least_the_minimum_time
     let hold = Duration::from_millis(500);
     let w = world(Options {
         guard: RegistrationGuard {
-            limiter: RateLimiter::new(RateBudget {
-                per_source: 10_000,
-                global: 10_000,
-            }),
+            limiter: roomy(),
+            consent_text_limiter: roomy(),
             min_response: hold,
         },
         reject_drafts: false,
@@ -868,6 +871,7 @@ async fn corporate_registration_is_rate_limited_per_source_without_side_effects(
                 per_source: 3,
                 global: 10_000,
             }),
+            consent_text_limiter: roomy(),
             min_response: Duration::ZERO,
         },
         reject_drafts: false,
@@ -897,9 +901,41 @@ async fn corporate_registration_is_rate_limited_per_source_without_side_effects(
             }
         );
     }
-    // Teks persetujuan berbagi anggaran yang sama.
+    // Anggaran GET teks persetujuan terpisah: banjir POST tidak memblokirnya.
     let t = common::request(w.addr, "GET", CONSENT_TEXT, &[]).await;
-    assert_eq!((t.status, code(&t).as_str()), (429, "4290001"));
+    assert_eq!(t.status, 200, "{}", t.body);
+}
+
+// trace: M-47, RT-45 (anggaran terpisah: banjir GET teks persetujuan tidak memblokir POST pendaftaran)
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn corporate_registration_consent_text_flood_does_not_block_registration() {
+    let w = world(Options {
+        guard: RegistrationGuard {
+            limiter: roomy(),
+            consent_text_limiter: RateLimiter::new(RateBudget {
+                per_source: 2,
+                global: 10_000,
+            }),
+            min_response: Duration::ZERO,
+        },
+        reject_drafts: false,
+    })
+    .await;
+    let mut got = Vec::new();
+    for _ in 0..4 {
+        got.push(
+            common::request(w.addr, "GET", CONSENT_TEXT, &[])
+                .await
+                .status,
+        );
+    }
+    assert_eq!(got, [200, 200, 429, 429]);
+    let f = Form::new();
+    assert_eq!(
+        w.post(&f.body()).await.status,
+        202,
+        "POST tidak ikut terblokir"
+    );
 }
 
 // trace: ADR-030 butir 5 (kunci advisory email), US-1901 AC7 (balapan NIB = satu perusahaan)

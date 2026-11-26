@@ -105,7 +105,7 @@ export interface paths {
         };
         /**
          * Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.
-         *     Tanpa login, dengan batas laju yang sama dengan pendaftaran. Teks draf tidak disajikan di production.
+         *     Tanpa login, dengan batas laju sendiri (terpisah dari POST). Teks draf tidak disajikan di production.
          */
         get: operations["corporate_registration_consent_text"];
         put?: never;
