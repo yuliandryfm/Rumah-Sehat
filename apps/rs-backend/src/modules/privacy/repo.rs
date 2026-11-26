@@ -65,6 +65,23 @@ pub(super) async fn items(
     .await
 }
 
+/// Jumlah butir aktif milik versi `version_id` di antara `ids` (butir asing tidak dihitung).
+pub(super) async fn count_items_of_version(
+    conn: &mut PgConnection,
+    version_id: Uuid,
+    ids: &[Uuid],
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT count(*) FROM app.consent_item \
+         WHERE consent_text_version_id = $1 AND deleted_at IS NULL AND id = ANY($2)",
+        version_id,
+        ids,
+    )
+    .fetch_one(conn)
+    .await
+    .map(|n| n.unwrap_or(0))
+}
+
 /// Satu bukti persetujuan (A3.3). `created_at` diisi jam server oleh trigger
 /// (`tg_consent_record_server_time`).
 pub(super) struct NewConsentRecord {

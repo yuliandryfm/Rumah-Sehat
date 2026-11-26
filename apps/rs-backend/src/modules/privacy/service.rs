@@ -48,6 +48,7 @@ pub(super) async fn active_text(
     conn: &mut PgConnection,
     consent_type: ConsentType,
     now: OffsetDateTime,
+    drafts: DraftPolicy,
 ) -> Result<Option<ActiveConsentText>, PrivacyError> {
     let Some(v) = repo::active_version(&mut *conn, consent_type.as_str(), now)
         .await
@@ -59,6 +60,12 @@ pub(super) async fn active_text(
         tracing::error!(error = p.code(), "consent_text_invalid");
         PrivacyError::Internal("consent_content")
     })?;
+    if drafts == DraftPolicy::Reject && content.draft_notice.is_some() {
+        // Production tidak menyajikan teks draf (KEPUTUSAN-289): sama dengan tidak ada versi berlaku (503),
+        // isi draf tidak dibocorkan.
+        tracing::error!("consent_text_draft_rejected");
+        return Err(PrivacyError::Unavailable);
+    }
     let items = repo::items(&mut *conn, v.id)
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
@@ -91,12 +98,20 @@ pub(super) async fn active_text(
 pub(super) async fn current_text(
     pool: &PgPool,
     clock: &dyn Clock,
+    drafts: DraftPolicy,
 ) -> Result<ActiveConsentText, PrivacyError> {
     let mut conn = pool
         .acquire()
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
-    match active_text(&mut conn, ConsentType::PatientDataProcessing, clock.now()).await? {
+    match active_text(
+        &mut conn,
+        ConsentType::PatientDataProcessing,
+        clock.now(),
+        drafts,
+    )
+    .await?
+    {
         Some(t) => Ok(t),
         None => {
             tracing::error!("consent_text_missing");
@@ -105,17 +120,30 @@ pub(super) async fn current_text(
     }
 }
 
-/// Versi teks persetujuan jenis `consent_type` yang berlaku menurut `clock`. `None` bila belum ada.
+/// Apakah teks berstatus draf (`draft_notice` terisi) boleh disajikan. Production memakai `Reject`
+/// (KEPUTUSAN-289); local/staging/demo memakai `Allow`. Pemanggil `privacy::api` mengambilnya dari
+/// `AppState::consent_draft_policy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftPolicy {
+    /// Draf disajikan.
+    Allow,
+    /// Draf ditolak sebagai [`PrivacyError::Unavailable`] (503), isi tidak dibocorkan.
+    Reject,
+}
+
+/// Versi teks persetujuan jenis `consent_type` yang berlaku menurut `clock`. `None` bila belum ada. Dengan
+/// `DraftPolicy::Reject`, versi berlaku yang masih draf ditolak sebagai `Unavailable`.
 pub async fn active_consent_text(
     pool: &PgPool,
     clock: &dyn Clock,
     consent_type: ConsentType,
+    drafts: DraftPolicy,
 ) -> Result<Option<ActiveConsentText>, PrivacyError> {
     let mut conn = pool
         .acquire()
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
-    active_text(&mut conn, consent_type, clock.now()).await
+    active_text(&mut conn, consent_type, clock.now(), drafts).await
 }
 
 /// `true` bila versi berlaku ada dan isinya final (tanpa penanda draf, KEPUTUSAN-289).
@@ -125,8 +153,9 @@ pub fn is_final_text(text: Option<&ActiveConsentText>) -> bool {
 
 /// Pemeriksaan kesiapan proses `api` production (KEPUTUSAN-289): versi teks persetujuan pemrosesan data yang
 /// berlaku harus ada, terbaca utuh, dan bukan draf "menunggu L-08/PT-24". Selama belum terpenuhi, endpoint
-/// kesiapan menjawab tidak siap, sehingga teks draf hasil seed tidak pernah melayani pendaftaran production.
-/// Hanya dipasang untuk `DEPLOY_ENV=production`; local/staging/demo tetap memakai teks draf.
+/// kesiapan menjawab tidak siap. Ini hanya lapis pertama (probe); penolakan draf yang sebenarnya ada di jalur
+/// layanan ([`DraftPolicy::Reject`] lewat `AppState::reject_consent_drafts`), sehingga teks draf hasil seed
+/// tidak pernah dijawab 200 di production. Hanya dipasang untuk `DEPLOY_ENV=production`; local/staging/demo tetap memakai teks draf.
 pub struct ConsentTextReadiness {
     pool: PgPool,
     clock: Arc<dyn Clock>,
@@ -150,6 +179,7 @@ impl ReadinessCheck for ConsentTextReadiness {
                 &self.pool,
                 self.clock.as_ref(),
                 ConsentType::PatientDataProcessing,
+                DraftPolicy::Allow,
             )
             .await
             {
@@ -194,6 +224,19 @@ pub async fn record_granted_consent(
     correlation_id: Uuid,
 ) -> Result<Vec<AuditEvent>, PrivacyError> {
     let audit_err = |_| PrivacyError::Internal("audit_event");
+    // Semua butir wajib milik `version_id` dan aktif: butir asing ditolak sebelum ada yang ditulis.
+    let wanted: Vec<Uuid> = items.iter().map(|i| i.id).collect();
+    let owned = repo::count_items_of_version(&mut *conn, version_id, &wanted)
+        .await
+        .map_err(|_| PrivacyError::Unavailable)?;
+    let distinct = wanted
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+    if owned != i64::try_from(distinct).unwrap_or(i64::MAX) {
+        tracing::error!("consent_item_not_in_version");
+        return Err(PrivacyError::Internal("consent_item_foreign"));
+    }
     let ConsentSubject::Patient {
         patient_id,
         account_id,

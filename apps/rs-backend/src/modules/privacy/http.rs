@@ -163,7 +163,7 @@ async fn current_consent_text(
         }
         return fail(&state, cid, PrivacyError::RateLimited);
     }
-    let r = service::current_text(state.pool(), state.clock())
+    let r = service::current_text(state.pool(), state.clock(), state.consent_draft_policy())
         .await
         .and_then(|t| {
             ConsentTextDto::from_text(t).map_err(|_| PrivacyError::Internal("timestamp_format"))

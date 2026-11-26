@@ -9,6 +9,7 @@ use crate::modules::identity::api::CorporateHrAccounts;
 use crate::modules::platform;
 use crate::modules::platform::api::{FileStorage, ReadinessCheck};
 use crate::modules::privacy;
+use crate::modules::privacy::api::DraftPolicy;
 use crate::modules::profile;
 use crate::modules::profile::api::IdentityServices;
 use crate::openapi::{BackofficeApiDoc, CorporateApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
@@ -55,6 +56,7 @@ pub struct AppState {
     problem_type_base: Arc<str>,
     readiness: Arc<[Arc<dyn ReadinessCheck>]>,
     services: Arc<AppServices>,
+    consent_drafts: DraftPolicy,
 }
 
 impl AppState {
@@ -68,7 +70,21 @@ impl AppState {
             problem_type_base: Arc::from(problem_type_base),
             readiness: Arc::from(readiness),
             services: Arc::new(services),
+            consent_drafts: DraftPolicy::Allow,
         }
+    }
+
+    /// Menolak teks persetujuan berstatus draf di semua jalur layanan (endpoint teks dan `privacy::api`);
+    /// dipasang untuk `DEPLOY_ENV=production` (KEPUTUSAN-289).
+    #[must_use]
+    pub fn reject_consent_drafts(mut self) -> Self {
+        self.consent_drafts = DraftPolicy::Reject;
+        self
+    }
+
+    /// Kebijakan teks draf untuk pemanggil `privacy::api` (pendaftaran pasien, pendaftaran perusahaan).
+    pub fn consent_draft_policy(&self) -> DraftPolicy {
+        self.consent_drafts
     }
 
     pub(crate) fn problem_type_base(&self) -> &str {

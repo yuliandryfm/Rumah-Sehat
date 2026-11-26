@@ -15,6 +15,6 @@ pub use super::domain::{
 };
 pub use super::error::PrivacyError;
 pub use super::service::{
-    ActiveConsentText, ConsentSubject, ConsentTextReadiness, active_consent_text, is_final_text,
-    record_granted_consent,
+    ActiveConsentText, ConsentSubject, ConsentTextReadiness, DraftPolicy, active_consent_text,
+    is_final_text, record_granted_consent,
 };

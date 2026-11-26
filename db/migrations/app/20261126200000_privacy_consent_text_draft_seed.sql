@@ -23,6 +23,8 @@
 --   <= now()) karena effective_from berada 1 detik setelah now(); dengan effective_from = now() persis,
 --   UPDATE itu ditolak. Setelah migrasi, versi berlaku dan isinya terkunci effective_lock dan published_lock
 --   (A3.1 §4.2 (3), (3c)); butirnya terkunci published_lock butir (§4.2 (3d)).
+--   Akibatnya ada jeda 1 detik setelah migrasi selesai sebelum versi berlaku: permintaan teks dalam jeda itu
+--   dijawab 503 (belum ada versi berlaku); tidak berdampak di deploy karena api baru dilayani sesudah migrasi.
 -- - Label butir diambil dari wireframe A01 layar 3 (docs/wireframes/a01-registrasi-masuk.html, desain Tahap 6),
 --   juga menunggu persetujuan copy/legal. Satu butir utama wajib (is_primary, is_required, US-101 AC4);
 --   butir tambahan menyusul lewat versi baru (US-104 AC3).

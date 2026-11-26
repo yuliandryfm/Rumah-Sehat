@@ -29,8 +29,9 @@ use observability::EnvSource;
 use rs_backend::app::{AppServices, AppState};
 use rs_backend::modules::platform::api::ReadinessCheck;
 use rs_backend::modules::privacy::api::{
-    ConsentSubject, ConsentTextReadiness, ConsentType, REQUIRED_SECTIONS, SelectionCheck,
-    active_consent_text, check_selection, record_granted_consent,
+    ConsentSubject, ConsentTextReadiness, ConsentType, DraftPolicy, PrivacyError,
+    REQUIRED_SECTIONS, SelectionCheck, active_consent_text, check_selection,
+    record_granted_consent,
 };
 use rs_backend::rate_limit::{RateBudget, RateLimiter};
 use serde_json::json;
@@ -63,6 +64,16 @@ async fn app_pool() -> PgPool {
 }
 
 async fn spawn(pool: &PgPool, clock: Arc<FixedClock>, limit: Arc<RateLimiter>) -> SocketAddr {
+    spawn_with(pool, clock, limit, false).await
+}
+
+/// `production` = proses `api` dengan `DEPLOY_ENV=production`: teks draf ditolak di jalur layanan.
+async fn spawn_with(
+    pool: &PgPool,
+    clock: Arc<FixedClock>,
+    limit: Arc<RateLimiter>,
+    production: bool,
+) -> SocketAddr {
     let keys = TestKeys::generate();
     let state = AppState::new(
         common::TYPE_BASE,
@@ -81,6 +92,11 @@ async fn spawn(pool: &PgPool, clock: Arc<FixedClock>, limit: Arc<RateLimiter>) -
             corporate_hr: common::corporate_hr(common::unreachable_pool()),
         },
     );
+    let state = if production {
+        state.reject_consent_drafts()
+    } else {
+        state
+    };
     common::spawn_app(
         state,
         common::auth_state(&keys, Arc::new(SystemClock)),
@@ -349,23 +365,67 @@ async fn production_readiness_requires_final_effective_text() {
     assert!(!down.check().await);
 }
 
+async fn make_patient(pool: &PgPool) -> (Uuid, Uuid, Uuid) {
+    let account_id = new_id();
+    let patient_id = new_id();
+    sqlx::query!(
+        "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) \
+         VALUES ($1, 'patient', 'pasien', $2, $3, 'active', now())",
+        account_id,
+        format!("uji-{}", account_id.simple()),
+        format!("uji-{}@example.com", account_id.simple()),
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query!(
+        "INSERT INTO app.patient (id, account_id, processing_status) VALUES ($1, $2, 'normal')",
+        patient_id,
+        account_id,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    let owner_recipient = new_id();
+    sqlx::query!(
+        "INSERT INTO app.care_recipient (id, patient_id, is_account_owner, relationship, full_name, birth_date, sex) \
+         VALUES ($1, $2, true, NULL, 'Pasien Uji', DATE '1990-01-01', 'female')",
+        owner_recipient,
+        patient_id,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    (patient_id, account_id, owner_recipient)
+}
+
 // trace: US-104 AC2, AC3, AC5, E-13 (API untuk modul lain: baca versi, periksa pilihan, tulis bukti + event)
 #[tokio::test]
 async fn other_modules_read_active_text_check_selection_and_record_consent_with_e13() {
     let _g = SERIAL.lock().await;
     let pool = app_pool().await;
     let clock = FixedClock::new(SystemClock.now());
-    let text = active_consent_text(&pool, &clock, ConsentType::PatientDataProcessing)
-        .await
-        .unwrap()
-        .expect("seed berlaku");
+    let text = active_consent_text(
+        &pool,
+        &clock,
+        ConsentType::PatientDataProcessing,
+        DraftPolicy::Allow,
+    )
+    .await
+    .unwrap()
+    .expect("seed berlaku");
     assert_eq!(text.consent_type, "patient_data_processing");
     // Jenis lain tanpa versi berlaku: None, bukan galat.
     assert!(
-        active_consent_text(&pool, &clock, ConsentType::GuardianConsent)
-            .await
-            .unwrap()
-            .is_none()
+        active_consent_text(
+            &pool,
+            &clock,
+            ConsentType::GuardianConsent,
+            DraftPolicy::Allow,
+        )
+        .await
+        .unwrap()
+        .is_none()
     );
     let required: Vec<Uuid> = text
         .items
@@ -393,36 +453,7 @@ async fn other_modules_read_active_text_check_selection_and_record_consent_with_
         .cloned()
         .collect();
 
-    let account_id = new_id();
-    let patient_id = new_id();
-    sqlx::query!(
-        "INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at) \
-         VALUES ($1, 'patient', 'pasien', $2, $3, 'active', now())",
-        account_id,
-        format!("uji-{}", account_id.simple()),
-        format!("uji-{}@example.com", account_id.simple()),
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query!(
-        "INSERT INTO app.patient (id, account_id, processing_status) VALUES ($1, $2, 'normal')",
-        patient_id,
-        account_id,
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-    let owner_recipient = new_id();
-    sqlx::query!(
-        "INSERT INTO app.care_recipient (id, patient_id, is_account_owner, relationship, full_name, birth_date, sex) \
-         VALUES ($1, $2, true, NULL, 'Pasien Uji', DATE '1990-01-01', 'female')",
-        owner_recipient,
-        patient_id,
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
+    let (patient_id, account_id, owner_recipient) = make_patient(&pool).await;
 
     let ctx = AuditContext::new(
         CorrelationId::new(),
@@ -462,4 +493,118 @@ async fn other_modules_read_active_text_check_selection_and_record_consent_with_
     .await
     .unwrap();
     assert_eq!(n, Some(i64::try_from(items.len()).unwrap()));
+}
+
+// trace: KEPUTUSAN-289 (production tidak pernah menyajikan teks draf di jalur layanan, bukan hanya di probe)
+#[tokio::test]
+async fn production_rejects_draft_text_on_endpoint_and_api_but_serves_final() {
+    let _g = SERIAL.lock().await;
+    let pool = app_pool().await;
+    let clock = Arc::new(FixedClock::new(SystemClock.now()));
+    // Seed draf berlaku: endpoint production 503 tanpa membocorkan isi draf; non-production tetap 200.
+    let addr = spawn_with(&pool, clock.clone(), common::roomy_limiter(), true).await;
+    let r = get(addr).await;
+    assert_eq!(r.status, 503, "{}", r.body);
+    assert_eq!(r.json()["response_code"], "5030001");
+    assert!(!r.body.contains("draf"), "{}", r.body);
+    assert_eq!(
+        get(spawn(&pool, clock.clone(), common::roomy_limiter()).await)
+            .await
+            .status,
+        200
+    );
+    // privacy::api menolak draf dengan Reject, menyajikannya dengan Allow.
+    let t = ConsentType::PatientDataProcessing;
+    assert_eq!(
+        active_consent_text(&pool, clock.as_ref(), t, DraftPolicy::Reject)
+            .await
+            .unwrap_err(),
+        PrivacyError::Unavailable
+    );
+    assert!(
+        active_consent_text(&pool, clock.as_ref(), t, DraftPolicy::Allow)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    // Versi final berlaku: production melayani.
+    let effective = datetime!(2095-01-01 00:00:00 UTC);
+    publish_version(&pool, effective, &valid_content("final-prod"), true).await;
+    clock.set(effective);
+    let r = get(addr).await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert!(
+        active_consent_text(&pool, clock.as_ref(), t, DraftPolicy::Reject)
+            .await
+            .unwrap()
+            .is_some()
+    );
+}
+
+// trace: US-104 AC2 (butir asing ditolak: tidak ada consent_record maupun event E-13)
+#[tokio::test]
+async fn record_rejects_item_not_belonging_to_version_and_writes_nothing() {
+    let _g = SERIAL.lock().await;
+    let pool = app_pool().await;
+    let clock = FixedClock::new(SystemClock.now());
+    let text = active_consent_text(
+        &pool,
+        &clock,
+        ConsentType::PatientDataProcessing,
+        DraftPolicy::Allow,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    // Butir milik versi lain.
+    let other_version = publish_version(
+        &pool,
+        datetime!(2096-01-01 00:00:00 UTC),
+        &valid_content("lain"),
+        true,
+    )
+    .await;
+    let foreign_id = sqlx::query_scalar!(
+        "SELECT id FROM app.consent_item WHERE consent_text_version_id = $1",
+        other_version
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let mut items = text.items.clone();
+    let mut foreign = items[0].clone();
+    foreign.id = foreign_id;
+    items.push(foreign);
+    let (patient_id, account_id, owner_recipient) = make_patient(&pool).await;
+    let ctx = AuditContext::new(
+        CorrelationId::new(),
+        Source::component(SourceComponent::PatientApp).ip("198.51.100.7".parse().unwrap()),
+    );
+    let mut tx = pool.begin().await.unwrap();
+    let r = record_granted_consent(
+        &mut tx,
+        ConsentSubject::Patient {
+            patient_id,
+            account_id,
+            owner_care_recipient_id: owner_recipient,
+        },
+        text.version_id,
+        &items,
+        &ctx,
+        new_id(),
+    )
+    .await;
+    assert!(matches!(
+        r,
+        Err(PrivacyError::Internal("consent_item_foreign"))
+    ));
+    tx.commit().await.unwrap();
+    let n = sqlx::query_scalar!(
+        "SELECT count(*) FROM app.consent_record WHERE patient_id = $1",
+        patient_id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, Some(0));
 }

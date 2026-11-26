@@ -585,10 +585,12 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         Arc::clone(&directory),
         Arc::new(ProvisionerNotConfigured),
     ));
+    let production =
+        config.files.object_storage.deployment == object_storage::Deployment::Production;
     let mut readiness: Vec<Arc<dyn ReadinessCheck>> =
         vec![Arc::new(DatabaseReadiness::new(pool.clone()))];
     // KEPUTUSAN-289: production tidak siap selama teks persetujuan yang berlaku masih draf.
-    if config.files.object_storage.deployment == object_storage::Deployment::Production {
+    if production {
         readiness.push(Arc::new(ConsentTextReadiness::new(
             pool.clone(),
             Arc::clone(&clock),
@@ -608,6 +610,12 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             consent_text_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
     );
+    // KEPUTUSAN-289: production juga menolak teks draf di jalur layanan, bukan hanya di probe kesiapan.
+    let state = if production {
+        state.reject_consent_drafts()
+    } else {
+        state
+    };
     let router = build_router(state, auth, directory.clone(), directory, denials).map_err(|e| {
         // Rute tanpa kebijakan atau kebijakan tidak valid: start gagal (KEPUTUSAN-127).
         tracing::error!("policy_setup_failed: {e}");
