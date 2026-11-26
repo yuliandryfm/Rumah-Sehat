@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.operation AS \"operation!\", i.purpose AS \"purpose!\", j.payload AS \"payload!\"\n           FROM app.idp_provisioning_intent i\n           JOIN app.account a ON a.id = i.account_id\n           JOIN app.job j ON j.job_type = 'idp_create_user' AND (j.payload ->> 'intent_id')::uuid = i.id\n           WHERE a.idp_realm = 'korporat' AND lower(a.email) = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "operation!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "operation"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "purpose!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "idp_provisioning_intent",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "payload!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "job",
+            "name": "payload"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0d7bc906cf22d99bb90fc2acc03222be16a34d2a77076e9dcee5c717b716e54b"
+}

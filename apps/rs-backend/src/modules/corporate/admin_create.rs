@@ -12,9 +12,11 @@
 //!    diperiksa belum dipakai akun belum terhapus, akun HR `pending_provisioning` disisipkan, niat `create_user`
 //!    dan job `idp_create_user` dicatat (ADR-030 butir 5). Email sudah dipakai = `409` `4090111` (hanya
 //!    Verifikator, staf berwenang, yang melihat pembeda ini; undangan HR oleh HR seragam, P30-2).
-//! 2. NIB diperiksa belum dipakai perusahaan belum terhapus (`409` `4090110`, pesan umum tanpa nama
-//!    perusahaan lain, US-1903 AC4 = US-1901 AC7); constraint `uqp_corporate_client_nib` menjaga balapan
-//!    (`ON CONFLICT DO NOTHING`, hasil nol baris = NIB ganda).
+//! 2. NIB diperiksa belum dipakai perusahaan **Aktif** belum terhapus (`409` `4090110`, pesan umum tanpa nama
+//!    perusahaan lain, US-1903 AC4); constraint `uqp_corporate_client_nib_active` menjaga balapan
+//!    (`ON CONFLICT DO NOTHING`, hasil nol baris = NIB ganda). Sejak CR-035 (keputusan user Q10 = B2: NIB unik
+//!    hanya di antara perusahaan Aktif) pengajuan Menunggu verifikasi atau Ditolak dengan NIB yang sama tidak
+//!    menghalangi; pengajuan itu kemudian tidak dapat disetujui (`4090116`).
 //! 3. Perusahaan disisipkan **langsung Aktif** (`origin = created_by_admin`, putaran 1) tanpa keputusan
 //!    verifikasi: Verifikator sudah memeriksa dokumen di luar sistem (AC1). Keanggotaan HR pertama disisipkan
 //!    di transaksi yang sama (akun terikat ke perusahaan sejak undangan, US-1904 AC2).
@@ -316,8 +318,8 @@ pub(super) async fn create(
                 )]),
                 HrInviteError::Database | HrInviteError::Queue => CorporateError::Database,
             })?;
-            // 2. NIB ganda.
-            if repo::client_with_nib(conn, &v.nib)
+            // 2. NIB ganda di antara perusahaan Aktif (CR-035).
+            if repo::active_client_with_nib(conn, &v.nib)
                 .await
                 .map_err(db_error)?
                 .is_some()

@@ -29,6 +29,11 @@
 //!   AND submission_round = $n` yang wajib mengubah tepat satu baris.
 //! - Pengajuan ulang setelah ditolak (AC3): `submission_round` naik dan status kembali "Menunggu verifikasi"
 //!   (ditulis jalur HR, F1-T101/F1-T103); keputusan putaran baru tidak terhalang keputusan putaran lama.
+//! - NIB (CR-035, keputusan user Q10 = B2): NIB unik hanya di antara perusahaan Aktif. Pengajuan dengan NIB yang
+//!   sudah dipakai perusahaan lain tetap masuk antrean dengan penanda `nib_used_by_other_company` (antrean dan
+//!   detail); persetujuan ditolak `4090116` bila NIB sudah dipakai perusahaan Aktif lain (diperiksa di transaksi
+//!   keputusan, balapan dua persetujuan dijaga `uqp_corporate_client_nib_active`), tercatat E-10 hasil gagal
+//!   `nib_in_use_by_active_company`. Penolakan tetap boleh.
 //! - Penolakan: kode alasan dari daftar tertutup (`domain::RejectionReason`) **dan** aktif di `reason_code`
 //!   konteks `corporate_rejection` (migrasi data, daftar draf).
 
@@ -66,6 +71,8 @@ const MAX_PAGE_SIZE: i64 = 100;
 const FAILED_AUDIT_ATTEMPTS: usize = 3;
 
 const APPROVED_ACTION: &str = "corporate_verification_approved";
+const ALREADY_DECIDED_REASON: &str = "already_decided";
+const NIB_IN_USE_REASON: &str = "nib_in_use_by_active_company";
 const REJECTED_ACTION: &str = "corporate_verification_rejected";
 
 /// Kebijakan audit objek perusahaan (daftar izin before/after, ADR-009 butir 7): hanya status, kode alasan,
@@ -224,6 +231,7 @@ pub(super) async fn queue(
                 submission_round: r.submission_round,
                 submitted_at: r.submitted_at,
                 documents_complete: r.documents_complete,
+                nib_used_by_other_company: r.nib_used_by_other_company,
             })
         })
         .collect::<Result<Vec<_>, CorporateError>>()?;
@@ -246,6 +254,7 @@ pub(super) async fn detail(
         .map_err(db_error)?
         .ok_or(CorporateError::NotFound)?;
     let npwp = Sensitive::new(row.npwp);
+    let nib_used_by_other_company = row.nib_used_by_other_company;
     let status = corrupt(CorporateClientStatus::parse(&row.status))?;
     let decision = repo::round_decision(s.pool, row.id, row.submission_round)
         .await
@@ -282,6 +291,7 @@ pub(super) async fn detail(
         rejection_reason,
         decided_at,
         can_decide: domain::may_decide(status),
+        nib_used_by_other_company,
     })
 }
 
@@ -434,6 +444,14 @@ async fn decide(
                 if !domain::documents_complete(&kinds) {
                     return Err(CorporateError::DocumentsIncomplete);
                 }
+                // CR-035 (Q10 = B2): NIB unik hanya di antara perusahaan Aktif. Pemeriksaan awal; balapan dua
+                // persetujuan atas NIB sama dijaga `uqp_corporate_client_nib_active` saat UPDATE status.
+                if repo::other_active_client_with_nib(conn, &locked.nib, corporate_client_id)
+                    .await
+                    .map_err(db_error)?
+                {
+                    return Err(CorporateError::NibInUseByActive);
+                }
             }
             if let Some(r) = reason {
                 // AC3: daftar alasan dikelola lewat migrasi data; kode yang tidak aktif di sana ditolak.
@@ -469,7 +487,13 @@ async fn decide(
                 actor_id,
             )
             .await
-            .map_err(db_error)?;
+            .map_err(|e| {
+                if repo::is_active_nib_conflict(&e) {
+                    CorporateError::NibInUseByActive
+                } else {
+                    db_error(e)
+                }
+            })?;
             if changed != 1 {
                 // Baris terkunci dan statusnya sudah diperiksa; selisih berarti data tidak konsisten.
                 return Err(CorporateError::Internal("status_not_updated"));
@@ -517,23 +541,31 @@ async fn decide(
         Ok(v) => Ok(v),
         Err(e) => {
             let e = audited_error(e);
-            if matches!(e, CorporateError::AlreadyDecided) {
-                record_lost_decision(s, principal, &context, action, corporate_client_id).await;
+            let failure = match e {
+                CorporateError::AlreadyDecided => Some(ALREADY_DECIDED_REASON),
+                CorporateError::NibInUseByActive => Some(NIB_IN_USE_REASON),
+                _ => None,
+            };
+            if let Some(reason) = failure {
+                record_lost_decision(s, principal, &context, action, corporate_client_id, reason)
+                    .await;
             }
             Err(e)
         }
     }
 }
 
-/// AC4: keputusan yang kalah tercatat E-10 hasil gagal `already_decided` di transaksi tersendiri.
+/// AC4: keputusan yang kalah tercatat E-10 hasil gagal di transaksi tersendiri: `already_decided`, atau
+/// `nib_in_use_by_active_company` untuk persetujuan yang NIB-nya sudah dipakai perusahaan Aktif lain (CR-035).
 async fn record_lost_decision(
     s: &CorporateVerification<'_>,
     principal: &Principal,
     context: &AuditContext,
     action: &'static str,
     corporate_client_id: Uuid,
+    reason: &'static str,
 ) {
-    let Ok(code) = Code::new("already_decided") else {
+    let Ok(code) = Code::new(reason) else {
         return;
     };
     if let Ok(event) = decision_event(
@@ -580,7 +612,12 @@ mod tests {
                 "{f}"
             );
         }
-        for a in [APPROVED_ACTION, REJECTED_ACTION, "already_decided"] {
+        for a in [
+            APPROVED_ACTION,
+            REJECTED_ACTION,
+            ALREADY_DECIDED_REASON,
+            NIB_IN_USE_REASON,
+        ] {
             assert!(Code::new(a).is_ok(), "{a}");
         }
     }

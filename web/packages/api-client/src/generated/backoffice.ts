@@ -625,6 +625,11 @@ export interface components {
             /** @example 9120000000001 */
             nib: string;
             /**
+             * @description Penanda "NIB sudah dipakai perusahaan lain" (status apa pun, CR-035). Persetujuan dijawab `4090116` bila
+             *     NIB sudah dipakai perusahaan Aktif lain.
+             */
+            nib_used_by_other_company: boolean;
+            /**
              * @description NPWP (klasifikasi Terbatas): jangan disimpan atau dicatat di log klien.
              * @example 990000000000001
              */
@@ -2137,7 +2142,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035). */
             409: {
                 headers: {
                     [name: string]: unknown;

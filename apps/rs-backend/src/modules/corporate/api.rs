@@ -188,6 +188,8 @@ pub struct CorporateQueueItemView {
     pub submitted_at: OffsetDateTime,
     /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua (pengajuan "siap diverifikasi", F1-T102).
     pub documents_complete: bool,
+    /// NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035, Q10 = B2).
+    pub nib_used_by_other_company: bool,
 }
 
 /// Pilihan isi antrean verifikasi menurut kelengkapan dokumen (F1-T102, keputusan user Q8).
@@ -238,6 +240,9 @@ pub struct CorporateDetailView {
     pub decided_at: Option<OffsetDateTime>,
     /// Setuju/tolak tersedia (masih menunggu verifikasi).
     pub can_decide: bool,
+    /// NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035, Q10 = B2). Persetujuan
+    /// ditolak `4090116` bila salah satunya Aktif.
+    pub nib_used_by_other_company: bool,
 }
 
 impl fmt::Debug for CorporateDetailView {
@@ -488,8 +493,9 @@ pub async fn create_corporate_client_by_admin(
     admin_create::create(deps, principal, route, input).await
 }
 
-/// US-1901 AC1, AC3-AC7 (F1-T101): mendaftarkan perusahaan mandiri tanpa login. `Ok(())` juga untuk NIB atau
-/// email yang sudah terdaftar (jawaban seragam, KEPUTUSAN-324; tanpa efek data, hanya audit gagal).
+/// US-1901 AC1, AC3-AC7 (F1-T101): mendaftarkan perusahaan mandiri tanpa login. NIB yang sudah dipakai perusahaan
+/// lain diproses sama dengan NIB baru (CR-035); email yang sudah terdaftar `Ok(())` tanpa efek data, hanya audit
+/// gagal (jawaban seragam, KEPUTUSAN-324).
 pub async fn register_corporate_client(
     deps: &RegistrationDeps<'_>,
     input: &NewCorporateRegistration,

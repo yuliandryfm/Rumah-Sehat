@@ -40,6 +40,7 @@ const detail = (o: Partial<DetailPerusahaan> = {}): DetailPerusahaan => ({
   documents: ["nib", "npwp", "authority_proof"],
   documents_version: VERSI,
   can_decide: true,
+  nib_used_by_other_company: false,
   ...o,
 });
 
@@ -98,6 +99,20 @@ describe("antrean", () => {
     cleanup();
     render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ antrean: () => ok({ items: [], hasMore: false, nextCursor: null }) })} />);
     expect(await screen.findByText("Antrean kosong")).toBeTruthy();
+  });
+
+  test("CR-035: penanda NIB dipakai perusahaan lain hanya pada pengajuan yang ditandai, tanpa data perusahaan lain", async () => {
+    const antrean = () =>
+      ok({
+        items: [item(), item({ corporate_client_id: "x2", legal_name: "CV Dua", nib_used_by_other_company: true })],
+        hasMore: false,
+        nextCursor: null,
+      });
+    render(<PanelPerusahaan csrfToken="csrf" klien={klienUji({ antrean })} />);
+    await screen.findByText("CV Dua");
+    const penanda = screen.getAllByText("NIB sudah dipakai perusahaan lain");
+    expect(penanda).toHaveLength(1);
+    expect(penanda[0]?.closest("tr")?.textContent).toContain("CV Dua");
   });
 
   test("pengajuan ulang berlabel pada kolom sumber", () => {
@@ -220,6 +235,20 @@ describe("keputusan", () => {
     fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
     expect(await screen.findByText(/disetujui dan berstatus Aktif/)).toBeTruthy();
     expect(setujui).toHaveBeenLastCalledWith(ID, versiBaru);
+  });
+
+  test("CR-035: detail bertanda menampilkan peringatan; 4090116 ditampilkan dengan pesan umum", async () => {
+    await bukaPanel(klienUji({ detail: () => ok(detail({ nib_used_by_other_company: true })), setujui: () => gagal(409, "4090116") }));
+    expect(screen.getByText(/NIB ini juga tercatat pada perusahaan lain/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
+    expect(await screen.findByText(/NIB sudah dipakai perusahaan Aktif lain, jadi pengajuan ini tidak dapat disetujui/)).toBeTruthy();
+    // Penolakan tetap tersedia.
+    expect(screen.getByRole("button", { name: "Tolak" })).toBeTruthy();
+  });
+
+  test("CR-035: detail tanpa tanda tidak menampilkan peringatan", async () => {
+    await bukaPanel(klienUji());
+    expect(screen.queryByText(/NIB ini juga tercatat pada perusahaan lain/)).toBeNull();
   });
 
   test("4090001 keputusan pertama berlaku: pesan, tombol hilang, antrean disegarkan", async () => {

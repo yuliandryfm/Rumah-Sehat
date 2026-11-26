@@ -148,6 +148,9 @@ pub(super) struct QueueItemDto {
     pub(super) submitted_at: String,
     /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua ("siap diverifikasi", F1-T102).
     pub(super) documents_complete: bool,
+    /// Penanda "NIB sudah dipakai perusahaan lain": NIB yang sama dipakai perusahaan lain yang belum terhapus,
+    /// status apa pun (CR-035). Pemeriksaan kepemilikan NIB menjadi tugas Verifikator.
+    pub(super) nib_used_by_other_company: bool,
 }
 
 impl QueueItemDto {
@@ -160,6 +163,7 @@ impl QueueItemDto {
             submission_round: v.submission_round,
             submitted_at: ts(v.submitted_at)?,
             documents_complete: v.documents_complete,
+            nib_used_by_other_company: v.nib_used_by_other_company,
         })
     }
 }
@@ -216,6 +220,9 @@ pub(super) struct DetailDto {
     pub(super) decided_at: Option<String>,
     /// Setuju/tolak tersedia (masih menunggu verifikasi).
     pub(super) can_decide: bool,
+    /// Penanda "NIB sudah dipakai perusahaan lain" (status apa pun, CR-035). Persetujuan dijawab `4090116` bila
+    /// NIB sudah dipakai perusahaan Aktif lain.
+    pub(super) nib_used_by_other_company: bool,
 }
 
 impl fmt::Debug for DetailDto {
@@ -252,6 +259,7 @@ impl DetailDto {
             rejection_reason: v.rejection_reason,
             decided_at: v.decided_at.map(ts).transpose()?,
             can_decide: v.can_decide,
+            nib_used_by_other_company: v.nib_used_by_other_company,
         })
     }
 }
@@ -432,6 +440,7 @@ mod tests {
             rejection_reason: None,
             decided_at: None,
             can_decide: true,
+            nib_used_by_other_company: false,
         };
         let d = format!("{view:?}");
         assert!(!d.contains(npwp), "NPWP bocor di Debug view: {d}");

@@ -7,8 +7,8 @@ use crate::modules::platform::api::FileError;
 use envelope::{ApiError, FieldError, ResponseCode, codes};
 use std::fmt;
 
-/// `4090110`: NIB sudah terdaftar pada perusahaan lain (US-1903 AC4, seperti US-1901 AC7). Pesan umum: tidak
-/// memuat nama atau data perusahaan lain.
+/// `4090110`: NIB sudah dipakai perusahaan **Aktif** lain saat Verifikator membuat perusahaan (US-1903 AC4; sejak
+/// CR-035 hanya perusahaan Aktif yang mengunci NIB). Pesan umum: tidak memuat nama atau data perusahaan lain.
 pub const NIB_ALREADY_REGISTERED: ResponseCode = ResponseCode::new(
     "4090110",
     "NIB sudah terdaftar. Hubungi Layanan Pelanggan bila perusahaan ini belum pernah didaftarkan",
@@ -47,6 +47,14 @@ pub const RESUBMISSION_DOCUMENTS_INCOMPLETE: ResponseCode = ResponseCode::new(
     "Lengkapi dokumen NIB, NPWP, dan bukti kewenangan sebelum mengajukan ulang",
 );
 
+/// `4090116`: Verifikator menyetujui pengajuan yang NIB-nya sudah dipakai perusahaan **Aktif** lain (CR-035,
+/// keputusan user Q10 = B2: NIB unik hanya di antara perusahaan Aktif). Pesan umum tanpa nama atau data perusahaan
+/// lain; Verifikator melihat penanda "NIB sudah dipakai perusahaan lain" di antrean dan detail.
+pub const NIB_IN_USE_BY_ACTIVE: ResponseCode = ResponseCode::new(
+    "4090116",
+    "NIB sudah dipakai perusahaan Aktif lain. Pengajuan ini tidak dapat disetujui",
+);
+
 /// `4090106`: teks persetujuan pendaftaran perusahaan yang dikirim bukan versi berlaku, atau butirnya bukan milik
 /// versi berlaku (US-104 AC3, US-1901 AC1). Klien memuat ulang teks lalu meminta persetujuan lagi. Tidak
 /// berkaitan dengan keberadaan akun atau NIB (bukan pembeda anti-enumerasi).
@@ -69,7 +77,7 @@ pub enum CorporateError {
     /// Keputusan atas pengajuan yang sudah diputuskan atau tidak lagi menunggu verifikasi (409,
     /// US-1902 AC4).
     AlreadyDecided,
-    /// NIB sudah dipakai perusahaan lain yang belum terhapus (409, US-1903 AC4).
+    /// NIB sudah dipakai perusahaan Aktif lain yang belum terhapus (409, US-1903 AC4, CR-035).
     NibAlreadyRegistered,
     /// Email HR pertama sudah dipakai akun di realm `korporat` (409, US-1903 AC1).
     HrEmailAlreadyRegistered,
@@ -85,6 +93,8 @@ pub enum CorporateError {
     NotResubmittable,
     /// Pengajuan ulang tanpa ketiga dokumen wajib (409 `4090115`, F1-T102b).
     ResubmissionIncomplete,
+    /// Persetujuan atas pengajuan yang NIB-nya sudah dipakai perusahaan Aktif lain (409 `4090116`, CR-035).
+    NibInUseByActive,
     /// Batas laju pendaftaran terlampaui (429).
     RateLimited,
     /// Galat berkas dari modul `platform`.
@@ -113,6 +123,7 @@ impl fmt::Display for CorporateError {
             Self::ResubmissionIncomplete => {
                 f.write_str("dokumen belum lengkap untuk pengajuan ulang")
             }
+            Self::NibInUseByActive => f.write_str("NIB dipakai perusahaan Aktif lain"),
             Self::RateLimited => f.write_str("batas laju"),
             Self::File(e) => write!(f, "berkas: {e}"),
             Self::Database => f.write_str("database tidak tersedia"),
@@ -139,6 +150,7 @@ impl ApiError for CorporateError {
             Self::DocumentsChanged => DOCUMENTS_CHANGED,
             Self::NotResubmittable => codes::STATUS_CONFLICT,
             Self::ResubmissionIncomplete => RESUBMISSION_DOCUMENTS_INCOMPLETE,
+            Self::NibInUseByActive => NIB_IN_USE_BY_ACTIVE,
             Self::RateLimited => codes::RATE_LIMITED,
             Self::File(e) => e.response_code(),
             Self::Database => codes::UNAVAILABLE,
@@ -175,6 +187,7 @@ mod tests {
             (CorporateError::DocumentsChanged, "4090114"),
             (CorporateError::NotResubmittable, "4090001"),
             (CorporateError::ResubmissionIncomplete, "4090115"),
+            (CorporateError::NibInUseByActive, "4090116"),
             (CorporateError::RateLimited, "4290001"),
             (CorporateError::File(FileError::NotFound), "4040001"),
             (CorporateError::Database, "5030001"),

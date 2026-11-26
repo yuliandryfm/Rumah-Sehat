@@ -9,6 +9,7 @@ import {
   LABEL_STATUS_PERUSAHAAN,
   nibTermasking,
   sumber,
+  TEKS_NIB_DIPAKAI,
   type AlasanTolakPerusahaan,
   type DetailPerusahaan,
   type DokumenUrl,
@@ -291,7 +292,15 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
                     <tr key={k.corporate_client_id} aria-selected={k.corporate_client_id === bukaId}>
                       <td>{formatWib(k.submitted_at)}</td>
                       <th scope="row">{k.legal_name}</th>
-                      <td>{nibTermasking(k.nib)}</td>
+                      <td>
+                        {nibTermasking(k.nib)}
+                        {k.nib_used_by_other_company === true ? (
+                          <>
+                            {" "}
+                            <Badge tone="warning">{TEKS_NIB_DIPAKAI}</Badge>
+                          </>
+                        ) : null}
+                      </td>
                       <td>{sumber(k)}</td>
                       <td>
                         <Button variant="secondary" disabled={sibuk} onClick={() => void buka(k.corporate_client_id)}>
@@ -323,6 +332,12 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
                     {LABEL_STATUS_PERUSAHAAN[detail.status]}
                   </Badge>
                 </div>
+                {detail.nib_used_by_other_company ? (
+                  <Alert variant="warning" title={TEKS_NIB_DIPAKAI}>
+                    NIB ini juga tercatat pada perusahaan lain. Pastikan pendaftar berhak atas NIB ini. Pengajuan tidak
+                    dapat disetujui bila NIB sudah dipakai perusahaan Aktif lain.
+                  </Alert>
+                ) : null}
                 <dl className="bo-dl">
                   <dt>NIB</dt>
                   <dd data-testid="nib-lengkap">{detail.nib} (lengkap untuk Verifikator)</dd>

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM app.corporate_client WHERE nib = $1 AND deleted_at IS NULL",
+  "query": "SELECT id FROM app.corporate_client WHERE nib = $1 AND status = 'active' AND deleted_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "7327c6bb07290aaa5609aa537161c5868a113ef96b3303e05dba981371496a60"
+  "hash": "a47b1a4f79c2deba2d3ab52e5f04b1f2926ba56532596652bf8c8a0d543a168f"
 }
