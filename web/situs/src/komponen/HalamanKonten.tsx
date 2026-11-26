@@ -68,7 +68,10 @@ export function HeroHalaman({ judul, label, gelap = false, children }: { judul: 
  */
 export function HalamanKonten({ konten, draf = false, gelap = false, label }: { konten: Konten; draf?: boolean; gelap?: boolean; label?: string }) {
   const berlaku = formatTanggal(konten.published_at);
-  const bagian = pisahPembuka(konten.body);
+  // Draf (Kebijakan, US-1801 AC4): paragraf pembuka tidak dipindah ke pita judul, sehingga spanduk "Draf."
+  // tampil sebelum teks isi pertama.
+  const terpisah = pisahPembuka(konten.body);
+  const bagian = draf && terpisah !== null ? { pembuka: null, sisa: terpisah.pembuka === null ? terpisah.sisa : [terpisah.pembuka, ...terpisah.sisa] } : terpisah;
   const pembuka = bagian?.pembuka ?? null;
   const kosongSesudahPembuka = bagian !== null && bagian.sisa.length === 0;
   return (

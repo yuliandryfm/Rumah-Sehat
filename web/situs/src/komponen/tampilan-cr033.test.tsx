@@ -192,3 +192,29 @@ describe("halaman isi (C-01)", () => {
     expect(container.querySelector(".situs-baca")).toBeNull();
   });
 });
+
+describe("tinjauan CR-033: draf dan masukan berbahaya", () => {
+  test("Kebijakan (draf): paragraf pembuka tidak dipindah ke pita judul; spanduk Draf. sebelum teks isi pertama", () => {
+    const { container } = render(<HalamanKonten konten={dasar({ title: "Kebijakan", body: "Paragraf pertama kebijakan.\n\n## Privasi\n\nIsi." })} draf />);
+    expect(container.querySelector(".situs-halhero .situs-lead")).toBeNull();
+    const catatan = screen.getByRole("note");
+    const pertama = screen.getByText("Paragraf pertama kebijakan.");
+    expect(catatan.compareDocumentPosition(pertama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("Beranda: judul/ringkasan layanan dan sorotan korporat berbahaya → teks polos, tanpa elemen atau atribut aktif", () => {
+    const layananMd = "## Dokter <img src=x onerror=alert(1)>\n\n[x](javascript:alert(1)) <script>alert(1)</script>\n\n## Lab\n\nAman.";
+    const korporatMd = "Pembuka <script>alert(2)</script>.\n\n## Sorotan <img src=y onerror=alert(2)>\n\n[y](javascript:alert(2))";
+    const { container } = render(<Beranda data={{ ...KOSONG, layanan: dasar({ body: layananMd }), untukPerusahaan: dasar({ body: korporatMd }) }} />);
+    expect(container.querySelector("img, script, a[href^='javascript' i]")).toBeNull();
+    for (const el of container.querySelectorAll("*")) {
+      for (const a of el.getAttributeNames()) expect(a.startsWith("on") || a === "style", `${el.tagName} ${a}`).toBe(false);
+    }
+    const judul = [...container.querySelectorAll(".situs-grid-layanan h3")].map((h) => h.textContent);
+    // teksPolos hanya mengambil node teks: tag HTML mentah sebaris dibuang (isi di antaranya tetap teks), tidak pernah elemen.
+    expect(judul).toEqual(["Dokter", "Lab"]);
+    expect(container.querySelector(".situs-grid-layanan p")?.textContent).toBe("x alert(1)");
+    expect(screen.getByRole("list", { name: "Di halaman Untuk Perusahaan" }).textContent).toBe("Sorotan");
+    expect(container.textContent).not.toContain("alert(2)</script>.");
+  });
+});

@@ -92,6 +92,26 @@ describe("kontras situs (token)", () => {
     expect(rasioKontras(warna("primary-strong"), latar)).toBeGreaterThanOrEqual(4.5);
   });
 
+  test("pita judul terang: semua warna teks di atas latar terburuk (daun primary 12% di atas mint; seluler tanpa ornamen = mint)", () => {
+    // Warna teks pita judul terang: judul/lead/keterangan text-primary, eyebrow/tautan/chip primary-strong.
+    expect(situsCss).toMatch(/\.situs-halhero \.situs-lead, \.situs-halhero \.situs-lead p, \.situs-halhero \.situs-cap \{ color: var\(--c-text-primary\); \}/);
+    expect(situsCss).toMatch(/@media \(max-width: 1023px\) \{[^}]*\}?[\s\S]*?\.situs-halhero \.situs-orn \{ display: none; \}/);
+    const desktop = campur(warna("primary"), 0.12, warna("mint"));
+    expect(desktop).toBe("#c5e6df");
+    for (const latar of [desktop, warna("mint"), warna("bg-app")]) {
+      for (const teks of ["text-primary", "primary-strong"]) expect(rasioKontras(warna(teks), latar), `${teks} / ${latar}`).toBeGreaterThanOrEqual(4.5);
+    }
+    // Penyebab temuan review: text-secondary di atas daun gagal (< 4,5), sehingga tidak boleh dipakai di pita judul.
+    expect(rasioKontras(warna("text-secondary"), desktop)).toBeLessThan(4.5);
+  });
+
+  test("pita judul gelap: putih dan mint di atas latar terburuk (cincin mint 16% lalu daun primary 12% di atas primary-strong)", () => {
+    const terburuk = campur(warna("primary"), 0.12, campur(warna("mint"), 0.16, warna("primary-strong")));
+    for (const latar of [terburuk, warna("primary-strong")]) {
+      for (const teks of ["on-primary", "mint"]) expect(rasioKontras(warna(teks), latar), `${teks} / ${latar}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   test("larangan DG §3.2 K4 tetap: primary tidak dipakai sebagai warna teks di atas mint (rasio < 4,5)", () => {
     expect(rasioKontras(warna("primary"), warna("mint"))).toBeLessThan(4.5);
   });

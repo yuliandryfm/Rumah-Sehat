@@ -238,9 +238,13 @@ main:focus { outline: none; }
 .situs-halhero .situs-lead { max-width: 40em; }
 .situs-halhero .situs-lead > * { margin: 0; }
 .situs-orn--halaman { width: 420px; right: 0; top: 0; height: 100%; }
+/* Teks di pita judul memakai text-primary (bukan text-secondary): daun ornamen (primary 12% di atas mint) dapat
+   berada di belakang teks pada lebar 1024–1279; text-primary dan primary-strong tetap ≥ 4,5:1 di atas campuran
+   terburuk (kontras.test.ts). Di bawah 1024 ornamen disembunyikan. */
+.situs-halhero .situs-lead, .situs-halhero .situs-lead p, .situs-halhero .situs-cap { color: var(--c-text-primary); } /* K1 */
 .situs-halhero--gelap { background: var(--c-primary-strong); color: var(--c-on-primary); border-bottom: 0; } /* K7 */
+.situs-halhero.situs-halhero--gelap .situs-lead, .situs-halhero.situs-halhero--gelap .situs-lead p, .situs-halhero.situs-halhero--gelap .situs-cap { color: var(--c-mint); } /* 6,56 */
 .situs-halhero--gelap .situs-orn--gelap { right: -120px; top: -160px; }
-.situs-halhero--gelap .situs-cap { color: var(--c-mint); }
 
 /* ---------- Kolom baca dan Markdown CMS ---------- */
 .situs-baca { width: 100%; max-width: calc(var(--situs-baca) + 2 * var(--situs-tepi)); margin: 0 auto; padding: 0 var(--situs-tepi); display: flex; flex-direction: column; gap: var(--s6); }
@@ -307,6 +311,7 @@ main:focus { outline: none; }
   .situs-hero__grid, .situs-korporat { grid-template-columns: minmax(0, 1fr); }
   .situs-visual { min-height: 480px; }
   .situs-foot__grid { grid-template-columns: minmax(0, 1fr); }
+  .situs-halhero .situs-orn { display: none; }
 }
 @media (max-width: 767px) {
   :root {
@@ -337,7 +342,6 @@ main:focus { outline: none; }
   .situs-mengambang { position: relative; inset: auto; max-width: none; width: 100%; }
   .situs-kaca { padding: var(--s5); }
   .situs-halhero { padding: var(--s10) 0 var(--s8); }
-  .situs-orn--halaman { width: 240px; opacity: 0.7; }
   .situs-foot { padding-top: var(--s12); }
   .situs-foot__nav { grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
   .situs-status { margin: var(--s10) var(--s4); }
