@@ -134,9 +134,10 @@ jobs:
       matrix:
         kelompok:
           - dasar
+          - hook-test
           - lingkungan
           - config-rust
-          - rust-lint-test
+          - clippy
           - gitleaks-a
           - gitleaks-b
           - gitleaks-config
@@ -150,6 +151,7 @@ jobs:
           - cache-ci
           - cache-penuh
           - cache-batal
+          - cache-merah
           - cache-tanpa-rujukan
     steps:
       - name: Checkout (riwayat penuh untuk gitleaks dan basis migrasi)

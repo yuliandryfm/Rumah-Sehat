@@ -497,7 +497,7 @@ blok_migrasi() {
 }
 
 blok_cache_isi() {
-  local r k f
+  local r k f CACHE_V1
   CACHE_UJI="$KERJA/cache-uji-isi"
   rm -rf "$CACHE_UJI"
   nyala_cache "$CACHE_UJI"
@@ -524,11 +524,20 @@ blok_cache_isi() {
   # Catatan cache rusak atau dibuat tangan dianggap tidak ada: cargo-fmt dikosongkan (terpotong), web-lint
   # diganti berkas tulisan tangan berformat benar tetapi MAC salah, web-test diganti berkas kosong hasil touch
   # (nama = sidik). Ketiganya dijalankan lagi; langkah lain tetap dari cache.
-  for f in "$CACHE_UJI"/v1/cargo-fmt/*; do : >"$f"; done
-  for f in "$CACHE_UJI"/v1/web-lint/*; do
+  # verify.sh menyimpan catatan di $XDG_CACHE_HOME/ruang-sehat-verify/v1/<langkah>/<sidik>. Direktori harus ada
+  # dan tidak kosong (glob yang tidak cocok tidak boleh lolos diam-diam).
+  CACHE_V1="$CACHE_UJI/ruang-sehat-verify/v1"
+  for f in cargo-fmt web-lint web-test; do
+    if [ -z "$(ls "$CACHE_V1/$f" 2>/dev/null)" ]; then
+      echo "  tidak ada catatan cache untuk langkah $f di $CACHE_V1/$f" >&2
+      return 1
+    fi
+  done
+  for f in "$CACHE_V1"/cargo-fmt/*; do : >"$f"; done
+  for f in "$CACHE_V1"/web-lint/*; do
     printf 'ruang-sehat-verify-cache v1\nlangkah web-lint\nsidik %s\nwaktu %s\nmac %064d\n' "$(basename "$f")" "$(date +%s)" 0 >"$f"
   done
-  for f in "$CACHE_UJI"/v1/web-test/*; do rm -f "$f" && touch "$f"; done
+  for f in "$CACHE_V1"/web-test/*; do rm -f "$f" && touch "$f"; done
   k="$(verify_di "$r" "$KERJA/cache-rusak.log" "${NYALA[@]}")"
   nilai "cache-rusak-atau-palsu-diabaikan" 0 "$k" "$KERJA/cache-rusak.log" "HASIL: HIJAU" \
     "dari cache sidik: $((JUMLAH_CACHE - 3))\)" "^==> \[cargo-fmt\] cargo fmt --all --check$" \
@@ -593,7 +602,17 @@ blok_cache_batal() {
   merah "cache-batal-perubahan-1-byte" "$k" "$KERJA/cache-1-byte.log" "cargo-fmt"
   nilai "cache-batal-perubahan-1-byte-cakupan" 1 "$k" "$KERJA/cache-1-byte.log" "^BYTE-BERBEDA: 1$" \
     "^==> \[cargo-fmt\] cargo fmt --all --check$" "^  LULUS +web-lint \(cache, sidik [0-9a-f]{8}\)$"
+}
 
+blok_cache_merah() {
+  local r k
+  # Isi cache dengan satu run HIJAU pada salinan segar (kondisi yang sama dengan run pertama bagian cache).
+  CACHE_UJI="$KERJA/cache-uji-merah"
+  rm -rf "$CACHE_UJI"
+  nyala_cache "$CACHE_UJI"
+  r="$(fixture_baru cache-prima-merah)"
+  k="$(verify_di "$r" "$KERJA/cache-prima-merah.log" "${NYALA[@]}")"
+  nilai "cache-prima-merah-hijau" 0 "$k" "$KERJA/cache-prima-merah.log" "HASIL: HIJAU" "^cache sidik: aktif"
   # Fixture merah dengan cache lulus dari isi lain: tetap MERAH (langkah kelas Rust boleh dari cache).
   r="$(fixture_baru cache-merah)"
   sed 's/--c-text-secondary: #5c6b6f;/--c-text-secondary: #aaaaaa;/' "$r/web/packages/ui/src/tokens.css" >"$r/web/packages/ui/src/tokens.css.baru"
@@ -657,14 +676,15 @@ blok_cache_tanpa_rujukan() {
 # menjalankan verify.sh lengkap (puluhan menit di runner standar GitHub, lihat docs/05-stack.md §3.2), jadi
 # satu kelompok memuat paling banyak dua fixture penuh; rangkaian cache dipecah per skenario dan setiap skenario
 # mengisi cache sendiri. Urutan di KELOMPOK_URUTAN = urutan jalan lokal tanpa pilihan.
-KELOMPOK_URUTAN="dasar lingkungan config-rust rust-lint-test gitleaks-a gitleaks-b gitleaks-config osv-audit lockfile-deny lisensi-rentan alat web-a web-b cache-isi cache-ci cache-penuh cache-batal cache-tanpa-rujukan"
+KELOMPOK_URUTAN="dasar hook-test lingkungan config-rust clippy gitleaks-a gitleaks-b gitleaks-config osv-audit lockfile-deny lisensi-rentan alat web-a web-b cache-isi cache-ci cache-penuh cache-batal cache-merah cache-tanpa-rujukan"
 
 kelompok_blok() { # kelompok_blok <kelompok>: cetak nama blok kelompok itu; gagal bila kelompok tidak dikenal
   case "$1" in
-    dasar) echo "bersih env_hook" ;;
-    lingkungan) echo "env_rustflags env_gitleaks argumen" ;;
+    dasar) echo "bersih argumen" ;;
+    hook-test) echo "env_hook test" ;;
+    lingkungan) echo "env_rustflags env_gitleaks" ;;
     config-rust) echo "cargo_config fmt" ;;
-    rust-lint-test) echo "clippy test" ;;
+    clippy) echo "clippy" ;;
     gitleaks-a) echo "gitleaks_riwayat gitleaks_staged" ;;
     gitleaks-b) echo "gitleaks_unstaged gitleaks_allow" ;;
     gitleaks-config) echo "gitleaks_config_liar gitleaks_config_hilang" ;;
@@ -678,6 +698,7 @@ kelompok_blok() { # kelompok_blok <kelompok>: cetak nama blok kelompok itu; gaga
     cache-ci) echo "cache_ci" ;;
     cache-penuh) echo "cache_penuh" ;;
     cache-batal) echo "cache_batal" ;;
+    cache-merah) echo "cache_merah" ;;
     cache-tanpa-rujukan) echo "cache_tanpa_rujukan" ;;
     *) return 1 ;;
   esac
