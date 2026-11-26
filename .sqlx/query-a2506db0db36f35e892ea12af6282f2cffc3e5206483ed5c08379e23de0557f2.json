@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.stored_file SET deleted_at = $4, deleted_by = $2, delete_reason = $3, updated_at = $4, updated_by = $2 WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a2506db0db36f35e892ea12af6282f2cffc3e5206483ed5c08379e23de0557f2"
+}

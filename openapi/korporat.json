@@ -6,6 +6,418 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/v1/corporate/document-download-urls": {
+      "post": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "URL unduh berumur pendek (5 menit) untuk dokumen perusahaan pemanggil sendiri. Dicatat E-12 sebelum URL\nterbit.",
+        "operationId": "corporate_document_download_url_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "URL unduh berumur pendek.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUrlEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dokumen jenis itu belum diunggah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Badan bukan application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Jenis dokumen tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (tanpa URL).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/corporate/document-upload-slots": {
+      "post": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "Slot unggah dokumen perusahaan (langkah 1 dari 3): berkas diunggah langsung ke object storage, lalu\ndikonfirmasi lewat `POST /v1/corporate/documents`. JPG/PNG paling besar 5.242.880 byte atau PDF paling besar\n10.485.760 byte.",
+        "operationId": "corporate_document_upload_slot_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSlotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Slot unggah diterbitkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorporateUploadSlotEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ukuran melebihi 5.242.880 byte (foto) atau 10.485.760 byte (PDF).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis bukan image/jpeg, image/png, atau application/pdf, PDF belum didukung server, atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian tidak valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Kuota slot unggah per akun terlampaui (4290001).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/corporate/documents": {
+      "get": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "Status verifikasi, alasan penolakan, dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).",
+        "operationId": "corporate_document_list",
+        "responses": {
+          "200": {
+            "description": "Status dokumen perusahaan pemanggil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsOverviewEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "Mengonfirmasi unggahan (langkah 3 dari 3): isi berkas divalidasi (jenis dari isi, ukuran, PDF diperiksa\nkonten aktif) lalu dicatat sebagai dokumen aktif jenis itu, menggantikan yang lama. Setelah NIB, NPWP, dan\nbukti kewenangan lengkap, pengajuan tampil di antrean Verifikator.",
+        "operationId": "corporate_document_confirm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Dokumen tercatat; status terbaru semua dokumen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsCreatedEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Badan permintaan tidak dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Slot unggah tidak ada, kedaluwarsa, sudah dipakai, atau milik akun lain (KU-03).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090112: perusahaan sudah Aktif; dokumen hanya dikelola saat menunggu verifikasi atau ditolak.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Berkas melebihi 5.242.880 byte (foto) atau 10.485.760 byte (PDF).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Jenis berkas menurut isinya bukan JPG, PNG, atau PDF aman (PDF berkonten aktif, terenkripsi, atau rusak ditolak), atau badan bukan JSON.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Jenis dokumen atau ID slot tidak valid, atau berkas belum diunggah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/corporate/member-invitations": {
       "post": {
         "tags": [
@@ -268,6 +680,331 @@
   },
   "components": {
     "schemas": {
+      "CorporateNameValueDto": {
+        "type": "object",
+        "description": "Pasangan nama-nilai (field formulir POST atau header PUT). Nilainya bagian dari tanda tangan URL unggah\n(rahasia berumur pendek): tanpa `Debug` (KEPUTUSAN-122).",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "CorporateUploadMethodDto": {
+        "type": "string",
+        "description": "Cara unggah langsung ke object storage.",
+        "enum": [
+          "post",
+          "put"
+        ]
+      },
+      "CorporateUploadSlotDto": {
+        "type": "object",
+        "description": "Slot unggah yang diterbitkan. `url`, `fields`, dan `headers` rahasia berumur pendek: `Debug` manual\nmenyamarkannya (KEPUTUSAN-122).",
+        "required": [
+          "upload_slot_id",
+          "expires_at",
+          "method",
+          "url",
+          "fields",
+          "headers"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CorporateNameValueDto"
+            },
+            "description": "Field formulir (POST); kosong untuk PUT."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CorporateNameValueDto"
+            },
+            "description": "Header wajib (PUT); kosong untuk POST."
+          },
+          "method": {
+            "$ref": "#/components/schemas/CorporateUploadMethodDto"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "CorporateUploadSlotEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons slot unggah.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CorporateUploadSlotDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      },
+      "DocumentConfirmRequest": {
+        "type": "object",
+        "description": "Konfirmasi unggahan dokumen.",
+        "required": [
+          "document_kind",
+          "upload_slot_id"
+        ],
+        "properties": {
+          "document_kind": {
+            "$ref": "#/components/schemas/DocumentKindDto"
+          },
+          "upload_slot_id": {
+            "type": "string",
+            "description": "ID slot dari `POST /v1/corporate/document-upload-slots` yang berkasnya sudah diunggah.",
+            "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DocumentDownloadRequest": {
+        "type": "object",
+        "description": "Permintaan URL unduh dokumen perusahaan sendiri.",
+        "required": [
+          "document_kind"
+        ],
+        "properties": {
+          "document_kind": {
+            "$ref": "#/components/schemas/DocumentKindDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DocumentKindDto": {
+        "type": "string",
+        "description": "Jenis dokumen wajib perusahaan.",
+        "enum": [
+          "nib",
+          "npwp",
+          "authority_proof"
+        ]
+      },
+      "DocumentSlotRequest": {
+        "type": "object",
+        "description": "Permintaan slot unggah dokumen.",
+        "required": [
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Jenis yang dinyatakan: `image/jpeg`, `image/png`, atau `application/pdf` (isi tetap diperiksa saat\nkonfirmasi; ekstensi dan header tidak dipercaya).",
+            "example": "application/pdf"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ukuran berkas (byte): maksimal 5.242.880 untuk foto dan 10.485.760 untuk PDF (NFR-SEC-08).",
+            "example": 204800,
+            "maximum": 10485760,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "DocumentStatusDto": {
+        "type": "object",
+        "description": "Status satu jenis dokumen wajib.",
+        "required": [
+          "kind",
+          "uploaded"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DocumentKindDto"
+          },
+          "uploaded": {
+            "type": "boolean",
+            "description": "Dokumen jenis ini sudah diunggah dan lolos validasi isi."
+          },
+          "uploaded_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Waktu dokumen aktif dicatat."
+          }
+        }
+      },
+      "DocumentUrlDto": {
+        "type": "object",
+        "description": "URL unduh dokumen berumur pendek (ADR-018 butir 3). URL adalah rahasia: jangan dicatat.",
+        "required": [
+          "url",
+          "expires_at",
+          "mime_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mime_type": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 204800
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentUrlEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons URL unduh.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentUrlDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
+      "DocumentsCreatedEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons dokumen tercatat.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentsOverviewDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2010000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil dibuat"
+          }
+        }
+      },
+      "DocumentsOverviewDto": {
+        "type": "object",
+        "description": "Status verifikasi dan kelengkapan dokumen perusahaan pemanggil (US-1901 AC6).",
+        "required": [
+          "status",
+          "submission_round",
+          "documents",
+          "complete"
+        ],
+        "properties": {
+          "complete": {
+            "type": "boolean",
+            "description": "Ketiganya sudah diunggah: pengajuan \"siap diverifikasi\" dan tampil di antrean Verifikator."
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentStatusDto"
+            },
+            "description": "Ketiga jenis dokumen wajib, urut `nib`, `npwp`, `authority_proof`."
+          },
+          "rejection_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Kode alasan penolakan putaran berjalan (hanya bila `rejected`).",
+            "example": "authority_proof_insufficient"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VerificationStatusDto"
+          },
+          "submission_round": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Putaran pengajuan berjalan.",
+            "example": 1,
+            "minimum": 1
+          }
+        }
+      },
+      "DocumentsOverviewEnvelope": {
+        "type": "object",
+        "description": "Bentuk dokumentasi respons status dokumen.",
+        "required": [
+          "response_code",
+          "response_description",
+          "data"
+        ],
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DocumentsOverviewDto"
+          },
+          "response_code": {
+            "type": "string",
+            "example": "2000000"
+          },
+          "response_description": {
+            "type": "string",
+            "example": "Berhasil"
+          }
+        }
+      },
       "ErrorEnvelope": {
         "type": "object",
         "description": "Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya\ndibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.",
@@ -517,6 +1254,14 @@
           "active",
           "inactive"
         ]
+      },
+      "VerificationStatusDto": {
+        "type": "string",
+        "description": "Status verifikasi perusahaan yang dapat mengelola dokumen.",
+        "enum": [
+          "pending_verification",
+          "rejected"
+        ]
       }
     },
     "securitySchemes": {
@@ -531,6 +1276,10 @@
     {
       "name": "corporate-hr",
       "description": "Anggota HR perusahaan (US-1904)"
+    },
+    {
+      "name": "corporate-documents",
+      "description": "Dokumen NIB, NPWP, dan bukti kewenangan perusahaan (US-1901 AC2)"
     }
   ]
 }

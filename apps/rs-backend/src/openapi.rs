@@ -152,7 +152,10 @@ pub struct PublicApiDoc;
         description = "Endpoint member area HR perusahaan (realm korporat, akun HR dengan keanggotaan aktif; data perusahaan lain dijawab 404, ADR-028 butir 1). Format respons: ADR-023.",
         version = env!("CARGO_PKG_VERSION")
     ),
-    tags((name = "corporate-hr", description = "Anggota HR perusahaan (US-1904)")),
+    tags(
+        (name = "corporate-hr", description = "Anggota HR perusahaan (US-1904)"),
+        (name = "corporate-documents", description = "Dokumen NIB, NPWP, dan bukti kewenangan perusahaan (US-1901 AC2)")
+    ),
     modifiers(&BearerAuth)
 )]
 pub struct CorporateApiDoc;

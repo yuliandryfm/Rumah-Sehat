@@ -351,3 +351,46 @@ pub(super) async fn active_reason_codes(
     .fetch_all(conn)
     .await
 }
+
+/// Menghapus lunak satu berkas (ADR-003): `deleted_at`, `deleted_by`, `delete_reason`. Objeknya tetap di bucket
+/// sampai pemusnahan retensi (ADR-018 butir 5). `false` bila tidak ada berkas aktif dengan ID itu.
+pub(super) async fn soft_delete_file(
+    conn: &mut PgConnection,
+    id: Uuid,
+    by: Uuid,
+    reason: &str,
+    now: OffsetDateTime,
+) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query!(
+        "UPDATE app.stored_file \
+         SET deleted_at = $4, deleted_by = $2, delete_reason = $3, updated_at = $4, updated_by = $2 \
+         WHERE id = $1 AND deleted_at IS NULL",
+        id,
+        by,
+        reason,
+        now,
+    )
+    .execute(conn)
+    .await?;
+    Ok(r.rows_affected() == 1)
+}
+
+/// Jumlah slot yang dibuat `owner` di `bucket` sejak `since` (kuota unggah per akun, F1-T102). Slot tetap
+/// ada sampai `expires_at` + jeda pembersihan, jadi jendela sampai sekitar satu jam terbaca penuh. Index
+/// `ix_upload_slot_owner_account_id_bucket_created_at` melayani query ini.
+pub(super) async fn count_slots_since(
+    pool: &PgPool,
+    owner: Uuid,
+    bucket: &str,
+    since: OffsetDateTime,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.upload_slot
+           WHERE owner_account_id = $1 AND bucket = $2 AND created_at > $3"#,
+        owner,
+        bucket,
+        since,
+    )
+    .fetch_one(pool)
+    .await
+}

@@ -203,7 +203,9 @@ pub(crate) fn public_router() -> PolicyRouter<AppState> {
 /// Router API korporat untuk HR perusahaan (`openapi/korporat.json`, awalan `/v1/corporate/`, realm
 /// `korporat`, ADR-027 butir 3, ADR-028 butir 1). Setiap endpoint wajib punya kasus di harness isolasi.
 pub(crate) fn corporate_router() -> PolicyRouter<AppState> {
-    PolicyRouter::with_openapi(CorporateApiDoc::openapi()).merge(identity::corporate_router())
+    PolicyRouter::with_openapi(CorporateApiDoc::openapi())
+        .merge(identity::corporate_router())
+        .merge(corporate::corporate_router())
 }
 
 /// Endpoint terdaftar di namespace API korporat `/v1/corporate/` beserta kebijakannya (F1-T100, ADR-028
@@ -378,7 +380,7 @@ mod tests {
     fn every_corporate_route_requires_corporate_hr_under_v1_corporate() {
         let router = corporate_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), 7);
         for ((_method, path), policy) in entries {
             assert!(is_corporate_path(path), "{path}");
             assert!(
@@ -386,7 +388,7 @@ mod tests {
                 "{path}"
             );
         }
-        assert_eq!(corporate_endpoints().len(), 3);
+        assert_eq!(corporate_endpoints().len(), 7);
     }
 
     #[test]

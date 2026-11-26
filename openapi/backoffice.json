@@ -1281,6 +1281,21 @@
               "maximum": 100,
               "minimum": 1
             }
+          },
+          {
+            "name": "readiness",
+            "in": "query",
+            "description": "Isi antrean menurut kelengkapan dokumen (bawaan `ready`, F1-T102).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Pilihan isi antrean menurut kelengkapan dokumen NIB, NPWP, dan bukti kewenangan (F1-T102, keputusan user Q8).",
+              "enum": [
+                "ready",
+                "incomplete",
+                "all"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1479,7 +1494,7 @@
             }
           },
           "409": {
-            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4).",
+            "description": "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2828,7 +2843,7 @@
             "items": {
               "$ref": "#/components/schemas/DocumentKindDto"
             },
-            "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen."
+            "description": "Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,\n`authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102)."
           },
           "legal_name": {
             "type": "string",

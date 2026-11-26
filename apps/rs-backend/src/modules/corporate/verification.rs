@@ -7,7 +7,9 @@
 //! tidak ada pembeda lain).
 //!
 //! - Antrean ([`queue`], AC1): perusahaan "Menunggu verifikasi" urut `submitted_at` terlama, cursor = ID
-//!   perusahaan terakhir halaman sebelumnya. Tanpa NPWP.
+//!   perusahaan terakhir halaman sebelumnya. Tanpa NPWP. F1-T102 (keputusan user Q8): bawaan hanya pengajuan
+//!   yang ketiga jenis dokumennya lengkap ("siap diverifikasi"); [`QueueReadiness`] memilih yang belum lengkap
+//!   atau semuanya, dan setiap item antrean memuat `documents_complete`.
 //! - Detail ([`detail`], AC1): data perusahaan termasuk NPWP (klasifikasi Terbatas, DD A20: tidak pernah ke
 //!   log, payload audit, atau pesan galat; dibawa sebagai `Sensitive<String>` sampai DTO), jenis dokumen aktif,
 //!   dan keputusan putaran berjalan. PRD menetapkan E-05 untuk **dokumen dibuka**, bukan detail.
@@ -32,7 +34,7 @@
 
 use super::api::{
     CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, CorporateVerification,
-    RejectionReasonView,
+    QueueReadiness, RejectionReasonView,
 };
 use super::domain::{
     self, Decision, DocumentKind, REJECTION_CONTEXT, RejectionReason, parse_origin,
@@ -193,9 +195,15 @@ pub(super) async fn queue(
     s: &CorporateVerification<'_>,
     cursor: Option<Uuid>,
     limit: Option<i64>,
+    readiness: QueueReadiness,
 ) -> Result<(Vec<CorporateQueueItemView>, Meta), CorporateError> {
     let limit = page_size(limit)?;
-    let mut rows = repo::pending_queue(s.pool, cursor, limit.saturating_add(1))
+    let complete_only = match readiness {
+        QueueReadiness::Ready => Some(true),
+        QueueReadiness::Incomplete => Some(false),
+        QueueReadiness::All => None,
+    };
+    let mut rows = repo::pending_queue(s.pool, cursor, complete_only, limit.saturating_add(1))
         .await
         .map_err(db_error)?;
     let has_more = i64::try_from(rows.len()).map_or(true, |n| n > limit);
@@ -215,6 +223,7 @@ pub(super) async fn queue(
                 origin: corrupt(parse_origin(&r.origin))?,
                 submission_round: r.submission_round,
                 submitted_at: r.submitted_at,
+                documents_complete: r.documents_complete,
             })
         })
         .collect::<Result<Vec<_>, CorporateError>>()?;
@@ -384,6 +393,17 @@ async fn decide(
             let from = corrupt(CorporateClientStatus::parse(&locked.status))?;
             if !domain::may_decide(from) {
                 return Err(CorporateError::AlreadyDecided);
+            }
+            if reason.is_none() {
+                // F1-T102 (Q8): persetujuan hanya untuk pengajuan yang ketiga dokumennya lengkap. Dibaca di
+                // transaksi yang sama dengan kunci baris, sehingga unggahan HR yang bersamaan (yang juga
+                // mengunci baris ini) tidak menyelipkan perubahan di antara pemeriksaan dan keputusan.
+                let kinds = repo::active_document_kinds(&mut *conn, corporate_client_id)
+                    .await
+                    .map_err(db_error)?;
+                if !domain::documents_complete(&kinds) {
+                    return Err(CorporateError::DocumentsIncomplete);
+                }
             }
             if let Some(r) = reason {
                 // AC3: daftar alasan dikelola lewat migrasi data; kode yang tidak aktif di sana ditolak.

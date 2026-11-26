@@ -1,11 +1,14 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
 use crate::modules::identity::api::{IdpWorkerConfig, KeycloakEventConfig};
-use crate::modules::platform::api::FileStorageConfig;
+use crate::modules::platform::api::{
+    DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS, FileStorageConfig, QpdfConfig,
+};
 use crate::rate_limit::RateBudget;
 use foundation::Sensitive;
 use observability::{BaseConfig, ConfigError, EnvSource};
 use std::path::PathBuf;
+use std::time::Duration;
 
 /// Awalan URI `type` RFC 9457 bila `PROBLEM_TYPE_BASE` tidak diisi. Domain dokumentasi jenis masalah
 /// `[TIDAK DIKETAHUI]` (docs/05-response-codes.md §4.7); TLD `.invalid` dicadangkan RFC 2606 sehingga
@@ -40,6 +43,10 @@ pub struct ApiConfig {
     pub identity_keys: IdentityKeysConfig,
     /// Object storage untuk berkas (F1-T29; gambar konten F1-T93).
     pub files: FileStorageConfig,
+    /// Pemeriksa PDF qpdf (F1-T102, KEPUTUSAN-86): `PDF_INSPECTOR_QPDF_PATH` (path biner `qpdf`; kosong atau tidak
+    /// diisi = PDF belum didukung, slot unggah PDF ditolak `415`) dan `PDF_INSPECTOR_TIMEOUT_SECONDS` (bawaan
+    /// 10, 1..=60).
+    pub pdf_inspector: Option<QpdfConfig>,
     /// Anggaran batas laju endpoint publik per menit (F1-T94): `PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE`
     /// (bawaan 300) dan `PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE` (bawaan 3000). Angka bawaan adalah usulan
     /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten, gambar, dan teks
@@ -188,12 +195,31 @@ impl ApiConfig {
                 dek_cache_capacity: env.required("API_DEK_CACHE_CAPACITY")?,
             },
             files: FileStorageConfig::load(env)?,
+            pdf_inspector: load_pdf_inspector(env)?,
             public_rate: RateBudget {
                 per_source: env.optional_or("PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE", 300)?,
                 global: env.optional_or("PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE", 3_000)?,
             },
         })
     }
+}
+
+/// Memuat konfigurasi pemeriksa PDF; path kosong atau tidak diisi = tidak dipasang (PDF ditolak).
+fn load_pdf_inspector(env: &EnvSource) -> Result<Option<QpdfConfig>, ConfigError> {
+    let path: String = env.optional_or("PDF_INSPECTOR_QPDF_PATH", String::new())?;
+    let timeout: u64 = env.optional_or(
+        "PDF_INSPECTOR_TIMEOUT_SECONDS",
+        DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS,
+    )?;
+    if path.trim().is_empty() {
+        return Ok(None);
+    }
+    if !(1..=60).contains(&timeout) {
+        return Err(ConfigError::invalid("PDF_INSPECTOR_TIMEOUT_SECONDS"));
+    }
+    let mut config = QpdfConfig::new(path.trim());
+    config.timeout = Duration::from_secs(timeout);
+    Ok(Some(config))
 }
 
 /// Ukuran batch relay audit `1..=64` (`audit_store::MAX_BATCH_EVENTS`); di luar rentang = tidak valid.

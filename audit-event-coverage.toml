@@ -123,15 +123,29 @@ tests = [
   "apps/rs-backend/tests/profile_identity_verifier.rs::first_decision_wins",
 ]
 
-# E-05 pembukaan berkas oleh staf (URL unduh) dan percobaan yang ditolak (F1-T30, ADR-018).
+# E-05 pembukaan berkas oleh staf (URL unduh) dan percobaan yang ditolak (F1-T30, ADR-018); E-12 unduhan HR atas
+# dokumen perusahaannya sendiri (F1-T102).
 [[emitter]]
 file = "apps/rs-backend/src/modules/platform/service.rs"
-codes = ["E05"]
+codes = ["E05", "E12"]
 tests = [
   "apps/rs-backend/tests/platform_files_download.rs::verifier_gets_short_lived_attachment_url_after_e05_is_recorded",
   "apps/rs-backend/tests/platform_files_download.rs::unauthorised_requests_get_no_url_and_are_logged",
   "apps/rs-backend/tests/profile_identity_verifier.rs::queue_detail_photo_and_approve",
   "apps/rs-backend/tests/corporate_verification.rs::document_url_is_issued_only_after_e05_is_recorded",
+  "apps/rs-backend/tests/corporate_documents_access.rs::hr_reaches_only_its_own_companys_documents_slots_and_urls",
+  "apps/rs-backend/tests/corporate_documents_http.rs::hr_uploads_three_documents_which_are_validated_stored_and_audited_without_secrets",
+]
+
+# E-10 unggah dokumen NIB, NPWP, dan bukti kewenangan oleh HR, termasuk penggantian dan penolakan isi berkas
+# (F1-T102, US-1901 AC2).
+[[emitter]]
+file = "apps/rs-backend/src/modules/corporate/documents.rs"
+codes = ["E10"]
+tests = [
+  "apps/rs-backend/tests/corporate_documents_http.rs::hr_uploads_three_documents_which_are_validated_stored_and_audited_without_secrets",
+  "apps/rs-backend/tests/corporate_documents_http.rs::rejected_content_is_removed_never_recorded_and_audited_as_failed_upload",
+  "apps/rs-backend/tests/corporate_documents_http.rs::replacing_a_document_soft_deletes_the_old_one_and_concurrent_confirms_keep_one_active",
 ]
 
 # E-10 keputusan Verifikator atas pengajuan perusahaan, berhasil dan kalah (F1-T104, US-1902 AC2-AC4).

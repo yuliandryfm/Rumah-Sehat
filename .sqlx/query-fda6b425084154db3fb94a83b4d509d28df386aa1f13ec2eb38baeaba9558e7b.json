@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, document_kind, stored_file_id, created_at FROM app.corporate_client_document WHERE corporate_client_id = $1 AND deleted_at IS NULL ORDER BY document_kind",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "document_kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "document_kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stored_file_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "stored_file_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_document",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fda6b425084154db3fb94a83b4d509d28df386aa1f13ec2eb38baeaba9558e7b"
+}

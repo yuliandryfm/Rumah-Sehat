@@ -601,7 +601,10 @@ export interface components {
              * @description Waktu keputusan putaran berjalan, bila sudah diputuskan.
              */
             decided_at?: string | null;
-            /** @description Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. */
+            /**
+             * @description Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,
+             *     `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
+             */
             documents: components["schemas"]["DocumentKindDto"][];
             /** @example PT Sintetis Sejahtera */
             legal_name: string;
@@ -1944,6 +1947,8 @@ export interface operations {
                 cursor?: string;
                 /** @description Jumlah item (1-100, bawaan 20). */
                 limit?: number;
+                /** @description Isi antrean menurut kelengkapan dokumen (bawaan `ready`, F1-T102). */
+                readiness?: "ready" | "incomplete" | "all";
             };
             header?: never;
             path?: never;
@@ -2105,7 +2110,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). */
             409: {
                 headers: {
                     [name: string]: unknown;

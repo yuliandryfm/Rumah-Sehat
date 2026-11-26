@@ -3,7 +3,8 @@
 //! yang tidak dikenal. NPWP (Terbatas, DD A20) hanya di detail, dengan `Debug` manual tanpa NPWP.
 
 use super::api::{
-    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, RejectionReasonView,
+    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, QueueReadiness,
+    RejectionReasonView,
 };
 use crate::modules::platform::api::DownloadTicket;
 use crate::openapi::MetaSchema;
@@ -34,6 +35,31 @@ pub(super) struct QueueParams {
     /// Jumlah item (1-100, bawaan 20).
     #[param(minimum = 1, maximum = 100)]
     pub(super) limit: Option<i64>,
+    /// Isi antrean menurut kelengkapan dokumen (bawaan `ready`, F1-T102).
+    #[param(inline)]
+    pub(super) readiness: Option<QueueReadinessParam>,
+}
+
+/// Pilihan isi antrean menurut kelengkapan dokumen NIB, NPWP, dan bukti kewenangan (F1-T102, keputusan user Q8).
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum QueueReadinessParam {
+    /// Hanya pengajuan yang ketiga dokumennya lengkap ("siap diverifikasi"); bawaan.
+    Ready,
+    /// Hanya pengajuan yang dokumennya belum lengkap.
+    Incomplete,
+    /// Semua pengajuan menunggu verifikasi.
+    All,
+}
+
+impl From<QueueReadinessParam> for QueueReadiness {
+    fn from(p: QueueReadinessParam) -> Self {
+        match p {
+            QueueReadinessParam::Ready => Self::Ready,
+            QueueReadinessParam::Incomplete => Self::Incomplete,
+            QueueReadinessParam::All => Self::All,
+        }
+    }
 }
 
 /// Asal perusahaan.
@@ -120,6 +146,8 @@ pub(super) struct QueueItemDto {
     pub(super) submission_round: i32,
     #[schema(format = DateTime)]
     pub(super) submitted_at: String,
+    /// NIB, NPWP, dan bukti kewenangan sudah diunggah semua ("siap diverifikasi", F1-T102).
+    pub(super) documents_complete: bool,
 }
 
 impl QueueItemDto {
@@ -131,6 +159,7 @@ impl QueueItemDto {
             origin: OriginDto::parse(v.origin)?,
             submission_round: v.submission_round,
             submitted_at: ts(v.submitted_at)?,
+            documents_complete: v.documents_complete,
         })
     }
 }
@@ -172,7 +201,8 @@ pub(super) struct DetailDto {
     pub(super) submission_round: i32,
     #[schema(format = DateTime)]
     pub(super) submitted_at: String,
-    /// Jenis dokumen aktif; dibuka lewat endpoint URL dokumen.
+    /// Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,
+    /// `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
     pub(super) documents: Vec<DocumentKindDto>,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     #[schema(example = "authority_proof_insufficient")]

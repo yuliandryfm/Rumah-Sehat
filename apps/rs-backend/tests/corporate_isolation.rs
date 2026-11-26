@@ -110,7 +110,53 @@ const PRODUCTION_CASES: &[Case] = &[
             body: Some(invitation_body),
         },
     },
+    // F1-T102: dokumen NIB, NPWP, dan bukti kewenangan. Tanpa parameter path dan tanpa ID di isi: perusahaan
+    // selalu dari keanggotaan pemanggil, isian ID yang diselipkan harness ditolak (`deny_unknown_fields`, 422).
+    // Perusahaan fixture Aktif, sehingga pembanding positif dijawab `409` `4090112` (dokumen hanya saat menunggu
+    // verifikasi atau ditolak); skenario isolasi dengan perusahaan Menunggu verifikasi ada di
+    // `corporate_documents_http.rs`.
+    Case {
+        method: "GET",
+        path: "/v1/corporate/documents",
+        probe: Probe::Hr { body: None },
+    },
+    Case {
+        method: "POST",
+        path: "/v1/corporate/document-upload-slots",
+        probe: Probe::Hr {
+            body: Some(document_slot_body),
+        },
+    },
+    Case {
+        method: "POST",
+        path: "/v1/corporate/documents",
+        probe: Probe::Hr {
+            body: Some(document_confirm_body),
+        },
+    },
+    Case {
+        method: "POST",
+        path: "/v1/corporate/document-download-urls",
+        probe: Probe::Hr {
+            body: Some(document_download_body),
+        },
+    },
 ];
+
+/// Isi permintaan slot unggah dokumen yang sah.
+fn document_slot_body(_t: &Tenant) -> Value {
+    json!({ "content_type": "image/png", "size_bytes": 1024 })
+}
+
+/// Isi konfirmasi dokumen yang sah (slot acak yang tidak ada).
+fn document_confirm_body(_t: &Tenant) -> Value {
+    json!({ "document_kind": "nib", "upload_slot_id": new_id().to_string() })
+}
+
+/// Isi permintaan URL unduh dokumen yang sah.
+fn document_download_body(_t: &Tenant) -> Value {
+    json!({ "document_kind": "npwp" })
+}
 
 /// Isi undangan sah dengan email sintetis unik per panggilan.
 fn invitation_body(_t: &Tenant) -> Value {

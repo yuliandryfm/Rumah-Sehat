@@ -41,9 +41,15 @@ use time::OffsetDateTime;
 use tokio::sync::Semaphore;
 
 pub use super::domain::{
-    LogicalBucket, MAX_PHOTO_BYTES, PEAK_VALIDATION_MEMORY_BYTES, PhotoFormat, UploadPurpose,
+    FileFormat, LogicalBucket, MAX_PDF_BYTES, MAX_PHOTO_BYTES, PEAK_VALIDATION_MEMORY_BYTES,
+    UploadPurpose,
 };
 pub use super::error::FileError;
+pub use super::pdf::{
+    ACTIVE_CONTENT_NAMES, DEFAULT_PDF_INSPECT_MAX_OUTPUT_BYTES,
+    DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS, PdfInspectFuture, PdfInspector, PdfVerdict, QpdfConfig,
+    QpdfInspector, analyze_qpdf_json,
+};
 pub use crypto::ContainerType;
 
 /// Hasil pemeriksaan: `true` bila dependensi siap.
@@ -206,6 +212,8 @@ impl std::error::Error for FileStorageSetupError {}
 /// Layanan berkas yang sudah tervalidasi konfigurasinya. Murah dibagi lewat `Arc`.
 pub struct FileStorage {
     pub(super) store: ObjectStore,
+    /// Pemeriksa PDF (F1-T102). Kosong = PDF belum didukung: slot unggah PDF ditolak `415` (gagal-tertutup).
+    pub(super) pdf_inspector: Option<Arc<dyn PdfInspector>>,
     bucket_prefix: String,
     pub(super) slot_ttl: Duration,
     pub(super) upload_method: UploadMethod,
@@ -217,6 +225,7 @@ impl fmt::Debug for FileStorage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileStorage")
             .field("store", &self.store)
+            .field("pdf_inspector", &self.pdf_inspector.is_some())
             .field("slot_ttl", &self.slot_ttl)
             .field("upload_method", &self.upload_method)
             .finish()
@@ -260,12 +269,21 @@ impl FileStorage {
         }
         Ok(Self {
             store,
+            pdf_inspector: None,
             bucket_prefix: config.bucket_prefix.clone(),
             slot_ttl: config.slot_ttl,
             upload_method: config.upload_method,
             permits: Arc::new(Semaphore::new(config.validation_concurrency)),
             queue_timeout: config.validation_queue_timeout,
         })
+    }
+
+    /// Memasang pemeriksa PDF (F1-T102): tanpa pemeriksa, slot unggah PDF ditolak (gagal-tertutup). Produksi
+    /// memasang [`QpdfInspector`] (`PDF_INSPECTOR_QPDF_PATH`); test boleh memasang pengganti.
+    #[must_use]
+    pub fn with_pdf_inspector(mut self, inspector: Arc<dyn PdfInspector>) -> Self {
+        self.pdf_inspector = Some(inspector);
+        self
     }
 
     /// Nama bucket fisik untuk bucket logis.
@@ -290,7 +308,8 @@ pub struct UploadSlotRequest {
     pub owner_account_id: Uuid,
     /// Tujuan unggahan.
     pub purpose: UploadPurpose,
-    /// Tipe MIME yang dinyatakan klien (`image/jpeg` atau `image/png`); isi tetap diperiksa setelah unggah.
+    /// Tipe MIME yang dinyatakan klien (`image/jpeg`, `image/png`, atau `application/pdf` bila tujuan
+    /// mengizinkan); isi tetap diperiksa setelah unggah.
     pub content_type: String,
     /// Ukuran berkas yang dinyatakan klien (byte); wajib persis untuk jalur PUT.
     pub size_bytes: u64,
@@ -356,7 +375,7 @@ pub struct ValidatedUpload {
     pub(super) owner_account_id: Uuid,
     pub(super) purpose: UploadPurpose,
     pub(super) object_key: String,
-    pub(super) format: PhotoFormat,
+    pub(super) format: FileFormat,
     pub(super) size_bytes: i32,
     pub(super) sha256: [u8; crypto::SHA256_LEN],
     pub(super) validated_at: OffsetDateTime,
@@ -457,6 +476,31 @@ pub async fn record_stored_file(
     service::record_stored_file(conn, clock, upload, container).await
 }
 
+/// Menghapus lunak satu berkas di transaksi pemanggil (ADR-003; misalnya dokumen perusahaan yang digantikan,
+/// F1-T102). Objeknya tetap di bucket sampai pemusnahan retensi. Berkas tidak ada atau sudah terhapus =
+/// [`FileError::NotFound`].
+pub async fn soft_delete_stored_file(
+    conn: &mut PgConnection,
+    clock: &dyn Clock,
+    stored_file_id: Uuid,
+    by: Uuid,
+    reason: &str,
+) -> Result<(), FileError> {
+    service::soft_delete_stored_file(conn, clock, stored_file_id, by, reason).await
+}
+
+/// Jumlah slot unggah yang dibuat `owner_account_id` untuk tujuan `purpose` (bucket yang sama) dalam `window`
+/// terakhir; dasar kuota per akun (F1-T102).
+pub async fn count_recent_upload_slots(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    owner_account_id: Uuid,
+    purpose: UploadPurpose,
+    window: Duration,
+) -> Result<i64, FileError> {
+    service::count_recent_upload_slots(pool, clock, owner_account_id, purpose, window).await
+}
+
 /// Isi berkas konten publik (gambar konten CMS) untuk disajikan backend (ADR-027 butir 5).
 pub struct PublicFile {
     /// Tipe MIME menurut isi tervalidasi (`image/jpeg` atau `image/png`).
@@ -547,6 +591,14 @@ pub enum FileAccess {
         /// Perusahaan pemilik dokumen.
         corporate_client_id: Uuid,
     },
+    /// HR perusahaan (akun `corporate_admin`) mengunduh dokumen perusahaannya sendiri (F1-T102, US-1901): relasi
+    /// berkas ke perusahaan pemanggil (keanggotaan aktif dari sesi, ADR-028 butir 1) sudah diperiksa modul
+    /// pemanggil. Dicatat E-12 (unduh data, PRD §7.1) dan di-commit sebelum URL diterbitkan; tanpa subjek data,
+    /// `tenant_id` = `corporate_client_id`.
+    CorporateHr {
+        /// Perusahaan pemilik dokumen (= perusahaan pemanggil).
+        corporate_client_id: Uuid,
+    },
 }
 
 /// Permintaan URL unduh.
@@ -591,8 +643,8 @@ impl fmt::Debug for DownloadTicket {
 ///    `authz::visible_object` (security log `access_denied`); percobaan atas berkas yang ada juga dicatat
 ///    E-05 hasil gagal di transaksi tersendiri (KU-03, coding-standards §4.4 butir 3);
 /// 2. akses [`FileAccess::Staff`] dan [`FileAccess::StaffCorporate`]: E-05 ditulis dan di-commit lewat
-///    `audit::in_audited_tx` sebelum URL dibuat; gagal mencatat → akses ditolak (500) tanpa URL
-///    (coding-standards §4.4 butir 2);
+///    `audit::in_audited_tx` sebelum URL dibuat; [`FileAccess::CorporateHr`]: E-12 dengan cara yang sama; gagal
+///    mencatat → akses ditolak (500) tanpa URL (coding-standards §4.4 butir 2);
 /// 3. URL GET bertanda tangan [`DOWNLOAD_URL_TTL`] dengan header respons lampiran.
 pub async fn issue_download_url(
     pool: &PgPool,

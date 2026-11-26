@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at FROM app.corporate_client c WHERE c.deleted_at IS NULL AND c.status = 'pending_verification' AND ($1::uuid IS NULL OR (c.submitted_at, c.id) > (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1)) ORDER BY c.submitted_at, c.id LIMIT $2",
+  "query": "SELECT q.id AS \"id!\", q.legal_name AS \"legal_name!\", q.nib AS \"nib!\", q.origin AS \"origin!\",\n                  q.submission_round AS \"submission_round!\", q.submitted_at AS \"submitted_at!\",\n                  q.documents_complete AS \"documents_complete!\"\n           FROM (\n             SELECT c.id, c.legal_name, c.nib, c.origin, c.submission_round, c.submitted_at,\n                    (SELECT count(*) FROM app.corporate_client_document d\n                      WHERE d.corporate_client_id = c.id AND d.deleted_at IS NULL) >= 3 AS documents_complete\n             FROM app.corporate_client c\n             WHERE c.deleted_at IS NULL AND c.status = 'pending_verification'\n           ) q\n           WHERE ($2::boolean IS NULL OR q.documents_complete = $2)\n             AND ($1::uuid IS NULL OR (q.submitted_at, q.id) >\n                  (SELECT a.submitted_at, a.id FROM app.corporate_client a WHERE a.id = $1))\n           ORDER BY q.submitted_at, q.id\n           LIMIT $3",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "legal_name",
+        "name": "legal_name!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "nib",
+        "name": "nib!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -38,7 +38,7 @@
       },
       {
         "ordinal": 3,
-        "name": "origin",
+        "name": "origin!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -49,7 +49,7 @@
       },
       {
         "ordinal": 4,
-        "name": "submission_round",
+        "name": "submission_round!",
         "type_info": "Int4",
         "origin": {
           "Table": {
@@ -60,7 +60,7 @@
       },
       {
         "ordinal": 5,
-        "name": "submitted_at",
+        "name": "submitted_at!",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
@@ -68,11 +68,18 @@
             "name": "submitted_at"
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "documents_complete!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
+        "Bool",
         "Int8"
       ]
     },
@@ -82,8 +89,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "0771d993bc003b66c290e0b16e04caf86c8b2ebc525879eb9504392b4b0da0eb"
+  "hash": "35d597742d120ec13b9a40258275ec89eecc25ee61a7a7de0c3a5ebec720981c"
 }

@@ -7,6 +7,9 @@
 //!   akhir) terbuang. Orientasi EXIF diterapkan ke piksel lebih dulu supaya foto tidak terputar.
 //! - Batas ukuran foto 5 MiB = 5.242.880 byte untuk berkas seperti diunggah, sebelum dikode ulang
 //!   (NFR-SEC-08, KEPUTUSAN-191).
+//! - PDF (F1-T102): jenis dari magic bytes `%PDF-` di awal berkas; batas 10 MiB = 10.485.760 byte (NFR-SEC-08,
+//!   PRD v1.3). Pemeriksaan konten aktif dilakukan `pdf.rs` (qpdf, KEPUTUSAN-86); PDF yang lolos disimpan
+//!   apa adanya (tanpa CDR/render ulang, ADR-018 butir 6 jalur penolakan).
 
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
@@ -15,6 +18,9 @@ use std::io::Cursor;
 
 /// Batas ukuran foto JPG/PNG seperti diunggah (NFR-SEC-08: 5 MiB, KEPUTUSAN-191).
 pub const MAX_PHOTO_BYTES: u64 = 5_242_880;
+
+/// Batas ukuran dokumen PDF seperti diunggah (NFR-SEC-08, PRD v1.3: 10 MiB = 10.485.760 byte).
+pub const MAX_PDF_BYTES: u64 = 10_485_760;
 
 /// Batas lebar/tinggi gambar yang didekode (pelindung bom dekompresi). Usulan teknis F1-T29: cukup untuk
 /// foto kamera ponsel 108 MP (±12.000 × 9.000 piksel).
@@ -38,21 +44,24 @@ pub(crate) const FILES_PREFIX: &str = "files/";
 /// Kualitas JPEG hasil kode ulang (1–100). Usulan teknis F1-T29.
 pub(crate) const JPEG_REENCODE_QUALITY: u8 = 90;
 
-/// Jenis foto yang diizinkan.
+/// Jenis berkas yang dikenal: foto (JPEG, PNG) dan dokumen PDF (F1-T102).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PhotoFormat {
+pub enum FileFormat {
     /// JPEG.
     Jpeg,
     /// PNG.
     Png,
+    /// PDF (hanya untuk tujuan yang mengizinkannya, [`UploadPurpose::allows`]).
+    Pdf,
 }
 
-impl PhotoFormat {
+impl FileFormat {
     /// Nilai `mime_type` (`stored_file`, CHECK DD A19.6) dan `Content-Type` URL unggah.
     pub const fn mime(self) -> &'static str {
         match self {
             Self::Jpeg => "image/jpeg",
             Self::Png => "image/png",
+            Self::Pdf => "application/pdf",
         }
     }
 
@@ -61,14 +70,24 @@ impl PhotoFormat {
         match mime {
             "image/jpeg" => Some(Self::Jpeg),
             "image/png" => Some(Self::Png),
+            "application/pdf" => Some(Self::Pdf),
             _ => None,
         }
     }
 
-    fn image_format(self) -> ImageFormat {
+    /// Batas ukuran berkas jenis ini seperti diunggah (NFR-SEC-08).
+    pub const fn max_size_bytes(self) -> u64 {
         match self {
-            Self::Jpeg => ImageFormat::Jpeg,
-            Self::Png => ImageFormat::Png,
+            Self::Jpeg | Self::Png => MAX_PHOTO_BYTES,
+            Self::Pdf => MAX_PDF_BYTES,
+        }
+    }
+
+    fn image_format(self) -> Option<ImageFormat> {
+        match self {
+            Self::Jpeg => Some(ImageFormat::Jpeg),
+            Self::Png => Some(ImageFormat::Png),
+            Self::Pdf => None,
         }
     }
 }
@@ -136,9 +155,8 @@ pub enum UploadPurpose {
     /// Dokumen perusahaan: NIB, NPWP, dan bukti kewenangan pendaftar (A20 `corporate_client_document`,
     /// US-1901 AC1, US-1902 AC1). Bucket `license_document` mengikuti preseden dokumen izin usaha rekanan
     /// (DD A5.3 `partner_license_document`); usulan teknis F1-T104, belum ada keputusan bucket khusus dokumen
-    /// perusahaan di ADR-018. F1-T104 hanya memakai tujuan ini untuk membuka berkas (URL unduh); jalur
-    /// unggah, PDF, dan penetralan PDF (ADR-018) ditetapkan F1-T102, sampai saat itu jenis yang diterima sama
-    /// dengan foto.
+    /// perusahaan di ADR-018. F1-T102: satu-satunya tujuan yang menerima PDF (foto JPG/PNG ≤ 5 MiB atau PDF
+    /// ≤ 10 MiB), dengan pemeriksaan konten aktif PDF ([`super::pdf`], ADR-018 butir 6).
     CorporateDocument,
 }
 
@@ -161,19 +179,19 @@ impl UploadPurpose {
         }
     }
 
-    /// Batas ukuran berkas seperti diunggah.
-    pub const fn max_size_bytes(self) -> u64 {
-        match self {
-            Self::KtpPhoto | Self::ContentImage | Self::CorporateDocument => MAX_PHOTO_BYTES,
-        }
+    /// Batas ukuran berkas jenis `format` seperti diunggah (foto 5 MiB, PDF 10 MiB, NFR-SEC-08).
+    pub const fn max_size_for(self, format: FileFormat) -> u64 {
+        format.max_size_bytes()
     }
 
-    /// Apakah jenis foto diizinkan untuk tujuan ini.
-    pub fn allows(self, format: PhotoFormat) -> bool {
+    /// Apakah jenis berkas diizinkan untuk tujuan ini: foto untuk semua tujuan, PDF hanya untuk dokumen
+    /// perusahaan (F1-T102).
+    pub fn allows(self, format: FileFormat) -> bool {
         match self {
-            Self::KtpPhoto | Self::ContentImage | Self::CorporateDocument => {
-                matches!(format, PhotoFormat::Jpeg | PhotoFormat::Png)
+            Self::KtpPhoto | Self::ContentImage => {
+                matches!(format, FileFormat::Jpeg | FileFormat::Png)
             }
+            Self::CorporateDocument => true,
         }
     }
 }
@@ -185,6 +203,9 @@ pub(crate) enum ContentRejection {
     TooLarge,
     /// Jenis menurut isi tidak diizinkan, tidak cocok dengan yang dinyatakan, atau isi tidak dapat didekode.
     UnsupportedType,
+    /// PDF memuat konten aktif (JavaScript, OpenAction, Launch, EmbeddedFile, AcroForm/XFA, dst.), terenkripsi,
+    /// atau tidak dapat diperiksa (ADR-018 butir 6, KEPUTUSAN-86). Dijawab seperti jenis tidak didukung.
+    ActiveContent,
 }
 
 impl ContentRejection {
@@ -193,6 +214,7 @@ impl ContentRejection {
         match self {
             Self::TooLarge => "too_large",
             Self::UnsupportedType => "unsupported_type",
+            Self::ActiveContent => "pdf_not_safe",
         }
     }
 }
@@ -200,18 +222,34 @@ impl ContentRejection {
 /// Foto yang sudah dikode ulang.
 pub(crate) struct SanitizedPhoto {
     pub(crate) bytes: Vec<u8>,
-    pub(crate) format: PhotoFormat,
+    pub(crate) format: FileFormat,
 }
 
-/// Jenis foto menurut magic bytes: JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A` [SRC-555].
-pub(crate) fn sniff_photo_format(bytes: &[u8]) -> Option<PhotoFormat> {
+/// Jenis berkas menurut magic bytes: JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A` [SRC-555], PDF `%PDF-`
+/// tepat di awal berkas (PDF dengan awalan sampah sebelum penanda ditolak: penampil yang menoleransinya
+/// dapat mengurai berkas berbeda dari pemeriksa).
+pub(crate) fn sniff_photo_format(bytes: &[u8]) -> Option<FileFormat> {
     const PNG: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
     if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        Some(PhotoFormat::Jpeg)
+        Some(FileFormat::Jpeg)
     } else if bytes.starts_with(&PNG) {
-        Some(PhotoFormat::Png)
+        Some(FileFormat::Png)
+    } else if bytes.starts_with(b"%PDF-") {
+        Some(FileFormat::Pdf)
     } else {
         None
+    }
+}
+
+/// Pemeriksaan awal PDF sebelum diserahkan ke pemeriksa: ukuran dan magic bytes. Isi tidak diubah.
+pub(crate) fn precheck_pdf(bytes: &[u8], max_size_bytes: u64) -> Result<(), ContentRejection> {
+    let len = u64::try_from(bytes.len()).map_err(|_| ContentRejection::TooLarge)?;
+    if len > max_size_bytes {
+        return Err(ContentRejection::TooLarge);
+    }
+    match sniff_photo_format(bytes) {
+        Some(FileFormat::Pdf) => Ok(()),
+        _ => Err(ContentRejection::UnsupportedType),
     }
 }
 
@@ -232,7 +270,7 @@ pub(crate) fn decoded_size_allowed(total_bytes: u64) -> bool {
 /// ditandatangani di URL unggah); isi wajib berjenis sama.
 pub(crate) fn sanitize_photo(
     bytes: &[u8],
-    declared: PhotoFormat,
+    declared: FileFormat,
     max_size_bytes: u64,
 ) -> Result<SanitizedPhoto, ContentRejection> {
     let len = u64::try_from(bytes.len()).map_err(|_| ContentRejection::TooLarge)?;
@@ -243,7 +281,11 @@ pub(crate) fn sanitize_photo(
         Some(f) if f == declared => {}
         _ => return Err(ContentRejection::UnsupportedType),
     }
-    let mut reader = ImageReader::with_format(Cursor::new(bytes), declared.image_format());
+    let Some(image_format) = declared.image_format() else {
+        // PDF bukan foto: jalurnya `precheck_pdf` + pemeriksa PDF.
+        return Err(ContentRejection::UnsupportedType);
+    };
+    let mut reader = ImageReader::with_format(Cursor::new(bytes), image_format);
     reader.limits(decode_limits());
     let mut decoder = reader
         .into_decoder()
@@ -261,7 +303,7 @@ pub(crate) fn sanitize_photo(
     }
     let mut out = Vec::new();
     let encoded = match declared {
-        PhotoFormat::Jpeg => {
+        FileFormat::Jpeg => {
             // JPEG tanpa kanal alfa; warna dikonversi bila perlu (L8 tetap L8).
             let image = match image {
                 DynamicImage::ImageLuma8(_) | DynamicImage::ImageRgb8(_) => image,
@@ -272,7 +314,8 @@ pub(crate) fn sanitize_photo(
                 JPEG_REENCODE_QUALITY,
             ))
         }
-        PhotoFormat::Png => image.write_with_encoder(PngEncoder::new(&mut out)),
+        FileFormat::Png => image.write_with_encoder(PngEncoder::new(&mut out)),
+        FileFormat::Pdf => return Err(ContentRejection::UnsupportedType),
     };
     encoded.map_err(|_| ContentRejection::UnsupportedType)?;
     Ok(SanitizedPhoto {
@@ -306,8 +349,8 @@ mod tests {
 
     #[test]
     fn sniffing_uses_magic_bytes_only() {
-        assert_eq!(sniff_photo_format(&jpeg(2, 2)), Some(PhotoFormat::Jpeg));
-        assert_eq!(sniff_photo_format(&png(2, 2)), Some(PhotoFormat::Png));
+        assert_eq!(sniff_photo_format(&jpeg(2, 2)), Some(FileFormat::Jpeg));
+        assert_eq!(sniff_photo_format(&png(2, 2)), Some(FileFormat::Png));
         assert_eq!(
             sniff_photo_format(b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>"),
             None
@@ -319,21 +362,21 @@ mod tests {
 
     #[test]
     fn valid_photos_are_reencoded_as_declared_type() {
-        let out = sanitize_photo(&jpeg(4, 3), PhotoFormat::Jpeg, MAX_PHOTO_BYTES).unwrap();
-        assert_eq!(sniff_photo_format(&out.bytes), Some(PhotoFormat::Jpeg));
-        let out = sanitize_photo(&png(4, 3), PhotoFormat::Png, MAX_PHOTO_BYTES).unwrap();
-        assert_eq!(sniff_photo_format(&out.bytes), Some(PhotoFormat::Png));
-        assert_eq!(out.format, PhotoFormat::Png);
+        let out = sanitize_photo(&jpeg(4, 3), FileFormat::Jpeg, MAX_PHOTO_BYTES).unwrap();
+        assert_eq!(sniff_photo_format(&out.bytes), Some(FileFormat::Jpeg));
+        let out = sanitize_photo(&png(4, 3), FileFormat::Png, MAX_PHOTO_BYTES).unwrap();
+        assert_eq!(sniff_photo_format(&out.bytes), Some(FileFormat::Png));
+        assert_eq!(out.format, FileFormat::Png);
     }
 
     #[test]
     fn declared_type_mismatch_is_rejected() {
         assert!(matches!(
-            sanitize_photo(&png(2, 2), PhotoFormat::Jpeg, MAX_PHOTO_BYTES),
+            sanitize_photo(&png(2, 2), FileFormat::Jpeg, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
         assert!(matches!(
-            sanitize_photo(&jpeg(2, 2), PhotoFormat::Png, MAX_PHOTO_BYTES),
+            sanitize_photo(&jpeg(2, 2), FileFormat::Png, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
     }
@@ -343,30 +386,28 @@ mod tests {
         let mut fake = vec![0xFF, 0xD8, 0xFF, 0xE0];
         fake.extend_from_slice(b"<html><script>alert(1)</script></html>");
         assert!(matches!(
-            sanitize_photo(&fake, PhotoFormat::Jpeg, MAX_PHOTO_BYTES),
+            sanitize_photo(&fake, FileFormat::Jpeg, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
         let mut fake = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
         fake.extend_from_slice(b"<svg onload=alert(1)>");
         assert!(matches!(
-            sanitize_photo(&fake, PhotoFormat::Png, MAX_PHOTO_BYTES),
+            sanitize_photo(&fake, FileFormat::Png, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
         // PNG terpotong (dekoder JPEG mode tidak ketat dapat mengisi sisa JPEG terpotong; hasilnya tetap
         // dikode ulang sebagai gambar baru).
         let full = png(64, 64);
-        assert!(
-            sanitize_photo(&full[..full.len() / 2], PhotoFormat::Png, MAX_PHOTO_BYTES).is_err()
-        );
+        assert!(sanitize_photo(&full[..full.len() / 2], FileFormat::Png, MAX_PHOTO_BYTES).is_err());
     }
 
     #[test]
     fn size_limit_is_checked_before_decoding() {
         let img = jpeg(2, 2);
         let len = img.len() as u64;
-        assert!(sanitize_photo(&img, PhotoFormat::Jpeg, len).is_ok());
+        assert!(sanitize_photo(&img, FileFormat::Jpeg, len).is_ok());
         assert!(matches!(
-            sanitize_photo(&img, PhotoFormat::Jpeg, len - 1),
+            sanitize_photo(&img, FileFormat::Jpeg, len - 1),
             Err(ContentRejection::TooLarge)
         ));
     }
@@ -380,7 +421,7 @@ mod tests {
             .write_with_encoder(PngEncoder::new(&mut out))
             .unwrap();
         assert!(matches!(
-            sanitize_photo(&out, PhotoFormat::Png, MAX_PHOTO_BYTES),
+            sanitize_photo(&out, FileFormat::Png, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
     }
@@ -422,7 +463,7 @@ mod tests {
         let header_only = png_header_only(11_000, 11_000);
         assert!(header_only.len() < 100);
         assert!(matches!(
-            sanitize_photo(&header_only, PhotoFormat::Png, MAX_PHOTO_BYTES),
+            sanitize_photo(&header_only, FileFormat::Png, MAX_PHOTO_BYTES),
             Err(ContentRejection::UnsupportedType)
         ));
         assert!(decoded_size_allowed(MAX_DECODED_BYTES));
@@ -442,9 +483,15 @@ mod tests {
             LogicalBucket::PublicContent
         );
         assert_eq!(UploadPurpose::ContentImage.category(), "cms_image");
-        assert_eq!(UploadPurpose::ContentImage.max_size_bytes(), 5_242_880);
-        assert_eq!(UploadPurpose::KtpPhoto.max_size_bytes(), 5_242_880);
-        assert!(UploadPurpose::KtpPhoto.allows(PhotoFormat::Png));
+        assert_eq!(
+            UploadPurpose::ContentImage.max_size_for(FileFormat::Jpeg),
+            5_242_880
+        );
+        assert_eq!(
+            UploadPurpose::KtpPhoto.max_size_for(FileFormat::Png),
+            5_242_880
+        );
+        assert!(UploadPurpose::KtpPhoto.allows(FileFormat::Png));
         assert_eq!(
             UploadPurpose::CorporateDocument.bucket().as_str(),
             "license_document"
@@ -456,7 +503,62 @@ mod tests {
         for b in LogicalBucket::ALL {
             assert_eq!(LogicalBucket::parse(b.as_str()), Some(b));
         }
-        assert_eq!(PhotoFormat::from_mime("image/svg+xml"), None);
-        assert_eq!(PhotoFormat::from_mime("image/png"), Some(PhotoFormat::Png));
+        assert_eq!(FileFormat::from_mime("image/svg+xml"), None);
+        assert_eq!(FileFormat::from_mime("image/png"), Some(FileFormat::Png));
+    }
+    // trace: US-1901 AC2, NFR-SEC-08 (PDF ≤ 10 MiB, jenis dari magic bytes, hanya dokumen perusahaan)
+    #[test]
+    fn pdf_is_allowed_only_for_corporate_documents_with_its_own_limit() {
+        assert_eq!(MAX_PDF_BYTES, 10_485_760);
+        assert_eq!(FileFormat::Pdf.mime(), "application/pdf");
+        assert_eq!(
+            FileFormat::from_mime("application/pdf"),
+            Some(FileFormat::Pdf)
+        );
+        assert_eq!(
+            UploadPurpose::CorporateDocument.max_size_for(FileFormat::Pdf),
+            10_485_760
+        );
+        assert_eq!(
+            UploadPurpose::CorporateDocument.max_size_for(FileFormat::Jpeg),
+            5_242_880
+        );
+        assert!(UploadPurpose::CorporateDocument.allows(FileFormat::Pdf));
+        assert!(UploadPurpose::CorporateDocument.allows(FileFormat::Png));
+        assert!(!UploadPurpose::KtpPhoto.allows(FileFormat::Pdf));
+        assert!(!UploadPurpose::ContentImage.allows(FileFormat::Pdf));
+    }
+
+    #[test]
+    fn pdf_precheck_requires_magic_at_offset_zero_and_size_limit() {
+        let ok = b"%PDF-1.7\n%%EOF\n".to_vec();
+        assert_eq!(sniff_photo_format(&ok), Some(FileFormat::Pdf));
+        assert!(precheck_pdf(&ok, MAX_PDF_BYTES).is_ok());
+        // Ekstensi .pdf tetapi isi bukan PDF.
+        assert!(matches!(
+            precheck_pdf(b"<html><script>alert(1)</script></html>", MAX_PDF_BYTES),
+            Err(ContentRejection::UnsupportedType)
+        ));
+        // Awalan sampah sebelum penanda ditolak.
+        assert!(matches!(
+            precheck_pdf(b"\n%PDF-1.7\n", MAX_PDF_BYTES),
+            Err(ContentRejection::UnsupportedType)
+        ));
+        // Magic JPEG tidak dianggap PDF.
+        assert!(matches!(
+            precheck_pdf(&jpeg(2, 2), MAX_PDF_BYTES),
+            Err(ContentRejection::UnsupportedType)
+        ));
+        let len = ok.len() as u64;
+        assert!(precheck_pdf(&ok, len).is_ok());
+        assert!(matches!(
+            precheck_pdf(&ok, len - 1),
+            Err(ContentRejection::TooLarge)
+        ));
+        // PDF tidak pernah lewat jalur foto.
+        assert!(matches!(
+            sanitize_photo(&ok, FileFormat::Pdf, MAX_PDF_BYTES),
+            Err(ContentRejection::UnsupportedType)
+        ));
     }
 }

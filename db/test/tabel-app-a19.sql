@@ -32,12 +32,13 @@ SELECT pg_temp.uji_nol('A19.4 job: index persis pk, ix run_at queued, ix status/
     'CREATE INDEX ix_job_status_finished_at ON app.job USING btree (status, finished_at) WHERE (status = ANY (ARRAY[''succeeded''::text, ''failed''::text, ''cancelled''::text]))',
     'CREATE UNIQUE INDEX uqp_job_dedupe_key ON app.job USING btree (dedupe_key) WHERE (status = ANY (ARRAY[''queued''::text, ''running''::text]))',
     'CREATE INDEX ix_job_locked_until_running ON app.job USING btree (locked_until) WHERE (status = ''running''::text)'])));
-SELECT pg_temp.uji_nol('A19.5 upload_slot: index persis pk, uq object_key, ix expires_at §9.3, uq sanitized_object_key (TD-17)',
+SELECT pg_temp.uji_nol('A19.5 upload_slot: index persis pk, uq object_key, ix expires_at §9.3, uq sanitized_object_key (TD-17), ix kuota per akun (F1-T102)',
   ARRAY(SELECT pg_temp.uji_indeks('app.upload_slot', ARRAY[
     'CREATE UNIQUE INDEX pk_upload_slot ON app.upload_slot USING btree (id)',
     'CREATE UNIQUE INDEX uq_upload_slot_object_key ON app.upload_slot USING btree (object_key)',
     'CREATE INDEX ix_upload_slot_expires_at ON app.upload_slot USING btree (expires_at)',
-    'CREATE UNIQUE INDEX uq_upload_slot_sanitized_object_key ON app.upload_slot USING btree (sanitized_object_key)'])));
+    'CREATE UNIQUE INDEX uq_upload_slot_sanitized_object_key ON app.upload_slot USING btree (sanitized_object_key)',
+    'CREATE INDEX ix_upload_slot_owner_account_id_bucket_created_at ON app.upload_slot USING btree (owner_account_id, bucket, created_at)'])));
 SELECT pg_temp.uji_nol('A19.5 upload_slot TD-17: consumed_at timestamptz NULL dan sanitized_object_key text NULL, tanpa nilai bawaan',
   ARRAY(SELECT format('%s: %s null=%s default=%s', v.k, coalesce(format_type(a.atttypid, a.atttypmod), '<tidak ada>'),
                       NOT coalesce(a.attnotnull, true), a.atthasdef)
