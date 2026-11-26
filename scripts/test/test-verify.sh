@@ -148,7 +148,7 @@ nilai() { # nilai <nama> <kode-diharapkan> <kode-aktual> <log> [pola-ERE-wajib .
     echo "GAGAL  $nama; ringkasan keluaran verify.sh:" >&2
     sed -n '/== Ringkasan verify.sh ==/,$p' "$log" >&2
     echo "  baris galat (maks. 40):" >&2
-    grep -E 'panicked|FAILED|^error|GAGAL|tidak ditemukan|ditolak' "$log" | sed -n '1,40p' >&2 || true
+    grep -E 'panicked|FAILED|FAIL |×|AssertionError|timed out|Timeout|^error|GAGAL|tidak ditemukan|ditolak' "$log" | sed -n '1,40p' >&2 || true
   fi
 }
 
