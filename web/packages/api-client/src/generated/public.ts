@@ -75,6 +75,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/corporate-registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mendaftarkan perusahaan mandiri tanpa login (US-1901). Jawaban `202` seragam untuk pendaftaran baru, NIB
+         *     terdaftar, dan email terdaftar, dengan waktu respons yang disamakan; password tidak diminta (diatur lewat
+         *     tautan aktivasi email).
+         */
+        post: operations["corporate_registration_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/corporate-registrations/consent-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1): tujuh bagian, kontak, dan butir.
+         *     Tanpa login, dengan batas laju sendiri (terpisah dari POST). Teks draf tidak disajikan di production.
+         */
+        get: operations["corporate_registration_consent_text"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -84,6 +125,81 @@ export interface components {
          * @enum {string}
          */
         ContentType: "banner" | "info_page" | "article" | "promo";
+        /** @description Jawaban seragam pendaftaran. */
+        CorporateRegistrationAcceptedDto: {
+            /** @description Pesan seragam untuk layar "Periksa email Anda". */
+            message: string;
+            /**
+             * @description Selalu `processing`, juga untuk NIB atau email yang sudah terdaftar (anti-enumerasi).
+             * @example processing
+             */
+            status: string;
+        };
+        /** @description Bentuk dokumentasi respons pendaftaran. */
+        CorporateRegistrationAcceptedEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["CorporateRegistrationAcceptedDto"];
+            /** @example 2020000 */
+            response_code: string;
+            /** @example Diterima */
+            response_description: string;
+        };
+        /** @description Isian pendaftaran perusahaan. Tanpa password: password diatur lewat tautan aktivasi email (KEPUTUSAN-303). */
+        CorporateRegistrationRequest: {
+            /**
+             * @description Butir persetujuan yang dicentang; butir wajib harus ada.
+             * @example [
+             *       "01a2008d-7400-7000-8000-000000000b02"
+             *     ]
+             */
+            consent_item_ids: string[];
+            /**
+             * @description Versi teks persetujuan yang ditampilkan (dari `GET .../consent-text`).
+             * @example 01a2008d-7400-7000-8000-000000000b01
+             */
+            consent_text_version_id: string;
+            /**
+             * @description Email HR pendaftar: penerima tautan aktivasi (verifikasi email, password, TOTP).
+             * @example hr@perusahaan.example
+             */
+            hr_email: string;
+            /**
+             * @description Nama HR pendaftar (maks 120 karakter).
+             * @example Nama HR Sintetis
+             */
+            hr_full_name: string;
+            /**
+             * @description Jabatan HR pendaftar (maks 100 karakter).
+             * @example Manajer SDM
+             */
+            hr_job_title: string;
+            /**
+             * @description Nama badan usaha (maks 200 karakter).
+             * @example PT Contoh Sintetis
+             */
+            legal_name: string;
+            /**
+             * @description NIB: tepat 13 angka (Peraturan BKPM 3/2021). Keaslian diperiksa Verifikator.
+             * @example 1234567890123
+             */
+            nib: string;
+            /**
+             * @description NPWP badan: tepat 16 angka (PMK 112/PMK.03/2022). NPWP 15 angka lama: tambahkan angka 0 di depan
+             *     sebelum dikirim.
+             * @example 0123456789012345
+             */
+            npwp: string;
+            /**
+             * @description Alamat kantor (maks 500 karakter).
+             * @example Jl. Contoh No. 1, Jakarta
+             */
+            office_address: string;
+            /**
+             * @description Telepon kantor (maks 32 karakter).
+             * @example 021-0000000
+             */
+            office_phone: string;
+        };
         /**
          * @description Bentuk dokumentasi respons galat (RFC 9457 yang kompatibel dengan ADR-023 butir 3). Isi sebenarnya
          *     dibangun `envelope::ErrorBody`; test `tests/openapi_schema_drift.rs` menjaga keduanya sama.
@@ -191,6 +307,61 @@ export interface components {
              * @example /v1/public/content/images/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b
              */
             url: string;
+        };
+        /** @description Kontak Ruang Sehat. */
+        RegistrationConsentContactDto: {
+            body: string;
+            title: string;
+        };
+        /** @description Butir persetujuan: satu kotak centang yang tidak tercentang otomatis. */
+        RegistrationConsentItemDto: {
+            /** @example 01a2008d-7400-7000-8000-000000000b02 */
+            consent_item_id: string;
+            is_primary: boolean;
+            /** @description Wajib dicentang untuk mendaftar. */
+            is_required: boolean;
+            /** @example corporate_hr_data_processing */
+            item_code: string;
+            label: string;
+            /** Format: int32 */
+            sort_order: number;
+        };
+        /** @description Satu bagian teks persetujuan. */
+        RegistrationConsentSectionDto: {
+            /** @description Isi bagian, teks biasa (bukan HTML). */
+            body: string;
+            /** @example purpose */
+            code: string;
+            /** @example (b) Tujuan pemrosesan */
+            title: string;
+        };
+        /** @description Versi teks persetujuan HR yang berlaku. */
+        RegistrationConsentTextDto: {
+            /** @example 01a2008d-7400-7000-8000-000000000b01 */
+            consent_text_version_id: string;
+            /** @example corporate_hr_registration */
+            consent_type: string;
+            contact: components["schemas"]["RegistrationConsentContactDto"];
+            /** @description Penanda teks draf (`null` untuk teks final yang disetujui legal dan Petugas PDP). */
+            draft_notice?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-11-26T00:00:01Z
+             */
+            effective_from: string;
+            items: components["schemas"]["RegistrationConsentItemDto"][];
+            sections: components["schemas"]["RegistrationConsentSectionDto"][];
+            /** @example 0.1-draf */
+            version_label: string;
+        };
+        /** @description Bentuk dokumentasi respons teks persetujuan. */
+        RegistrationConsentTextEnvelope: {
+            correlation_id?: string;
+            data: components["schemas"]["RegistrationConsentTextDto"];
+            /** @example 2000000 */
+            response_code: string;
+            /** @example Berhasil */
+            response_description: string;
         };
         /**
          * @description Halaman situs tujuan (BR-130, `ck_cms_content_site_page`).
@@ -413,6 +584,140 @@ export interface operations {
             };
             /** @description Galat tak terduga. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_registration_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateRegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Permintaan diterima; jawaban sama untuk pendaftaran baru dan NIB atau email yang sudah terdaftar. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorporateRegistrationAcceptedEnvelope"];
+                };
+            };
+            /** @description Badan permintaan tidak dapat dibaca. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description 4090106: teks persetujuan telah berubah; muat ulang teks lalu setujui kembali. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Badan bukan application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Isian tidak valid per field, atau persetujuan wajib tidak dicentang. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Batas laju terlampaui. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Teks persetujuan belum tersedia atau layanan tidak tersedia. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    corporate_registration_consent_text: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versi teks yang berlaku. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationConsentTextEnvelope"];
+                };
+            };
+            /** @description Batas laju terlampaui. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Galat tak terduga. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Belum ada versi teks final yang berlaku atau layanan tidak tersedia. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

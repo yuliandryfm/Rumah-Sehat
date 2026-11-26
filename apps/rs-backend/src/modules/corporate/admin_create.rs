@@ -61,18 +61,18 @@ const NIB_TAKEN_REASON: &str = "nib_already_registered";
 const EMAIL_TAKEN_REASON: &str = "hr_email_in_use";
 
 /// Percobaan menulis event hasil gagal di transaksi tersendiri (coding-standards §4.4 butir 3).
-const FAILED_AUDIT_ATTEMPTS: usize = 3;
+pub(super) const FAILED_AUDIT_ATTEMPTS: usize = 3;
 
 /// Batas panjang sama dengan CHECK `ck_corporate_client_*` (pertahanan lapis kedua, coding-standards §5.1).
-const LEGAL_NAME_MAX: usize = 200;
+pub(super) const LEGAL_NAME_MAX: usize = 200;
 const NIB_MAX: usize = 64;
 const NPWP_MAX: usize = 64;
-const ADDRESS_MAX: usize = 500;
-const PHONE_MAX: usize = 32;
+pub(super) const ADDRESS_MAX: usize = 500;
+pub(super) const PHONE_MAX: usize = 32;
 
 /// Kebijakan audit perusahaan dibuat admin: hanya status, sumber (`origin`), dan putaran pengajuan. Nama,
 /// NIB, NPWP, alamat, telepon, dan email HR tidak terdaftar sehingga pustaka menolaknya (NPWP Terbatas).
-static CLIENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
+pub(super) static CLIENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
     "corporate_client",
     &[
         FieldRule::value("status"),
@@ -83,7 +83,7 @@ static CLIENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
 
 /// Kebijakan audit akun HR yang diundang dan keanggotaannya: status, jenis akun, ID keanggotaan, ID perusahaan.
 /// Email dan nama tidak pernah dicatat.
-static HR_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
+pub(super) static HR_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
     "account",
     &[
         FieldRule::value("status"),
@@ -141,12 +141,12 @@ struct Validated {
     hr_email: String,
 }
 
-fn field(name: &str, code: &str, message: &str) -> FieldError {
+pub(super) fn field(name: &str, code: &str, message: &str) -> FieldError {
     FieldError::new(name, code, message)
 }
 
 /// Teks dipangkas 1..=`max` karakter tanpa karakter kontrol; `single_token` melarang spasi di tengah.
-fn text(raw: &str, max: usize, single_token: bool) -> Option<String> {
+pub(super) fn text(raw: &str, max: usize, single_token: bool) -> Option<String> {
     let t = raw.trim();
     let n = t.chars().count();
     let ok = (1..=max).contains(&n)
@@ -221,7 +221,7 @@ fn validate(input: &NewCorporateClientInput) -> Result<Validated, CorporateError
     }
 }
 
-fn db_error(_: sqlx::Error) -> CorporateError {
+pub(super) fn db_error(_: sqlx::Error) -> CorporateError {
     // Pesan sqlx dapat memuat isi baris (DETAIL); tidak diteruskan (TD-03).
     CorporateError::Database
 }
@@ -240,11 +240,11 @@ fn audit_context(principal: &Principal, ip: IpAddr) -> AuditContext {
     )
 }
 
-fn code(v: &str) -> Result<Code, CorporateError> {
+pub(super) fn code(v: &str) -> Result<Code, CorporateError> {
     Code::new(v).map_err(|_| CorporateError::Internal("audit_code"))
 }
 
-fn code_value(v: &str) -> Result<Value, CorporateError> {
+pub(super) fn code_value(v: &str) -> Result<Value, CorporateError> {
     Value::code(v).map_err(|_| CorporateError::Internal("audit_value"))
 }
 

@@ -21,7 +21,7 @@ SELECT pg_temp.uji_nol('A3 tanpa kolom anonymize (DD A3 tanpa kolom "Anonimkan")
          WHERE attrelid = ANY (ARRAY['app.consent_text_version', 'app.consent_item', 'app.consent_record']::regclass[]::oid[])
            AND attnum > 0 AND NOT attisdropped
            AND (col_description(attrelid, attnum) IS NOT NULL OR attname ~ '(_enc|_bidx|_bidx_key_version)$')));
-SELECT pg_temp.uji_nol('A3 hak per kolom pekerja privasi persis: consent_record SELECT id, created_at, FK subjek (DD §0.6 A Log); tanpa UPDATE per kolom',
+SELECT pg_temp.uji_nol('A3 hak per kolom pekerja privasi persis: consent_record SELECT id, created_at, FK subjek (patient_id, care_recipient_id, account_id F1-T101) (DD §0.6 A Log); tanpa UPDATE per kolom',
   ARRAY(SELECT format('%s %s: %s', att.attrelid::regclass, x.privilege_type, string_agg(att.attname::text, ',' ORDER BY att.attname))
           FROM pg_attribute att, aclexplode(att.attacl) x
          WHERE att.attrelid = ANY (ARRAY['app.consent_text_version', 'app.consent_item', 'app.consent_record']::regclass[]::oid[])
@@ -29,7 +29,7 @@ SELECT pg_temp.uji_nol('A3 hak per kolom pekerja privasi persis: consent_record 
          GROUP BY att.attrelid, x.privilege_type, x.grantee
         HAVING NOT (att.attrelid = 'app.consent_record'::regclass AND x.privilege_type = 'SELECT'
                     AND pg_get_userbyid(x.grantee) = 'rs_privacy_worker'
-                    AND string_agg(att.attname::text, ',' ORDER BY att.attname) = 'care_recipient_id,created_at,id,patient_id')
+                    AND string_agg(att.attname::text, ',' ORDER BY att.attname) = 'account_id,care_recipient_id,created_at,id,patient_id')
         UNION ALL
         SELECT 'consent_record: SELECT per kolom pekerja privasi tidak ada'
          WHERE NOT EXISTS (SELECT 1 FROM pg_attribute att, aclexplode(att.attacl) x
@@ -54,15 +54,17 @@ SELECT pg_temp.uji_nol('A3.2 consent_item: index persis pk, uqp (consent_text_ve
   ARRAY(SELECT pg_temp.uji_indeks('app.consent_item', ARRAY[
     'CREATE UNIQUE INDEX pk_consent_item ON app.consent_item USING btree (id)',
     'CREATE UNIQUE INDEX uqp_consent_item_consent_text_version_id_item_code ON app.consent_item USING btree (consent_text_version_id, item_code) WHERE (deleted_at IS NULL)'])));
-SELECT pg_temp.uji_nol('A3.3 consent_record: index persis pk, ix (patient_id, consent_item_id, created_at DESC) (US-1601 AC1)',
+SELECT pg_temp.uji_nol('A3.3 consent_record: index persis pk, ix (patient_id, consent_item_id, created_at DESC) (US-1601 AC1), ix parsial per akun HR (F1-T101)',
   ARRAY(SELECT pg_temp.uji_indeks('app.consent_record', ARRAY[
     'CREATE UNIQUE INDEX pk_consent_record ON app.consent_record USING btree (id)',
-    'CREATE INDEX ix_consent_record_patient_id_consent_item_id_created_at ON app.consent_record USING btree (patient_id, consent_item_id, created_at DESC)'])));
+    'CREATE INDEX ix_consent_record_patient_id_consent_item_id_created_at ON app.consent_record USING btree (patient_id, consent_item_id, created_at DESC)',
+    'CREATE INDEX ix_consent_record_account_id_consent_item_id_created_at ON app.consent_record USING btree (account_id, consent_item_id, created_at DESC) WHERE (account_id IS NOT NULL)'])));
 SELECT pg_temp.uji_nol('A3 FK persis DD A3 (butir -> versi; bukti -> pasien, penerima layanan, versi, butir; aktor -> account)',
   ARRAY(SELECT x FROM (VALUES
       ('app.consent_item', 'fk_consent_item_consent_text_version_id', 'FOREIGN KEY (consent_text_version_id) REFERENCES app.consent_text_version(id)'),
       ('app.consent_record', 'fk_consent_record_patient_id', 'FOREIGN KEY (patient_id) REFERENCES app.patient(id)'),
       ('app.consent_record', 'fk_consent_record_care_recipient_id', 'FOREIGN KEY (care_recipient_id) REFERENCES app.care_recipient(id)'),
+      ('app.consent_record', 'fk_consent_record_account_id', 'FOREIGN KEY (account_id) REFERENCES app.account(id)'),
       ('app.consent_record', 'fk_consent_record_consent_text_version_id', 'FOREIGN KEY (consent_text_version_id) REFERENCES app.consent_text_version(id)'),
       ('app.consent_record', 'fk_consent_record_consent_item_id', 'FOREIGN KEY (consent_item_id) REFERENCES app.consent_item(id)'),
       ('app.consent_text_version', 'fk_consent_text_version_created_by', 'FOREIGN KEY (created_by) REFERENCES app.account(id)'),
@@ -71,14 +73,17 @@ SELECT pg_temp.uji_nol('A3 FK persis DD A3 (butir -> versi; bukti -> pasien, pen
                    FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = v.t::regclass) z
          WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)
         UNION ALL
-        SELECT format('jumlah FK %s = %s', t, n) FROM (VALUES ('app.consent_text_version', 3), ('app.consent_item', 4), ('app.consent_record', 4)) e(t, harap),
+        SELECT format('jumlah FK %s = %s', t, n) FROM (VALUES ('app.consent_text_version', 3), ('app.consent_item', 4), ('app.consent_record', 5)) e(t, harap),
                LATERAL (SELECT count(*) AS n FROM pg_constraint WHERE conrelid = e.t::regclass AND contype = 'f') c
          WHERE c.n <> e.harap));
-SELECT pg_temp.uji_nol('A3 CHECK enum persis DD (consent_type, action, channel)',
+SELECT pg_temp.uji_nol('A3 CHECK persis DD (consent_type, action, channel) dan subjek bukti pasien XOR akun HR (F1-T101)',
   ARRAY(SELECT x FROM (VALUES
-      ('app.consent_text_version', 'ck_consent_text_version_consent_type', 'CHECK ((consent_type = ANY (ARRAY[''patient_data_processing''::text, ''family_adult_statement''::text, ''guardian_consent''::text])))'),
+      ('app.consent_text_version', 'ck_consent_text_version_consent_type', 'CHECK ((consent_type = ANY (ARRAY[''patient_data_processing''::text, ''family_adult_statement''::text, ''guardian_consent''::text, ''corporate_hr_registration''::text])))'),
       ('app.consent_record', 'ck_consent_record_action', 'CHECK ((action = ANY (ARRAY[''granted''::text, ''withdrawn''::text])))'),
-      ('app.consent_record', 'ck_consent_record_channel', 'CHECK ((channel = ANY (ARRAY[''patient_app''::text, ''backoffice''::text])))')) v(t, n, def),
+      ('app.consent_record', 'ck_consent_record_channel', 'CHECK ((channel = ANY (ARRAY[''patient_app''::text, ''backoffice''::text, ''corporate_portal''::text])))'),
+      ('app.consent_record', 'ck_consent_record_subject', 'CHECK (((patient_id IS NOT NULL) <> (account_id IS NOT NULL)))'),
+      ('app.consent_record', 'ck_consent_record_account_no_care_recipient', 'CHECK (((account_id IS NULL) OR (care_recipient_id IS NULL)))'),
+      ('app.consent_record', 'ck_consent_record_channel_subject', 'CHECK (((account_id IS NOT NULL) = (channel = ''corporate_portal''::text)))')) v(t, n, def),
         LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
                    FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = v.t::regclass) z
          WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)));
@@ -146,6 +151,10 @@ BEGIN
       ('published_lock butir nonaktif', 'ALTER TABLE app.consent_item DISABLE TRIGGER tg_consent_item_published_lock', trg, '.'),
       ('trigger jam server bukti hilang', 'DROP TRIGGER tg_consent_record_server_time ON app.consent_record',
        $q$SELECT 'server_time hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'app.consent_record'::regclass AND tgname = 'tg_consent_record_server_time' AND tgenabled = 'O')$q$, 'server_time hilang'),
+      ('F1-T101 CHECK subjek bukti (pasien XOR akun) dihapus', 'ALTER TABLE app.consent_record DROP CONSTRAINT ck_consent_record_subject',
+       $q$SELECT 'ck subjek hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_consent_record_subject' AND conrelid = 'app.consent_record'::regclass)$q$, 'ck subjek hilang'),
+      ('F1-T101 CHECK kanal-subjek bukti dihapus', 'ALTER TABLE app.consent_record DROP CONSTRAINT ck_consent_record_channel_subject',
+       $q$SELECT 'ck kanal-subjek hilang' WHERE NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_consent_record_channel_subject' AND conrelid = 'app.consent_record'::regclass)$q$, 'ck kanal-subjek hilang'),
       ('FOR SHARE dihapus dari kunci butir', 'CREATE OR REPLACE FUNCTION app.fn_consent_item_published_lock() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS ''BEGIN RETURN NEW; END''',
        $q$SELECT 'tanpa FOR SHARE' WHERE (SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure('app.fn_consent_item_published_lock()')) !~ 'FOR SHARE'$q$, 'tanpa FOR SHARE')
     ) AS t(label, stmt, pemeriksa, pola)
@@ -158,6 +167,8 @@ END $$;
 SET LOCAL ROLE rs_migration;
 INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at, full_name)
   VALUES ('00000000-0000-7000-8000-0000000a3001', 'patient', 'pasien', 'sub-a3-1', 'a3-1@contoh.invalid', 'active', now(), NULL);
+INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at, full_name)
+  VALUES ('00000000-0000-7000-8000-0000000a3002', 'corporate_admin', 'korporat', 'sub-a3-hr', 'a3-hr@contoh.invalid', 'active', now(), 'HR Sintetis');
 INSERT INTO app.patient (id, account_id, processing_status)
   VALUES ('00000000-0000-7000-8000-0000000a3011', '00000000-0000-7000-8000-0000000a3001', 'normal');
 INSERT INTO app.care_recipient (id, patient_id, is_account_owner, relationship, full_name, birth_date, sex)
@@ -297,6 +308,36 @@ SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi membaca action', 'rs_privacy_
 SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi UPDATE bukti', 'rs_privacy_worker_login', 'UPDATE app.consent_record SET created_at = now()', '42501', 'permission denied for table consent_record');
 SELECT pg_temp.uji_tolak('A3.3 NEG pekerja privasi TRUNCATE bukti', 'rs_privacy_worker_login', 'TRUNCATE app.consent_record', '42501', 'permission denied for table consent_record');
 SELECT pg_temp.uji_tolak('A3.3 NEG relay audit membaca bukti', 'rs_audit_relay_login', 'SELECT id FROM app.consent_record', '42501', 'permission denied for table consent_record');
+-- Subjek HR perusahaan (F1-T101): seed draf teks HR 01a2008d-7400-7000-8000-000000000b01 dan butir 01a2008d-7400-7000-8000-000000000b02 (migrasi 20261126310000).
+SELECT pg_temp.uji_boleh('A3.3 F1-T101 rs_api mencatat persetujuan akun HR (kanal corporate_portal)', 'rs_api',
+  'INSERT INTO app.consent_record (id, account_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3311'', ''00000000-0000-7000-8000-0000000a3002'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''corporate_portal'', ''00000000-0000-7000-8000-0000000a3c11'')', 1);
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 bukti tanpa subjek (pasien dan akun kosong)', 'rs_api',
+  'INSERT INTO app.consent_record (id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''patient_app'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23514', 'ck_consent_record_subject');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 bukti dengan dua subjek (pasien dan akun)', 'rs_api',
+  'INSERT INTO app.consent_record (id, patient_id, account_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''00000000-0000-7000-8000-0000000a3011'', ''00000000-0000-7000-8000-0000000a3002'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''corporate_portal'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23514', 'ck_consent_record_subject');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 subjek akun dengan penerima layanan', 'rs_api',
+  'INSERT INTO app.consent_record (id, account_id, care_recipient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''00000000-0000-7000-8000-0000000a3002'', ''00000000-0000-7000-8000-0000000a3021'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''corporate_portal'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23514', 'ck_consent_record_account_no_care_recipient');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 subjek akun dengan kanal patient_app', 'rs_api',
+  'INSERT INTO app.consent_record (id, account_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''00000000-0000-7000-8000-0000000a3002'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''patient_app'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23514', 'ck_consent_record_channel_subject');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 subjek pasien dengan kanal corporate_portal', 'rs_api',
+  'INSERT INTO app.consent_record (id, patient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''00000000-0000-7000-8000-0000000a3011'', ''00000000-0000-7000-8000-0000000a3102'', ''00000000-0000-7000-8000-0000000a3201'', ''granted'', ''corporate_portal'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23514', 'ck_consent_record_channel_subject');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 akun yang tidak ada', 'rs_api',
+  'INSERT INTO app.consent_record (id, account_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES (''00000000-0000-7000-8000-0000000a3312'', ''00000000-0000-7000-8000-00000000ffff'', ''01a2008d-7400-7000-8000-000000000b01'', ''01a2008d-7400-7000-8000-000000000b02'', ''granted'', ''corporate_portal'', ''00000000-0000-7000-8000-0000000a3c12'')',
+  '23503', 'fk_consent_record_account_id');
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 rs_api UPDATE bukti akun HR (kelas L)', 'rs_api',
+  'UPDATE app.consent_record SET action = ''withdrawn'' WHERE account_id IS NOT NULL', '42501', 'permission denied for table consent_record');
+SELECT pg_temp.uji_boleh('A3.3 F1-T101 pekerja privasi membaca account_id (FK subjek HR)', 'rs_privacy_worker_login',
+  'SELECT id, account_id FROM app.consent_record WHERE account_id IS NOT NULL', 1);
+SELECT pg_temp.uji_tolak('A3.3 NEG F1-T101 pekerja privasi membaca kolom channel', 'rs_privacy_worker_login',
+  'SELECT channel FROM app.consent_record', '42501', 'permission denied for table consent_record');
+SELECT pg_temp.uji_tolak('A3.1 NEG F1-T101 teks HR kedua dengan label yang sama (aktif)', 'rs_api',
+  'INSERT INTO app.consent_text_version (id, consent_type, version_label, content, effective_from) VALUES (''00000000-0000-7000-8000-0000000a3107'', ''corporate_hr_registration'', ''0.1-draf'', ''x'', now() + interval ''8 days'')',
+  '23505', 'uqp_consent_text_version_consent_type_version_label');
 -- Waktu persetujuan dipaksa jam server (trigger tg_consent_record_server_time), untuk semua role.
 SELECT pg_temp.uji_boleh('A3.3 rs_api mengirim created_at mundur 1 tahun dan maju 1 hari: baris tetap tersimpan', 'rs_api',
   'INSERT INTO app.consent_record (id, created_at, patient_id, consent_text_version_id, consent_item_id, action, channel, correlation_id) VALUES '
@@ -344,11 +385,12 @@ ROLLBACK;
 
 DO $$
 BEGIN
-  -- Seed versi draf migrasi 20261126200000 (F1-T49, KEPUTUSAN-289) adalah data rujukan, bukan data uji.
+  -- Seed versi draf migrasi 20261126200000 (F1-T49, pasien) dan 20261126310000 (F1-T101, HR; KEPUTUSAN-289)
+  -- adalah data rujukan, bukan data uji.
   IF EXISTS (SELECT 1 FROM app.consent_record)
-     OR EXISTS (SELECT 1 FROM app.consent_item WHERE id <> '01a2008d-7400-7000-8000-000000000a4a')
-     OR EXISTS (SELECT 1 FROM app.consent_text_version WHERE id <> '01a2008d-7400-7000-8000-000000000a49')
-     OR (SELECT count(*) FROM app.consent_text_version) <> 1 OR (SELECT count(*) FROM app.consent_item) <> 1
+     OR EXISTS (SELECT 1 FROM app.consent_item WHERE id NOT IN ('01a2008d-7400-7000-8000-000000000a4a', '01a2008d-7400-7000-8000-000000000b02'))
+     OR EXISTS (SELECT 1 FROM app.consent_text_version WHERE id NOT IN ('01a2008d-7400-7000-8000-000000000a49', '01a2008d-7400-7000-8000-000000000b01'))
+     OR (SELECT count(*) FROM app.consent_text_version) <> 2 OR (SELECT count(*) FROM app.consent_item) <> 2
      OR EXISTS (SELECT 1 FROM app.patient)
      OR EXISTS (SELECT 1 FROM app.care_recipient) OR EXISTS (SELECT 1 FROM app.account)
      OR to_regclass('app.retention_policy') IS NOT NULL THEN

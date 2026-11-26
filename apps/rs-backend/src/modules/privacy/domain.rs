@@ -33,7 +33,7 @@ const MAX_BODY_CHARS: usize = 20_000;
 const MAX_NOTICE_CHARS: usize = 1_000;
 
 /// Jenis teks persetujuan (DD A3.1 `consent_type`, CHECK `ck_consent_text_version_consent_type`). Modul lain
-/// memilih jenis lewat tipe ini; jenis baru (mis. persetujuan HR perusahaan) menunggu perluasan skema A3.
+/// memilih jenis lewat tipe ini; jenis baru menunggu perluasan skema A3.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ConsentType {
@@ -43,6 +43,8 @@ pub enum ConsentType {
     FamilyAdultStatement,
     /// Persetujuan wali.
     GuardianConsent,
+    /// Persetujuan HR perusahaan saat mendaftarkan perusahaan (US-1901 AC1, F1-T101; PRD L-20).
+    CorporateHrRegistration,
 }
 
 impl ConsentType {
@@ -52,6 +54,7 @@ impl ConsentType {
             Self::PatientDataProcessing => "patient_data_processing",
             Self::FamilyAdultStatement => "family_adult_statement",
             Self::GuardianConsent => "guardian_consent",
+            Self::CorporateHrRegistration => "corporate_hr_registration",
         }
     }
 }

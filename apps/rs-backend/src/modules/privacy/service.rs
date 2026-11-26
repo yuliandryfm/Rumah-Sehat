@@ -25,6 +25,14 @@ pub(super) static CONSENT_RECORD_OBJECT: ObjectPolicy = ObjectPolicy::non_clinic
     &[FieldRule::value("item_code"), FieldRule::value("action")],
 );
 
+/// Objek E-13 untuk persetujuan HR perusahaan (F1-T101, KEPUTUSAN-322): jenis objek berbeda dari pasien supaya
+/// pengecualian subjek di `audit::requirements` (E-13 tanpa subjek orang perseorangan terdaftar) hanya berlaku
+/// untuknya dan hanya bila `tenant_id` (perusahaan) terisi.
+pub(super) static CORPORATE_HR_CONSENT_RECORD_OBJECT: ObjectPolicy = ObjectPolicy::non_clinical(
+    audit::CORPORATE_HR_CONSENT_OBJECT_TYPE,
+    &[FieldRule::value("item_code"), FieldRule::value("action")],
+);
+
 /// Versi teks persetujuan yang berlaku beserta butirnya.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActiveConsentText {
@@ -208,6 +216,36 @@ pub enum ConsentSubject {
         /// persetujuan selalu menyangkut data pribadi, F1-T69). Bukti `consent_record` tetap tingkat pasien.
         owner_care_recipient_id: Uuid,
     },
+    /// HR perusahaan pendaftar (F1-T101, KEPUTUSAN-322): akun `account_id` realm `korporat` yang baru dibuat
+    /// di transaksi pemanggil (kanal `corporate_portal`, peran audit `corporate_admin`). Bukti terikat ke
+    /// akun, bukan ke pasien. E-13 memakai `tenant_id` = `corporate_client_id` dan tanpa subjek penerima
+    /// layanan (HR bukan pasien).
+    CorporateHr {
+        /// `app.account.id` akun HR pendaftar.
+        account_id: Uuid,
+        /// `app.corporate_client.id` perusahaan yang didaftarkan (tenant event).
+        corporate_client_id: Uuid,
+    },
+}
+
+/// Penanda data event: subjek orang (pasien) atau tenant perusahaan (HR).
+enum SubjectOrTenant {
+    Subject(Subject),
+    Tenant(Uuid),
+}
+
+impl ConsentSubject {
+    /// Jenis teks yang sah untuk subjek ini.
+    fn allowed_consent_types(&self) -> &'static [ConsentType] {
+        match self {
+            Self::Patient { .. } => &[
+                ConsentType::PatientDataProcessing,
+                ConsentType::FamilyAdultStatement,
+                ConsentType::GuardianConsent,
+            ],
+            Self::CorporateHr { .. } => &[ConsentType::CorporateHrRegistration],
+        }
+    }
 }
 
 /// Menulis bukti persetujuan `granted` untuk setiap butir terpilih `items` versi `version_id` oleh `subject`
@@ -226,7 +264,14 @@ pub async fn record_granted_consent(
     let audit_err = |_| PrivacyError::Internal("audit_event");
     // Semua butir wajib milik `version_id` dan aktif: butir asing ditolak sebelum ada yang ditulis.
     let wanted: Vec<Uuid> = items.iter().map(|i| i.id).collect();
-    let owned = repo::count_items_of_version(&mut *conn, version_id, &wanted)
+    // Jenis teks harus cocok dengan subjek: teks HR hanya untuk akun HR, teks pasien hanya untuk pasien
+    // (KEPUTUSAN-321; database tidak menegakkannya lintas tabel).
+    let allowed: Vec<String> = subject
+        .allowed_consent_types()
+        .iter()
+        .map(|t| t.as_str().to_string())
+        .collect();
+    let owned = repo::count_items_of_version(&mut *conn, version_id, &wanted, &allowed)
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
     let distinct = wanted
@@ -237,54 +282,78 @@ pub async fn record_granted_consent(
         tracing::error!("consent_item_not_in_version");
         return Err(PrivacyError::Internal("consent_item_foreign"));
     }
-    let ConsentSubject::Patient {
-        patient_id,
-        account_id,
-        owner_care_recipient_id,
-    } = subject;
     let mut events = Vec::with_capacity(items.len());
     for item in items {
         let id = new_id();
+        let (patient_id, record_account, channel) = match subject {
+            ConsentSubject::Patient { patient_id, .. } => (Some(patient_id), None, "patient_app"),
+            ConsentSubject::CorporateHr { account_id, .. } => {
+                (None, Some(account_id), "corporate_portal")
+            }
+        };
         repo::insert_record(
             &mut *conn,
             &NewConsentRecord {
                 id,
                 patient_id,
+                account_id: record_account,
                 consent_text_version_id: version_id,
                 consent_item_id: item.id,
                 action: "granted",
-                channel: "patient_app",
+                channel,
                 correlation_id,
             },
         )
         .await
         .map_err(|_| PrivacyError::Unavailable)?;
+        let (actor_account, actor_type, object, subject_or_tenant) = match subject {
+            ConsentSubject::Patient {
+                account_id,
+                owner_care_recipient_id,
+                ..
+            } => (
+                account_id,
+                "patient",
+                &CONSENT_RECORD_OBJECT,
+                SubjectOrTenant::Subject(Subject::care_recipient(owner_care_recipient_id)),
+            ),
+            ConsentSubject::CorporateHr {
+                account_id,
+                corporate_client_id,
+            } => (
+                account_id,
+                "corporate_admin",
+                &CORPORATE_HR_CONSENT_RECORD_OBJECT,
+                SubjectOrTenant::Tenant(corporate_client_id),
+            ),
+        };
         let actor = Actor::account(
-            account_id,
-            Code::new("patient").map_err(audit_err)?,
+            actor_account,
+            Code::new(actor_type).map_err(audit_err)?,
             Vec::new(),
         );
-        events.push(
-            AuditEvent::new(
-                EventCode::E13,
-                Code::new("consent_granted").map_err(audit_err)?,
-                actor,
-                ObjectRef::with_uuid(&CONSENT_RECORD_OBJECT, id),
-            )
-            .change(FieldChange::new(
-                "item_code",
-                None,
-                Some(Value::code(&item.item_code).map_err(audit_err)?),
-            ))
-            .change(FieldChange::new(
-                "action",
-                None,
-                Some(Value::code("granted").map_err(audit_err)?),
-            ))
-            .subject(Subject::care_recipient(owner_care_recipient_id))
-            .outcome(Outcome::success())
-            .context(ctx),
-        );
+        let event = AuditEvent::new(
+            EventCode::E13,
+            Code::new("consent_granted").map_err(audit_err)?,
+            actor,
+            ObjectRef::with_uuid(object, id),
+        )
+        .change(FieldChange::new(
+            "item_code",
+            None,
+            Some(Value::code(&item.item_code).map_err(audit_err)?),
+        ))
+        .change(FieldChange::new(
+            "action",
+            None,
+            Some(Value::code("granted").map_err(audit_err)?),
+        ))
+        .outcome(Outcome::success())
+        .context(ctx);
+        events.push(match subject_or_tenant {
+            SubjectOrTenant::Subject(s) => event.subject(s),
+            SubjectOrTenant::Tenant(t) => event.tenant(t),
+        });
     }
     Ok(events)
 }

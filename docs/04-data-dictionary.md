@@ -532,7 +532,7 @@ Versi teks persetujuan. Baris yang sudah terbit tidak boleh diubah isinya (trigg
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-M* | | | | | |
-| consent_type | text | tidak | | — | CHECK (`patient_data_processing`, `family_adult_statement`, `guardian_consent`) (US-104, AB-04) |
+| consent_type | text | tidak | | — | CHECK (`patient_data_processing`, `family_adult_statement`, `guardian_consent`, `corporate_hr_registration`) (US-104, AB-04; `corporate_hr_registration` = persetujuan HR saat mendaftarkan perusahaan, US-1901 AC1, F1-T101, migrasi `20261126300000`) |
 | version_label | text | tidak | | — | |
 | content | text | tidak | | — | Memuat tujuh informasi Pasal 21 ayat (1) UU PDP (US-104 AC1). Teks legalitas menunggu L-08; retensi menunggu PT-24 |
 | effective_from | timestamptz | tidak | | — | |
@@ -564,15 +564,16 @@ Bukti persetujuan diberikan atau ditarik, termasuk pernyataan persetujuan anggot
 | Kolom | Tipe | Null | Kunci | Sensitivitas | Keterangan |
 | --- | --- | --- | --- | --- | --- |
 | *STD-L* | | | | | `created_at` = waktu persetujuan |
-| patient_id | uuid | tidak | FK→patient | — | Pemberi persetujuan |
+| patient_id | uuid | ya | FK→patient | — | Pemberi persetujuan (pasien). Tepat satu dari `patient_id` dan `account_id` terisi (CHECK `ck_consent_record_subject`, F1-T101) |
+| account_id | uuid | ya | FK→account | — | Pemberi persetujuan akun HR realm korporat (US-1901 AC1, F1-T101); wajib bersama `channel = corporate_portal`, tanpa `care_recipient_id` |
 | care_recipient_id | uuid | ya | FK→care_recipient | — | Subjek pernyataan anggota keluarga |
 | consent_text_version_id | uuid | tidak | FK→consent_text_version | — | |
 | consent_item_id | uuid | tidak | FK→consent_item | — | |
 | action | text | tidak | | — | CHECK (`granted`, `withdrawn`) |
-| channel | text | tidak | | — | CHECK (`patient_app`, `backoffice`) (US-104 AC2 "kanal") |
+| channel | text | tidak | | — | CHECK (`patient_app`, `backoffice`, `corporate_portal`) (US-104 AC2 "kanal"; `corporate_portal` hanya untuk subjek `account_id`) |
 | correlation_id | uuid | tidak | | — | Penghubung ke event E-13/E-15 |
 
-Index: `ix (patient_id, consent_item_id, created_at DESC)` untuk status persetujuan terkini (US-1601 AC1).
+Index: `ix (patient_id, consent_item_id, created_at DESC)` untuk status persetujuan terkini (US-1601 AC1); `ix (account_id, consent_item_id, created_at DESC) WHERE account_id IS NOT NULL` untuk subjek HR (F1-T101). Hak: `rs_privacy_worker` SELECT per kolom `id`, `created_at`, `patient_id`, `care_recipient_id`, `account_id`.
 
 ### A4. Tenaga kesehatan, tarif, dan jadwal
 

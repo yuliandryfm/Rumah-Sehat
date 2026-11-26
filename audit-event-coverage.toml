@@ -62,6 +62,16 @@ tests = [
   "apps/rs-backend/tests/corporate_admin_create.rs::duplicate_nib_is_rejected_generically_without_any_side_effect",
 ]
 
+# E-10/E-11 pendaftaran perusahaan mandiri oleh calon HR (F1-T101, US-1901 AC1, AC4, AC7): perusahaan didaftarkan,
+# akun HR dicatat, keanggotaan diberikan, dan NIB/email terdaftar (E-10 gagal, aktor sistem, tanpa data).
+[[emitter]]
+file = "apps/rs-backend/src/modules/corporate/registration.rs"
+codes = ["E10", "E11"]
+tests = [
+  "apps/rs-backend/tests/corporate_registration_http.rs::corporate_registration_creates_pending_company_hr_account_consent_and_complete_audit",
+  "apps/rs-backend/tests/corporate_registration_http.rs::corporate_registration_existing_nib_or_email_gets_identical_answer_and_changes_nothing",
+]
+
 # E-10 hasil job worker IdP (ADR-030 langkah 2, CR-026): penyediaan, email aktivasi, kompensasi; berhasil dan ditolak.
 [[emitter]]
 file = "apps/rs-backend/src/modules/identity/idp_worker.rs"

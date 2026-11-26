@@ -13,7 +13,7 @@ use crate::modules::privacy::api::DraftPolicy;
 use crate::modules::profile;
 use crate::modules::profile::api::IdentityServices;
 use crate::openapi::{BackofficeApiDoc, CorporateApiDoc, OpsApiDoc, PatientApiDoc, PublicApiDoc};
-use crate::rate_limit::RateLimiter;
+use crate::rate_limit::{RateBudget, RateLimiter};
 use authn::AuthState;
 use authz::{
     ClientIp, DenialSink, EndpointKey, EnforcedRouter, Enforcement, Policy, PolicyRouter,
@@ -27,6 +27,7 @@ use observability::correlation_middleware;
 use sqlx::PgPool;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use utoipa::OpenApi;
 
 /// Dependensi bersama use case (pool database role `rs_app`, jam server, layanan berkas).
@@ -50,6 +51,36 @@ pub struct AppServices {
     pub consent_text_limit: Arc<RateLimiter>,
 }
 
+/// Batas laju dan penyamaan waktu respons pendaftaran perusahaan tanpa login (F1-T101, KEPUTUSAN-326).
+#[derive(Debug)]
+pub struct RegistrationGuard {
+    /// Batas laju (anggaran terpisah dari konten publik dan teks persetujuan pasien, M-47).
+    pub limiter: RateLimiter,
+    /// Batas laju GET teks persetujuan, terpisah dari POST supaya banjir salah satunya tidak memblokir yang lain.
+    pub consent_text_limiter: RateLimiter,
+    /// Waktu respons minimum jawaban seragam pendaftaran (ADR-030 butir 7: ditahan sampai 900 ms), supaya
+    /// jalur "NIB atau email sudah terdaftar" tidak lebih cepat dari pendaftaran baru.
+    pub min_response: Duration,
+}
+
+impl RegistrationGuard {
+    /// Anggaran bawaan: POST 20 per sumber dan 120 seluruh sumber per menit, GET teks persetujuan 60 dan 600 (anggaran terpisah); 900 ms. Angka teknis
+    /// keputusan implementasi (KEPUTUSAN-326), bukan angka PRD (RT-45 `[TIDAK DIKETAHUI]`).
+    pub fn standard() -> Self {
+        Self {
+            limiter: RateLimiter::new(RateBudget {
+                per_source: 20,
+                global: 120,
+            }),
+            consent_text_limiter: RateLimiter::new(RateBudget {
+                per_source: 60,
+                global: 600,
+            }),
+            min_response: Duration::from_millis(900),
+        }
+    }
+}
+
 /// Keadaan bersama handler. Murah di-clone.
 #[derive(Clone)]
 pub struct AppState {
@@ -57,6 +88,7 @@ pub struct AppState {
     readiness: Arc<[Arc<dyn ReadinessCheck>]>,
     services: Arc<AppServices>,
     consent_drafts: DraftPolicy,
+    registration: Arc<RegistrationGuard>,
 }
 
 impl AppState {
@@ -71,7 +103,15 @@ impl AppState {
             readiness: Arc::from(readiness),
             services: Arc::new(services),
             consent_drafts: DraftPolicy::Allow,
+            registration: Arc::new(RegistrationGuard::standard()),
         }
+    }
+
+    /// Mengganti batas laju dan waktu respons minimum pendaftaran perusahaan (test dan konfigurasi).
+    #[must_use]
+    pub fn with_registration_guard(mut self, guard: RegistrationGuard) -> Self {
+        self.registration = Arc::new(guard);
+        self
     }
 
     /// Menolak teks persetujuan berstatus draf di semua jalur layanan (endpoint teks dan `privacy::api`);
@@ -123,6 +163,10 @@ impl AppState {
         &self.services.corporate_hr
     }
 
+    pub(crate) fn registration(&self) -> &RegistrationGuard {
+        &self.registration
+    }
+
     pub(crate) fn consent_text_limit(&self) -> &RateLimiter {
         &self.services.consent_text_limit
     }
@@ -148,10 +192,12 @@ pub(crate) fn patient_router() -> PolicyRouter<AppState> {
         .merge(privacy::patient_router())
 }
 
-/// Router API publik tanpa login (`openapi/public.json`, awalan `/v1/public/content`, ADR-027 butir 2 dan 5,
-/// ADR-012 butir 3). Jaringan `web/situs` hanya menjangkau `/v1/public/*` (ADR-027 butir 6).
+/// Router API publik tanpa login (`openapi/public.json`, awalan `/v1/public/`: konten situs dan pendaftaran
+/// perusahaan mandiri, ADR-027 butir 2 dan 5, ADR-012 butir 3). Jaringan `web/situs` hanya menjangkau `/v1/public/*` (ADR-027 butir 6).
 pub(crate) fn public_router() -> PolicyRouter<AppState> {
-    PolicyRouter::with_openapi(PublicApiDoc::openapi()).merge(content_support::public_router())
+    PolicyRouter::with_openapi(PublicApiDoc::openapi())
+        .merge(content_support::public_router())
+        .merge(corporate::public_router())
 }
 
 /// Router API korporat untuk HR perusahaan (`openapi/korporat.json`, awalan `/v1/corporate/`, realm
@@ -304,8 +350,19 @@ mod tests {
     fn every_public_route_is_public_content_under_v1_public() {
         let router = public_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 4);
+        // 4 konten situs (GET) + 2 pendaftaran perusahaan mandiri (F1-T101: POST + GET teks persetujuan)
+        assert_eq!(entries.len(), 6);
         for ((method, path), policy) in entries {
+            if path.starts_with("/v1/public/corporate-registrations") {
+                // trace: US-1901, ADR-012 butir 3 (amandemen KEPUTUSAN-323)
+                assert!(method == "POST" || method == "GET", "{path}");
+                assert_eq!(
+                    policy,
+                    &Policy::Public(PublicReason::CorporateRegistration),
+                    "{path}"
+                );
+                continue;
+            }
             assert_eq!(method, "GET", "{path}");
             assert!(path.starts_with("/v1/public/content/"), "{path}");
             assert_eq!(

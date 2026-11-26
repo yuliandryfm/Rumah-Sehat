@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                 (SELECT count(*) FROM app.corporate_client c WHERE c.nib = ANY($1)) AS \"clients!\",\n                 (SELECT count(*) FROM app.account a\n                   WHERE a.idp_realm = 'korporat' AND lower(a.email) = ANY($2)) AS \"accounts!\",\n                 (SELECT count(*) FROM app.corporate_member m\n                   WHERE m.account_id IN (SELECT a.id FROM app.account a\n                                           WHERE a.idp_realm = 'korporat' AND lower(a.email) = ANY($2))) AS \"members!\",\n                 (SELECT count(*) FROM app.idp_provisioning_intent i\n                   WHERE i.account_id IN (SELECT a.id FROM app.account a\n                                           WHERE a.idp_realm = 'korporat' AND lower(a.email) = ANY($2))) AS \"intents!\",\n                 (SELECT count(*) FROM app.job j\n                   WHERE j.job_type = 'idp_create_user'\n                     AND (j.payload ->> 'intent_id')::uuid IN (\n                           SELECT i.id FROM app.idp_provisioning_intent i\n                            WHERE i.account_id IN (SELECT a.id FROM app.account a\n                                                    WHERE a.idp_realm = 'korporat'\n                                                      AND lower(a.email) = ANY($2)))) AS \"jobs!\",\n                 (SELECT count(*) FROM app.consent_record r\n                   WHERE r.account_id IN (SELECT a.id FROM app.account a\n                                           WHERE a.idp_realm = 'korporat'\n                                             AND lower(a.email) = ANY($2))) AS \"consents!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "clients!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "accounts!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "members!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "intents!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "jobs!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "consents!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "3fb783559dc0785d684903b0de528e01e97c44f89f4c22fb52ba969495bf4fb9"
+}

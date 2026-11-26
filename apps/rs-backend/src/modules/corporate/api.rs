@@ -10,7 +10,7 @@
 //! F1-T107: operasi keanggotaan HR untuk use case kelola anggota HR di modul `identity` (pemilik akun):
 //! kunci tabel, daftar keanggotaan aktif per perusahaan, pemilik keanggotaan, dan pencabutan (hapus lunak).
 
-use super::{admin_create, repo, verification};
+use super::{admin_create, registration, repo, verification};
 use crate::modules::platform::api::{DownloadTicket, FileStorage};
 use authz::{
     CorporateClientStatus, CorporateMembership, CorporateScopeResolver, MembershipFuture,
@@ -23,6 +23,7 @@ use time::OffsetDateTime;
 
 pub use super::admin_create::{CreatedCorporateClientView, NewCorporateClientInput};
 pub use super::error::CorporateError;
+pub use super::registration::{NewCorporateRegistration, RegistrationDeps};
 
 /// Pembaca keanggotaan aktif HR di atas pool role `rs_app`.
 #[derive(Clone)]
@@ -321,4 +322,32 @@ pub async fn create_corporate_client_by_admin(
     input: &NewCorporateClientInput,
 ) -> Result<CreatedCorporateClientView, CorporateError> {
     admin_create::create(deps, principal, route, input).await
+}
+
+/// US-1901 AC1, AC3-AC7 (F1-T101): mendaftarkan perusahaan mandiri tanpa login. `Ok(())` juga untuk NIB atau
+/// email yang sudah terdaftar (jawaban seragam, KEPUTUSAN-324; tanpa efek data, hanya audit gagal).
+pub async fn register_corporate_client(
+    deps: &RegistrationDeps<'_>,
+    input: &NewCorporateRegistration,
+) -> Result<(), CorporateError> {
+    registration::register(deps, input).await
+}
+
+/// Teks persetujuan HR yang berlaku untuk layar pendaftaran (US-1901 AC1, US-104 AC1), tanpa login. Teks
+/// draf ditolak sebagai tidak tersedia bila `drafts` = `Reject` (production, KEPUTUSAN-289).
+pub async fn corporate_registration_consent_text(
+    pool: &PgPool,
+    clock: &dyn Clock,
+    drafts: crate::modules::privacy::api::DraftPolicy,
+) -> Result<crate::modules::privacy::api::ActiveConsentText, CorporateError> {
+    use crate::modules::privacy::api::{ConsentType, PrivacyError, active_consent_text};
+    match active_consent_text(pool, clock, ConsentType::CorporateHrRegistration, drafts).await {
+        Ok(Some(t)) => Ok(t),
+        Ok(None) => {
+            tracing::error!("corporate_consent_text_missing");
+            Err(CorporateError::Database)
+        }
+        Err(PrivacyError::Internal(w)) => Err(CorporateError::Internal(w)),
+        Err(_) => Err(CorporateError::Database),
+    }
 }
