@@ -143,6 +143,8 @@ export class ValkeyBackend implements SessionBackend {
         tolak(new BackendUnavailableError("koneksi Valkey belum siap sebelum batas waktu"));
       }, this.#timeoutMs);
     });
+    // Pendengar dilepas di setiap jalur keluar (siap, end, timeout) agar tidak menumpuk selama Valkey mati.
+    let lepas = (): void => undefined;
     const siap = new Promise<void>((selesai, tolak) => {
       const gagal = (): void => {
         tolak(new BackendUnavailableError("koneksi Valkey gagal"));
@@ -159,21 +161,19 @@ export class ValkeyBackend implements SessionBackend {
         selesai();
         return;
       }
-      const bersih = (): void => {
+      const berhasil = (): void => { selesai(); };
+      lepas = (): void => {
         r.off("ready", berhasil);
         r.off("end", gagal);
       };
-      const berhasil = (): void => {
-        bersih();
-        selesai();
-      };
       r.once("ready", berhasil);
-      r.once("end", () => { bersih(); gagal(); });
+      r.once("end", gagal);
     });
     try {
       await Promise.race([siap, habis]);
     } finally {
       clearTimeout(timer);
+      lepas();
     }
   }
 

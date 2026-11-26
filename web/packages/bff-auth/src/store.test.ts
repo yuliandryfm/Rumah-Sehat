@@ -2,7 +2,8 @@
 // "Stream isn't writeable and enableOfflineQueue options is false"; bila Valkey tak kunjung siap,
 // galatnya terkendali (BackendUnavailableError, dijawab 503 oleh rute BFF).
 import { createServer, type Server, type Socket } from "node:net";
-import { afterEach, describe, expect, test } from "vitest";
+import { Redis } from "ioredis";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { Sensitive } from "./sensitive.ts";
 import { BackendUnavailableError, ValkeyBackend } from "./store.ts";
 
@@ -11,6 +12,7 @@ const backends: ValkeyBackend[] = [];
 const soket: Socket[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(backends.splice(0).map((b) => b.close()));
   for (const k of soket.splice(0)) {
     k.destroy();
@@ -89,5 +91,16 @@ describe("ValkeyBackend menunggu koneksi siap (CR-028)", () => {
     const url = await valkeyTiruan(60_000);
     const b = buat(url, 500);
     await expect(b.getHash("k")).rejects.toBeInstanceOf(BackendUnavailableError);
+  });
+
+  test("timeout berulang tidak menambah pendengar ready/end pada koneksi (tanpa kebocoran)", async () => {
+    const dengar = vi.spyOn(Redis.prototype, "once");
+    const b = buat(new URL("redis://127.0.0.1:1"), 150);
+    for (let i = 0; i < 15; i++) {
+      await expect(b.getHash("k")).rejects.toBeInstanceOf(BackendUnavailableError);
+    }
+    const klien = dengar.mock.contexts[0] as Redis;
+    expect(klien.listenerCount("ready")).toBe(0);
+    expect(klien.listenerCount("end")).toBe(0);
   });
 });

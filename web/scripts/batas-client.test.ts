@@ -2,22 +2,29 @@
 // Tanpa direktif, komponen itu berjalan sebagai server component dan Next.js melempar
 // "Event handlers cannot be passed to Client Component props" (HTTP 500) di runtime. Test jsdom
 // tidak menangkap kelas bug ini, maka pemeriksaan dilakukan statis atas sumber.
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const akar = join(dirname(fileURLToPath(import.meta.url)), "..");
-const AKAR_SUMBER = ["packages/ui/src", "korporat/src", "backoffice/src", "portal/src", "rme/src"];
+
+/** Semua `src` aplikasi (`web/<app>/src`) dan paket (`web/packages/<paket>/src`), ditemukan dinamis. */
+function akarSumber(): string[] {
+  const hasil: string[] = [];
+  for (const induk of [akar, join(akar, "packages")]) {
+    for (const nama of readdirSync(induk)) {
+      const src = join(induk, nama, "src");
+      if (nama !== "node_modules" && nama !== "packages" && existsSync(src) && statSync(src).isDirectory()) {
+        hasil.push(src);
+      }
+    }
+  }
+  return hasil;
+}
 
 function kumpulkan(dir: string): string[] {
-  let daftar: string[];
-  try {
-    daftar = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return daftar.flatMap((nama) => {
+  return readdirSync(dir).flatMap((nama) => {
     const p = join(dir, nama);
     if (statSync(p).isDirectory()) {
       return nama === "node_modules" || nama === ".next" ? [] : kumpulkan(p);
@@ -55,7 +62,15 @@ describe("batas client/server komponen web (CR-028)", () => {
     expect(punyaUseClient("import type { X } from 'react';\n\"use client\";")).toBe(false);
   });
 
-  const berkas = AKAR_SUMBER.flatMap((d) => kumpulkan(join(akar, d)));
+  const akarDitemukan = akarSumber();
+  const berkas = akarDitemukan.flatMap((d) => kumpulkan(d));
+
+  it("menemukan semua src yang diharapkan (gagal bila ada yang hilang)", () => {
+    const rel = akarDitemukan.map((d) => relative(akar, d));
+    for (const wajib of ["packages/ui/src", "korporat/src", "backoffice/src", "situs/src"]) {
+      expect(rel).toContain(wajib);
+    }
+  });
 
   it("menemukan berkas komponen untuk diperiksa", () => {
     expect(berkas.length).toBeGreaterThan(10);
