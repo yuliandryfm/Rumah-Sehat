@@ -40,12 +40,15 @@ body {
   margin: 0;
   background: var(--c-bg-app);
   color: var(--c-text-primary); /* K1 */
-  font-family: var(--f-sans);
+  /* Plus Jakarta Sans (next/font/local, `--font-situs`, Q18); cadangan tumpukan font sistem DG §3.3. */
+  font-family: var(--font-situs, var(--f-sans)), var(--f-sans);
   font-size: var(--situs-body-size);
   line-height: var(--situs-body-line);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+/* Komponen @rs/ui (tombol, kartu) memakai --f-sans; di situs mewarisi font merek (Q18). */
+.rs-btn, .rs-card, button { font-family: inherit; }
 h1, h2, h3 { letter-spacing: -0.015em; text-wrap: balance; }
 p { text-wrap: pretty; }
 a { color: var(--c-primary-strong); text-underline-offset: 3px; } /* K6 */
@@ -86,7 +89,7 @@ main:focus { outline: none; }
 .situs-tumpuk--lebar { gap: var(--s8); }
 
 /* ---------- Tombol situs (varian lokal; @rs/ui tidak diubah) ---------- */
-.situs-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 48px; padding: var(--s3) var(--s6); border: 2px solid transparent; border-radius: var(--r-full); font-family: var(--f-sans); font-size: 16px; line-height: 24px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background-color var(--situs-gerak), color var(--situs-gerak), border-color var(--situs-gerak), box-shadow var(--situs-gerak), transform var(--situs-gerak); }
+.situs-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 48px; padding: var(--s3) var(--s6); border: 2px solid transparent; border-radius: var(--r-full); font-family: inherit; font-size: 16px; line-height: 24px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background-color var(--situs-gerak), color var(--situs-gerak), border-color var(--situs-gerak), box-shadow var(--situs-gerak), transform var(--situs-gerak); }
 .situs-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .situs-btn--utama { background: var(--c-primary); color: var(--c-on-primary); box-shadow: var(--e2); } /* K5 */
 .situs-btn--utama:hover { background: var(--c-primary-strong); transform: translateY(-2px); box-shadow: var(--e3); } /* K7 */

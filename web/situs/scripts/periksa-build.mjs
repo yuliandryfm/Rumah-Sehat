@@ -100,6 +100,19 @@ try {
   periksa(html.includes("[TIDAK DIKETAHUI]"), "/: penanda [TIDAK DIKETAHUI] tidak tampil");
   periksa(/<main[^>]*id="isi"/.test(html), "/: landmark <main id=isi> tidak ada");
 
+  // Font merek (CR-033, Q18): satu woff2 di-preload dari origin sendiri, tanpa font jarak jauh.
+  // Next mengirim preload font lewat header `Link` (bukan elemen <link> di HTML).
+  const fontPreload = [...(beranda.headers.get("link") ?? "").matchAll(/<([^>]+)>;[^,]*rel=preload[^,]*as="font"/g)].map((m) => m[1]);
+  periksa(fontPreload.length === 1, `/: preload font harus tepat satu, ada ${fontPreload.length}`);
+  const fontHref = fontPreload[0];
+  periksa(fontHref !== undefined && /^\/_next\/static\/media\/[^/]+\.woff2$/.test(fontHref), `/: preload font bukan berkas woff2 lokal: ${fontHref}`);
+  if (fontHref !== undefined && fontHref.startsWith("/")) {
+    const resFont = await fetch(`${dasar}${fontHref}`);
+    periksa(resFont.status === 200, `font: status ${resFont.status}`);
+    periksaHeader("font", resFont);
+    periksa((await resFont.arrayBuffer()).byteLength > 1000, "font: berkas kosong");
+  }
+
   const nonce2 = /'nonce-([^']+)'/.exec((await fetch(`${dasar}/`)).headers.get("content-security-policy") ?? "")?.[1];
   periksa(nonce2 !== undefined && nonce2 !== nonce, "nonce tidak berganti antar permintaan");
 
@@ -132,7 +145,13 @@ try {
     const res = await fetch(`${dasar}${css}`);
     periksa(res.status === 200, `statis: status ${res.status}`);
     periksaHeader("statis", res);
-    periksa(!/https?:\/\//.test(await res.text()), "statis: CSS memuat URL jarak jauh");
+    const teksCss = await res.text();
+    periksa(!/https?:\/\//.test(teksCss), "statis: CSS memuat URL jarak jauh");
+    for (const m of teksCss.matchAll(/url\(([^)]*)\)/g)) {
+      const u = (m[1] ?? "").replace(/["']/g, "");
+      // Berkas CSS ada di /_next/static/chunks/, jadi `../media/` = /_next/static/media/ (origin sendiri).
+      periksa(u.startsWith("/_next/static/media/") || u.startsWith("../media/"), `statis: CSS memuat url() di luar origin: ${u}`);
+    }
   }
   periksa((await readFile(join(standalone, "server.js"), "utf8")).length > 0, "server.js kosong");
 } catch (e) {

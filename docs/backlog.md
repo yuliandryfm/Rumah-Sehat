@@ -639,10 +639,11 @@ Cakupan:
 - C-02 kartu layanan berikon di Beranda dan halaman Layanan dari konvensi Markdown `services` (`##` = kartu, paragraf pertama = ringkasan, urutan dari CMS, fallback Markdown biasa), ikon SVG buatan sendiri dengan pemetaan kata kunci + ikon generik (KEPUTUSAN-354, -355)
 - C-03 hero Beranda: mockup ponsel ilustratif di atas blob daun bila CMS tanpa gambar, dua kartu mengambang dan tiga chip nilai faktual, CTA ganda tetap; bingkai gambar baru menggantikan kotak putus-putus (D3) (KEPUTUSAN-359)
 Perbaikan review keamanan+kode (LULUS DENGAN CATATAN, commit lanjutan): teks pita judul memakai `text-primary` dan ornamen pita judul disembunyikan di bawah 1024 px (kontras di atas daun ornamen), halaman draf (Kebijakan) tidak memindah paragraf pembuka sehingga spanduk "Draf." tampil sebelum isi (US-1801 AC4), test negatif masukan berbahaya di kartu/sorotan Beranda, isi contoh `services` berbentuk `##` agar `periksa-build` melewati jalur kartu.
-Di luar cakupan: C-04–C-16 (termasuk font merek C-13: tetap font sistem, KEPUTUSAN-356; penanda kosong publik C-11), perubahan backend/CMS/OpenAPI, `web/packages/ui`.
+Di luar cakupan: C-04–C-16 kecuali C-13 (font merek, ditambahkan lewat Q18; penanda kosong publik C-11 tetap di luar cakupan), perubahan backend/CMS/OpenAPI, `web/packages/ui`.
 Alasan: dampak visual terbesar tanpa perubahan model konten (brief §10 saran urutan).
 Keputusan: disetujui user
-Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge). Tindak lanjut yang perlu keputusan user: teks chip nilai/kartu mengambang sebagai klaim publik (brief §12 butir 4), font merek UP-59/C-13, aturan tinggi baris 1,3 untuk judul (DG §3.3a), pemeriksaan visual di peramban sungguhan (belum dilakukan di server: pustaka sistem peramban headless tidak terpasang)
+Keputusan lanjutan user 2026-11-26 (Telegram, "eksekusi sesuai rekomendasimu") `[USER]`: Q17 = kelima teks klaim hero (tiga chip nilai, dua kartu mengambang) disetujui apa adanya (KEPUTUSAN-359); Q18 = font Plus Jakarta Sans di-host sendiri untuk situs (KEPUTUSAN-356, SRC-881/882, DG §3.3a).
+Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge). Tindak lanjut yang perlu keputusan user: aturan tinggi baris 1,3 untuk judul (DG §3.3a), pemeriksaan visual di peramban sungguhan (belum dilakukan di server: pustaka sistem peramban headless tidak terpasang)
 
 ## Tech Debt
 
