@@ -604,6 +604,15 @@ Alasan: integritas gerbang "hanya commit hijau"; tidak mengubah scope bisnis.
 Keputusan: menunggu user
 Status: diajukan; `.githooks/` tidak diubah
 
+### CR-028: Perbaikan tiga bug demo publik (komponen client, audience mapper, koneksi Valkey BFF)
+
+Diajukan: 2026-11-26 (persiapan demo publik); disetujui user via Telegram 2026-11-26
+Deskripsi: (1) `web/packages/ui/src/Button.tsx` merender `onClick` tanpa `"use client"` dan dipakai dari server component `KerangkaKorporat`/`KerangkaBackoffice`: semua halaman terautentikasi gagal 500 ("Event handlers cannot be passed to Client Component props"); satu-satunya komponen `@rs/ui` dengan handler adalah Button. (2) Realm-as-code tidak memuat audience mapper sehingga API menolak token BFF (`wrong_audience`). (3) `ValkeyBackend` memeriksa status `wait` saja, sehingga permintaan pertama setelah start dan yang serentak gagal "Stream isn't writeable and enableOfflineQueue options is false".
+Perbaikan: (1) `"use client"` di Button + test statis `web/scripts/batas-client.test.ts` (komponen dengan handler event/hook wajib berdirektif, lintas ui, korporat, backoffice, portal, rme). (2) `oidc-audience-mapper` pada `rs-korporat-bff` (audiens `rs-corporate-api`) dan `rs-backoffice-bff` (`rs-backoffice-api`), hanya access token, nilai sama dengan `AUTH_CORPORATE_AUDIENCE`/`AUTH_ADMIN_AUDIENCE`; test `web/scripts/realm-audience.test.ts` dan pemeriksaan hidup di `keycloak_check.py` (`cek_konfigurasi`). (3) `ValkeyBackend` menunggu koneksi siap dengan batas `timeoutMs`, penantian dibagi bersama; gagal dilempar `BackendUnavailableError` (rute BFF menjawab 503); test `web/packages/bff-auth/src/store.test.ts`.
+Alasan: perbaikan cacat; tidak mengubah scope bisnis atau pengaturan keamanan lain.
+Keputusan: disetujui user
+Status: selesai (commit tercatat di riwayat git cabang tahap-08-fase-1 setelah merge)
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

@@ -547,7 +547,22 @@
         "profile",
         "web-origins"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-rs-corporate-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "rs-corporate-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "false",
+            "lightweight.claim": "false"
+          }
+        }
+      ]
     },
     {
       "clientId": "rs-backend-event-reader",

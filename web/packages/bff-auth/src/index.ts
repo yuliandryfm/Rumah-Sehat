@@ -28,5 +28,5 @@ export {
   type SessionPolicy,
   type TokenSet,
 } from "./session.ts";
-export { ValkeyBackend, type SessionBackend, type ValkeyBackendOptions } from "./store.ts";
+export { BackendUnavailableError, ValkeyBackend, type SessionBackend, type ValkeyBackendOptions } from "./store.ts";
 export { TokenCryptoError, TokenSealer, type SealPurpose } from "./token-crypto.ts";
