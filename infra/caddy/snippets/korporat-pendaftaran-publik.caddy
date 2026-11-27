@@ -19,9 +19,14 @@
 #   	}
 #   }
 #
-# Ketergantungan (bukan bagian snippet ini): batas laju per IP di backend memakai alamat peer TCP (`ClientIp`),
-# yang di balik Caddy adalah alamat Caddy, bukan klien (PT-39, KEPUTUSAN-78). Sampai backend membaca IP klien
-# asli dari header tepercaya yang dipasang Caddy, batas "per sumber" pendaftaran efektif menjadi batas global.
+# Ketergantungan (bukan bagian snippet ini): batas laju per IP di backend memakai `ClientIp`. Backend membaca
+# `X-Forwarded-For` hanya bila peer TCP termasuk `TRUSTED_PROXY_CIDRS` proses api, lalu mengambil alamat paling
+# kanan yang bukan proxy tepercaya (KEPUTUSAN-400, TD-22). Karena itu proses api di production WAJIB diberi
+# `TRUSTED_PROXY_CIDRS` = alamat Caddy ini (/32) sebelum snippet dipasang (ADR-031 Konsekuensi,
+# docs/05-stack.md §5.3); tanpa itu batas "per sumber" pendaftaran efektif menjadi batas global. `reverse_proxy`
+# Caddy 2.11.9 tanpa `trusted_proxies` mengganti `X-Forwarded-For` kiriman klien dengan alamat peer koneksinya
+# [SRC-925] [SRC-926]: jangan pasang `trusted_proxies` di sini kecuali ada LB di depan Caddy yang terbukti
+# meneruskan IP asli (PT-39).
 #
 # Pengerasan (review T1 F1-T103): setiap `handle` menulis ulang URI ke path tetap tanpa query sebelum diteruskan
 # (B1: `..%2F`, huruf besar, `//`, dan query tidak dapat membawa URI lain ke API), dan membatasi badan 16 KB
