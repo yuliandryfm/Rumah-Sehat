@@ -121,6 +121,17 @@ describe("kontras situs (token)", () => {
     expect(situsCss).not.toMatch(/url\(|@import|https?:\/\//);
   });
 
+  test("header ponsel dua baris (CR-038, KEPUTUSAN-421): pill ringkas, awalan disembunyikan, padding gulir, scroll-padding selaras", () => {
+    const ponsel = /@media \(max-width: 767px\) \{([\s\S]*?)\n\}/.exec(situsCss)?.[1] ?? "";
+    expect(ponsel).toMatch(/\.situs-toko__awal \{ display: none; \}/);
+    expect(ponsel).toMatch(/\.situs-logo \{ font-size: 18px; \}/);
+    expect(ponsel).toMatch(/\.situs-toko__tautan \{ padding: 0 var\(--s3\); font-size: 13px; \}/);
+    const sempit = /@media \(max-width: 1139px\) \{([\s\S]*?)\n\}/.exec(situsCss)?.[1] ?? "";
+    expect(sempit).toMatch(/scroll-padding-top: calc\(var\(--situs-tinggi-kepala\) \+ 48px \+ var\(--s4\)\)/);
+    expect(sempit).toMatch(/\.situs-nav-baris \{[^}]*scroll-padding-inline: 12px 28px;/);
+    expect(sempit).toMatch(/flex: 0 0 100%/);
+  });
+
   test("setiap var(--c-*) yang dipakai ada di tokens.css", () => {
     const dipakai = new Set([...situsCss.matchAll(/var\(--(c-[a-z-]+)/g)].map((m) => (m[1] ?? "").replace(/^c-/, "")));
     expect(dipakai.size).toBeGreaterThan(5);

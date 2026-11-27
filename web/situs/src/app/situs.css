@@ -307,7 +307,7 @@ main:focus { outline: none; }
   .situs-top__isi { flex-wrap: wrap; column-gap: var(--s4); row-gap: 0; padding-top: var(--s2); min-height: 0; }
   .situs-logo { order: 1; }
   .situs-toko { order: 2; margin-left: auto; }
-  .situs-nav-baris { order: 3; flex: 0 0 100%; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: var(--s1) var(--s1) var(--s2); -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); }
+  .situs-nav-baris { order: 3; flex: 0 0 100%; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px 28px; scrollbar-width: none; padding: var(--s1) var(--s1) var(--s2); -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); }
   .situs-nav-baris::-webkit-scrollbar { display: none; }
   .situs-nav { flex-wrap: nowrap; }
   .situs-nav a { min-height: 44px; }
@@ -323,6 +323,12 @@ main:focus { outline: none; }
   .situs-halhero .situs-orn { display: none; }
 }
 @media (max-width: 767px) {
+  /* Header ponsel (CR-038, KEPUTUSAN-421): logo + dua pill toko harus muat satu baris di 320 px. */
+  .situs-top__isi { column-gap: var(--s2); }
+  .situs-logo { font-size: 18px; }
+  .situs-toko { gap: var(--s1); }
+  .situs-toko__tautan { padding: 0 var(--s3); font-size: 13px; }
+  .situs-toko__awal { display: none; }
   :root {
     --situs-hero-size: 32px;
     --situs-hero-line: 40px;

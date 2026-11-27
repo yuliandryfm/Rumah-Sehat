@@ -42,6 +42,13 @@ describe("ambilUrlToko (CR-038)", () => {
     ["karakter kendali C1", "https://play.google.com/x\u0085"],
     ["backslash", "https://play.google.com\\@evil.test/x"],
     ["tanpa host", "https:///x"],
+    ["titik di akhir host", "https://play.google.com./x"],
+    ["homograf Sirilik", "https://plаy.google.com/x"],
+    ["punycode", "https://xn--ply-8cd.google.com/x"],
+    ["titik di-encode persen", "https://play%2egoogle.com/x"],
+    ["port 443 eksplisit", "https://play.google.com:443/x"],
+    ["skema data", "data:text/html,hi"],
+    ["skema tanpa garis miring", "https:play.google.com/x"],
   ])("Play: %s → null", (_n, nilai) => {
     expect(ambilUrlToko("playstore", { SITUS_PLAYSTORE_URL: nilai })).toBeNull();
   });
@@ -54,6 +61,13 @@ describe("ambilUrlToko (CR-038)", () => {
     ["host huruf besar", "https://Apps.Apple.com/x"],
     ["host mirip", "https://apps.apple.com.evil.test/x"],
     ["karakter kendali", "https://apps.apple.com/x\r\ny"],
+    ["titik di akhir host", "https://apps.apple.com./x"],
+    ["homograf Sirilik", "https://apps.аpple.com/x"],
+    ["punycode", "https://xn--pple-43d.apple.com/x"],
+    ["titik di-encode persen", "https://apps%2eapple.com/x"],
+    ["port 443 eksplisit", "https://apps.apple.com:443/x"],
+    ["skema data", "data:text/html,hi"],
+    ["skema tanpa garis miring", "https:apps.apple.com/x"],
   ])("App Store: %s → null", (_n, nilai) => {
     expect(ambilUrlToko("appstore", { SITUS_APPSTORE_URL: nilai })).toBeNull();
   });
