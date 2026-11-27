@@ -60,3 +60,25 @@ main:focus { outline: none; }
 .kp-konfirmasi:focus { outline: none; box-shadow: var(--focus-ring); }
 .kp-konfirmasi h2 { margin: 0; font-size: var(--t-title-size); }
 .kp-baris-aksi { display: flex; justify-content: flex-end; gap: var(--s2); }
+
+/* Status verifikasi dan dokumen perusahaan (F1-T103, K01 layar 7-8). */
+.kp-lebar { max-width: 760px; }
+.kp-bagian h2 { font-size: var(--t-title-size); line-height: var(--t-title-line); margin: var(--s4) 0 0; }
+.kp-dokumen h3 { font-size: var(--t-subtitle-size); line-height: var(--t-subtitle-line); margin: 0; }
+.kp-umum:empty { display: none; }
+.kp-baris-status { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); margin: 0; }
+.kp-linimasa { margin: 0; padding-left: var(--s6); display: flex; flex-direction: column; gap: var(--s1); }
+.kp-linimasa li[aria-current="step"] { font-weight: 700; color: var(--c-primary-strong); }
+.kp-linimasa li[data-selesai="true"] { color: var(--c-text-secondary); }
+.kp-dokumen { padding: var(--s4); background: var(--c-bg-surface); border: 1px solid var(--c-border-divider); border-radius: var(--r-md); display: flex; flex-direction: column; gap: var(--s2); }
+.kp-dokumen p { margin: 0; }
+.kp-berkas { min-height: 40px; max-width: 100%; }
+.kp-berkas:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.kp-kiri { justify-content: flex-start; flex-wrap: wrap; }
+.kp-profil { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: var(--s2) var(--s4); margin: 0; }
+.kp-profil dt { color: var(--c-text-secondary); }
+.kp-profil dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 479px) {
+  .kp-profil { grid-template-columns: 1fr; }
+  .kp-profil dd { margin-bottom: var(--s2); }
+}

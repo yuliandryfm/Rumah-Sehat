@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { HEADER_DINAMIS, HEADER_STATIS, buatCsp, buatNonce } from "./keamanan.ts";
+import { HEADER_DINAMIS, HEADER_STATIS, buatCsp, buatNonce, originUnggahDariEnv } from "./keamanan.ts";
 import { idKorelasi } from "./lib/korelasi.ts";
 
 /**
@@ -10,7 +10,7 @@ import { idKorelasi } from "./lib/korelasi.ts";
 export function proxy(request: NextRequest): NextResponse {
   const nonce = buatNonce();
   const dev = process.env.NODE_ENV === "development";
-  const csp = buatCsp(nonce, dev);
+  const csp = buatCsp(nonce, dev, originUnggahDariEnv(process.env["KORPORAT_UPLOAD_ORIGIN"], dev));
   const korelasi = idKorelasi(request.headers.get("x-correlation-id"));
 
   // Next membaca nonce dari CSP pada header permintaan lalu memasangnya ke skrip dan gaya buatannya.

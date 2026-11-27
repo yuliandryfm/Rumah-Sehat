@@ -59,6 +59,8 @@ describe("DasborHr", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();
     expect(screen.queryByText("Perusahaan terverifikasi")).toBeNull();
     expect(document.body.textContent).not.toMatch(/ditolak karena|alasan penolakan/i);
+    // F1-T103: status dan dokumen ada di halaman Status verifikasi, bukan ditebak di sini.
+    expect(screen.getByRole("link", { name: "Lihat status verifikasi dan dokumen perusahaan" }).getAttribute("href")).toBe("/verifikasi");
   });
 
   test("401 4010002 → layar akun nonaktif (hanya pemegang sesi sah), tanpa data HR", async () => {

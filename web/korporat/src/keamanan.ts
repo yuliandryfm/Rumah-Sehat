@@ -41,10 +41,12 @@ export function buatNonce(): string {
 
 /**
  * CSP. `nonce` null untuk berkas statis (tanpa dokumen HTML). `dev` menambah `'unsafe-eval'` hanya untuk
- * `next dev` (kebutuhan React di development; tidak dipakai di produksi). `connect-src` hanya `'self'`:
- * semua panggilan API lewat BFF satu asal. Origin unggah dokumen perusahaan ditambahkan task F1-T103 bila perlu.
+ * `next dev` (kebutuhan React di development; tidak dipakai di produksi). `connect-src` hanya `'self'`
+ * (semua panggilan API lewat BFF satu asal) ditambah, bila dikonfigurasi, SATU origin object storage untuk
+ * unggah dokumen perusahaan lewat URL bertanda tangan (F1-T103, ADR-018; pola backoffice F1-T95), hanya dari
+ * `originUnggahDariEnv`. Unduh dokumen adalah navigasi tautan biasa, jadi tidak menambah arahan lain.
  */
-export function buatCsp(nonce: string | null, dev = false): string {
+export function buatCsp(nonce: string | null, dev = false, originUnggah: string | null = null): string {
   const nonceSumber = nonce === null ? "" : ` 'nonce-${nonce}'`;
   const arahan = [
     "default-src 'self'",
@@ -52,7 +54,7 @@ export function buatCsp(nonce: string | null, dev = false): string {
     `style-src 'self'${nonceSumber}`,
     "img-src 'self'",
     "font-src 'self'",
-    "connect-src 'self'",
+    `connect-src 'self'${originUnggah === null ? "" : ` ${originUnggah}`}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -60,4 +62,22 @@ export function buatCsp(nonce: string | null, dev = false): string {
     "upgrade-insecure-requests",
   ];
   return arahan.join("; ");
+}
+
+/**
+ * Origin object storage untuk unggah dokumen perusahaan dari env `KORPORAT_UPLOAD_ORIGIN` (hanya origin, tanpa
+ * path/kredensial). Nilai tidak valid atau bukan https (kecuali `http` di development) diabaikan: gagal tertutup,
+ * hanya unggah dokumen yang tidak jalan, CSP tidak melonggar. Sama dengan `originUnggahDariEnv` backoffice.
+ */
+export function originUnggahDariEnv(nilai: string | undefined, dev = false): string | null {
+  if (nilai === undefined || nilai === "") return null;
+  let u: URL;
+  try {
+    u = new URL(nilai);
+  } catch {
+    return null;
+  }
+  const skemaOk = u.protocol === "https:" || (dev && u.protocol === "http:");
+  const hanyaOrigin = u.username === "" && u.password === "" && (u.pathname === "/" || u.pathname === "") && u.search === "" && u.hash === "";
+  return skemaOk && hanyaOrigin ? u.origin : null;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert } from "@rs/ui";
+import Link from "next/link";
 import { useEffect } from "react";
 import { KODE_AKUN_NONAKTIF, KODE_CSRF_DITOLAK, type Gagal } from "../../lib/hr/klien.ts";
 
@@ -25,8 +26,8 @@ export function LayarAkunNonaktif() {
 
 /**
  * Akses ditolak: perusahaan belum Aktif (menunggu verifikasi atau ditolak) → API menjawab 403 (US-1901 AC6).
- * Status dan alasan penolakan belum dapat ditampilkan: API Rust belum punya endpoint profil/status
- * perusahaan untuk HR `[TIDAK DIKETAHUI]`, jadi layar ini tidak menebaknya.
+ * Layar ini tidak menebak status; status, alasan penolakan, dan dokumen ada di halaman Status verifikasi
+ * (F1-T103, `GET /v1/corporate/documents`), yang ditautkan dari sini.
  */
 export function LayarPerusahaanBelumAktif() {
   return (
@@ -35,6 +36,9 @@ export function LayarPerusahaanBelumAktif() {
       <Alert variant="warning" title="Perusahaan Anda belum aktif">
         Menu ini terbuka setelah perusahaan Anda diverifikasi dan berstatus Aktif. Bila Anda perlu bantuan, {KONTAK_BELUM_ADA.toLowerCase()}
       </Alert>
+      <p>
+        <Link href="/verifikasi" prefetch={false}>Lihat status verifikasi dan dokumen perusahaan</Link>
+      </p>
     </section>
   );
 }
