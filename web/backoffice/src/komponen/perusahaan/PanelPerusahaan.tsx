@@ -6,13 +6,17 @@ import { buatKlienPerusahaan, KODE_CSRF_DITOLAK, type Gagal, type KlienPerusahaa
 import {
   LABEL_DOKUMEN_PERUSAHAAN,
   LABEL_ORIGIN,
+  LABEL_FIELD_KOREKSI,
   LABEL_STATUS_PERUSAHAAN,
   nibTermasking,
+  nilaiSebelumnya,
   sumber,
+  TEKS_DATA_DIKOREKSI,
   TEKS_NIB_DIPAKAI,
   type AlasanTolakPerusahaan,
   type DetailPerusahaan,
   type DokumenUrl,
+  type FieldKoreksi,
   type ItemAntreanPerusahaan,
   type JenisDokumen,
 } from "../../lib/perusahaan/model.ts";
@@ -69,6 +73,22 @@ function DokumenView({ dok, jenis, onKedaluwarsa }: { dok: DokumenUrl; jenis: Je
     <a href={dok.url} target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer">
       Buka {LABEL_DOKUMEN_PERUSAHAAN[jenis]} di tab baru
     </a>
+  );
+}
+
+/**
+ * Penanda "Data dikoreksi" di samping field yang dikoreksi HR pada pengajuan ulang ini, beserta nilai putaran
+ * sebelumnya (CR-040, keputusan user Q34 = A). Tidak tampil bila field tidak berubah. Status tidak hanya lewat
+ * warna: badge bersimbol dan bertulisan (DG §5.6).
+ */
+function PenandaKoreksi({ detail, field }: { detail: DetailPerusahaan; field: FieldKoreksi }) {
+  const sebelumnya = nilaiSebelumnya(detail, field);
+  if (sebelumnya === undefined) return null;
+  return (
+    <span className="bo-koreksi" data-testid={`koreksi-${field}`}>
+      <Badge tone="warning">{TEKS_DATA_DIKOREKSI}</Badge>{" "}
+      <span className="bo-koreksi__lama">Sebelumnya: {sebelumnya}</span>
+    </span>
   );
 }
 
@@ -339,15 +359,38 @@ export function PanelPerusahaan({ csrfToken, klien }: PanelPerusahaanProps) {
                     dapat disetujui bila NIB sudah dipakai perusahaan Aktif lain.
                   </Alert>
                 ) : null}
+                {detail.corrected_fields.length === 0 ? null : (
+                  <Alert variant="info" title="HR mengoreksi data pada pengajuan ulang ini">
+                    Periksa ulang yang bertanda {TEKS_DATA_DIKOREKSI}:{" "}
+                    {detail.corrected_fields.map((f) => LABEL_FIELD_KOREKSI[f.field]).join(", ")}.
+                  </Alert>
+                )}
                 <dl className="bo-dl">
+                  {nilaiSebelumnya(detail, "legal_name") === undefined ? null : (
+                    <>
+                      <dt>Nama badan usaha</dt>
+                      <dd>
+                        {detail.legal_name} <PenandaKoreksi detail={detail} field="legal_name" />
+                      </dd>
+                    </>
+                  )}
                   <dt>NIB</dt>
-                  <dd data-testid="nib-lengkap">{detail.nib} (lengkap untuk Verifikator)</dd>
+                  <dd>
+                    <span data-testid="nib-lengkap">{detail.nib} (lengkap untuk Verifikator)</span>{" "}
+                    <PenandaKoreksi detail={detail} field="nib" />
+                  </dd>
                   <dt>NPWP</dt>
-                  <dd data-testid="npwp-lengkap">{detail.npwp}</dd>
+                  <dd>
+                    <span data-testid="npwp-lengkap">{detail.npwp}</span> <PenandaKoreksi detail={detail} field="npwp" />
+                  </dd>
                   <dt>Alamat kantor</dt>
-                  <dd>{detail.office_address}</dd>
+                  <dd>
+                    {detail.office_address} <PenandaKoreksi detail={detail} field="office_address" />
+                  </dd>
                   <dt>Telepon kantor</dt>
-                  <dd>{detail.office_phone}</dd>
+                  <dd>
+                    {detail.office_phone} <PenandaKoreksi detail={detail} field="office_phone" />
+                  </dd>
                   <dt>Sumber</dt>
                   <dd>
                     {LABEL_ORIGIN[detail.origin]} (putaran {detail.submission_round})

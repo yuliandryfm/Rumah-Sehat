@@ -66,6 +66,9 @@ main:focus { outline: none; }
 .bo-dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s2) var(--s4); margin: 0; }
 .bo-dl dt { color: var(--c-text-secondary); }
 .bo-dl dd { margin: 0; overflow-wrap: anywhere; }
+/* CR-040: penanda "Data dikoreksi" + nilai sebelumnya, di baris sendiri di bawah nilai terbaru. */
+.bo-koreksi { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s1); }
+.bo-koreksi__lama { color: var(--c-text-secondary); }
 .bo-foto { max-width: 100%; border: 1px solid var(--c-border-divider); border-radius: var(--r-md); }
 @media (max-width: 767px) {
   .bo-editor { grid-template-columns: 1fr; }

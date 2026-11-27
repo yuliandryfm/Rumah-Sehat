@@ -555,6 +555,21 @@ export interface components {
          * @enum {string}
          */
         CorporateStatusDto: "pending_verification" | "active" | "rejected" | "inactive";
+        /**
+         * @description Field data perusahaan yang dapat dikoreksi HR (CR-036).
+         * @enum {string}
+         */
+        CorrectableFieldDto: "legal_name" | "nib" | "npwp" | "office_address" | "office_phone";
+        /** @description Satu field yang dikoreksi HR beserta nilai putaran sebelumnya (CR-040). */
+        CorrectedFieldDto: {
+            field: components["schemas"]["CorrectableFieldDto"];
+            /**
+             * @description Nilai putaran sebelumnya. NIB dan NPWP selalu termasking (`************` + 4 karakter terakhir); nilai
+             *     lengkap sebelumnya tidak disimpan.
+             * @example PT Sintetis Lama
+             */
+            previous_value: string;
+        };
         /** @description Hasil keputusan. */
         DecisionDto: {
             /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
@@ -604,6 +619,12 @@ export interface components {
             can_decide: boolean;
             /** @example 0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b */
             corporate_client_id: string;
+            /**
+             * @description Penanda "Data dikoreksi" (CR-040): field yang dikoreksi HR pada putaran berjalan dibandingkan putaran
+             *     sebelumnya, beserta nilai sebelumnya. Kosong bila putaran ini pengajuan pertama, pengajuan ulang tanpa
+             *     koreksi (dokumen saja), atau koreksi tanpa nilai yang benar-benar berubah.
+             */
+            corrected_fields: components["schemas"]["CorrectedFieldDto"][];
             /**
              * Format: date-time
              * @description Waktu keputusan putaran berjalan, bila sudah diputuskan.

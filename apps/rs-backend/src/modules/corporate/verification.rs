@@ -44,6 +44,7 @@ use super::api::{
     CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, CorporateVerification,
     QueueReadiness, RejectionReasonView,
 };
+use super::correction;
 use super::domain::{
     self, Decision, DocumentKind, QueueCursor, REJECTION_CONTEXT, RejectionReason, parse_origin,
 };
@@ -286,6 +287,13 @@ pub(super) async fn detail(
     let active_docs = repo::active_documents(s.pool, row.id)
         .await
         .map_err(db_error)?;
+    // CR-040: field yang dikoreksi pada putaran berjalan dibandingkan putaran sebelumnya (catatan koreksi
+    // `corporate_client_correction` putaran ini; tanpa catatan = tanpa penanda).
+    let corrected_fields = correction::corrected_fields(
+        repo::round_correction(s.pool, row.id, row.submission_round)
+            .await
+            .map_err(db_error)?,
+    );
     let documents_version = domain::documents_version(
         row.submission_round,
         &active_docs.iter().map(|d| d.id).collect::<Vec<_>>(),
@@ -339,6 +347,7 @@ pub(super) async fn detail(
         decided_at,
         can_decide: domain::may_decide(status),
         nib_used_by_other_company,
+        corrected_fields,
     })
 }
 

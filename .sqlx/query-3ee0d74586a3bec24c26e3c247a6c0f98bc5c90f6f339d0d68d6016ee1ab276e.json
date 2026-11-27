@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT submission_round, created_by, previous_legal_name, previous_nib_last4, previous_npwp_last4, previous_office_address, previous_office_phone FROM app.corporate_client_correction WHERE corporate_client_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "submission_round",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "submission_round"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "created_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "previous_legal_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "previous_legal_name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "previous_nib_last4",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "previous_nib_last4"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "previous_npwp_last4",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "previous_npwp_last4"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "previous_office_address",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "previous_office_address"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "previous_office_phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client_correction",
+            "name": "previous_office_phone"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3ee0d74586a3bec24c26e3c247a6c0f98bc5c90f6f339d0d68d6016ee1ab276e"
+}

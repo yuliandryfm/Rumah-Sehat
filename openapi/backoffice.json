@@ -2751,6 +2751,35 @@
           "inactive"
         ]
       },
+      "CorrectableFieldDto": {
+        "type": "string",
+        "description": "Field data perusahaan yang dapat dikoreksi HR (CR-036).",
+        "enum": [
+          "legal_name",
+          "nib",
+          "npwp",
+          "office_address",
+          "office_phone"
+        ]
+      },
+      "CorrectedFieldDto": {
+        "type": "object",
+        "description": "Satu field yang dikoreksi HR beserta nilai putaran sebelumnya (CR-040).",
+        "required": [
+          "field",
+          "previous_value"
+        ],
+        "properties": {
+          "field": {
+            "$ref": "#/components/schemas/CorrectableFieldDto"
+          },
+          "previous_value": {
+            "type": "string",
+            "description": "Nilai putaran sebelumnya. NIB dan NPWP selalu termasking (`************` + 4 karakter terakhir); nilai\nlengkap sebelumnya tidak disimpan.",
+            "example": "PT Sintetis Lama"
+          }
+        }
+      },
       "DecisionDto": {
         "type": "object",
         "description": "Hasil keputusan.",
@@ -2876,7 +2905,8 @@
           "documents",
           "documents_version",
           "can_decide",
-          "nib_used_by_other_company"
+          "nib_used_by_other_company",
+          "corrected_fields"
         ],
         "properties": {
           "can_decide": {
@@ -2886,6 +2916,13 @@
           "corporate_client_id": {
             "type": "string",
             "example": "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"
+          },
+          "corrected_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CorrectedFieldDto"
+            },
+            "description": "Penanda \"Data dikoreksi\" (CR-040): field yang dikoreksi HR pada putaran berjalan dibandingkan putaran\nsebelumnya, beserta nilai sebelumnya. Kosong bila putaran ini pengajuan pertama, pengajuan ulang tanpa\nkoreksi (dokumen saja), atau koreksi tanpa nilai yang benar-benar berubah."
           },
           "decided_at": {
             "type": [

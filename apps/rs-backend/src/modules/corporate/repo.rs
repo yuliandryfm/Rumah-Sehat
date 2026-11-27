@@ -581,6 +581,68 @@ pub(super) async fn resubmit_client(
     Ok(r.rows_affected())
 }
 
+/// Nilai sebelumnya field yang dikoreksi pada satu pengajuan ulang (CR-040, KEPUTUSAN-442;
+/// `corporate_client_correction`, Transaksi). `None` = field tidak berubah. NIB dan NPWP hanya 4 karakter terakhir
+/// (nilai lengkap tidak pernah disalin). Sengaja tanpa `Debug` (nilai data perusahaan).
+#[derive(Default)]
+pub(super) struct CorrectionRow {
+    pub(super) previous_legal_name: Option<String>,
+    pub(super) previous_nib_last4: Option<String>,
+    pub(super) previous_npwp_last4: Option<String>,
+    pub(super) previous_office_address: Option<String>,
+    pub(super) previous_office_phone: Option<String>,
+}
+
+/// Menyisipkan catatan koreksi putaran `submission_round` (putaran hasil pengajuan ulang). Dipanggil hanya dari
+/// transaksi koreksi yang sudah mengunci baris perusahaan; UQ `(corporate_client_id, submission_round)` menjadi
+/// penjaga terakhir (pelanggaran = galat transaksi, tidak pernah ditimpa: ADR-004).
+pub(super) async fn insert_correction(
+    conn: &mut PgConnection,
+    id: Uuid,
+    corporate_client_id: Uuid,
+    submission_round: i32,
+    actor_id: Uuid,
+    previous: &CorrectionRow,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO app.corporate_client_correction \
+           (id, created_by, corporate_client_id, submission_round, previous_legal_name, previous_nib_last4, \
+            previous_npwp_last4, previous_office_address, previous_office_phone) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        id,
+        actor_id,
+        corporate_client_id,
+        submission_round,
+        previous.previous_legal_name.as_deref(),
+        previous.previous_nib_last4.as_deref(),
+        previous.previous_npwp_last4.as_deref(),
+        previous.previous_office_address.as_deref(),
+        previous.previous_office_phone.as_deref(),
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// Catatan koreksi putaran `submission_round` (paling banyak satu, `uq_corp_client_corr_*`); `None` bila putaran
+/// itu bukan pengajuan ulang dengan data yang berubah.
+pub(super) async fn round_correction(
+    pool: &PgPool,
+    corporate_client_id: Uuid,
+    submission_round: i32,
+) -> Result<Option<CorrectionRow>, sqlx::Error> {
+    sqlx::query_as!(
+        CorrectionRow,
+        "SELECT previous_legal_name, previous_nib_last4, previous_npwp_last4, previous_office_address, \
+                previous_office_phone \
+         FROM app.corporate_client_correction WHERE corporate_client_id = $1 AND submission_round = $2",
+        corporate_client_id,
+        submission_round,
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 /// Dokumen aktif perusahaan.
 pub(super) struct DocumentRow {
     pub(super) id: Uuid,

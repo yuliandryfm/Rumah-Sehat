@@ -41,6 +41,7 @@ const detail = (o: Partial<DetailPerusahaan> = {}): DetailPerusahaan => ({
   documents_version: VERSI,
   can_decide: true,
   nib_used_by_other_company: false,
+  corrected_fields: [],
   ...o,
 });
 

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_client_correction (id, created_by, corporate_client_id, submission_round, previous_legal_name, previous_nib_last4, previous_npwp_last4, previous_office_address, previous_office_phone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "091ae44ca46b156900b0c690543c6d00c9328b4ee473f873b6bca4c1fd1eee13"
+}
