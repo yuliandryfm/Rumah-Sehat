@@ -63,20 +63,16 @@ main:focus { outline: none; }
 
 .situs-top { position: sticky; top: 0; z-index: 20; background: var(--c-bg-surface); border-bottom: 1px solid var(--c-border-divider); box-shadow: var(--e1); }
 .situs-top__isi { position: relative; display: flex; align-items: center; gap: var(--s4); min-height: var(--situs-tinggi-kepala); }
-.situs-grow { flex: 1; }
 .situs-logo { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--c-primary-strong); text-decoration: none; min-height: 40px; display: inline-flex; align-items: center; } /* K6 */
 .situs-nav { display: flex; gap: var(--s1); flex-wrap: wrap; align-items: center; }
 .situs-nav a { position: relative; min-height: 40px; padding: 0 var(--s3); display: inline-flex; align-items: center; color: var(--c-text-primary); text-decoration: none; border-radius: var(--r-full); font-size: 15px; line-height: 22px; font-weight: 500; transition: background-color var(--situs-gerak), color var(--situs-gerak); }
 .situs-nav a:hover { background: var(--c-mint); color: var(--c-primary-strong); } /* K6 di atas mint */
 .situs-nav a[aria-current="page"] { color: var(--c-primary-strong); font-weight: 700; background: var(--c-mint); }
-.situs-nav a.situs-nav__cta { background: var(--c-primary); color: var(--c-on-primary); font-weight: 700; padding: 0 var(--s5); margin-left: var(--s2); } /* K5 */
-.situs-nav a.situs-nav__cta:hover, .situs-nav a.situs-nav__cta[aria-current="page"] { background: var(--c-primary-strong); color: var(--c-on-primary); } /* K7 */
-.situs-menu { display: none; }
-.situs-menu summary { list-style: none; cursor: pointer; min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--s4); border: 1px solid var(--c-border-control); border-radius: var(--r-full); background: var(--c-bg-surface); font-weight: 600; } /* N1 */
-.situs-menu summary::-webkit-details-marker { display: none; }
-.situs-menu .situs-nav { flex-direction: column; align-items: stretch; position: absolute; right: var(--situs-tepi); left: var(--situs-tepi); top: calc(var(--situs-tinggi-kepala) - var(--s2)); z-index: 4; background: var(--c-bg-surface); border: 1px solid var(--c-border-divider); border-radius: var(--situs-r-kartu); padding: var(--s3); box-shadow: var(--e3); }
-.situs-menu .situs-nav a { min-height: 48px; padding: 0 var(--s4); }
-.situs-menu .situs-nav a.situs-nav__cta { margin: var(--s2) 0 0; justify-content: center; }
+.situs-nav-baris { flex: 1; min-width: 0; display: flex; justify-content: center; }
+.situs-nav a { white-space: nowrap; }
+.situs-toko { display: flex; gap: var(--s2); align-items: center; }
+.situs-toko__tautan { min-height: 40px; padding: 0 var(--s4); display: inline-flex; align-items: center; border: 1px solid var(--c-border-control); border-radius: var(--r-full); background: var(--c-bg-surface); color: var(--c-text-primary); font-size: 14px; line-height: 20px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background-color var(--situs-gerak), color var(--situs-gerak); }
+.situs-toko__tautan:hover { background: var(--c-mint); color: var(--c-primary-strong); } /* K6 di atas mint */
 
 /* ---------- Tipografi situs ---------- */
 .situs-eyebrow { margin: 0; font-size: var(--situs-eyebrow-size); line-height: var(--situs-eyebrow-line); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-primary-strong); } /* K6 */
@@ -304,13 +300,23 @@ main:focus { outline: none; }
 }
 
 /* ---------- Responsif ---------- */
+/* Header sempit (CR-038): logo dan tautan toko di baris pertama, deretan tautan navigasi di baris kedua
+   yang dapat digulir mendatar (tanpa menu lipat) dengan pudar di tepi sebagai petunjuk. */
+@media (max-width: 1139px) {
+  html { scroll-padding-top: calc(var(--situs-tinggi-kepala) + 48px + var(--s4)); }
+  .situs-top__isi { flex-wrap: wrap; column-gap: var(--s4); row-gap: 0; padding-top: var(--s2); min-height: 0; }
+  .situs-logo { order: 1; }
+  .situs-toko { order: 2; margin-left: auto; }
+  .situs-nav-baris { order: 3; flex: 0 0 100%; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: var(--s1) var(--s1) var(--s2); -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 28px), transparent 100%); }
+  .situs-nav-baris::-webkit-scrollbar { display: none; }
+  .situs-nav { flex-wrap: nowrap; }
+  .situs-nav a { min-height: 44px; }
+}
 @media (max-width: 1279px) {
   .situs-grid-layanan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .situs-grid-artikel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1023px) {
-  .situs-nav-lebar { display: none; }
-  .situs-menu { display: block; }
   .situs-hero__grid, .situs-korporat { grid-template-columns: minmax(0, 1fr); }
   .situs-visual { min-height: 480px; }
   .situs-foot__grid { grid-template-columns: minmax(0, 1fr); }

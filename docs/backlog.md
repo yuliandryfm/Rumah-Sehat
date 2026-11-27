@@ -673,6 +673,13 @@ Isi: setiap kali Verifikator membuka detail perusahaan (`GET /backoffice/v1/corp
 **Mengubah teks lama:** PRD §7.1 E-05 ("akses data pasien") diperluas ke data Terbatas perusahaan; revisi PRD menyusul (belum diubah di task ini). Kontrak OpenAPI backoffice tidak diubah (respons `500` endpoint detail belum dicantumkan karena menuntut regenerasi klien di `web/**`).
 Status: disetujui user; diimplementasikan, menunggu review T1 (keamanan, pustaka audit).
 
+### CR-038: Header situs: deretan tautan navigasi dan tautan toko aplikasi di pojok kanan
+
+Diajukan dan diputuskan: 2026-11-27, arahan user via Telegram `[USER]`: "menu di pojok atas situs tidak bagus. lebih baik menu link yg dipasang berurutan di header. kemudian pojok kanan lebih baik logo android dan apple yg merupakan link ke playstore dan appstore".
+Isi: (1) menu lipat "Menu" diganti deretan tujuh tautan di header (di layar sempit baris kedua yang dapat digulir mendatar), halaman aktif `aria-current="page"` (KEPUTUSAN-420, 421); (2) tautan Google Play dan App Store di pojok kanan; (3) alamat toko dari env `SITUS_PLAYSTORE_URL` / `SITUS_APPSTORE_URL`, fail-closed, fallback ke `/unduh` (KEPUTUSAN-423, 424).
+**Berbeda dari permintaan:** pedoman merek resmi (SRC-945–947) melarang logo Apple berdiri sendiri dan mengarahkan lencana resmi untuk ajakan unduh; aset lencana hanya terunduh setelah menyetujui perjanjian lisensi atas nama pemegang akun pengembang (Apple: hanya untuk aplikasi yang sudah ada di App Store). Agent tidak dapat menyetujuinya, sehingga sementara tautan berupa teks "Google Play" dan "App Store"; lencana resmi menunggu aset dari pemilik akun (KEPUTUSAN-422).
+Status: sebagian diimplementasikan (butir 1 dan 3 selesai, butir 2 teks sementara); menunggu review T1 dan keputusan user soal aset lencana.
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
