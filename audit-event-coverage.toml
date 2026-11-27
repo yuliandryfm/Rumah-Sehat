@@ -147,11 +147,14 @@ tests = [
 
 # E-10 unggah dokumen NIB, NPWP, dan bukti kewenangan oleh HR, termasuk penggantian dan penolakan isi berkas
 # (F1-T102, US-1901 AC2); E-16 dokumen lama yang dihapus lunak saat diganti, E-10 pengajuan ulang berhasil dan yang
-# ditolak aturan (F1-T102b, F1-T109).
+# ditolak aturan (F1-T102b, F1-T109); E-10 koreksi data perusahaan saat Ditolak bersama pengajuan ulang, berhasil
+# dan yang ditolak aturan (CR-036, KEPUTUSAN-411).
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/documents.rs"
 codes = ["E10", "E16"]
 tests = [
+  "apps/rs-backend/tests/corporate_correction.rs::rejected_company_corrects_its_data_and_resubmits_in_one_audited_action",
+  "apps/rs-backend/tests/corporate_correction.rs::correction_is_refused_outside_rejected_or_without_complete_documents",
   "apps/rs-backend/tests/corporate_resubmission.rs::rejected_company_resubmits_into_the_queue_with_a_new_round_and_audit",
   "apps/rs-backend/tests/corporate_resubmission.rs::resubmission_is_refused_outside_rejected_or_without_complete_documents",
   "apps/rs-backend/tests/corporate_audit_chain.rs::corporate_events_are_clean_and_chained_in_the_audit_database",

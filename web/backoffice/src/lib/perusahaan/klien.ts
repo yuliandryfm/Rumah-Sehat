@@ -35,7 +35,7 @@ const PESAN_KODE: Record<string, string> = {
   [KODE_DOKUMEN_BELUM_LENGKAP]: "Dokumen belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui.",
   [KODE_NIB_DIPAKAI_AKTIF]:
     "NIB sudah dipakai perusahaan Aktif lain, jadi pengajuan ini tidak dapat disetujui. Periksa kepemilikan NIB; bila tidak berhak, tolak dengan alasan yang sesuai.",
-  [KODE_DOKUMEN_BERUBAH]: "Dokumen perusahaan berubah sejak Anda membukanya. Detail dimuat ulang dan dokumen yang terbuka ditutup; buka dokumen kembali, periksa, lalu putuskan.",
+  [KODE_DOKUMEN_BERUBAH]: "Pengajuan perusahaan berubah sejak Anda membukanya (dokumen diganti, atau data dikoreksi dan diajukan ulang oleh HR). Detail dimuat ulang dan dokumen yang terbuka ditutup; periksa data, buka dokumen kembali, lalu putuskan.",
 };
 
 const PESAN_STATUS: Record<number, string> = {

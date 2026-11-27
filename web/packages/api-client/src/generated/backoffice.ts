@@ -615,7 +615,8 @@ export interface components {
              */
             documents: components["schemas"]["DocumentKindDto"][];
             /**
-             * @description Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
+             * @description Token versi pengajuan (putaran + dokumen aktif, KEPUTUSAN-415); kirim kembali apa adanya saat menyetujui atau
+             *     menolak (`4090114` bila dokumen diganti atau data dikoreksi dan diajukan ulang sejak detail dilihat).
              *     Nilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.
              * @example 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
              */
@@ -2145,7 +2146,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: pengajuan berubah sejak detail dilihat, yaitu dokumen diunggah atau diganti, atau data dikoreksi dan diajukan ulang oleh HR (token terikat putaran dan dokumen; F1-T102, KEPUTUSAN-415). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2305,7 +2306,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102). */
+            /** @description 4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: pengajuan berubah sejak detail dilihat, yaitu dokumen diunggah atau diganti, atau data dikoreksi dan diajukan ulang oleh HR (token terikat putaran dan dokumen; F1-T102, KEPUTUSAN-415). */
             409: {
                 headers: {
                     [name: string]: unknown;

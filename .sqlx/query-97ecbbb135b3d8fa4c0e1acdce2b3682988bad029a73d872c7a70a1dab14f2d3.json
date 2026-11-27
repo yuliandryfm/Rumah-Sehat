@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO app.corporate_verification_decision (id, created_by, corporate_client_id, submission_round, decision, reason_code, decided_by) VALUES ($1, $2, $3, $4, 'rejected', 'company_data_mismatch', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97ecbbb135b3d8fa4c0e1acdce2b3682988bad029a73d872c7a70a1dab14f2d3"
+}

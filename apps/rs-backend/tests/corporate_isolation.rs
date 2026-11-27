@@ -150,7 +150,23 @@ const PRODUCTION_CASES: &[Case] = &[
         path: "/v1/corporate/verification-resubmissions",
         probe: Probe::Hr { body: None },
     },
+    // CR-036: koreksi data perusahaan saat Ditolak sekaligus pengajuan ulang. Tanpa parameter path; ID perusahaan
+    // yang diselipkan harness di isi ditolak (`deny_unknown_fields`, 422). Fixture Aktif (`4090112`) atau Menunggu
+    // verifikasi (`4090001`), jadi pembanding positif tidak mengubah data; skenario Ditolak (A mengoreksi, B tidak
+    // tersentuh) ada di `corporate_correction.rs`.
+    Case {
+        method: "POST",
+        path: "/v1/corporate/company-corrections",
+        probe: Probe::Hr {
+            body: Some(company_correction_body),
+        },
+    },
 ];
+
+/// Isi koreksi data perusahaan yang sah (nilai sintetis).
+fn company_correction_body(_t: &Tenant) -> Value {
+    json!({ "office_phone": "0210000999" })
+}
 
 /// Isi permintaan slot unggah dokumen yang sah.
 fn document_slot_body(_t: &Tenant) -> Value {

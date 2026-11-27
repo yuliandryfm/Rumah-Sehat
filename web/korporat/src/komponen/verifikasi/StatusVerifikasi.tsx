@@ -1,12 +1,27 @@
 "use client";
 
-import { Alert, Badge, Button, Skeleton } from "@rs/ui";
+import { Alert, Badge, Button, Checkbox, Skeleton, TextField } from "@rs/ui";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type Ref } from "react";
 import type { Gagal } from "../../lib/hr/klien.ts";
+import {
+  FIELD_KOREKSI,
+  LABEL_KOREKSI,
+  MAKS_KOREKSI,
+  PETUNJUK_KOREKSI,
+  badanKoreksi,
+  galatServer,
+  isianAwal,
+  periksaKoreksi,
+  type FieldKoreksi,
+  type GalatKoreksi,
+  type IsianKoreksi,
+  type UbahTersamar,
+} from "../../lib/verifikasi/koreksi.ts";
 import {
   buatKlienVerifikasi,
   type JenisDokumen,
+  type GagalKoreksi,
   type KlienVerifikasi,
   type Muatan,
   type Ringkasan,
@@ -38,8 +53,9 @@ export interface StatusVerifikasiProps {
 /**
  * Status verifikasi perusahaan (F1-T103; US-1901 AC2, AC6; US-1902 AC3; wireframe K01 layar 7-8; brief KR-09,
  * KR-10): status (Menunggu verifikasi / Ditolak dengan alasan / Aktif), tiga dokumen wajib dengan status,
- * unggah dan ganti lewat slot, unduh lewat URL berumur pendek, dan "Ajukan ulang" saat Ditolak. Koreksi data
- * perusahaan saat pengajuan ulang belum diputuskan (P-T102b-1/Q20), jadi tidak ada formulir ubah data di sini.
+ * unggah dan ganti lewat slot, unduh lewat URL berumur pendek, dan "Ajukan ulang" saat Ditolak. Saat Ditolak,
+ * HR dapat mengoreksi data perusahaan di bagian "Ajukan ulang" (CR-036, Q20 = A, KEPUTUSAN-413): koreksi dikirim
+ * bersama pengajuan ulang dalam satu aksi; NIB/NPWP tetap tersamar dan hanya diketik ulang bila dipilih diubah.
  * Status "Aktif" berasal dari 409 `4090112` (endpoint dokumen hanya melayani perusahaan yang belum Aktif).
  * Semua keputusan di server; layar ini tidak menyimpan berkas atau isian di perangkat (DG D-K01).
  */
@@ -52,6 +68,12 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
   const [info, setInfo] = useState<string | null>(null);
   const [ajukanSibuk, setAjukanSibuk] = useState(false);
   const [memuat, setMemuat] = useState(false);
+  // CR-036: isian koreksi data perusahaan (hanya di memori; diisi dari profil saat status Ditolak dimuat).
+  const [isian, setIsian] = useState<IsianKoreksi | null>(null);
+  const [ubah, setUbah] = useState<UbahTersamar>({ nib: false, npwp: false });
+  const [galatField, setGalatField] = useState<GalatKoreksi>({});
+  const formKoreksi = useRef<HTMLFieldSetElement>(null);
+  const fokusKe = useRef<FieldKoreksi | null>(null);
 
   const muat = useCallback(async () => {
     setMemuat(true);
@@ -60,10 +82,22 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
     if (h.ok) {
       setMuatan(h.data);
       setGalat(null);
+      if (h.data.jenis === "dokumen") {
+        setIsian(isianAwal(h.data.ringkasan.company));
+        setUbah({ nib: false, npwp: false });
+        setGalatField({});
+      }
     } else {
       setGalat(h);
     }
   }, [api]);
+
+  // Fokus ke isian galat pertama setelah render (DG §5.3, A12).
+  useEffect(() => {
+    const f = fokusKe.current;
+    fokusKe.current = null;
+    if (f !== null) formKoreksi.current?.querySelector<HTMLInputElement>(`[name="koreksi-${f}"]`)?.focus();
+  });
 
   useEffect(() => {
     void muat();
@@ -85,15 +119,44 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
       setGalatAjukan("Dokumen belum lengkap. Unggah ketiga dokumen terlebih dahulu, lalu ajukan ulang.");
       return;
     }
+    // CR-036: koreksi data (bila ada) dikirim bersama pengajuan ulang dalam satu aksi.
+    const badan = isian === null ? {} : badanKoreksi(isian, ubah, r.company);
+    const adaKoreksi = Object.keys(badan).length > 0;
+    if (adaKoreksi && isian !== null) {
+      const g = periksaKoreksi(isian, ubah, r.company);
+      setGalatField(g);
+      const pertama = FIELD_KOREKSI.find((f) => g[f] !== undefined);
+      if (pertama !== undefined) {
+        fokusKe.current = pertama;
+        setGalatAjukan("Ada data perusahaan yang perlu diperbaiki. Periksa pesan di setiap isian.");
+        return;
+      }
+    } else {
+      setGalatField({});
+    }
     setAjukanSibuk(true);
-    const h = await api.ajukanUlang();
+    const h = adaKoreksi ? await api.koreksiDanAjukanUlang(badan) : await api.ajukanUlang();
     setAjukanSibuk(false);
     if (h.ok) {
       terima(h.data);
-      setInfo("Pengajuan ulang terkirim. Status perusahaan kembali Menunggu verifikasi.");
+      // Isian koreksi diselaraskan dengan data tersimpan terbaru (review keamanan CR-036 T-02): NIB/NPWP kembali
+      // tersamar dan tidak ada sisa isian lama yang terkirim ulang.
+      setIsian(isianAwal(h.data.company));
+      setUbah({ nib: false, npwp: false });
+      setGalatField({});
+      setInfo(
+        adaKoreksi
+          ? "Data perusahaan dikoreksi dan pengajuan ulang terkirim. Status perusahaan kembali Menunggu verifikasi."
+          : "Pengajuan ulang terkirim. Status perusahaan kembali Menunggu verifikasi.",
+      );
     } else if (adalahGalatAkses(h)) {
       setGalatAksi(h);
     } else {
+      if (h.status === 422 && adaKoreksi) {
+        const g = galatServer((h as GagalKoreksi).isian);
+        setGalatField(g);
+        fokusKe.current = FIELD_KOREKSI.find((f) => g[f] !== undefined) ?? null;
+      }
       setGalatAjukan(h.pesan);
     }
   };
@@ -143,7 +206,29 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
           {muatan.ringkasan.status === "rejected" ? (
             <section aria-labelledby="judul-ajukan" className="kp-bagian">
               <h2 id="judul-ajukan">Ajukan ulang</h2>
-              <p>Setelah dokumen yang perlu diperbaiki diganti, ajukan ulang supaya Verifikator memeriksa kembali.</p>
+              <p>
+                Setelah dokumen yang perlu diperbaiki diganti dan data perusahaan yang salah dikoreksi, ajukan ulang
+                supaya Verifikator memeriksa kembali.
+              </p>
+              {isian === null ? null : (
+                <FormKoreksi
+                  ref={formKoreksi}
+                  profil={muatan.ringkasan.company}
+                  isian={isian}
+                  ubah={ubah}
+                  galat={galatField}
+                  onIsian={(f, v) => {
+                    setIsian((s) => (s === null ? s : { ...s, [f]: v }));
+                  }}
+                  onUbah={(f, on) => {
+                    setUbah((s) => ({ ...s, [f]: on }));
+                    if (!on) {
+                      setIsian((s) => (s === null ? s : { ...s, [f]: "" }));
+                      setGalatField((g) => Object.fromEntries(Object.entries(g).filter(([k]) => k !== f)));
+                    }
+                  }}
+                />
+              )}
               <div>
                 <Button
                   loading={ajukanSibuk}
@@ -243,9 +328,96 @@ function Profil({ r }: { r: Ringkasan }) {
         <dt>Telepon kantor</dt>
         <dd>{p.office_phone}</dd>
       </dl>
-      {/* Q31 = A [USER 2026-11-27]: teks sementara sampai koreksi data saat Ditolak (Q20 = A, CR-036) dibangun. */}
-      <p className="kp-kecil">Bila ada data yang salah, hubungi Layanan Pelanggan.</p>
+      {/* CR-036 menggantikan teks sementara Q31 ("hubungi Layanan Pelanggan"): koreksi hanya saat Ditolak (Q20 = A). */}
+      <p className="kp-kecil">
+        {r.status === "rejected"
+          ? "Bila ada data yang salah, koreksi di bagian Ajukan ulang di atas, lalu ajukan ulang."
+          : "Data perusahaan dapat dikoreksi bila pengajuan ditolak Verifikator."}
+      </p>
     </section>
+  );
+}
+
+interface FormKoreksiProps {
+  readonly ref: Ref<HTMLFieldSetElement>;
+  readonly profil: Ringkasan["company"];
+  readonly isian: IsianKoreksi;
+  readonly ubah: UbahTersamar;
+  readonly galat: GalatKoreksi;
+  readonly onIsian: (f: FieldKoreksi, nilai: string) => void;
+  readonly onUbah: (f: "nib" | "npwp", on: boolean) => void;
+}
+
+/**
+ * Formulir koreksi data perusahaan saat Ditolak (CR-036; label selalu terlihat, galat per field terhubung lewat
+ * `aria-describedby`, DG §7). NIB/NPWP tersimpan hanya tampil tersamar (Q23 = A); kotak "Ubah NIB"/"Ubah NPWP"
+ * membuka isian kosong untuk nilai lengkap yang baru. Tanpa `maxLength` di NIB/NPWP (tempelan berformat tidak
+ * terpotong diam-diam, sama dengan formulir daftar).
+ */
+function FormKoreksi({ ref, profil, isian, ubah, galat, onIsian, onUbah }: FormKoreksiProps) {
+  const teks = (f: "legal_name" | "office_address" | "office_phone", tipe: "text" | "tel", autoComplete: string) => {
+    const g = galat[f];
+    return (
+      <TextField
+        name={`koreksi-${f}`}
+        label={LABEL_KOREKSI[f]}
+        type={tipe}
+        value={isian[f]}
+        maxLength={MAKS_KOREKSI[f]}
+        autoComplete={autoComplete}
+        onChange={(e) => {
+          onIsian(f, e.currentTarget.value);
+        }}
+        {...(g === undefined ? {} : { error: g })}
+      />
+    );
+  };
+  const tersamar = (f: "nib" | "npwp", labelSaatIni: string) => {
+    const g = galat[f];
+    const petunjuk = PETUNJUK_KOREKSI[f];
+    return (
+      <div className="kp-fieldset">
+        <p className="kp-kecil">
+          {labelSaatIni}: {termasking(profil[f])}
+        </p>
+        <Checkbox
+          name={`ubah-${f}`}
+          label={f === "nib" ? "Ubah NIB" : "Ubah NPWP"}
+          checked={ubah[f]}
+          onChange={(e) => {
+            onUbah(f, e.currentTarget.checked);
+          }}
+        />
+        {ubah[f] ? (
+          <TextField
+            name={`koreksi-${f}`}
+            label={LABEL_KOREKSI[f]}
+            value={isian[f]}
+            inputMode="numeric"
+            autoComplete="off"
+            required
+            onChange={(e) => {
+              onIsian(f, e.currentTarget.value);
+            }}
+            {...(petunjuk === undefined ? {} : { hint: petunjuk })}
+            {...(g === undefined ? {} : { error: g })}
+          />
+        ) : null}
+      </div>
+    );
+  };
+  return (
+    <fieldset ref={ref} className="kp-fieldset">
+      <legend>Koreksi data perusahaan</legend>
+      <p className="kp-kecil">
+        Ubah hanya data yang salah. Koreksi dikirim bersama pengajuan ulang dan tercatat di riwayat audit.
+      </p>
+      {teks("legal_name", "text", "organization")}
+      {tersamar("nib", "NIB saat ini")}
+      {tersamar("npwp", "NPWP saat ini")}
+      {teks("office_address", "text", "street-address")}
+      {teks("office_phone", "tel", "tel")}
+    </fieldset>
   );
 }
 

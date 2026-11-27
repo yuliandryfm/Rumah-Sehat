@@ -23,6 +23,7 @@ use std::fmt;
 use time::OffsetDateTime;
 
 pub use super::admin_create::{CreatedCorporateClientView, NewCorporateClientInput};
+pub use super::correction::CompanyCorrectionInput;
 pub use super::domain::QueueCursor;
 pub use super::error::CorporateError;
 pub use super::registration::{NewCorporateRegistration, RegistrationDeps};
@@ -243,8 +244,8 @@ pub struct CorporateDetailView {
     /// Jenis dokumen aktif (`authority_proof`, `nib`, `npwp`); lengkap bila ketiganya ada (persetujuan ditolak
     /// `4090113` bila belum, F1-T102).
     pub documents: Vec<&'static str>,
-    /// Token versi dokumen aktif; wajib dikirim kembali saat menyetujui atau menolak (`4090114` bila dokumen
-    /// berubah sejak detail dilihat).
+    /// Token versi pengajuan (putaran + dokumen aktif, KEPUTUSAN-415); wajib dikirim kembali saat menyetujui atau
+    /// menolak (`4090114` bila dokumen diganti atau data dikoreksi dan diajukan ulang sejak detail dilihat).
     pub documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     pub rejection_reason: Option<String>,
@@ -486,6 +487,19 @@ pub async fn resubmit_corporate_verification(
     route: &str,
 ) -> Result<DocumentsOverviewView, CorporateError> {
     documents::resubmit(deps, scope, route).await
+}
+
+/// CR-036 (Q20 = A, KEPUTUSAN-410): HR perusahaan Ditolak mengoreksi data perusahaannya sekaligus mengajukan
+/// ulang (satu aksi, satu transaksi). Validasi sama dengan pendaftaran (422 per field); aturan status, dokumen,
+/// dan batas laju sama dengan [`resubmit_corporate_verification`]. E-10 `corporate_client_data_corrected`
+/// (nama field yang berubah saja) + `corporate_verification_resubmitted`.
+pub async fn correct_and_resubmit_corporate_verification(
+    deps: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    input: &CompanyCorrectionInput,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    documents::correct_and_resubmit(deps, scope, route, input).await
 }
 
 /// URL unduh berumur pendek untuk dokumen aktif `document_kind` perusahaan pemanggil (E-12 dulu).

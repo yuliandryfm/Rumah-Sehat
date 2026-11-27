@@ -216,6 +216,77 @@ pub fn assert_corporate_events_clean(
     }
 }
 
+/// Aksi koreksi data perusahaan (CR-036): satu-satunya event korporat yang boleh membawa nilai data perusahaan.
+pub const CORPORATE_CORRECTION_ACTION: &str = "corporate_client_data_corrected";
+/// Field teks event koreksi yang boleh bernilai (ADR-005 before/after, KEPUTUSAN-416); NIB/NPWP hanya `last4`.
+pub const CORPORATE_CORRECTION_TEXT_FIELDS: &[&str] =
+    &["legal_name", "office_address", "office_phone"];
+
+/// Pemeriksa event korporat yang memuat E-10 koreksi data perusahaan (review DBA CR-036 C1, KEPUTUSAN-416).
+/// Pengecualian dari [`assert_corporate_events_clean`] dibuat SEMPIT dan eksplisit, hanya untuk event berkode aksi
+/// [`CORPORATE_CORRECTION_ACTION`]: (1) `before_values`/`after_values` hanya memuat field
+/// [`CORPORATE_CORRECTION_TEXT_FIELDS`] (string, deret angka < 4 karena disaring pustaka audit) dan `nib`/`npwp`
+/// berbentuk `{"last4": "dddd"}` atau `null`; (2) nilai teks field itu saja yang dikeluarkan dari pemeriksaan nilai
+/// mentah, lalu sisa payload (termasuk `last4`) diperiksa penuh oleh [`assert_corporate_events_clean`] dengan
+/// `raw_values` (NIB dan NPWP penuh tetap terlarang di mana pun). Event lain diperiksa tanpa pengecualian.
+pub fn assert_corporate_correction_events_clean(
+    payloads: &[Value],
+    expected_codes: &[&str],
+    tenant: &str,
+    raw_values: &[&str],
+) {
+    assert!(!payloads.is_empty(), "tidak ada event audit korporat");
+    for p in payloads {
+        if p["action_name"].as_str() != Some(CORPORATE_CORRECTION_ACTION) {
+            assert_corporate_events_clean(
+                std::slice::from_ref(p),
+                expected_codes,
+                Some(tenant),
+                raw_values,
+            );
+            continue;
+        }
+        let mut stripped = p.clone();
+        for key in ["before_values", "after_values"] {
+            let Some(values) = p[key].as_object() else {
+                assert!(p[key].is_null(), "{key} bukan objek: {p}");
+                continue;
+            };
+            for (field, v) in values {
+                match field.as_str() {
+                    "nib" | "npwp" => {
+                        if !v.is_null() {
+                            let obj = v
+                                .as_object()
+                                .unwrap_or_else(|| panic!("{field} bukan last4: {p}"));
+                            assert_eq!(obj.len(), 1, "{field} memuat lebih dari last4: {p}");
+                            let last4 = obj["last4"]
+                                .as_str()
+                                .unwrap_or_else(|| panic!("{field}: {p}"));
+                            assert!(
+                                last4.len() == 4 && last4.bytes().all(|b| b.is_ascii_digit()),
+                                "{field} bukan 4 digit terakhir: {p}"
+                            );
+                        }
+                    }
+                    f if CORPORATE_CORRECTION_TEXT_FIELDS.contains(&f) => {
+                        let text = v.as_str().unwrap_or_else(|| panic!("{f} bukan teks: {p}"));
+                        assert!(longest_digit_run(text) < 4, "{f} memuat deret angka: {p}");
+                        stripped[key][f] = Value::Null;
+                    }
+                    other => panic!("field {other} tidak boleh bernilai di event koreksi: {p}"),
+                }
+            }
+        }
+        assert_corporate_events_clean(
+            std::slice::from_ref(&stripped),
+            expected_codes,
+            Some(tenant),
+            raw_values,
+        );
+    }
+}
+
 /// UUID perusahaan lain untuk self-test tenant salah.
 const OTHER_TENANT: &str = "0190f5c2-0000-7000-8000-000000000001";
 

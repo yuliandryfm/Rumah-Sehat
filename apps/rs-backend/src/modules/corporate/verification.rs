@@ -76,7 +76,8 @@ const FAILED_AUDIT_ATTEMPTS: usize = 3;
 const APPROVED_ACTION: &str = "corporate_verification_approved";
 const ALREADY_DECIDED_REASON: &str = "already_decided";
 const NIB_IN_USE_REASON: &str = "nib_in_use_by_active_company";
-/// Keputusan ditolak karena dokumen berubah sejak dilihat Verifikator (F1-T109, KEPUTUSAN-382).
+/// Keputusan ditolak karena pengajuan (dokumen atau putaran) berubah sejak dilihat Verifikator (F1-T109,
+/// KEPUTUSAN-382, KEPUTUSAN-415). Kode alasan tetap `documents_changed` agar riwayat audit konsisten.
 const DOCUMENTS_CHANGED_REASON: &str = "documents_changed";
 /// Persetujuan ditolak karena ketiga dokumen belum lengkap, `4090113` (F1-T109, KEPUTUSAN-382).
 const DOCUMENTS_INCOMPLETE_REASON: &str = "documents_incomplete";
@@ -285,8 +286,10 @@ pub(super) async fn detail(
     let active_docs = repo::active_documents(s.pool, row.id)
         .await
         .map_err(db_error)?;
-    let documents_version =
-        domain::documents_version(&active_docs.iter().map(|d| d.id).collect::<Vec<_>>());
+    let documents_version = domain::documents_version(
+        row.submission_round,
+        &active_docs.iter().map(|d| d.id).collect::<Vec<_>>(),
+    );
     let documents = active_docs
         .iter()
         .map(|d| corrupt(DocumentKind::parse(&d.document_kind)).map(DocumentKind::as_str))
@@ -477,8 +480,13 @@ async fn decide(
             let docs = repo::active_documents(&mut *conn, corporate_client_id)
                 .await
                 .map_err(db_error)?;
-            // Keputusan terikat versi dokumen yang dilihat Verifikator (review T1 F1-T102).
-            let current = domain::documents_version(&docs.iter().map(|d| d.id).collect::<Vec<_>>());
+            // Keputusan terikat putaran dan versi dokumen yang dilihat Verifikator (review T1 F1-T102; review DBA
+            // CR-036 B1, KEPUTUSAN-415): pengajuan yang diajukan ulang atau dikoreksi HR sejak detail dibuka
+            // (putaran baru, dokumen sama) ditolak `4090114`, sehingga data yang tidak pernah dilihat tidak disetujui.
+            let current = domain::documents_version(
+                locked.submission_round,
+                &docs.iter().map(|d| d.id).collect::<Vec<_>>(),
+            );
             if current != seen_version {
                 return Err(CorporateError::DocumentsChanged);
             }

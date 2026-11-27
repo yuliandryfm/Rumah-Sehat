@@ -6,6 +6,122 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/v1/corporate/company-corrections": {
+      "post": {
+        "tags": [
+          "corporate-documents"
+        ],
+        "summary": "Mengoreksi data perusahaan yang ditolak sekaligus mengajukan ulang (CR-036, keputusan user Q20 = A): satu\naksi, satu transaksi. Hanya saat pengajuan berstatus Ditolak dan ketiga dokumen lengkap; field yang tidak\ndikirim tidak berubah. Verifikator melihat data hasil koreksi pada putaran berikutnya.",
+        "operationId": "corporate_company_correct_and_resubmit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyCorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Data perusahaan dikoreksi dan pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu, profil hasil koreksi).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsOverviewEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Isi permintaan bukan JSON yang dapat dibaca.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap. Data tidak berubah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Isi permintaan bukan `application/json`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "4220001: isian tidak valid, galat per field di `errors` (NIB 13 angka, NPWP 16 angka, nama/alamat/telepon wajib dengan batas panjang), isian kosong, atau field tidak dikenal. Data tidak berubah.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "4290001: terlalu banyak percobaan pengajuan ulang dari akun ini (10 per menit, dihitung bersama pengajuan ulang biasa).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan tidak tersedia.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/corporate/document-download-urls": {
       "post": {
         "tags": [
@@ -715,6 +831,16 @@
               }
             }
           },
+          "429": {
+            "description": "4290001: terlalu banyak percobaan pengajuan ulang dari akun ini (10 per menit, dihitung bersama koreksi data).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).",
             "content": {
@@ -746,6 +872,62 @@
   },
   "components": {
     "schemas": {
+      "CompanyCorrectionRequest": {
+        "type": "object",
+        "description": "Koreksi data perusahaan saat Ditolak (CR-036). Hanya field yang dikirim yang dikoreksi; tanpa ID perusahaan\n(perusahaan selalu dari keanggotaan sesi, isian lain ditolak `deny_unknown_fields`). NPWP Terbatas (DD A20):\n`Debug` manual tanpa isian.",
+        "properties": {
+          "legal_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nama badan usaha (maks 200 karakter).",
+            "example": "PT Contoh Sintetis",
+            "maxLength": 200
+          },
+          "nib": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "NIB: tepat 13 angka. NIB yang sudah dipakai perusahaan lain diproses sama dengan NIB baru.",
+            "example": "1234567890123",
+            "maxLength": 13,
+            "minLength": 13,
+            "pattern": "^[0-9]{13}$"
+          },
+          "npwp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "NPWP badan: tepat 16 angka. NPWP 15 angka lama: tambahkan angka 0 di depan sebelum dikirim.",
+            "example": "0123456789012345",
+            "maxLength": 16,
+            "minLength": 16,
+            "pattern": "^[0-9]{16}$"
+          },
+          "office_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Alamat kantor (maks 500 karakter).",
+            "example": "Jl. Contoh No. 1, Jakarta",
+            "maxLength": 500
+          },
+          "office_phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Telepon kantor (maks 32 karakter).",
+            "example": "021-0000000",
+            "maxLength": 32
+          }
+        },
+        "additionalProperties": false
+      },
       "CompanyProfileDto": {
         "type": "object",
         "description": "Profil perusahaan pemanggil (US-1901 AC6, F1-T102b): hanya perusahaan dari keanggotaan sesi. NPWP Terbatas\n(DD A20): hanya untuk HR perusahaan itu sendiri; `Debug` manual tanpa isian.",

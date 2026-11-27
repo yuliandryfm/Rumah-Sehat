@@ -416,7 +416,7 @@ mod tests {
     fn every_corporate_route_requires_corporate_hr_under_v1_corporate() {
         let router = corporate_router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 8);
+        assert_eq!(entries.len(), 9);
         for ((_method, path), policy) in entries {
             assert!(is_corporate_path(path), "{path}");
             assert!(
@@ -424,7 +424,7 @@ mod tests {
                 "{path}"
             );
         }
-        assert_eq!(corporate_endpoints().len(), 8);
+        assert_eq!(corporate_endpoints().len(), 9);
     }
 
     #[test]

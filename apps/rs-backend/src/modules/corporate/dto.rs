@@ -209,7 +209,8 @@ pub(super) struct DetailDto {
     /// Jenis dokumen aktif; dibuka lewat endpoint URL dokumen. Lengkap bila ketiganya ada (`nib`, `npwp`,
     /// `authority_proof`); persetujuan ditolak `4090113` bila belum (F1-T102).
     pub(super) documents: Vec<DocumentKindDto>,
-    /// Token versi dokumen aktif; kirim kembali saat menyetujui atau menolak (`4090114` bila dokumen berubah).
+    /// Token versi pengajuan (putaran + dokumen aktif, KEPUTUSAN-415); kirim kembali apa adanya saat menyetujui atau
+    /// menolak (`4090114` bila dokumen diganti atau data dikoreksi dan diajukan ulang sejak detail dilihat).
     /// Nilai apa pun yang tidak sama dengan token saat ini (termasuk kosong atau terlalu panjang) dijawab `409`.
     #[schema(example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")]
     pub(super) documents_version: String,

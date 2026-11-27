@@ -118,14 +118,18 @@ pub(super) fn documents_complete<S: AsRef<str>>(kinds: &[S]) -> bool {
         .all(|k| kinds.iter().any(|c| c.as_ref() == k.as_str()))
 }
 
-/// Token versi dokumen aktif (review T1 F1-T102): SHA-256 (heksadesimal) atas ID baris dokumen aktif terurut.
-/// Penggantian dokumen selalu membuat baris baru (ID baru), sehingga token berubah pada setiap unggah atau
-/// penggantian. Verifikator mengirim token dari detail yang dilihatnya bersama keputusan; keputusan atas dokumen
-/// yang berbeda dari yang dilihat ditolak (`4090114`).
-pub(super) fn documents_version(ids: &[foundation::Uuid]) -> String {
+/// Token versi pengajuan yang dilihat Verifikator (review T1 F1-T102; diperluas review DBA CR-036 B1,
+/// KEPUTUSAN-415): SHA-256 (heksadesimal) atas `submission_round` (4 byte big-endian, lebar tetap) diikuti ID baris
+/// dokumen aktif terurut. Penggantian dokumen selalu membuat baris baru (ID baru), dan pengajuan ulang, termasuk
+/// koreksi data perusahaan oleh HR (CR-036), selalu menaikkan putaran, sehingga token berubah pada setiap unggah,
+/// penggantian, pengajuan ulang, atau koreksi data. Verifikator mengirim token dari detail yang dilihatnya bersama
+/// keputusan; keputusan atas pengajuan yang berbeda dari yang dilihat ditolak (`4090114`). Nama field kontrak
+/// (`documents_version`) tetap supaya klien tidak berubah: token opaque yang dikirim balik apa adanya.
+pub(super) fn documents_version(submission_round: i32, ids: &[foundation::Uuid]) -> String {
     let mut sorted = ids.to_vec();
     sorted.sort();
-    let mut bytes = Vec::with_capacity(sorted.len() * 16);
+    let mut bytes = Vec::with_capacity(4 + sorted.len() * 16);
+    bytes.extend_from_slice(&submission_round.to_be_bytes());
     for id in &sorted {
         bytes.extend_from_slice(id.as_bytes());
     }
@@ -390,25 +394,32 @@ mod tests {
         }
     }
 
-    // trace: review T1 F1-T102 (keputusan terikat versi dokumen yang dilihat Verifikator)
+    // trace: review T1 F1-T102 (keputusan terikat versi dokumen yang dilihat Verifikator), review DBA CR-036 B1
+    // (token juga terikat putaran pengajuan: koreksi data HR menaikkan putaran tanpa mengganti dokumen)
     #[test]
-    fn documents_version_is_order_independent_and_changes_with_any_document() {
+    fn documents_version_is_order_independent_and_changes_with_any_document_or_round() {
         let (a, b, c) = (
             foundation::new_id(),
             foundation::new_id(),
             foundation::new_id(),
         );
-        let v = documents_version(&[a, b, c]);
+        let v = documents_version(1, &[a, b, c]);
         assert_eq!(v.len(), 64);
         assert!(v.bytes().all(|x| x.is_ascii_hexdigit()));
-        assert_eq!(v, documents_version(&[c, a, b]));
+        assert_eq!(v, documents_version(1, &[c, a, b]));
         assert_ne!(
             v,
-            documents_version(&[a, b, foundation::new_id()]),
+            documents_version(1, &[a, b, foundation::new_id()]),
             "dokumen diganti"
         );
-        assert_ne!(v, documents_version(&[a, b]), "dokumen dihapus");
-        assert_ne!(documents_version(&[]), documents_version(&[a]));
+        assert_ne!(v, documents_version(1, &[a, b]), "dokumen dihapus");
+        assert_ne!(documents_version(1, &[]), documents_version(1, &[a]));
+        assert_ne!(
+            v,
+            documents_version(2, &[a, b, c]),
+            "putaran naik (koreksi data)"
+        );
+        assert_ne!(documents_version(1, &[]), documents_version(2, &[]));
     }
 
     // trace: US-1901 AC6, Q8 (dokumen hanya saat menunggu verifikasi atau ditolak)

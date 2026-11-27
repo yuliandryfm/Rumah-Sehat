@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_client SET status = 'pending_verification', submission_round = submission_round + 1, submitted_at = statement_timestamp(), updated_at = statement_timestamp(), updated_by = $3, legal_name = COALESCE($4, legal_name), nib = COALESCE($5, nib), npwp = COALESCE($6, npwp), office_address = COALESCE($7, office_address), office_phone = COALESCE($8, office_phone) WHERE id = $1 AND submission_round = $2 AND status = 'rejected' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c5000ad49cc69552f87eb14941a97666ea5e2583b5a1b89ead1d2eeea685f80"
+}

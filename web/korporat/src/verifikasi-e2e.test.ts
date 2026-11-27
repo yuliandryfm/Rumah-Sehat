@@ -215,6 +215,80 @@ describe("e2e web korporat: status verifikasi dan dokumen lewat BFF (US-1901 AC2
     expect(sesiAda()).toBe(true);
   });
 
+  // CR-036: koreksi data perusahaan saat Ditolak, satu aksi dengan pengajuan ulang.
+  test("koreksi dan ajukan ulang: POST /v1/corporate/company-corrections dengan isian yang dikoreksi saja", async () => {
+    const klien = await masuk();
+    api.next = {
+      body: amplop({ ...RINGKASAN, status: "pending_verification", submission_round: 2, rejection_reason: null, company: { ...RINGKASAN.company, npwp: "0999999999999999" } }),
+    };
+    const h = await klien.koreksiDanAjukanUlang({ npwp: "0999999999999999", office_phone: "021-1111111" });
+    expect(h.ok && h.data.company.npwp).toBe("0999999999999999");
+    expect(api.last()?.method).toBe("POST");
+    expect(api.last()?.path).toBe("/v1/corporate/company-corrections");
+    expect(api.last()?.headers.authorization).toMatch(/^Bearer /);
+    expect(JSON.parse(api.last()?.body ?? "{}")).toEqual({ npwp: "0999999999999999", office_phone: "021-1111111" });
+    expectNoSecrets(browser.responses, op.issuedSecrets);
+  });
+
+  test("negatif: koreksi 422 dengan galat per field dari server → pesan server per isian, sesi tetap hidup", async () => {
+    const klien = await masuk();
+    api.next = {
+      status: 422,
+      headers: { "content-type": "application/problem+json" },
+      body: JSON.stringify({
+        type: "https://problems.ruang-sehat.invalid/4220001",
+        response_code: "4220001",
+        response_description: "Data tidak valid",
+        correlation_id: "c",
+        errors: [
+          { field: "nib", code: "invalid_format", message: "NIB harus tepat 13 angka" },
+          { field: "office_phone", code: "invalid", message: "Telepon kantor wajib, maksimal 32 karakter" },
+        ],
+      }),
+    };
+    const h = await klien.koreksiDanAjukanUlang({ nib: "123", office_phone: "" });
+    expect(h).toMatchObject({ ok: false, status: 422, kode: "4220001" });
+    expect(!h.ok && "isian" in h ? h.isian : {}).toEqual({
+      nib: "NIB harus tepat 13 angka",
+      office_phone: "Telepon kantor wajib, maksimal 32 karakter",
+    });
+    expect(!h.ok && h.pesan).toMatch(/perlu diperbaiki/);
+    expect(sesiAda()).toBe(true);
+  });
+
+  test.each([
+    ["4090001", 409, /sudah menunggu verifikasi/],
+    ["4090115", 409, /Dokumen belum lengkap/],
+    ["4290001", 429, /Terlalu banyak percobaan pengajuan ulang/],
+  ])("negatif: koreksi ditolak %s sampai ke klien dengan pesan sesuai kode", async (kode, status, pesan) => {
+    const klien = await masuk();
+    api.next = galatApi(status, kode);
+    const h = await klien.koreksiDanAjukanUlang({ legal_name: "PT Koreksi Sintetis" });
+    expect(h).toMatchObject({ ok: false, status, kode });
+    expect(!h.ok && h.pesan).toMatch(pesan);
+    expect(sesiAda()).toBe(true);
+  });
+
+  test.each([
+    ["hilang", () => ""],
+    ["salah", (b: string) => `${b}x`],
+  ])("negatif: token CSRF %s pada koreksi → 403 4030101, tidak diteruskan ke API", async (_n, csrf) => {
+    const klien = await masuk({ csrf });
+    const n = api.requests.length;
+    const h = await klien.koreksiDanAjukanUlang({ npwp: "0999999999999999" });
+    expect(h).toMatchObject({ ok: false, status: 403, kode: "4030101" });
+    expect(api.requests.length).toBe(n);
+  });
+
+  test("negatif: sesi kedaluwarsa saat koreksi → 401, API tidak dipanggil, isian tidak terkirim", async () => {
+    const klien = await masuk();
+    const n = api.requests.length;
+    clock.advance(30 * MENIT);
+    expect(await klien.koreksiDanAjukanUlang({ npwp: "0999999999999999" })).toMatchObject({ ok: false, status: 401 });
+    expect(api.requests.length).toBe(n);
+    expect(sesiAda()).toBe(false);
+  });
+
   test("negatif: token CSRF hilang → 403 4030101 dari BFF, tidak diteruskan ke API", async () => {
     const klien = await masuk({ csrf: () => "" });
     const n = api.requests.length;

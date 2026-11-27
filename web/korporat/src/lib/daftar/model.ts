@@ -82,7 +82,8 @@ const WAJIB: Record<NamaIsian, string> = {
   hr_email: "Email kerja wajib diisi.",
 };
 
-function periksaSatu(nama: NamaIsian, nilaiMentah: string): string | null {
+/** Galat satu field (dipakai juga formulir koreksi data perusahaan saat Ditolak, CR-036); `null` = sah. */
+export function periksaSatu(nama: NamaIsian, nilaiMentah: string): string | null {
   const nilai = nilaiMentah.trim();
   if (nilai === "") return WAJIB[nama];
   if (nama === "nib" && !/^[0-9]{13}$/.test(nilai)) {
