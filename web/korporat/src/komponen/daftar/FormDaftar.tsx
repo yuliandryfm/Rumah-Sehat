@@ -42,6 +42,9 @@ export function FormDaftar({ klien }: FormDaftarProps) {
   const [sibuk, setSibuk] = useState(false);
   const [galatKirim, setGalatKirim] = useState<string | null>(null);
   const [selesai, setSelesai] = useState<string | null>(null);
+  // Formulir terkunci sampai terhidrasi (review T1 B2): sebelum JS jalan, submit bawaan peramban tidak boleh
+  // mengirim isian (NPWP, nama, email) ke mana pun, termasuk ke URL lewat GET.
+  const [siap, setSiap] = useState(false);
   const judul = useRef<HTMLHeadingElement>(null);
   const formulir = useRef<HTMLFormElement>(null);
   const pindahFokus = useRef<"judul" | NamaIsian | "consent" | null>(null);
@@ -56,6 +59,10 @@ export function FormDaftar({ klien }: FormDaftarProps) {
   useEffect(() => {
     void muatTeks();
   }, [muatTeks]);
+
+  useEffect(() => {
+    setSiap(true);
+  }, []);
 
   // Fokus setelah render: ke judul langkah saat berpindah, atau ke isian galat pertama (DG §5.3, A12).
   useEffect(() => {
@@ -198,7 +205,12 @@ export function FormDaftar({ klien }: FormDaftarProps) {
           </li>
         ))}
       </ol>
-      <form ref={formulir} noValidate onSubmit={lanjut} className="kp-bagian">
+      <noscript>
+        <p>Formulir pendaftaran membutuhkan JavaScript. Aktifkan JavaScript di peramban Anda, lalu muat ulang halaman ini.</p>
+      </noscript>
+      {/* Lapis kedua bila terkirim tanpa JS: POST ke halaman ini (isian di badan, bukan di URL); fieldset terkunci. */}
+      <form ref={formulir} method="post" action="/daftar" noValidate onSubmit={lanjut} className="kp-bagian">
+        <fieldset disabled={!siap} className="kp-fieldset">
         <h2 id="judul-langkah" tabIndex={-1} ref={judul}>
           {`Langkah ${(langkah + 1).toString()} dari 3: ${LANGKAH[langkah]}`}
         </h2>
@@ -260,6 +272,7 @@ export function FormDaftar({ klien }: FormDaftarProps) {
             {langkah === 2 ? (galatKirim === null ? "Kirim pendaftaran" : "Coba lagi") : "Lanjut"}
           </Button>
         </div>
+        </fieldset>
         {langkah === 0 ? (
           <p className="kp-kecil">
             Sudah punya akun? <a href="/auth/login">Masuk</a>

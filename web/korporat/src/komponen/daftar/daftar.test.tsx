@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import axe from "axe-core";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import * as halaman from "../../app/(publik)/daftar/page.tsx";
@@ -104,6 +105,29 @@ describe("FormDaftar: alur bertahap (US-1901 AC1, brief KR-01-KR-04)", () => {
   test("halaman /daftar publik: tanpa penjaga sesi", () => {
     expect(halaman.metadata).toEqual({ title: "Daftarkan perusahaan" });
     expect(halaman.default.constructor.name).not.toBe("AsyncFunction");
+  });
+});
+
+describe("FormDaftar: sebelum hidrasi (review T1 B2)", () => {
+  test("HTML SSR: fieldset terkunci, form POST ke /daftar (bukan GET), ada penjelasan noscript", () => {
+    const html = renderToString(<FormDaftar klien={klien()} />);
+    const tagForm = /<form[^>]*>/.exec(html)?.[0] ?? "";
+    expect(tagForm).toContain('method="post"');
+    expect(tagForm).toContain('action="/daftar"');
+    expect(html).not.toMatch(/<form[^>]*method="get"/i);
+    expect(html).toMatch(/<fieldset disabled=""[^>]*class="kp-fieldset"/);
+    expect(html).toContain("<noscript>");
+    // Isian dan tombol kirim berada di dalam fieldset terkunci.
+    const isiFieldset = html.slice(html.indexOf("<fieldset"), html.indexOf("</fieldset>"));
+    expect(isiFieldset).toContain('type="submit"');
+    expect(isiFieldset).toContain('name="npwp"');
+  });
+
+  test("setelah terhidrasi: fieldset aktif", async () => {
+    render(<FormDaftar klien={klien()} />);
+    await waitFor(() => {
+      expect(document.querySelector("fieldset")?.disabled).toBe(false);
+    });
   });
 });
 

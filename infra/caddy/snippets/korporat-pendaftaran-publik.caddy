@@ -23,6 +23,10 @@
 # yang di balik Caddy adalah alamat Caddy, bukan klien (PT-39, KEPUTUSAN-78). Sampai backend membaca IP klien
 # asli dari header tepercaya yang dipasang Caddy, batas "per sumber" pendaftaran efektif menjadi batas global.
 #
+# Pengerasan (review T1 F1-T103): setiap `handle` menulis ulang URI ke path tetap tanpa query sebelum diteruskan
+# (B1: `..%2F`, huruf besar, `//`, dan query tidak dapat membawa URI lain ke API), dan membatasi badan 16 KB
+# (B4: lebih besar dijawab 413 oleh Caddy). Test teks: `web/scripts/caddy-snippet.test.ts`.
+#
 # Sintaks: matcher bernama dengan `method` + `path` (di-AND), `path` tanpa wildcard = cocok persis
 # [SRC-901]; snippet `(nama)` + `import nama <arg>` dengan placeholder `{args[0]}` [SRC-902]. Divalidasi dengan
 # `caddy adapt` image caddy:2.11.9 (docs/05-stack.md) pada 2026-11-27: hasilnya dua rute (POST persis
@@ -39,9 +43,20 @@
 		path /v1/public/corporate-registrations/consent-text
 	}
 	handle @rs_pendaftaran_kirim {
+		# Matcher `path` mencocokkan path yang sudah dinormalisasi (decode, case-insensitive), sedangkan
+		# reverse_proxy meneruskan URI asli: URI ditulis ulang ke nilai tetap (query dibuang) supaya hanya rute ini
+		# yang pernah sampai ke API (review T1 F1-T103 B1).
+		rewrite * /v1/public/corporate-registrations?
+		request_body {
+			max_size 16KB
+		}
 		reverse_proxy {args[0]}
 	}
 	handle @rs_pendaftaran_teks {
+		rewrite * /v1/public/corporate-registrations/consent-text?
+		request_body {
+			max_size 16KB
+		}
 		reverse_proxy {args[0]}
 	}
 }
