@@ -50,7 +50,7 @@ tests = [
 # aturan dan email sudah dipakai (E-10 gagal).
 [[emitter]]
 file = "apps/rs-backend/src/modules/identity/corporate_hr_service.rs"
-codes = ["E10", "E11"]
+codes = ["E04", "E10", "E11"]
 tests = [
   "apps/rs-backend/tests/corporate_hr_members.rs::deactivating_another_hr_revokes_access_immediately_and_is_audited",
   "apps/rs-backend/tests/corporate_hr_members.rs::self_deactivation_is_rejected_without_side_effects",
@@ -62,7 +62,7 @@ tests = [
 # keanggotaan diberikan, dan penolakan NIB/email ganda (E-10 gagal).
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/admin_create.rs"
-codes = ["E10", "E11"]
+codes = ["E04", "E10", "E11"]
 tests = [
   "apps/rs-backend/tests/corporate_admin_create.rs::verifier_creates_an_active_company_with_one_provisioning_intent_and_audit",
   "apps/rs-backend/tests/corporate_admin_create.rs::duplicate_nib_is_rejected_generically_without_any_side_effect",
@@ -73,7 +73,7 @@ tests = [
 # yang sejak CR-035 menghasilkan event yang sama dengan NIB baru.
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/registration.rs"
-codes = ["E10", "E11"]
+codes = ["E04", "E10", "E11"]
 tests = [
   "apps/rs-backend/tests/corporate_registration_http.rs::corporate_registration_creates_pending_company_hr_account_consent_and_complete_audit",
   "apps/rs-backend/tests/corporate_registration_http.rs::corporate_registration_existing_email_gets_identical_answer_and_changes_nothing",
@@ -164,8 +164,9 @@ tests = [
 # keputusan yang ditolak aturan dokumen (F1-T109).
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/verification.rs"
-codes = ["E10"]
+codes = ["E05", "E10"]
 tests = [
+  "apps/rs-backend/tests/corporate_verification.rs::opening_company_detail_records_e05_without_restricted_data",
   "apps/rs-backend/tests/corporate_documents_access.rs::decision_is_bound_to_the_document_version_the_verifier_saw",
   "apps/rs-backend/tests/corporate_documents_access.rs::queue_marks_incomplete_submissions_and_approval_requires_all_three_documents",
   "apps/rs-backend/tests/corporate_verification.rs::approval_activates_the_company_and_records_e10",

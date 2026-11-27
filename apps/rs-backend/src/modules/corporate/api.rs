@@ -301,12 +301,15 @@ pub async fn corporate_verification_queue(
     verification::queue(deps, cursor, limit, readiness).await
 }
 
-/// US-1902 AC1: detail perusahaan termasuk NPWP dan jenis dokumen aktif.
+/// US-1902 AC1: detail perusahaan termasuk NPWP dan jenis dokumen aktif. CR-037 (keputusan user Q29 = A): E-05
+/// akses data Terbatas di-commit sebelum detail dikembalikan; gagal mencatat = tidak ada detail.
 pub async fn corporate_verification_detail(
     deps: &CorporateVerification<'_>,
+    principal: &Principal,
+    route: &str,
     corporate_client_id: Uuid,
 ) -> Result<CorporateDetailView, CorporateError> {
-    verification::detail(deps, corporate_client_id).await
+    verification::detail(deps, principal, route, corporate_client_id).await
 }
 
 /// US-1902 AC1: URL unduh dokumen perusahaan berumur pendek (E-05 dulu, `FileAccess::StaffCorporate`).

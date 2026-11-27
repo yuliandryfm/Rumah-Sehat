@@ -12,7 +12,10 @@
 //!   atau semuanya, dan setiap item antrean memuat `documents_complete`.
 //! - Detail ([`detail`], AC1): data perusahaan termasuk NPWP (klasifikasi Terbatas, DD A20: tidak pernah ke
 //!   log, payload audit, atau pesan galat; dibawa sebagai `Sensitive<String>` sampai DTO), jenis dokumen aktif,
-//!   dan keputusan putaran berjalan. PRD menetapkan E-05 untuk **dokumen dibuka**, bukan detail.
+//!   dan keputusan putaran berjalan. Sejak CR-037 (keputusan user Q29 = A, PRD §7.1 E-05 diperluas ke data
+//!   Terbatas perusahaan) setiap pembukaan detail mencatat E-05 `corporate_detail_opened` atas objek
+//!   `corporate_client_detail` (ID = perusahaan, tenant = perusahaan, tanpa subjek dan tanpa field) yang di-commit
+//!   sebelum detail dikembalikan; gagal mencatat = `500` tanpa detail. Perusahaan tidak ada = `404` tanpa event.
 //! - Dokumen ([`document_url`], AC1): URL unduh berumur pendek lewat modul `platform`
 //!   (`FileAccess::StaffCorporate`, ADR-018 butir 3): E-05 di-commit sebelum URL terbit; gagal mencatat =
 //!   tidak ada URL.
@@ -78,6 +81,12 @@ const DOCUMENTS_CHANGED_REASON: &str = "documents_changed";
 /// Persetujuan ditolak karena ketiga dokumen belum lengkap, `4090113` (F1-T109, KEPUTUSAN-382).
 const DOCUMENTS_INCOMPLETE_REASON: &str = "documents_incomplete";
 const REJECTED_ACTION: &str = "corporate_verification_rejected";
+/// E-05 pembukaan detail perusahaan berisi NPWP (CR-037).
+const DETAIL_OPENED_ACTION: &str = "corporate_detail_opened";
+/// Kebijakan audit detail perusahaan (CR-037): tanpa field sama sekali; NPWP, NIB, nama, alamat, dan telepon
+/// tidak pernah masuk payload.
+static CORPORATE_DETAIL_POLICY: ObjectPolicy =
+    ObjectPolicy::non_clinical(audit::CORPORATE_DETAIL_OBJECT_TYPE, &[]);
 
 /// Kebijakan audit objek perusahaan (daftar izin before/after, ADR-009 butir 7): hanya status, kode alasan,
 /// dan putaran pengajuan. NPWP, NIB, nama, alamat, dan telepon sengaja tidak terdaftar, sehingga pustaka
@@ -258,8 +267,11 @@ pub(super) async fn queue(
 /// US-1902 AC1: detail perusahaan untuk Verifikator.
 pub(super) async fn detail(
     s: &CorporateVerification<'_>,
+    principal: &Principal,
+    route: &str,
     corporate_client_id: Uuid,
 ) -> Result<CorporateDetailView, CorporateError> {
+    let ip = client_ip(principal, route)?;
     let row = repo::client_detail(s.pool, corporate_client_id)
         .await
         .map_err(db_error)?
@@ -286,6 +298,27 @@ pub(super) async fn detail(
         (Some(d), _) => (None, Some(d.created_at)),
         (None, _) => (None, None),
     };
+    // CR-037: E-05 di-commit sebelum data Terbatas dikembalikan (pola URL dokumen: gagal mencatat = tanpa data).
+    let action =
+        Code::new(DETAIL_OPENED_ACTION).map_err(|_| CorporateError::Internal("audit_action"))?;
+    let opened = AuditEvent::new(
+        EventCode::E05,
+        action,
+        actor(principal)?,
+        ObjectRef::with_uuid(&CORPORATE_DETAIL_POLICY, row.id),
+    )
+    .tenant(row.id)
+    .outcome(Outcome::success())
+    .context(&audit_context(principal, ip));
+    in_audited_tx(s.pool, s.clock, move |_conn| {
+        Box::pin(async move { Ok::<_, Infallible>(((), vec![opened])) })
+    })
+    .await
+    .map_err(|e| match e {
+        AuditedTxError::Work(never) => match never {},
+        AuditedTxError::Audit(_) => CorporateError::Internal("audit"),
+        AuditedTxError::Database { .. } => CorporateError::Database,
+    })?;
     Ok(CorporateDetailView {
         corporate_client_id: row.id,
         legal_name: row.legal_name,

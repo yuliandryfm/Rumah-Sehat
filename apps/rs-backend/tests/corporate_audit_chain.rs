@@ -72,6 +72,8 @@ async fn corporate_events_are_clean_and_chained_in_the_audit_database() {
     assert_eq!(
         kinds,
         [
+            // CR-037: Verifikator membuka detail (membaca versi dokumen) sebelum memutuskan.
+            ("corporate_detail_opened", "success"),
             ("corporate_verification_approved", "success"),
             ("corporate_verification_resubmitted", "failure"),
             ("corporate_verification_resubmitted", "success"),
@@ -81,7 +83,7 @@ async fn corporate_events_are_clean_and_chained_in_the_audit_database() {
     let tenant = c.id.to_string();
     audit_support::assert_corporate_events_clean(
         &events,
-        &["e_10"],
+        &["e_05", "e_10"],
         Some(&tenant),
         &[
             c.nib.as_str(),
@@ -91,8 +93,8 @@ async fn corporate_events_are_clean_and_chained_in_the_audit_database() {
         ],
     );
 
-    // Rantai: ketiga event perusahaan ada di database audit dengan hash yang dapat dihitung ulang.
-    assert_eq!(audit_support::relay_and_verify_tenant_chain(c.id).await, 3);
+    // Rantai: keempat event perusahaan ada di database audit dengan hash yang dapat dihitung ulang.
+    assert_eq!(audit_support::relay_and_verify_tenant_chain(c.id).await, 4);
     assert!(
         w.all_tenant_events(c.id).await.is_empty(),
         "outbox sudah dipindahkan relay"

@@ -411,8 +411,15 @@ async fn hr_uploads_three_documents_which_are_validated_stored_and_audited_witho
     let tenant = c.id.to_string();
     let mut raw: Vec<&str> = forbidden.iter().map(String::as_str).collect();
     raw.push(hr.email.as_str());
-    audit_support::assert_corporate_events_clean(&all, &["e_10", "e_12"], Some(&tenant), &raw);
-    audit_support::corporate_checker_rejects_leaks(&all[0], &tenant);
+    // E-05: Verifikator membuka detail perusahaan (CR-037) dan dokumennya.
+    audit_support::assert_corporate_events_clean(
+        &all,
+        &["e_05", "e_10", "e_12"],
+        Some(&tenant),
+        &raw,
+    );
+    let first_upload = all.iter().find(|e| e["event_code"] == "e_10").unwrap();
+    audit_support::corporate_checker_rejects_leaks(first_upload, &tenant);
     for e in w.all_tenant_events(c.id).await {
         let text = e.to_string();
         for needle in &forbidden {

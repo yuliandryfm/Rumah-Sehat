@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT nib FROM app.corporate_client WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nib",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "nib"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f1ef3e5320ef5b72e72f23e418910c0d7673d0647848a3d4663baf80b593026a"
+}

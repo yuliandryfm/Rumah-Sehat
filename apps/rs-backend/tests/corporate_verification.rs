@@ -520,6 +520,65 @@ async fn detail_and_reason_list_show_company_data_documents_and_draft_reasons() 
     assert_eq!(codes, FOUR);
 }
 
+// trace: CR-037 (keputusan user Q29 = A: PRD §7.1 E-05 diperluas ke data Terbatas perusahaan), DD A20 (NPWP
+// Terbatas), ADR-005: setiap pembukaan detail perusahaan oleh Verifikator mencatat E-05 `corporate_detail_opened`
+// (objek = perusahaan, tenant = perusahaan, tanpa subjek dan tanpa field), tanpa NPWP/NIB/nama di payload;
+// perusahaan yang tidak ada = 404 tanpa event.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn opening_company_detail_records_e05_without_restricted_data() {
+    let _g = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    let (verifier, tok) = f.verifier().await;
+    let c = company(&f.pool, "pending_verification", 5).await;
+    let nib: String =
+        sqlx::query_scalar!("SELECT nib FROM app.corporate_client WHERE id = $1", c.id)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    for _ in 0..2 {
+        let r = f.get(&format!("{BASE}/{}", c.id), &tok).await;
+        assert_eq!(r.status, 200, "{}", r.body);
+    }
+    let opened = tenant_events(&f, "e_05", "corporate_detail_opened", c.id).await;
+    assert_eq!(opened.len(), 2, "setiap pembukaan tercatat");
+    let tenant = c.id.to_string();
+    audit_support::assert_corporate_events_clean(
+        &opened,
+        &["e_05"],
+        Some(&tenant),
+        &[
+            c.npwp.as_str(),
+            nib.as_str(),
+            "PT Sintetis Uji",
+            "Jl. Sintetis",
+            "0210000001",
+        ],
+    );
+    for e in &opened {
+        assert_event_complete(e, "e_05");
+        assert_eq!(e["object_type"], "corporate_client_detail");
+        assert_eq!(e["object_id"], tenant.as_str());
+        assert_eq!(e["outcome"], "success");
+        assert_eq!(e["actor_account_id"], verifier.to_string());
+        assert_eq!(e["actor_roles"], json!(["verifier"]));
+        assert_eq!(e["source_component"], "backoffice");
+        assert_eq!(e["subjects"], json!([]));
+        assert!(
+            e["changed_fields"].as_array().is_none_or(Vec::is_empty),
+            "{e}"
+        );
+    }
+    // Perusahaan tidak ada: 404, tanpa event baru.
+    let missing = new_id();
+    let r = f.get(&format!("{BASE}/{missing}"), &tok).await;
+    assert_eq!(r.status, 404, "{}", r.body);
+    assert!(
+        tenant_events(&f, "e_05", "corporate_detail_opened", missing)
+            .await
+            .is_empty()
+    );
+}
+
 // trace: US-1902 AC1 (dokumen hanya lewat URL berumur pendek setelah otorisasi, ADR-018), PRD §7.2 E-05
 // (dokumen dibuka; dicatat sebelum URL terbit), KU-03 (jenis/dokumen tidak ada → 404 sama)
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -678,8 +737,9 @@ async fn rejection_requires_an_active_listed_reason() {
     let c = company(&f.pool, "pending_verification", 5).await;
 
     // Di luar daftar, badan rusak, dan field tak dikenal: ditolak tanpa efek.
-    let before = outbox_total(&f).await;
+    // Versi dibaca lewat detail lebih dulu (CR-037: detail mencatat E-05), baru jumlah outbox diukur.
     let ver = f.version(&tok, c.id).await;
+    let before = outbox_total(&f).await;
     for body in [
         json!({ "reason_code": "other", "documents_version": ver }),
         json!({ "reason_code": "photo_unreadable", "documents_version": ver }),

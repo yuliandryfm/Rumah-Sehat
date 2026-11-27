@@ -514,9 +514,14 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
     }
 
     // Persetujuan atas pengajuan yang dokumennya belum lengkap ditolak 409 4090113 tanpa efek.
+    let not_detail = |evs: Vec<Value>| {
+        evs.into_iter()
+            .filter(|e| e["action_name"] != "corporate_detail_opened")
+            .count()
+    };
     let events_before = (
-        w.all_tenant_events(partial.id).await.len(),
-        w.all_tenant_events(none.id).await.len(),
+        not_detail(w.all_tenant_events(partial.id).await),
+        not_detail(w.all_tenant_events(none.id).await),
     );
     for c in [&partial, &none] {
         let r = w.decide(&verifier, c.id, None).await;
@@ -542,7 +547,13 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
     // F1-T109 (KEPUTUSAN-382): persetujuan yang ditolak aturan tidak menulis keputusan, tetapi tercatat tepat
     // satu E-10 hasil gagal `documents_incomplete` per percobaan (coding-standards §4.4 butir 3).
     for (c, before) in [(&partial, events_before.0), (&none, events_before.1)] {
-        let all = w.all_tenant_events(c.id).await;
+        // Pembukaan detail oleh Verifikator (E-05, CR-037) tidak dihitung di sini.
+        let all: Vec<_> = w
+            .all_tenant_events(c.id)
+            .await
+            .into_iter()
+            .filter(|e| e["action_name"] != "corporate_detail_opened")
+            .collect();
         assert_eq!(all.len(), before + 1, "{all:?}");
         let refused: Vec<_> = all
             .into_iter()

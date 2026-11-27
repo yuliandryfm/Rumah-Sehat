@@ -368,15 +368,17 @@ async fn active_hr_invites_a_colleague_bound_to_its_own_company() {
         kinds,
         vec![
             ("e_10", "corporate_admin_account_invited"),
+            // Keputusan user Q28 = A (KEPUTUSAN-380): E-04 pembuatan akun HR, transaksi yang sama.
+            ("e_04", "account_created"),
             ("e_11", "corporate_membership_granted"),
         ]
     );
-    audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
+    audit_support::assert_events_complete(&evs, &["e_04", "e_10", "e_11"]);
     // F1-T109: pemeriksa korporat bersama (tenant = perusahaan pengundang, tanpa email undangan).
     let tenant = client.to_string();
     audit_support::assert_corporate_events_clean(
         &evs,
-        &["e_10", "e_11"],
+        &["e_04", "e_10", "e_11"],
         Some(&tenant),
         &[mixed.as_str(), a.email.as_str()],
     );
@@ -393,8 +395,10 @@ async fn active_hr_invites_a_colleague_bound_to_its_own_company() {
         );
     }
     assert_eq!(evs[0]["after_values"]["status"], "pending_provisioning");
+    assert_eq!(evs[1]["after_values"]["account_type"], "corporate_admin");
+    assert_eq!(evs[1]["correlation_id"], evs[0]["correlation_id"]);
     assert_eq!(
-        evs[1]["after_values"]["corporate_member_id"],
+        evs[2]["after_values"]["corporate_member_id"],
         member.id.to_string()
     );
 

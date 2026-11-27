@@ -433,13 +433,22 @@ async fn corporate_registration_creates_pending_company_hr_account_consent_and_c
         .map(|e| e["event_code"].as_str().unwrap())
         .collect();
     codes.sort_unstable();
-    assert_eq!(codes, ["e_10", "e_10", "e_11", "e_13"], "{events:?}");
-    audit_support::assert_events_complete(&events, &["e_10", "e_11", "e_13"]);
+    // Keputusan user Q28 = A (KEPUTUSAN-380): E-04 pembuatan akun HR bersama E-10 akun HR.
+    assert_eq!(
+        codes,
+        ["e_04", "e_10", "e_10", "e_11", "e_13"],
+        "{events:?}"
+    );
+    audit_support::assert_events_complete(&events, &["e_04", "e_10", "e_11", "e_13"]);
+    let e04 = events.iter().find(|e| e["event_code"] == "e_04").unwrap();
+    assert_eq!(e04["action_name"], "account_created");
+    assert_eq!(e04["object_id"], acc.id.to_string());
+    assert_eq!(e04["after_values"]["account_type"], "corporate_admin");
     // F1-T109: pemeriksa korporat bersama (tenant = perusahaan baru, tanpa data pendaftaran mentah).
     let tenant = client.to_string();
     audit_support::assert_corporate_events_clean(
         &events,
-        &["e_10", "e_11", "e_13"],
+        &["e_04", "e_10", "e_11", "e_13"],
         Some(&tenant),
         &[
             f.nib.as_str(),

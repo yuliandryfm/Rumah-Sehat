@@ -152,6 +152,20 @@ fn corporate_document_exempt(code: EventCode, p: &Map<String, Json>) -> bool {
         && is_uuid(p.get("tenant_id"))
 }
 
+/// Jenis objek detail perusahaan yang memuat data Terbatas (NPWP, DD A20) yang dibuka Verifikator (CR-037,
+/// keputusan user Q29 = A: PRD §7.1 E-05 diperluas ke data Terbatas perusahaan). ID objek = ID perusahaan.
+pub const CORPORATE_DETAIL_OBJECT_TYPE: &str = "corporate_client_detail";
+
+/// CR-037 (gaya KEPUTUSAN-304): perusahaan bukan subjek data pribadi. Pengecualian SEMPIT: E-05 atas objek
+/// [`CORPORATE_DETAIL_OBJECT_TYPE`] boleh tanpa subjek **hanya bila** `tenant_id` terisi UUID **dan sama dengan**
+/// `object_id` (detail perusahaan itu sendiri). Objek lain, tenant kosong/berbeda, atau kode lain tetap wajib subjek.
+fn corporate_detail_exempt(code: EventCode, p: &Map<String, Json>) -> bool {
+    code == EventCode::E05
+        && p.get("object_type").and_then(Json::as_str) == Some(CORPORATE_DETAIL_OBJECT_TYPE)
+        && is_uuid(p.get("tenant_id"))
+        && p.get("tenant_id") == p.get("object_id")
+}
+
 /// Daftar field berubah wajib untuk kode ini (lihat dokumentasi modul).
 fn changes_required(code: EventCode, success: bool) -> bool {
     success
@@ -363,6 +377,7 @@ pub fn check_payload(payload: &Json) -> Vec<Violation> {
         if subject_required(c, success)
             && subjects.is_none_or(Vec::is_empty)
             && !corporate_document_exempt(c, p)
+            && !corporate_detail_exempt(c, p)
             && !corporate_hr_consent_exempt(c, p)
         {
             push("subjects", "required_for_event_code", MissingField);
@@ -696,6 +711,39 @@ mod tests {
                 "{other}"
             );
         }
+        // CR-037: detail perusahaan (data Terbatas) tanpa subjek hanya bila tenant = ID objek.
+        let detail = with(
+            with(
+                e05.clone(),
+                "object_type",
+                json!(CORPORATE_DETAIL_OBJECT_TYPE),
+            ),
+            "object_id",
+            tenant.clone(),
+        );
+        assert_eq!(
+            rules(&with(detail.clone(), "tenant_id", tenant.clone())),
+            []
+        );
+        assert_eq!(rules(&detail), [("subjects", "required_for_event_code")]);
+        assert_eq!(
+            rules(&with(
+                detail.clone(),
+                "tenant_id",
+                json!("0190f5c2-7c1a-7000-8000-0000000000bb")
+            )),
+            [("subjects", "required_for_event_code")]
+        );
+        assert_eq!(
+            rules(&with(
+                with(detail.clone(), "tenant_id", tenant.clone()),
+                "event_code",
+                json!("e_07")
+            ))
+            .first()
+            .copied(),
+            Some(("subjects", "required_for_event_code"))
+        );
         // KEPUTUSAN-322: E-13 persetujuan HR hanya dikecualikan dengan tenant terisi dan jenis objek yang tepat.
         let e13 = with(base(), "event_code", json!("e_13"));
         assert_eq!(rules(&e13), [("subjects", "required_for_event_code")]);
