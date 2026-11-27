@@ -34,6 +34,7 @@ codes = ["E01", "E02", "E03", "E04"]
 tests = [
   "apps/rs-backend/tests/identity_keycloak_events.rs::events_are_mapped_masked_and_written_once",
   "apps/rs-backend/tests/identity_keycloak_events.rs::hr_events_from_korporat_realm_are_recorded_with_the_company_as_tenant",
+  "apps/rs-backend/tests/identity_keycloak_events.rs::other_realm_events_with_an_hr_subject_do_not_become_hr_events",
 ]
 
 [[emitter]]

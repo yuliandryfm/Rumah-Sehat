@@ -631,6 +631,51 @@ async fn a_hr_deactivated_by_a_colleague_can_no_longer_invite() {
     assert!(w.account_by_email(&email).await.is_empty());
 }
 
+// trace: F1-T109 KEPUTUSAN-387 (prasyarat KEPUTUSAN-381): satu akun HR hanya pernah punya satu keanggotaan. HR yang
+// sudah dinonaktifkan (keanggotaan dihapus lunak, akun tetap ada dengan email yang sama) tidak dapat diundang
+// kembali, baik oleh rekan di perusahaan yang sama maupun oleh HR perusahaan lain: tidak ada keanggotaan kedua,
+// sehingga tenant audit akun itu tidak bergantung pada waktu event. Test ini gagal bila perpindahan atau
+// pengaktifan ulang keanggotaan dibuka tanpa menyelesaikan TD-52.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_deactivated_hr_cannot_gain_a_second_membership_through_an_invitation() {
+    let w = world().await;
+    let client = insert_client(&w.app, "active").await;
+    let a = insert_hr(&w.app, client, "active").await;
+    let b = insert_hr(&w.app, client, "active").await;
+    let other = insert_client(&w.app, "active").await;
+    let foreign = insert_hr(&w.app, other, "active").await;
+    let d = common::request(
+        w.addr,
+        "POST",
+        &deactivate_path(b.member_id),
+        &[&w.bearer(&a)],
+    )
+    .await;
+    assert_eq!(d.status, 200, "{}", d.body);
+    let before = w.counts(&[client, other]).await;
+    for (inviter, tried) in [
+        (&a, b.email.clone()),
+        (&a, b.email.to_uppercase()),
+        (&foreign, b.email.clone()),
+    ] {
+        let r = w.invite(inviter, &tried).await;
+        assert_eq!(r.status, 202, "jawaban seragam: {}", r.body);
+    }
+    assert_eq!(w.counts(&[client, other]).await, before, "tidak ada efek");
+    let memberships = sqlx::query!(
+        r#"SELECT corporate_client_id, deleted_at IS NOT NULL AS "revoked!"
+           FROM app.corporate_member WHERE account_id = $1"#,
+        b.account_id
+    )
+    .fetch_all(&w.app)
+    .await
+    .unwrap();
+    assert_eq!(memberships.len(), 1, "satu akun HR, satu keanggotaan");
+    assert_eq!(memberships[0].corporate_client_id, client);
+    assert!(memberships[0].revoked);
+    assert_eq!(w.account_by_email(&b.email).await, vec![b.account_id]);
+}
+
 // trace: US-1904 AC3 (cakupan perusahaan selalu dari keanggotaan; isian ID perusahaan tidak diterima), AC2
 // (validasi email), coding-standards §5.1
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

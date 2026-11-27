@@ -550,6 +550,7 @@ Ketentuan berikut adalah perbaikan B-02 review keamanan, selaras dengan ADR-025 
 - **Konsol panel penyedia**: akun bernama, MFA bila tersedia (`[TIDAK DIKETAHUI]`, PT-39), sesuai §2.1.
 - **Rotasi** `[KEPUTUSAN-88]`: kredensial DB dinamis berakhir sesuai TTL; KEK lewat rotasi Transit; kunci blind index berversi (`nik_bidx_key_version`, data dictionary); prosedur rotasi tertulis sebelum go-live.
 - **Larangan pencatatan**: password, PIN, OTP, token, dan nomor kartu/rekening lengkap tidak pernah dicatat di log mana pun (ADR-005) `[DOK: CLAUDE.md]`.
+- **Secret pengambil event Keycloak (checklist deploy)**: proses `worker` membutuhkan `KEYCLOAK_EVENT_SECRET_PASIEN`, `KEYCLOAK_EVENT_SECRET_ADMIN`, dan sejak F1-T109 `KEYCLOAK_EVENT_SECRET_KORPORAT` (secret klien `rs-backend-event-reader` per realm, dari OpenBao lewat skrip deploy; `infra/keycloak/README.md`). Tanpa salah satunya worker berhenti saat start. `KEYCLOAK_EVENT_REALMS` sebaiknya tidak diset di staging/production (bawaan `pasien,admin,korporat`); daftar eksplisit yang menghilangkan realm bawaan padahal secret realm itu diset ditolak saat start, supaya E-01–E-04 realm itu tidak hilang diam-diam `[KEPUTUSAN-380]`.
 
 ---
 

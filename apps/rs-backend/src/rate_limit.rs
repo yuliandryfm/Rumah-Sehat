@@ -7,10 +7,14 @@
 //! dikali jumlah instans. Di balik reverse proxy, "sumber" adalah proxy (IP klien asli `[TIDAK DIKETAHUI]`,
 //! PT-39), jadi anggaran per sumber praktis menjadi anggaran per proxy/BFF situs.
 //!
+//! Kunci sumber bawaan adalah alamat IP; pembatas yang sama dipakai dengan kunci ID akun untuk batas laju per
+//! pengguna terautentikasi (F1-T109, KEPUTUSAN-389: pengajuan ulang verifikasi perusahaan per akun HR).
+//!
 //! Durasi diukur dengan `Instant` (monotonik), bukan jam dinding (coding-standards §5.7 membolehkan
 //! `Instant::now` untuk durasi).
 
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::net::IpAddr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -31,10 +35,10 @@ pub struct RateBudget {
 }
 
 #[derive(Debug)]
-struct Window {
+struct Window<K> {
     started: Instant,
     global: u32,
-    sources: HashMap<Option<IpAddr>, u32>,
+    sources: HashMap<K, u32>,
     overflow: u32,
 }
 
@@ -51,14 +55,14 @@ pub enum Verdict {
     },
 }
 
-/// Pembatas jendela tetap; aman dibagi antar-thread.
+/// Pembatas jendela tetap; aman dibagi antar-thread. `K` = kunci sumber (bawaan: alamat IP peer).
 #[derive(Debug)]
-pub struct RateLimiter {
+pub struct RateLimiter<K = Option<IpAddr>> {
     budget: RateBudget,
-    window: Mutex<Window>,
+    window: Mutex<Window<K>>,
 }
 
-impl RateLimiter {
+impl<K: Eq + Hash> RateLimiter<K> {
     /// Pembatas baru. Anggaran 0 menolak semua permintaan (gagal-tertutup).
     pub fn new(budget: RateBudget) -> Self {
         Self {
@@ -78,12 +82,12 @@ impl RateLimiter {
     }
 
     /// Mencatat satu permintaan dari `source` sekarang.
-    pub fn check(&self, source: Option<IpAddr>) -> Verdict {
+    pub fn check(&self, source: K) -> Verdict {
         self.check_at(source, Instant::now())
     }
 
     /// Mencatat satu permintaan pada instan `now` (untuk test).
-    pub fn check_at(&self, source: Option<IpAddr>, now: Instant) -> Verdict {
+    pub fn check_at(&self, source: K, now: Instant) -> Verdict {
         // Mutex yang teracuni tetap dipakai: isinya hanya penghitung, tidak ada invarian yang rusak.
         let mut w = self.window.lock().unwrap_or_else(|e| e.into_inner());
         if now.saturating_duration_since(w.started) >= WINDOW {
@@ -155,10 +159,23 @@ mod tests {
 
     #[test]
     fn zero_budget_denies_everything() {
-        let l = RateLimiter::new(RateBudget {
+        let l: RateLimiter = RateLimiter::new(RateBudget {
             per_source: 0,
             global: 0,
         });
         assert!(matches!(l.check(None), Verdict::Limited { .. }));
+    }
+
+    // trace: F1-T109 KEPUTUSAN-389: kunci ID akun (batas per pengguna terautentikasi) memakai anggaran yang sama.
+    #[test]
+    fn account_keyed_budget_is_per_account() {
+        let l: RateLimiter<u128> = RateLimiter::new(RateBudget {
+            per_source: 1,
+            global: 100,
+        });
+        let t = Instant::now();
+        assert_eq!(l.check_at(1, t), Verdict::Allowed);
+        assert_eq!(l.check_at(1, t), Verdict::Limited { first: true });
+        assert_eq!(l.check_at(2, t), Verdict::Allowed);
     }
 }

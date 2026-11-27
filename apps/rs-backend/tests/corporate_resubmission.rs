@@ -443,3 +443,46 @@ async fn resubmission_only_ever_touches_the_callers_company() {
         ("pending_verification".to_string(), 2)
     );
 }
+
+// trace: F1-T109 review keamanan butir 2 (KEPUTUSAN-389), NFR-SEC (batas laju per pengguna, 4290001): percobaan
+// pengajuan ulang berulang dibatasi per akun HR (10 per menit) sebelum menyentuh database atau audit; permintaan
+// yang dibatasi tidak menulis event, dan akun HR lain di perusahaan yang sama tidak ikut terbatasi.
+#[tokio::test(flavor = "multi_thread")]
+async fn repeated_resubmissions_are_rate_limited_per_hr_account() {
+    let w = plain_world().await;
+    let (c, hr) = rejected_complete(&w.app).await;
+    let colleague = insert_hr(&w.app, c.id, "active").await;
+    let first = resubmit(&w, &hr).await;
+    assert_eq!(first.status, 200, "{}", first.body);
+    for _ in 0..9 {
+        let r = resubmit(&w, &hr).await;
+        assert_eq!(
+            (r.status, code(&r).as_str()),
+            (409, "4090001"),
+            "{}",
+            r.body
+        );
+    }
+    let limited = resubmit(&w, &hr).await;
+    assert_eq!(
+        (limited.status, code(&limited).as_str()),
+        (429, "4290001"),
+        "{}",
+        limited.body
+    );
+    assert_eq!(
+        resubmission_events(&w, c.id, "failure", Some("not_resubmittable"))
+            .await
+            .len(),
+        9,
+        "permintaan yang dibatasi tidak menulis audit"
+    );
+    assert_eq!(client_status(&w.app, c.id).await.1, 2);
+    let r = resubmit(&w, &colleague).await;
+    assert_eq!(
+        (r.status, code(&r).as_str()),
+        (409, "4090001"),
+        "{}",
+        r.body
+    );
+}

@@ -39,6 +39,7 @@ use crate::modules::platform::api::{
     self as files, DownloadRequest, DownloadTicket, FileAccess, FileError, UploadPurpose,
     UploadSlotRequest, UploadTicket, ValidatedUpload,
 };
+use crate::rate_limit::Verdict;
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, FieldChange, FieldRule,
     ObjectPolicy, ObjectRef, Outcome, Source, SourceComponent, Value, in_audited_tx,
@@ -462,9 +463,10 @@ pub(super) async fn confirm(
                     .tenant(client_id)
                     .outcome(Outcome::success())
                     .context(&tx_context)
+                    // Jenis dokumen tidak berubah oleh hapus lunak: sebelum = sesudah (penanda objek, bukan perubahan).
                     .change(FieldChange::new(
                         "document_kind",
-                        None,
+                        Some(code_value(kind.as_str())?),
                         Some(code_value(kind.as_str())?),
                     ))
                     .change(FieldChange::new(
@@ -540,6 +542,14 @@ pub(super) async fn resubmit(
     route: &str,
 ) -> Result<DocumentsOverviewView, CorporateError> {
     let ip = client_ip(scope, route)?;
+    // Batas laju per akun HR lebih dulu (KEPUTUSAN-389): percobaan berulang, termasuk yang ditolak aturan dan
+    // dicatat E-10 gagal, dibatasi sebelum menyentuh database atau audit. Security log sekali per jendela.
+    if let Verdict::Limited { first } = s.resubmission_limit.check(scope.account_id()) {
+        if first {
+            security::rate_limited(Some(scope.account_id()), route);
+        }
+        return Err(CorporateError::RateLimited);
+    }
     // Gerbang cepat dari cakupan sesi: Aktif = 4090112 (seperti endpoint dokumen lain), Menunggu = 4090001.
     gate(scope)?;
     let context = audit_context(scope, ip);

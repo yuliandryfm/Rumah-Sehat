@@ -54,6 +54,7 @@ fn deps(state: &AppState) -> CorporateDocuments<'_> {
         pool: state.pool(),
         clock: state.clock(),
         files: state.files(),
+        resubmission_limit: state.corporate_resubmission_limit(),
     }
 }
 

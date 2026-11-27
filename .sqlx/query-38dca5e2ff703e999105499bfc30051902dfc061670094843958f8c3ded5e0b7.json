@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT corporate_client_id FROM app.corporate_member WHERE account_id = $1 ORDER BY deleted_at DESC NULLS LAST, id DESC LIMIT 1",
+  "query": "SELECT corporate_client_id, deleted_at IS NOT NULL AS \"revoked!\"\n           FROM app.corporate_member WHERE account_id = $1",
   "describe": {
     "columns": [
       {
@@ -13,6 +13,12 @@
             "name": "corporate_client_id"
           }
         }
+      },
+      {
+        "ordinal": 1,
+        "name": "revoked!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -21,8 +27,9 @@
       ]
     },
     "nullable": [
-      false
+      false,
+      null
     ]
   },
-  "hash": "46d7d19908a62694d9937fd4fd5a51d8a0245cdee0001e54e31e3c6d1f6b0b3c"
+  "hash": "38dca5e2ff703e999105499bfc30051902dfc061670094843958f8c3ded5e0b7"
 }

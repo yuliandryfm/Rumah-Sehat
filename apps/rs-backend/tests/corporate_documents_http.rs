@@ -704,7 +704,10 @@ async fn replacing_a_document_soft_deletes_the_old_one_and_concurrent_confirms_k
         assert_eq!(e["outcome"], "success");
         assert_eq!(e["actor_account_id"], hr.account_id.to_string());
         assert_eq!(e["after_values"]["delete_reason"], "replaced");
+        // Jenis dokumen tidak berubah oleh hapus lunak: sebelum = sesudah (review keamanan F1-T109 butir 3).
         assert_eq!(e["after_values"]["document_kind"], "nib");
+        assert_eq!(e["before_values"]["document_kind"], "nib");
+        assert!(e["before_values"]["deleted_at"].is_null());
         assert!(e["after_values"]["deleted_at"].is_string());
         assert_eq!(e["changed_fields"].as_array().unwrap().len(), 3);
     }

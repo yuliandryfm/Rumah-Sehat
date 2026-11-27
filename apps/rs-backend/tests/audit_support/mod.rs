@@ -216,6 +216,9 @@ pub fn assert_corporate_events_clean(
     }
 }
 
+/// UUID perusahaan lain untuk self-test tenant salah.
+const OTHER_TENANT: &str = "0190f5c2-0000-7000-8000-000000000001";
+
 /// Pemeriksa negatif untuk [`assert_corporate_events_clean`] sendiri: payload sah lolos, dan setiap jenis
 /// kebocoran (penanda, nilai mentah, deret digit, tenant salah) ditolak. Dipanggil dari test korporat.
 pub fn corporate_checker_rejects_leaks(valid: &Value, tenant: &str) {
@@ -234,6 +237,15 @@ pub fn corporate_checker_rejects_leaks(valid: &Value, tenant: &str) {
         ("user_agent", Value::from("incoming/0190f5c2")),
         ("user_agent", Value::from("npwp 0123456789012345")),
         ("tenant_id", Value::Null),
+        // Tenant perusahaan lain (UUID sah, bukan perusahaan yang diharapkan).
+        (
+            "tenant_id",
+            Value::from(if tenant == OTHER_TENANT {
+                "0190f5c2-0000-7000-8000-000000000002"
+            } else {
+                OTHER_TENANT
+            }),
+        ),
     ];
     for (field, bad) in leaks {
         let mut p = valid.clone();

@@ -12,6 +12,7 @@
 
 use super::{admin_create, documents, registration, repo, verification};
 use crate::modules::platform::api::{DownloadTicket, FileStorage, UploadTicket};
+use crate::rate_limit::RateLimiter;
 use authz::{
     CorporateClientStatus, CorporateMembership, CorporateScope, CorporateScopeResolver,
     MembershipFuture, Principal, ResolveError,
@@ -378,6 +379,8 @@ pub struct CorporateDocuments<'a> {
     pub clock: &'a dyn Clock,
     /// Layanan berkas (slot unggah, validasi isi, URL unduh).
     pub files: &'a FileStorage,
+    /// Batas laju pengajuan ulang per akun HR (F1-T109, KEPUTUSAN-389).
+    pub resubmission_limit: &'a RateLimiter<Uuid>,
 }
 
 impl fmt::Debug for CorporateDocuments<'_> {

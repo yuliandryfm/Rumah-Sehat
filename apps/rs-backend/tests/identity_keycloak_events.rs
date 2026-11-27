@@ -1397,3 +1397,72 @@ async fn hr_events_from_korporat_realm_are_recorded_with_the_company_as_tenant()
     assert_eq!(unknown[0]["actor_type"], "system");
     audit_support::assert_corporate_events_clean(&unknown, &["e_02"], None, &raw);
 }
+
+// trace: F1-T109 review keamanan butir 4 (KEPUTUSAN-381/388): akun dicari per (realm, subjek). Event realm `pasien`
+// dan `admin` yang `userId`-nya sama dengan subjek Keycloak akun HR (dan `clientId` milik realm `korporat`) tidak
+// menghasilkan aktor HR, objek akun HR, tenant perusahaan HR, maupun komponen member area korporat.
+#[tokio::test]
+async fn other_realm_events_with_an_hr_subject_do_not_become_hr_events() {
+    let _serial = SERIAL.lock().await;
+    let e = env().await;
+    let kc_hr = new_id().hyphenated().to_string();
+    let hr = insert_account(&e.app, "corporate_admin", "korporat", &kc_hr, HR_EMAIL).await;
+    let company = bind_hr(&e.app, hr, false).await;
+    let t0 = ms(NOW) - 60_000;
+    let h = Some(kc_hr.as_str());
+    let cross = |mut ev: Value| {
+        ev["clientId"] = json!("rs-korporat-bff");
+        ev
+    };
+    push(
+        &e.kc,
+        "pasien",
+        cross(kc_event(t0, "LOGIN", h, None, login_details(HR_EMAIL))),
+    );
+    push(
+        &e.kc,
+        "admin",
+        cross(kc_event(
+            t0 + 1,
+            "LOGIN_ERROR",
+            h,
+            Some("invalid_user_credentials"),
+            json!({"auth_method": "openid-connect", "username": HR_EMAIL, "redirect_uri": "x"}),
+        )),
+    );
+
+    let mut l = lock().await;
+    let clock = FixedClock::new(NOW);
+    let mut puller = Puller::new(
+        options(&[IdpRealm::Pasien, IdpRealm::Admin], 100),
+        client(e.addr, SECRET_PASIEN),
+        clock.now(),
+    );
+    puller.round(&mut l, &e.app, &clock).await.unwrap();
+    l.release().await.unwrap();
+
+    let rows = outbox(&e.relay).await;
+    assert_eq!(rows.len(), 2, "{rows:?}");
+    let company = company.to_string();
+    let hr = hr.to_string();
+    for p in &rows {
+        assert_eq!(p["actor_type"], "system", "{p}");
+        assert!(p["object_id"].is_null(), "{p}");
+        assert!(p["tenant_id"].is_null(), "{p}");
+        let text = p.to_string();
+        assert!(!text.contains(&hr) && !text.contains(&company), "{p}");
+        assert_ne!(p["source_component"], "corporate_portal", "{p}");
+    }
+    let mut components: Vec<&str> = rows
+        .iter()
+        .map(|p| p["source_component"].as_str().unwrap())
+        .collect();
+    components.sort_unstable();
+    assert_eq!(components, ["backoffice", "patient_app"], "{rows:?}");
+    audit_support::assert_corporate_events_clean(
+        &rows,
+        &["e_01", "e_02"],
+        None,
+        &[HR_EMAIL, kc_hr.as_str()],
+    );
+}

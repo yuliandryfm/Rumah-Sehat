@@ -22,7 +22,7 @@ use authz::{
 use axum::extract::{ConnectInfo, Request};
 use axum::middleware::Next;
 use axum::response::Response;
-use foundation::Clock;
+use foundation::{Clock, Uuid};
 use observability::correlation_middleware;
 use sqlx::PgPool;
 use std::net::SocketAddr;
@@ -89,7 +89,17 @@ pub struct AppState {
     services: Arc<AppServices>,
     consent_drafts: DraftPolicy,
     registration: Arc<RegistrationGuard>,
+    corporate_resubmission_limit: Arc<RateLimiter<Uuid>>,
 }
+
+/// Anggaran batas laju pengajuan ulang verifikasi perusahaan per akun HR (F1-T109, KEPUTUSAN-389): 10 per akun dan
+/// 300 seluruh akun per menit. Pengajuan ulang yang sah paling banyak sekali per keputusan Verifikator; anggaran
+/// ini membatasi percobaan berulang (termasuk yang ditolak dan dicatat E-10 gagal) tanpa mengganggu klik ulang
+/// wajar. Angka teknis keputusan implementasi, bukan angka PRD.
+pub const CORPORATE_RESUBMISSION_BUDGET: RateBudget = RateBudget {
+    per_source: 10,
+    global: 300,
+};
 
 impl AppState {
     /// `problem_type_base` adalah awalan URI `type` respons galat; `readiness` pemeriksaan kesiapan.
@@ -104,6 +114,7 @@ impl AppState {
             services: Arc::new(services),
             consent_drafts: DraftPolicy::Allow,
             registration: Arc::new(RegistrationGuard::standard()),
+            corporate_resubmission_limit: Arc::new(RateLimiter::new(CORPORATE_RESUBMISSION_BUDGET)),
         }
     }
 
@@ -165,6 +176,11 @@ impl AppState {
 
     pub(crate) fn registration(&self) -> &RegistrationGuard {
         &self.registration
+    }
+
+    /// Batas laju pengajuan ulang verifikasi perusahaan per akun HR (KEPUTUSAN-389).
+    pub(crate) fn corporate_resubmission_limit(&self) -> &RateLimiter<Uuid> {
+        &self.corporate_resubmission_limit
     }
 
     pub(crate) fn consent_text_limit(&self) -> &RateLimiter {
