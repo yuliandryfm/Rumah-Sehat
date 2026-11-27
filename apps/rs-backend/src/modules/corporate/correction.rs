@@ -19,36 +19,56 @@
 //! `nib_used_by_other_company` di antrean Verifikator dihitung saat dibaca (KEPUTUSAN-363), jadi ikut NIB hasil
 //! koreksi; keunikan di antara perusahaan Aktif tetap ditegakkan saat persetujuan (`4090116`).
 //!
-//! **Audit** (ADR-005, KEPUTUSAN-411): E-10 `corporate_client_data_corrected` atas objek `corporate_client`
-//! dengan NAMA field yang benar-benar berubah saja ([`CORRECTION_POLICY`] berisi aturan `name_only`): nilai
-//! nama, NIB, NPWP (Terbatas, DD A20), alamat, dan telepon tidak pernah masuk payload, sebelum maupun sesudah.
-//! Ditulis di transaksi yang sama dengan E-10 `corporate_verification_resubmitted`. Koreksi yang ditolak aturan
+//! **Audit** (ADR-005, KEPUTUSAN-411 diubah KEPUTUSAN-416 setelah review DBA CR-036 C1): E-10
+//! `corporate_client_data_corrected` atas objek `corporate_client` untuk field yang benar-benar berubah, dengan
+//! nilai sebelum/sesudah menurut [`CORRECTION_POLICY`]: nama badan usaha, alamat, dan telepon sebagai teks pendek
+//! (disaring pustaka audit: deret angka 4 digit atau lebih disamarkan), NIB dan NPWP hanya 4 digit terakhir
+//! (`last4`; NPWP Terbatas DD A20, NPWP penuh tidak pernah masuk payload). Ditulis di transaksi yang sama dengan
+//! E-10 `corporate_verification_resubmitted`. Koreksi yang ditolak aturan
 //! (bukan Ditolak, dokumen belum lengkap) tercatat E-10 hasil gagal untuk kedua aksi di transaksi tersendiri.
 
 use super::admin_create::{ADDRESS_MAX, LEGAL_NAME_MAX, PHONE_MAX, field, text};
 use super::domain::{nib_format, npwp_format};
 use super::error::CorporateError;
 use super::repo::{ClientCorrection, ClientProfileRow};
-use audit::{FieldRule, ObjectPolicy};
+use audit::{FieldChange, FieldRule, ObjectPolicy, Value};
 use foundation::Sensitive;
 use std::fmt;
 
 /// Nama aksi E-10 koreksi data perusahaan.
 pub(super) const CORRECTED_ACTION: &str = "corporate_client_data_corrected";
 
-/// Kebijakan audit koreksi data perusahaan (KEPUTUSAN-411): hanya nama field yang berubah. NIB dan NPWP bukan
-/// token nomor identitas di pustaka audit, tetapi tetap `name_only` karena NPWP Terbatas dan semua field
-/// perusahaan dilarang bernilai di payload korporat (KEPUTUSAN-385).
+/// Kebijakan audit koreksi data perusahaan (ADR-005 before/after; KEPUTUSAN-416): nama, alamat, dan telepon
+/// sebagai teks pendek yang disaring pustaka (`text`), NIB dan NPWP hanya 4 digit terakhir (`last4`; NPWP
+/// Terbatas, DD A20). Satu-satunya event korporat yang memuat nilai data perusahaan; pemeriksa test
+/// `assert_corporate_correction_event_clean` mengecualikan field teks ini secara sempit (KEPUTUSAN-385 tetap
+/// berlaku untuk event lain).
 pub(super) static CORRECTION_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
     "corporate_client",
     &[
-        FieldRule::name_only("legal_name"),
-        FieldRule::name_only("nib"),
-        FieldRule::name_only("npwp"),
-        FieldRule::name_only("office_address"),
-        FieldRule::name_only("office_phone"),
+        FieldRule::text("legal_name"),
+        FieldRule::last4("nib"),
+        FieldRule::last4("npwp"),
+        FieldRule::text("office_address"),
+        FieldRule::text("office_phone"),
     ],
 );
+
+/// Nilai teks untuk field `text`.
+fn text_value(v: &str) -> Value {
+    Value::text(v)
+}
+
+/// Nilai nomor untuk field `last4`. Nilai tersimpan yang bukan deret angka ASCII minimal 4 digit (mis. data lama
+/// di luar format KEPUTUSAN-325) dicatat `Null`, bukan menggagalkan pencatatan audit (gagal-tertutup tetap untuk
+/// galat pustaka lain). Nilai baru selalu sudah divalidasi 13/16 angka.
+fn digits_value(v: &str) -> Value {
+    if v.len() >= 4 && v.bytes().all(|b| b.is_ascii_digit()) {
+        Value::digits(Sensitive::new(v.to_string()))
+    } else {
+        Value::Null
+    }
+}
 
 /// Isian koreksi dari HR. `None` = field tidak dikoreksi. NPWP (Terbatas) dibungkus [`Sensitive`]; `Debug`
 /// manual tanpa isian.
@@ -99,6 +119,43 @@ impl ValidatedCorrection {
             office_address: self.office_address.as_deref(),
             office_phone: self.office_phone.as_deref(),
         }
+    }
+
+    /// Perubahan audit (before/after menurut [`CORRECTION_POLICY`]) untuk field yang berubah, urut tetap.
+    pub(super) fn changes(&self, current: &ClientProfileRow) -> Vec<FieldChange> {
+        self.changed_fields(current)
+            .into_iter()
+            .map(|name| {
+                let (old, new, value): (&str, &str, fn(&str) -> Value) = match name {
+                    "legal_name" => (
+                        &current.legal_name,
+                        self.legal_name.as_deref().unwrap_or_default(),
+                        text_value,
+                    ),
+                    "nib" => (
+                        &current.nib,
+                        self.nib.as_deref().unwrap_or_default(),
+                        digits_value,
+                    ),
+                    "npwp" => (
+                        &current.npwp,
+                        self.npwp.as_deref().unwrap_or_default(),
+                        digits_value,
+                    ),
+                    "office_address" => (
+                        &current.office_address,
+                        self.office_address.as_deref().unwrap_or_default(),
+                        text_value,
+                    ),
+                    _ => (
+                        &current.office_phone,
+                        self.office_phone.as_deref().unwrap_or_default(),
+                        text_value,
+                    ),
+                };
+                FieldChange::new(name, Some(value(old)), Some(value(new)))
+            })
+            .collect()
     }
 
     /// Nama field yang nilainya berbeda dari baris tersimpan `current` (urut tetap). Field yang dikirim dengan
@@ -291,16 +348,26 @@ mod tests {
         assert_eq!(v.changed_fields(&current()), ["nib", "npwp"]);
     }
 
-    // trace: ADR-005, DD A20, KEPUTUSAN-385 (nilai data perusahaan tidak pernah di payload audit)
+    // trace: ADR-005 (before/after), DD A20 (NPWP Terbatas: hanya 4 digit terakhir), KEPUTUSAN-416
     #[test]
-    fn correction_policy_admits_field_names_only_and_debug_hides_values() {
+    fn correction_policy_keeps_npwp_and_nib_to_last4_and_debug_hides_values() {
         assert!(CORRECTION_POLICY.validate().is_ok());
-        assert!(
+        let kind = |f: &str| {
             CORRECTION_POLICY
                 .fields()
                 .iter()
-                .all(|r| r.kind() == audit::FieldKind::NameOnly)
-        );
+                .find(|r| r.name() == f)
+                .map(|r| r.kind())
+        };
+        assert_eq!(kind("npwp"), Some(audit::FieldKind::Last4));
+        assert_eq!(kind("nib"), Some(audit::FieldKind::Last4));
+        for f in ["legal_name", "office_address", "office_phone"] {
+            assert_eq!(kind(f), Some(audit::FieldKind::Text), "{f}");
+        }
+        assert!(matches!(digits_value("9900000000000009"), Value::Digits(_)));
+        for bad in ["", "123", "12-3456", "abcd"] {
+            assert!(matches!(digits_value(bad), Value::Null), "{bad}");
+        }
         assert!(audit::Code::new(CORRECTED_ACTION).is_ok());
         let input = CompanyCorrectionInput {
             npwp: Some(Sensitive::new("9900000000000009".to_string())),

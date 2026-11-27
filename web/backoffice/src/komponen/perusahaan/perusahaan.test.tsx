@@ -210,11 +210,11 @@ describe("keputusan", () => {
     expect(tolak).toHaveBeenCalledWith(ID, "document_invalid", VERSI);
   });
 
-  test("4090114 dokumen berubah: pesan dan detail dimuat ulang", async () => {
+  test("4090114 pengajuan berubah (dokumen diganti atau data dikoreksi HR, CR-036): pesan dan detail dimuat ulang", async () => {
     const detailFn = vi.fn(() => ok(detail()));
     await bukaPanel(klienUji({ detail: detailFn, setujui: () => gagal(409, "4090114") }));
     fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
-    expect(await screen.findByText(/Dokumen perusahaan berubah/)).toBeTruthy();
+    expect(await screen.findByText(/Pengajuan perusahaan berubah sejak Anda membukanya \(dokumen diganti, atau data dikoreksi/)).toBeTruthy();
     expect(detailFn).toHaveBeenCalledTimes(2);
   });
 
@@ -229,7 +229,7 @@ describe("keputusan", () => {
     fireEvent.click(screen.getByRole("button", { name: /Buka\s*Dokumen NIB/ }));
     await waitFor(() => { expect(document.querySelector("img")?.getAttribute("src")).toBe(URL_DOK); });
     fireEvent.click(screen.getByRole("button", { name: "Setujui" }));
-    expect(await screen.findByText(/dokumen yang terbuka ditutup; buka dokumen kembali/)).toBeTruthy();
+    expect(await screen.findByText(/dokumen yang terbuka ditutup; periksa data, buka dokumen kembali/)).toBeTruthy();
     expect(document.querySelector("img")).toBeNull();
     expect(detailFn).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button", { name: "Setujui" }));

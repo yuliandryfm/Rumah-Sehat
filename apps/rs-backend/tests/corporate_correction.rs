@@ -186,11 +186,49 @@ async fn rejected_company_corrects_its_data_and_resubmits_in_one_audited_action(
         ]
     );
     assert_eq!(events(&w, RESUBMITTED, c.id, "success").await.len(), 1);
+    // ADR-005 before/after (KEPUTUSAN-416): nama/alamat bernilai teks, NIB/NPWP hanya 4 digit terakhir, telepon
+    // disaring pustaka audit (deret angka disamarkan).
+    let e = &corrected[0];
+    // Nama lama memuat sufiks heksadesimal acak; deret 4 angka di dalamnya disamarkan pustaka audit.
+    assert!(
+        e["before_values"]["legal_name"]
+            .as_str()
+            .unwrap()
+            .starts_with("PT Dokumen Uji ")
+    );
+    assert_eq!(e["after_values"]["legal_name"], "PT Koreksi A1");
+    assert_eq!(e["before_values"]["office_address"], old.3.as_str());
+    assert_eq!(e["after_values"]["office_address"], "Jl. Koreksi A1");
+    assert_eq!(
+        e["before_values"]["nib"],
+        json!({ "last4": &old.1[old.1.len() - 4..] })
+    );
+    assert_eq!(
+        e["after_values"]["nib"],
+        json!({ "last4": &nib[nib.len() - 4..] })
+    );
+    assert_eq!(
+        e["before_values"]["npwp"],
+        json!({ "last4": &old.2[old.2.len() - 4..] })
+    );
+    assert_eq!(
+        e["after_values"]["npwp"],
+        json!({ "last4": &npwp[npwp.len() - 4..] })
+    );
+    assert!(
+        !e["after_values"]["office_phone"]
+            .as_str()
+            .unwrap()
+            .contains("9999")
+    );
     let tenant = c.id.to_string();
-    audit_support::assert_corporate_events_clean(
-        &w.all_tenant_events(c.id).await,
+    correction_checker_rejects_leaks(e, &tenant, &npwp, "PT Koreksi A1");
+    let all = w.all_tenant_events(c.id).await;
+    audit_support::assert_events_complete(&all, &["e_10", "e_05"]);
+    audit_support::assert_corporate_correction_events_clean(
+        &all,
         &["e_10", "e_05"],
-        Some(&tenant),
+        &tenant,
         &[
             old.0.as_str(),
             old.1.as_str(),
@@ -655,4 +693,118 @@ async fn corrections_share_the_resubmission_rate_limit_per_hr_account() {
     // Halaman status HR menampilkan data hasil koreksi (US-1901 AC6).
     let r = w.hr_get(&hr, DOCUMENTS).await;
     assert_eq!(r.json()["data"]["company"]["office_phone"], "0216666666");
+}
+
+// trace: review DBA CR-036 B1 (KEPUTUSAN-415), US-1902 AC2/AC4: keputusan Verifikator terikat putaran yang dilihat.
+// Verifikator A membuka detail putaran 1, Verifikator B menolak, HR mengoreksi data (putaran 2, dokumen tidak
+// diganti), lalu A menyetujui dengan token lama: ditolak 409 4090114 tanpa efek; setelah memuat ulang (data hasil
+// koreksi tampil) keputusan dengan token baru berlaku.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_verifier_cannot_approve_data_corrected_after_the_detail_was_opened() {
+    let w = plain_world().await;
+    let verifier_a = insert_verifier(&w.app).await;
+    let verifier_b = insert_verifier(&w.app).await;
+    let (c, hr) = company_with_hr(&w.app, "pending_verification").await;
+    seed_all_documents(&w.app, c.id).await;
+
+    let seen = w.documents_version(&verifier_a, c.id).await;
+    let r = w
+        .decide(&verifier_b, c.id, Some("company_data_mismatch"))
+        .await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    let (body, nib, _) = full_correction("B1");
+    let r = correct(&w, &hr, &body).await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(
+        client_status(&w.app, c.id).await,
+        ("pending_verification".to_string(), 2)
+    );
+
+    for reason in [None, Some("company_data_mismatch")] {
+        let r = w.decide_with(&verifier_a, c.id, reason, &seen).await;
+        assert_eq!(
+            (r.status, code(&r).as_str()),
+            (409, "4090114"),
+            "{}",
+            r.body
+        );
+        assert!(
+            r.body.contains("Pengajuan perusahaan berubah"),
+            "{}",
+            r.body
+        );
+    }
+    assert_eq!(
+        client_status(&w.app, c.id).await,
+        ("pending_verification".to_string(), 2),
+        "tanpa efek"
+    );
+    let decisions: i64 = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM app.corporate_verification_decision WHERE corporate_client_id = $1"#,
+        c.id
+    )
+    .fetch_one(&w.app)
+    .await
+    .unwrap();
+    assert_eq!(decisions, 1, "hanya penolakan putaran 1");
+
+    // Memuat ulang: token baru, data hasil koreksi tampil, keputusan berlaku.
+    let detail = w
+        .verifier_get(&verifier_a, &format!("{QUEUE}/{}", c.id))
+        .await;
+    assert!(detail.body.contains("PT Koreksi B1") && detail.body.contains(&nib));
+    let fresh = detail.json()["data"]["documents_version"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_ne!(fresh, seen);
+    let r = w.decide_with(&verifier_a, c.id, None, &fresh).await;
+    assert_eq!(r.status, 200, "{}", r.body);
+    assert_eq!(client_status(&w.app, c.id).await, ("active".to_string(), 2));
+}
+
+/// Self-test pemeriksa sempit event koreksi (KEPUTUSAN-416) atas event koreksi SUNGGUHAN `valid` (lolos dulu):
+/// NPWP/NIB penuh atau `last4` berisi field tambahan, field lain bernilai, teks berisi deret angka, teks bukan
+/// string, dan nilai teks di event selain koreksi tetap tertangkap.
+fn correction_checker_rejects_leaks(valid: &Value, tenant: &str, npwp: &str, name: &str) {
+    let check = |p: &Value| {
+        let (p, tenant, npwp, name) = (
+            p.clone(),
+            tenant.to_string(),
+            npwp.to_string(),
+            name.to_string(),
+        );
+        std::panic::catch_unwind(move || {
+            audit_support::assert_corporate_correction_events_clean(
+                std::slice::from_ref(&p),
+                &["e_10"],
+                &tenant,
+                &[npwp.as_str(), name.as_str()],
+            );
+        })
+        .is_ok()
+    };
+    assert!(check(valid), "event koreksi sah harus lolos: {valid}");
+    let leaks = [
+        ("after_values", "npwp", json!(npwp)),
+        (
+            "after_values",
+            "npwp",
+            json!({ "last4": "0002", "full": npwp }),
+        ),
+        ("after_values", "status", json!("active")),
+        ("after_values", "legal_name", json!(format!("PT {npwp}"))),
+        ("before_values", "legal_name", json!(5)),
+    ];
+    for (key, field, bad) in leaks {
+        let mut p = valid.clone();
+        p[key][field] = bad.clone();
+        assert!(!check(&p), "kebocoran {key}.{field} {bad} tidak tertangkap");
+    }
+    let mut other = valid.clone();
+    other["action_name"] = json!(RESUBMITTED);
+    assert!(
+        !check(&other),
+        "pengecualian teks hanya untuk event koreksi"
+    );
 }

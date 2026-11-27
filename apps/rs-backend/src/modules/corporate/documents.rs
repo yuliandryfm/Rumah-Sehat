@@ -592,7 +592,6 @@ async fn resubmit_with(
     let client_id = scope.corporate_client_id();
     let tx_actor = actor(scope)?;
     let tx_context = context.clone();
-    let now = s.clock.now();
     let result = in_audited_tx(s.pool, s.clock, move |conn| {
         Box::pin(async move {
             let locked = repo::lock_client(conn, client_id)
@@ -613,14 +612,15 @@ async fn resubmit_with(
             if !domain::documents_complete(&kinds) {
                 return Err(CorporateError::ResubmissionIncomplete);
             }
-            // Field yang benar-benar berubah dibandingkan dengan baris yang sudah dikunci (bukan dari klien).
-            let changed_fields = match &correction {
+            // Field yang benar-benar berubah dibandingkan dengan baris yang sudah dikunci (bukan dari klien),
+            // beserta nilai sebelum/sesudah sesuai kebijakan objek (KEPUTUSAN-416).
+            let changes = match &correction {
                 Some(c) => {
                     let current = repo::client_profile(&mut *conn, client_id)
                         .await
                         .map_err(db_error)?
                         .ok_or(CorporateError::NotFound)?;
-                    c.changed_fields(&current)
+                    c.changes(&current)
                 }
                 None => Vec::new(),
             };
@@ -633,7 +633,6 @@ async fn resubmit_with(
                 client_id,
                 locked.submission_round,
                 account_id,
-                now,
                 &repo_correction,
             )
             .await
@@ -650,8 +649,9 @@ async fn resubmit_with(
             let action = Code::new(RESUBMITTED_ACTION)
                 .map_err(|_| CorporateError::Internal("audit_action"))?;
             let mut events = Vec::with_capacity(2);
-            if !changed_fields.is_empty() {
-                // KEPUTUSAN-411: hanya nama field yang berubah, tanpa nilai lama atau baru.
+            if !changes.is_empty() {
+                // KEPUTUSAN-411 (diubah KEPUTUSAN-416): before/after nama, NIB (4 digit terakhir), alamat, telepon
+                // (teks disaring pustaka audit); NPWP hanya 4 digit terakhir.
                 let action = Code::new(CORRECTED_ACTION)
                     .map_err(|_| CorporateError::Internal("audit_action"))?;
                 let mut event = AuditEvent::new(
@@ -663,8 +663,8 @@ async fn resubmit_with(
                 .tenant(client_id)
                 .outcome(Outcome::success())
                 .context(&tx_context);
-                for name in changed_fields {
-                    event = event.change(FieldChange::changed(name));
+                for change in changes {
+                    event = event.change(change);
                 }
                 events.push(event);
             }

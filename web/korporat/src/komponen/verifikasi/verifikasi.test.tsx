@@ -328,6 +328,31 @@ describe("StatusVerifikasi: koreksi data perusahaan saat Ditolak (CR-036, Q20 = 
     expect(screen.getByText("Data perusahaan dapat dikoreksi bila pengajuan ditolak Verifikator.")).toBeDefined();
   });
 
+  test("T-02: setelah berhasil, isian diselaraskan dengan data tersimpan dan NIB/NPWP kembali tersamar", async () => {
+    // Ringkasan balasan sengaja berstatus Ditolak agar formulir tetap tampil dan keadaan isiannya teramati.
+    const baru = ringkasan({
+      status: "rejected",
+      complete: true,
+      rejection_reason: "authority_proof_insufficient",
+      documents: DOK_LENGKAP,
+      submission_round: 2,
+      company: { ...DITOLAK.company, office_phone: "021-1111111", npwp: "0999999999999999" },
+    });
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>(() => ok(baru));
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.change(isian("Telepon kantor"), { target: { value: "021-1111111" } });
+    fireEvent.click(screen.getByLabelText("Ubah NPWP"));
+    fireEvent.change(isian("NPWP baru"), { target: { value: "0999999999999999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await screen.findByText(/Data perusahaan dikoreksi dan pengajuan ulang terkirim/)).toBeDefined();
+    expect(screen.queryByLabelText("NPWP baru")).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>("Ubah NPWP").checked).toBe(false);
+    expect(isian("Telepon kantor").value).toBe("021-1111111");
+    expect(screen.getByText("NPWP saat ini: ************9999")).toBeDefined();
+    expect([...document.querySelectorAll("input")].map((i) => i.value)).not.toContain("0999999999999999");
+  });
+
   test("tanpa perubahan → pengajuan ulang biasa; 'Ubah NIB' dibatalkan → NIB tidak dikirim", async () => {
     const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>(() => ok(MENUNGGU));
     const ajukanUlang = vi.fn(() => ok(MENUNGGU));

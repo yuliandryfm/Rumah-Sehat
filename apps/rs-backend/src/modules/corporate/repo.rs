@@ -550,25 +550,26 @@ pub(super) struct ClientCorrection<'a> {
 /// tidak pernah tersimpan tanpa pengajuan ulang atau di luar status Ditolak. Jumlah baris berubah (0 = baris
 /// tidak lagi berada di keadaan yang dikunci pemanggil). NIB tidak dibandingkan dengan perusahaan lain: status
 /// hasil `pending_verification` tidak terkena `uqp_corporate_client_nib_active` (CR-035, KEPUTUSAN-365).
+/// `submitted_at`/`updated_at` = `statement_timestamp()` pernyataan ini, yang berjalan setelah kunci baris
+/// pemanggil didapat (review DBA CR-036 C2, KEPUTUSAN-417): pengajuan yang menunggu kunci tidak memakai waktu
+/// sebelum kunci, sehingga urutan antrean (`submitted_at`) mengikuti urutan pengajuan yang benar-benar berlaku.
 pub(super) async fn resubmit_client(
     conn: &mut PgConnection,
     corporate_client_id: Uuid,
     submission_round: i32,
     actor_id: Uuid,
-    now: OffsetDateTime,
     correction: &ClientCorrection<'_>,
 ) -> Result<u64, sqlx::Error> {
     let r = sqlx::query!(
         "UPDATE app.corporate_client \
-         SET status = 'pending_verification', submission_round = submission_round + 1, submitted_at = $4, \
-             updated_at = $4, updated_by = $3, \
-             legal_name = COALESCE($5, legal_name), nib = COALESCE($6, nib), npwp = COALESCE($7, npwp), \
-             office_address = COALESCE($8, office_address), office_phone = COALESCE($9, office_phone) \
+         SET status = 'pending_verification', submission_round = submission_round + 1, \
+             submitted_at = statement_timestamp(), updated_at = statement_timestamp(), updated_by = $3, \
+             legal_name = COALESCE($4, legal_name), nib = COALESCE($5, nib), npwp = COALESCE($6, npwp), \
+             office_address = COALESCE($7, office_address), office_phone = COALESCE($8, office_phone) \
          WHERE id = $1 AND submission_round = $2 AND status = 'rejected' AND deleted_at IS NULL",
         corporate_client_id,
         submission_round,
         actor_id,
-        now,
         correction.legal_name,
         correction.nib,
         correction.npwp,

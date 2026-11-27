@@ -139,6 +139,11 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
     setAjukanSibuk(false);
     if (h.ok) {
       terima(h.data);
+      // Isian koreksi diselaraskan dengan data tersimpan terbaru (review keamanan CR-036 T-02): NIB/NPWP kembali
+      // tersamar dan tidak ada sisa isian lama yang terkirim ulang.
+      setIsian(isianAwal(h.data.company));
+      setUbah({ nib: false, npwp: false });
+      setGalatField({});
       setInfo(
         adaKoreksi
           ? "Data perusahaan dikoreksi dan pengajuan ulang terkirim. Status perusahaan kembali Menunggu verifikasi."

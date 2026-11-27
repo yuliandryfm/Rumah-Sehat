@@ -285,8 +285,10 @@ pub(super) async fn detail(
     let active_docs = repo::active_documents(s.pool, row.id)
         .await
         .map_err(db_error)?;
-    let documents_version =
-        domain::documents_version(&active_docs.iter().map(|d| d.id).collect::<Vec<_>>());
+    let documents_version = domain::documents_version(
+        row.submission_round,
+        &active_docs.iter().map(|d| d.id).collect::<Vec<_>>(),
+    );
     let documents = active_docs
         .iter()
         .map(|d| corrupt(DocumentKind::parse(&d.document_kind)).map(DocumentKind::as_str))
@@ -477,8 +479,13 @@ async fn decide(
             let docs = repo::active_documents(&mut *conn, corporate_client_id)
                 .await
                 .map_err(db_error)?;
-            // Keputusan terikat versi dokumen yang dilihat Verifikator (review T1 F1-T102).
-            let current = domain::documents_version(&docs.iter().map(|d| d.id).collect::<Vec<_>>());
+            // Keputusan terikat putaran dan versi dokumen yang dilihat Verifikator (review T1 F1-T102; review DBA
+            // CR-036 B1, KEPUTUSAN-415): pengajuan yang diajukan ulang atau dikoreksi HR sejak detail dibuka
+            // (putaran baru, dokumen sama) ditolak `4090114`, sehingga data yang tidak pernah dilihat tidak disetujui.
+            let current = domain::documents_version(
+                locked.submission_round,
+                &docs.iter().map(|d| d.id).collect::<Vec<_>>(),
+            );
             if current != seen_version {
                 return Err(CorporateError::DocumentsChanged);
             }

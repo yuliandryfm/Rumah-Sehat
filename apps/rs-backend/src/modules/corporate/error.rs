@@ -33,11 +33,12 @@ pub const DOCUMENTS_INCOMPLETE: ResponseCode = ResponseCode::new(
     "Dokumen perusahaan belum lengkap. NIB, NPWP, dan bukti kewenangan wajib ada sebelum disetujui",
 );
 
-/// `4090114`: dokumen perusahaan berubah sejak detail dilihat Verifikator (keputusan terikat versi dokumen,
-/// review T1 F1-T102). Verifikator memuat ulang detail, memeriksa dokumen yang baru, lalu memutuskan kembali.
+/// `4090114`: pengajuan perusahaan berubah sejak detail dilihat Verifikator: dokumen diunggah/diganti, atau
+/// pengajuan diajukan ulang termasuk koreksi data perusahaan oleh HR (token terikat putaran dan versi dokumen,
+/// review T1 F1-T102, review DBA CR-036 B1, KEPUTUSAN-415). Verifikator memuat ulang detail lalu memutuskan kembali.
 pub const DOCUMENTS_CHANGED: ResponseCode = ResponseCode::new(
     "4090114",
-    "Dokumen perusahaan berubah sejak Anda membukanya. Muat ulang detail lalu putuskan kembali",
+    "Pengajuan perusahaan berubah sejak Anda membukanya. Muat ulang detail lalu putuskan kembali",
 );
 
 /// `4090115`: HR mengajukan ulang pengajuan yang ditolak padahal NIB, NPWP, dan bukti kewenangan belum lengkap
