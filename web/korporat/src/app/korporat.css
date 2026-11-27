@@ -78,6 +78,18 @@ main:focus { outline: none; }
 .kp-profil { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: var(--s2) var(--s4); margin: 0; }
 .kp-profil dt { color: var(--c-text-secondary); }
 .kp-profil dd { margin: 0; overflow-wrap: anywhere; }
+/* Pendaftaran publik (F1-T103, K01 layar 2-5). */
+.kp-publik { min-height: 100vh; display: grid; grid-template-rows: 64px 1fr; }
+.kp-daftar { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s3); }
+.kp-daftar h1:focus, .kp-daftar h2:focus { outline: none; box-shadow: var(--focus-ring); }
+.kp-daftar h3 { font-size: var(--t-subtitle-size); line-height: var(--t-subtitle-line); margin: var(--s2) 0 0; }
+.kp-daftar h4 { font-size: var(--t-body-size); margin: var(--s2) 0 0; }
+.kp-langkah { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
+.kp-langkah li { color: var(--c-text-secondary); }
+.kp-langkah li[aria-current="step"] { color: var(--c-primary-strong); font-weight: 700; }
+.kp-teks-persetujuan { max-height: 320px; overflow-y: auto; padding: var(--s3); background: var(--c-bg-surface); border: 1px solid var(--c-border-control); border-radius: var(--r-md); }
+.kp-teks-persetujuan:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.kp-teks-persetujuan p { margin: var(--s1) 0 0; white-space: pre-line; }
 @media (max-width: 479px) {
   .kp-profil { grid-template-columns: 1fr; }
   .kp-profil dd { margin-bottom: var(--s2); }

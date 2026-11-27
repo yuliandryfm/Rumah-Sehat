@@ -1,0 +1,47 @@
+# infra/caddy/snippets/korporat-pendaftaran-publik.caddy
+# F1-T103, Q30 = C [USER 2026-11-27], KEPUTUSAN-372, ADR-031 (diusulkan).
+#
+# Rute pendaftaran perusahaan mandiri di host web korporat: browser memanggil API publik pendaftaran pada asal
+# (origin) web korporat yang sama, sehingga CSP korporat tetap `connect-src 'self'` dan permintaan tidak lewat
+# server Next.js/BFF. HANYA dua rute ini yang diteruskan ke API Rust; jalur `/v1/*` lain di host korporat
+# (termasuk `/v1/public/content/*` dan `/v1/corporate/*`) tidak diteruskan dan jatuh ke Next.js (404).
+#
+# Caddyfile host belum ada di repo (docs/05-stack.md: Caddyfile disimpan sebagai kode di `infra/`, dibuat task
+# deploy). Berkas ini diimpor di TINGKAT ATAS Caddyfile (definisi snippet tidak boleh di dalam blok situs), lalu
+# snippet dipakai di blok situs host korporat bersama `handle` umum ke Next.js (blok `handle` saling eksklusif):
+#
+#   import snippets/korporat-pendaftaran-publik.caddy
+#
+#   <host korporat> {
+#   	import korporat_pendaftaran_publik <upstream api, mis. api:8080>
+#   	handle {
+#   		reverse_proxy <upstream web korporat>
+#   	}
+#   }
+#
+# Ketergantungan (bukan bagian snippet ini): batas laju per IP di backend memakai alamat peer TCP (`ClientIp`),
+# yang di balik Caddy adalah alamat Caddy, bukan klien (PT-39, KEPUTUSAN-78). Sampai backend membaca IP klien
+# asli dari header tepercaya yang dipasang Caddy, batas "per sumber" pendaftaran efektif menjadi batas global.
+#
+# Sintaks: matcher bernama dengan `method` + `path` (di-AND), `path` tanpa wildcard = cocok persis
+# [SRC-901]; snippet `(nama)` + `import nama <arg>` dengan placeholder `{args[0]}` [SRC-902]. Divalidasi dengan
+# `caddy adapt` image caddy:2.11.9 (docs/05-stack.md) pada 2026-11-27: hasilnya dua rute (POST persis
+# `/v1/public/corporate-registrations`; GET/HEAD persis `.../consent-text`) ke upstream API dan satu rute umum ke
+# Next.js dalam satu grup saling eksklusif.
+
+(korporat_pendaftaran_publik) {
+	@rs_pendaftaran_kirim {
+		method POST
+		path /v1/public/corporate-registrations
+	}
+	@rs_pendaftaran_teks {
+		method GET HEAD
+		path /v1/public/corporate-registrations/consent-text
+	}
+	handle @rs_pendaftaran_kirim {
+		reverse_proxy {args[0]}
+	}
+	handle @rs_pendaftaran_teks {
+		reverse_proxy {args[0]}
+	}
+}

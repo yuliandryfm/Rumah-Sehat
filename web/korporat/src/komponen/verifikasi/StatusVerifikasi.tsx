@@ -243,7 +243,8 @@ function Profil({ r }: { r: Ringkasan }) {
         <dt>Telepon kantor</dt>
         <dd>{p.office_phone}</dd>
       </dl>
-      <p className="kp-kecil">Data perusahaan tidak dapat diubah dari halaman ini. Bila ada data yang salah, hubungi Layanan Pelanggan Ruang Sehat.</p>
+      {/* Q31 = A [USER 2026-11-27]: teks sementara sampai koreksi data saat Ditolak (Q20 = A, CR-036) dibangun. */}
+      <p className="kp-kecil">Bila ada data yang salah, hubungi Layanan Pelanggan.</p>
     </section>
   );
 }
