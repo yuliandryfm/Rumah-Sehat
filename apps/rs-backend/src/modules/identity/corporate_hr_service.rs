@@ -159,11 +159,45 @@ static CORPORATE_ADMIN_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical
     ],
 );
 
+// trace: F1-T109 (US-1501 AC2, PRD §7.3, DD A20): objek akun HR tidak menerima email, nama, jabatan, atau data
+// perusahaan; alasan teks hanya nama field.
+#[cfg(test)]
+#[test]
+fn corporate_admin_account_policy_admits_no_personal_or_company_value() {
+    assert!(CORPORATE_ADMIN_ACCOUNT_POLICY.validate().is_ok());
+    for f in [
+        "email",
+        "full_name",
+        "job_title",
+        "npwp",
+        "nib",
+        "legal_name",
+        "office_address",
+        "office_phone",
+    ] {
+        assert!(
+            CORPORATE_ADMIN_ACCOUNT_POLICY
+                .fields()
+                .iter()
+                .all(|r| r.name() != f),
+            "{f}"
+        );
+    }
+    assert!(
+        CORPORATE_ADMIN_ACCOUNT_POLICY
+            .fields()
+            .iter()
+            .any(|r| r.name() == "status_reason" && r.kind() == audit::FieldKind::NameOnly)
+    );
+}
+
 /// Alasan penonaktifan (`account.status_reason`, `corporate_member.delete_reason`).
 const DEACTIVATION_REASON: &str = "deactivated_by_corporate_hr";
 
 const DEACTIVATE_ACTION: &str = "corporate_admin_account_deactivated";
 const INVITE_ACTION: &str = "corporate_admin_account_invited";
+/// E-04 pembuatan akun HR (keputusan user Q28 = A, KEPUTUSAN-380): dicatat bersama E-10 di transaksi yang sama.
+const ACCOUNT_CREATED_ACTION: &str = "account_created";
 const GRANT_ACTION: &str = "corporate_membership_granted";
 /// Alasan E-10 hasil gagal undangan ke email yang sudah dipakai (jawaban ke HR tetap seragam).
 const EMAIL_IN_USE_REASON: &str = "email_in_use";
@@ -540,6 +574,19 @@ impl CorporateHrAccounts {
                     None,
                     Some(Value::code("pending_provisioning").map_err(|_| Work::Audit)?),
                 ));
+                let created = event(
+                    EventCode::E04,
+                    ACCOUNT_CREATED_ACTION,
+                    &tx_scope,
+                    invitee.account_id,
+                    Outcome::success(),
+                    &tx_ctx,
+                )?
+                .change(FieldChange::new(
+                    "account_type",
+                    None,
+                    Some(Value::code("corporate_admin").map_err(|_| Work::Audit)?),
+                ));
                 let granted = event(
                     EventCode::E11,
                     GRANT_ACTION,
@@ -558,7 +605,7 @@ impl CorporateHrAccounts {
                     None,
                     Some(Value::Uuid(client)),
                 ));
-                Ok(((), vec![invited, granted]))
+                Ok(((), vec![invited, created, granted]))
             })
         })
         .await;

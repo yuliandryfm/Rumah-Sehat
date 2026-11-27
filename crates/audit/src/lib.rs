@@ -55,6 +55,7 @@ pub use policy::{
     ContentClass, FieldKind, FieldRule, ObjectPolicy, is_forbidden_field_name, is_number_field_name,
 };
 pub use requirements::{
-    CORPORATE_DOCUMENT_OBJECT_TYPE, CORPORATE_HR_CONSENT_OBJECT_TYPE, Violation, check_payload,
+    CORPORATE_DETAIL_OBJECT_TYPE, CORPORATE_DOCUMENT_OBJECT_TYPE, CORPORATE_HR_CONSENT_OBJECT_TYPE,
+    Violation, check_payload,
 };
 pub use value::{FieldChange, IDR_MAX_ABS, INT_MAX_ABS, TEXT_MAX_CHARS, Value};

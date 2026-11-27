@@ -721,6 +721,7 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18080"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "s1"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "s2"),
+            ("KEYCLOAK_EVENT_SECRET_KORPORAT", "s3"),
         ];
         let c = WorkerConfig::load(&EnvSource::from_pairs(base)).unwrap();
         assert!(!c.idp.enabled());
@@ -938,13 +939,14 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+            ("KEYCLOAK_EVENT_SECRET_KORPORAT", "rahasia-korporat"),
             (
                 "WORKER_VALKEY_URL",
                 "redis://:rahasia-valkey@127.0.0.1:16379",
             ),
         ]);
         let c = WorkerConfig::load(&ok).unwrap();
-        assert_eq!(c.keycloak_events.options().realms.len(), 2);
+        assert_eq!(c.keycloak_events.options().realms.len(), 3);
         assert_eq!(c.valkey_op_timeout_ms, valkey::DEFAULT_OP_TIMEOUT_MS);
         let dbg = format!("{c:?}");
         assert!(!dbg.contains("postgres://") && !dbg.contains("rahasia"));
@@ -953,6 +955,7 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "x"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "x"),
+            ("KEYCLOAK_EVENT_SECRET_KORPORAT", "x"),
         ]);
         assert_eq!(
             WorkerConfig::load(&no_valkey).unwrap_err().name(),

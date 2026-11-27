@@ -411,6 +411,20 @@ pub(super) async fn register(
                 None,
                 Some(code_value("pending_provisioning")?),
             ));
+            // E-04 pembuatan akun HR (keputusan user Q28 = A, KEPUTUSAN-380), transaksi yang sama dengan E-10.
+            let created = build_event(
+                EventCode::E04,
+                super::admin_create::ACCOUNT_CREATED_ACTION,
+                hr_actor(hr.account_id)?,
+                &tx_ctx,
+                ObjectRef::with_uuid(&HR_ACCOUNT_POLICY, hr.account_id),
+                client_id,
+            )?
+            .change(FieldChange::new(
+                "account_type",
+                None,
+                Some(code_value("corporate_admin")?),
+            ));
             let granted = build_event(
                 EventCode::E11,
                 MEMBERSHIP_GRANTED_ACTION,
@@ -429,7 +443,7 @@ pub(super) async fn register(
                 None,
                 Some(Value::Uuid(client_id)),
             ));
-            events.extend([registered, account, granted]);
+            events.extend([registered, account, created, granted]);
             Ok(((), events))
         })
     })

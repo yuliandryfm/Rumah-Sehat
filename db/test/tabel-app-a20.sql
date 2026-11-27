@@ -150,11 +150,12 @@ SELECT pg_temp.uji_nol('A20 corporate_member: hak tabel persis (rs_app S,I,U + p
            WHERE att.attrelid = 'app.corporate_member'::regclass AND att.attnum > 0 AND att.attacl IS NOT NULL) s
          WHERE k IS DISTINCT FROM
            'anonymized_at:rs_privacy_worker:UPDATE,job_title:rs_privacy_worker:UPDATE,updated_at:rs_privacy_worker:UPDATE,updated_by:rs_privacy_worker:UPDATE'));
-SELECT pg_temp.uji_nol('A20 corporate_member: index persis pk, uqp satu keanggotaan aktif per akun (M-51), ix anggota aktif per perusahaan',
+SELECT pg_temp.uji_nol('A20 corporate_member: index persis pk, uqp satu keanggotaan aktif per akun (M-51), ix anggota aktif per perusahaan, ix riwayat keanggotaan per akun (KEPUTUSAN-386)',
   ARRAY(SELECT pg_temp.uji_indeks('app.corporate_member', ARRAY[
     'CREATE UNIQUE INDEX pk_corporate_member ON app.corporate_member USING btree (id)',
     'CREATE UNIQUE INDEX uqp_corporate_member_account_id ON app.corporate_member USING btree (account_id) WHERE (deleted_at IS NULL)',
-    'CREATE INDEX ix_corporate_member_corporate_client_id ON app.corporate_member USING btree (corporate_client_id) WHERE (deleted_at IS NULL)'])));
+    'CREATE INDEX ix_corporate_member_corporate_client_id ON app.corporate_member USING btree (corporate_client_id) WHERE (deleted_at IS NULL)',
+    'CREATE INDEX ix_corporate_member_account_id_deleted_at ON app.corporate_member USING btree (account_id, deleted_at DESC, id DESC)'])));
 SELECT pg_temp.uji_nol('A20 corporate_member: FK persis, tanpa CASCADE; tanpa trigger',
   ARRAY(SELECT x FROM (VALUES
       ('fk_corporate_member_created_by', 'FOREIGN KEY (created_by) REFERENCES app.account(id)'),

@@ -12,6 +12,7 @@
 
 use super::{admin_create, documents, registration, repo, verification};
 use crate::modules::platform::api::{DownloadTicket, FileStorage, UploadTicket};
+use crate::rate_limit::RateLimiter;
 use authz::{
     CorporateClientStatus, CorporateMembership, CorporateScope, CorporateScopeResolver,
     MembershipFuture, Principal, ResolveError,
@@ -107,6 +108,16 @@ pub async fn member_owner(
     corporate_member_id: Uuid,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     repo::member_owner(pool, corporate_member_id).await
+}
+
+/// Perusahaan yang dicatat sebagai `tenant_id` event audit atas akun HR `account_id` dari luar modul ini
+/// (pengambil event Keycloak E-01–E-04 dan hasil worker IdP E-10, F1-T109): keanggotaan aktif, atau keanggotaan
+/// terakhir bila sudah dicabut. `None` bila akun tidak pernah menjadi anggota perusahaan.
+pub async fn hr_account_tenant(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    repo::hr_account_tenant(conn, account_id).await
 }
 
 /// Mencabut keanggotaan aktif (hapus lunak dengan alasan) di transaksi pemanggil setelah [`lock_members`].
@@ -290,12 +301,15 @@ pub async fn corporate_verification_queue(
     verification::queue(deps, cursor, limit, readiness).await
 }
 
-/// US-1902 AC1: detail perusahaan termasuk NPWP dan jenis dokumen aktif.
+/// US-1902 AC1: detail perusahaan termasuk NPWP dan jenis dokumen aktif. CR-037 (keputusan user Q29 = A): E-05
+/// akses data Terbatas di-commit sebelum detail dikembalikan; gagal mencatat = tidak ada detail.
 pub async fn corporate_verification_detail(
     deps: &CorporateVerification<'_>,
+    principal: &Principal,
+    route: &str,
     corporate_client_id: Uuid,
 ) -> Result<CorporateDetailView, CorporateError> {
-    verification::detail(deps, corporate_client_id).await
+    verification::detail(deps, principal, route, corporate_client_id).await
 }
 
 /// US-1902 AC1: URL unduh dokumen perusahaan berumur pendek (E-05 dulu, `FileAccess::StaffCorporate`).
@@ -368,6 +382,8 @@ pub struct CorporateDocuments<'a> {
     pub clock: &'a dyn Clock,
     /// Layanan berkas (slot unggah, validasi isi, URL unduh).
     pub files: &'a FileStorage,
+    /// Batas laju pengajuan ulang per akun HR (F1-T109, KEPUTUSAN-389).
+    pub resubmission_limit: &'a RateLimiter<Uuid>,
 }
 
 impl fmt::Debug for CorporateDocuments<'_> {

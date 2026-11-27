@@ -32,6 +32,31 @@ pub(super) async fn active_membership(
     .await
 }
 
+/// Perusahaan tenant audit akun HR `account_id` (F1-T109, KEPUTUSAN-381, KEPUTUSAN-386): keanggotaan aktif lebih
+/// dulu; bila sudah dicabut, keanggotaan terakhir yang dihapus lunak (penonaktifan HR diikuti job IdP dan event
+/// logout yang tetap milik perusahaan itu). Satu query yang dilayani penuh index
+/// `ix_corporate_member_account_id_deleted_at` (urutan index = `ORDER BY`).
+///
+/// Pengecualian sengaja dari filter default ADR-003: baris keanggotaan yang dihapus lunak dan perusahaan yang
+/// dihapus lunak tetap dibaca, karena yang dicari adalah pemilik historis event audit, bukan data yang tampil ke
+/// pengguna. Tanpa join ke `corporate_client` (status/hapus perusahaan tidak mengubah pemilik event).
+///
+/// Prasyarat (KEPUTUSAN-387): satu akun HR hanya pernah punya satu keanggotaan (undangan dengan email akun yang
+/// sudah ada ditolak `email_in_use`, perpindahan keanggotaan belum ada), sehingga tenant tidak bergantung pada
+/// waktu event. Bila perpindahan diaktifkan, tenant wajib dibatasi waktu event (TD-52).
+pub(super) async fn hr_account_tenant(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "SELECT corporate_client_id FROM app.corporate_member \
+         WHERE account_id = $1 ORDER BY deleted_at DESC NULLS FIRST, id DESC LIMIT 1",
+        account_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
 // ----- verifikasi perusahaan (F1-T104, US-1902) -----
 
 /// Satu pengajuan di antrean (tanpa NPWP: NPWP hanya di detail, klasifikasi Terbatas DD A20).

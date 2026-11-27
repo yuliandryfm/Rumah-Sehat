@@ -45,7 +45,7 @@ Klien:
 | --- | --- | --- | --- |
 | `pasien` | `rs-pasien-mobile` | Publik | Authorization Code + PKCE S256 wajib, redirect URI tepat satu dari `RS_KC_PASIEN_MOBILE_REDIRECT_URI` (ADR-011 butir 7, RFC 8252) |
 | `admin` | `rs-backoffice-bff`, `rs-portal-bff` | Rahasia | Authorization Code + PKCE S256, secret dari `RS_KC_*_BFF_SECRET` (lokal: `infra/local/.env`; staging/production: OpenBao lewat skrip deploy) |
-| `pasien`, `admin` | `rs-backend-event-reader` | Rahasia, service account | Pengambil event `rs-backend worker` (F1-T34, ADR-011 butir 10): hanya client credentials, `fullScopeAllowed` mati, peran service account dan scope mapping hanya `realm-management/view-events`, cakupan bawaan hanya `kc-admin-api` (audience Admin REST yang diwajibkan Keycloak 26.8.2). Secret dari `RS_KC_EVENT_READER_<REALM>_SECRET` (satu per realm) |
+| `pasien`, `admin`, `korporat` | `rs-backend-event-reader` | Rahasia, service account | Pengambil event `rs-backend worker` (F1-T34, ADR-011 butir 10; realm `korporat` termasuk realm bawaan sejak F1-T109, KEPUTUSAN-380): hanya client credentials, `fullScopeAllowed` mati, peran service account dan scope mapping hanya `realm-management/view-events`, cakupan bawaan hanya `kc-admin-api` (audience Admin REST yang diwajibkan Keycloak 26.8.2). Secret dari `RS_KC_EVENT_READER_<REALM>_SECRET` (satu per realm); di sisi backend dibaca sebagai `KEYCLOAK_EVENT_SECRET_<REALM>` (`PASIEN`, `ADMIN`, `KORPORAT`, ketiganya wajib dengan daftar realm bawaan). `KEYCLOAK_EVENT_REALMS` eksplisit yang menghilangkan realm bawaan padahal secret realm itu diset ditolak saat start |
 
 Audience API backend dan pemeta klaim belum diatur; ditetapkan bersama validasi token F1-T32.
 

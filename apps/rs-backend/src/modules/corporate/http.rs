@@ -27,6 +27,7 @@ use foundation::{CorrelationId, Uuid};
 use utoipa_axum::routes;
 
 /// Pola rute untuk security log dan audit (bukan URL berisi ID).
+const DETAIL_ROUTE: &str = "/backoffice/v1/corporate-verifications/{corporate_client_id}";
 const DOCUMENT_ROUTE: &str = "/backoffice/v1/corporate-verifications/{corporate_client_id}/documents/{document_kind}/download-url";
 const APPROVE_ROUTE: &str = "/backoffice/v1/corporate-verifications/{corporate_client_id}/approve";
 const REJECT_ROUTE: &str = "/backoffice/v1/corporate-verifications/{corporate_client_id}/reject";
@@ -177,14 +178,14 @@ async fn queue(
 async fn detail(
     State(state): State<AppState>,
     Extension(cid): Extension<CorrelationId>,
-    _principal: Principal,
+    principal: Principal,
     Path(raw): Path<String>,
 ) -> Response {
     let id = match client_id(&raw) {
         Ok(id) => id,
         Err(e) => return fail(&state, cid, e),
     };
-    let r = corporate::corporate_verification_detail(&deps(&state), id)
+    let r = corporate::corporate_verification_detail(&deps(&state), &principal, DETAIL_ROUTE, id)
         .await
         .and_then(|v| DetailDto::from_view(v).map_err(dto_error));
     match r {

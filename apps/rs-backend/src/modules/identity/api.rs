@@ -142,12 +142,18 @@ impl FromStr for TimeoutSecs {
     }
 }
 
+/// Realm bawaan pengambil event (KEPUTUSAN-380). Daftar eksplisit `KEYCLOAK_EVENT_REALMS` yang menghilangkan salah
+/// satunya padahal `KEYCLOAK_EVENT_SECRET_<REALM>`-nya diset ditolak saat start.
+pub const DEFAULT_EVENT_REALMS: [IdpRealm; 3] =
+    [IdpRealm::Pasien, IdpRealm::Admin, IdpRealm::Korporat];
+
 /// Konfigurasi pengambil event Keycloak (KEPUTUSAN-132: struct bertipe, gagal cepat, tanpa nilai di galat).
 #[derive(Debug, Clone)]
 pub struct KeycloakEventConfig {
     /// `KEYCLOAK_ADMIN_URL`: `http://<ip-loopback>:<port>` (TLS lintas host belum diterapkan).
     pub keycloak_url: KeycloakAddress,
-    /// `KEYCLOAK_EVENT_REALMS` (bawaan `pasien,admin`, realm yang sudah ada sebagai kode).
+    /// `KEYCLOAK_EVENT_REALMS` (bawaan `pasien,admin,korporat`, realm yang sudah ada sebagai kode; `korporat`
+    /// sejak F1-T109, KEPUTUSAN-380: E-01–E-04 akun HR).
     pub realms: RealmList,
     /// `KEYCLOAK_EVENT_CLIENT_ID` (bawaan [`DEFAULT_EVENT_CLIENT_ID`]).
     pub client_id: String,
@@ -176,7 +182,7 @@ impl KeycloakEventConfig {
     pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
         let realms: RealmList = env.optional_or(
             "KEYCLOAK_EVENT_REALMS",
-            RealmList(vec![IdpRealm::Pasien, IdpRealm::Admin]),
+            RealmList(DEFAULT_EVENT_REALMS.to_vec()),
         )?;
         let client_id: String = env.optional_or(
             "KEYCLOAK_EVENT_CLIENT_ID",
@@ -195,6 +201,18 @@ impl KeycloakEventConfig {
                     secret: env.required_secret(&name)?,
                 },
             );
+        }
+        // F1-T109 (review keamanan butir 5, KEPUTUSAN-380): daftar eksplisit yang menghilangkan realm bawaan padahal
+        // rahasia realm itu dikirim skrip deploy hampir pasti sisa konfigurasi lama; E-01–E-04 realm itu akan hilang
+        // diam-diam. Ditolak saat start (gagal cepat), tanpa nilai di galat.
+        for realm in DEFAULT_EVENT_REALMS {
+            let secret = format!(
+                "KEYCLOAK_EVENT_SECRET_{}",
+                realm.as_str().to_ascii_uppercase()
+            );
+            if !realms.realms().contains(&realm) && env.required_secret(&secret).is_ok() {
+                return Err(ConfigError::invalid("KEYCLOAK_EVENT_REALMS"));
+            }
         }
         Ok(Self {
             keycloak_url: env.required("KEYCLOAK_ADMIN_URL")?,
@@ -252,13 +270,17 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+            ("KEYCLOAK_EVENT_SECRET_KORPORAT", "rahasia-korporat"),
         ]
     }
 
     #[test]
     fn defaults_follow_adr_011() {
         let c = KeycloakEventConfig::load(&EnvSource::from_pairs(base())).unwrap();
-        assert_eq!(c.realms.realms(), &[IdpRealm::Pasien, IdpRealm::Admin]);
+        assert_eq!(
+            c.realms.realms(),
+            &[IdpRealm::Pasien, IdpRealm::Admin, IdpRealm::Korporat]
+        );
         assert_eq!(c.client_id, DEFAULT_EVENT_CLIENT_ID);
         assert_eq!(c.poll_interval(), Duration::from_secs(60));
         let o = c.options();
@@ -285,6 +307,33 @@ mod tests {
         assert_eq!(
             KeycloakEventConfig::load(&only).unwrap().credentials.len(),
             1
+        );
+    }
+
+    // trace: F1-T109 review keamanan butir 5 (KEPUTUSAN-380): daftar eksplisit tanpa realm bawaan yang rahasianya
+    // dikirim deploy ditolak; tanpa rahasianya (dev/test satu realm) tetap boleh.
+    #[test]
+    fn explicit_list_dropping_a_realm_whose_secret_is_deployed_is_rejected() {
+        let mut v = base();
+        v.push(("KEYCLOAK_EVENT_REALMS", "pasien,admin"));
+        let e = KeycloakEventConfig::load(&EnvSource::from_pairs(v)).unwrap_err();
+        assert_eq!(
+            (e.kind(), e.name()),
+            (ConfigErrorKind::Invalid, "KEYCLOAK_EVENT_REALMS")
+        );
+        assert!(!e.to_string().contains("rahasia"), "{e}");
+        let without_secret = EnvSource::from_pairs([
+            ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
+            ("KEYCLOAK_EVENT_REALMS", "pasien,admin"),
+            ("KEYCLOAK_EVENT_SECRET_PASIEN", "x"),
+            ("KEYCLOAK_EVENT_SECRET_ADMIN", "y"),
+        ]);
+        assert_eq!(
+            KeycloakEventConfig::load(&without_secret)
+                .unwrap()
+                .realms
+                .realms(),
+            &[IdpRealm::Pasien, IdpRealm::Admin]
         );
     }
 

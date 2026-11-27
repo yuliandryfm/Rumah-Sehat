@@ -57,6 +57,8 @@ use std::net::IpAddr;
 
 const CLIENT_CREATED_ACTION: &str = "corporate_client_created_by_admin";
 const HR_INVITED_ACTION: &str = "corporate_admin_account_invited";
+/// E-04 pembuatan akun HR (keputusan user Q28 = A, KEPUTUSAN-380): dicatat bersama E-10 di transaksi yang sama.
+pub(super) const ACCOUNT_CREATED_ACTION: &str = "account_created";
 const MEMBERSHIP_GRANTED_ACTION: &str = "corporate_membership_granted";
 const CREATE_REJECTED_ACTION: &str = "corporate_client_create_rejected";
 const NIB_TAKEN_REASON: &str = "nib_already_registered";
@@ -401,6 +403,20 @@ pub(super) async fn create(
                 None,
                 Some(code_value("pending_provisioning")?),
             ));
+            let account_created = event(
+                EventCode::E04,
+                ACCOUNT_CREATED_ACTION,
+                &tx_principal,
+                &tx_ctx,
+                ObjectRef::with_uuid(&HR_ACCOUNT_POLICY, invitee.account_id),
+                Some(client_id),
+                Outcome::success(),
+            )?
+            .change(FieldChange::new(
+                "account_type",
+                None,
+                Some(code_value("corporate_admin")?),
+            ));
             let granted = event(
                 EventCode::E11,
                 MEMBERSHIP_GRANTED_ACTION,
@@ -426,7 +442,7 @@ pub(super) async fn create(
                     corporate_member_id: member_id,
                     hr_account_id: invitee.account_id,
                 },
-                vec![created, invited, granted],
+                vec![created, invited, account_created, granted],
             ))
         })
     })

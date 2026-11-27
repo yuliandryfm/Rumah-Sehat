@@ -368,10 +368,20 @@ async fn active_hr_invites_a_colleague_bound_to_its_own_company() {
         kinds,
         vec![
             ("e_10", "corporate_admin_account_invited"),
+            // Keputusan user Q28 = A (KEPUTUSAN-380): E-04 pembuatan akun HR, transaksi yang sama.
+            ("e_04", "account_created"),
             ("e_11", "corporate_membership_granted"),
         ]
     );
-    audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
+    audit_support::assert_events_complete(&evs, &["e_04", "e_10", "e_11"]);
+    // F1-T109: pemeriksa korporat bersama (tenant = perusahaan pengundang, tanpa email undangan).
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_04", "e_10", "e_11"],
+        Some(&tenant),
+        &[mixed.as_str(), a.email.as_str()],
+    );
     for e in &evs {
         assert_eq!(e["actor_account_id"], a.account_id.to_string());
         assert_eq!(e["actor_account_type"], "corporate_admin");
@@ -385,8 +395,10 @@ async fn active_hr_invites_a_colleague_bound_to_its_own_company() {
         );
     }
     assert_eq!(evs[0]["after_values"]["status"], "pending_provisioning");
+    assert_eq!(evs[1]["after_values"]["account_type"], "corporate_admin");
+    assert_eq!(evs[1]["correlation_id"], evs[0]["correlation_id"]);
     assert_eq!(
-        evs[1]["after_values"]["corporate_member_id"],
+        evs[2]["after_values"]["corporate_member_id"],
         member.id.to_string()
     );
 
@@ -449,6 +461,17 @@ async fn already_registered_email_gets_an_identical_answer_and_changes_nothing()
         .filter(|e| e["outcome"] == "failure")
         .collect();
     assert_eq!(failed.len(), 6, "{failed:?}");
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &failed,
+        &["e_10"],
+        Some(&tenant),
+        &[
+            pending_email.as_str(),
+            foreign.email.as_str(),
+            a.email.as_str(),
+        ],
+    );
     for e in &failed {
         audit_support::assert_event_complete(e, "e_10");
         assert_eq!(e["action_name"], "corporate_admin_account_invited");
@@ -610,6 +633,51 @@ async fn a_hr_deactivated_by_a_colleague_can_no_longer_invite() {
     );
     assert_eq!(w.counts(&[client]).await, before);
     assert!(w.account_by_email(&email).await.is_empty());
+}
+
+// trace: F1-T109 KEPUTUSAN-387 (prasyarat KEPUTUSAN-381): satu akun HR hanya pernah punya satu keanggotaan. HR yang
+// sudah dinonaktifkan (keanggotaan dihapus lunak, akun tetap ada dengan email yang sama) tidak dapat diundang
+// kembali, baik oleh rekan di perusahaan yang sama maupun oleh HR perusahaan lain: tidak ada keanggotaan kedua,
+// sehingga tenant audit akun itu tidak bergantung pada waktu event. Test ini gagal bila perpindahan atau
+// pengaktifan ulang keanggotaan dibuka tanpa menyelesaikan TD-52.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_deactivated_hr_cannot_gain_a_second_membership_through_an_invitation() {
+    let w = world().await;
+    let client = insert_client(&w.app, "active").await;
+    let a = insert_hr(&w.app, client, "active").await;
+    let b = insert_hr(&w.app, client, "active").await;
+    let other = insert_client(&w.app, "active").await;
+    let foreign = insert_hr(&w.app, other, "active").await;
+    let d = common::request(
+        w.addr,
+        "POST",
+        &deactivate_path(b.member_id),
+        &[&w.bearer(&a)],
+    )
+    .await;
+    assert_eq!(d.status, 200, "{}", d.body);
+    let before = w.counts(&[client, other]).await;
+    for (inviter, tried) in [
+        (&a, b.email.clone()),
+        (&a, b.email.to_uppercase()),
+        (&foreign, b.email.clone()),
+    ] {
+        let r = w.invite(inviter, &tried).await;
+        assert_eq!(r.status, 202, "jawaban seragam: {}", r.body);
+    }
+    assert_eq!(w.counts(&[client, other]).await, before, "tidak ada efek");
+    let memberships = sqlx::query!(
+        r#"SELECT corporate_client_id, deleted_at IS NOT NULL AS "revoked!"
+           FROM app.corporate_member WHERE account_id = $1"#,
+        b.account_id
+    )
+    .fetch_all(&w.app)
+    .await
+    .unwrap();
+    assert_eq!(memberships.len(), 1, "satu akun HR, satu keanggotaan");
+    assert_eq!(memberships[0].corporate_client_id, client);
+    assert!(memberships[0].revoked);
+    assert_eq!(w.account_by_email(&b.email).await, vec![b.account_id]);
 }
 
 // trace: US-1904 AC3 (cakupan perusahaan selalu dari keanggotaan; isian ID perusahaan tidak diterima), AC2

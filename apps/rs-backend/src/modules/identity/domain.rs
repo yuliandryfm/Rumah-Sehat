@@ -207,7 +207,7 @@ impl RawEvent {
             .client_id
             .as_deref()
             .filter(|c| c.len() <= MAX_CLIENT_ID_LEN)
-            .and_then(component_for_client)
+            .and_then(|c| component_for_client(realm, c))
             .unwrap_or_else(|| realm.default_component());
         Ok(KcEvent {
             id,
@@ -226,12 +226,15 @@ fn is_id_byte(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b':' || b == b'.'
 }
 
-/// Klien realm sebagai kode (`infra/keycloak/realms/*.json`) ke komponen sumber DD B1.
-fn component_for_client(client_id: &str) -> Option<SourceComponent> {
-    match client_id {
-        "rs-pasien-mobile" => Some(SourceComponent::PatientApp),
-        "rs-backoffice-bff" => Some(SourceComponent::Backoffice),
-        "rs-portal-bff" => Some(SourceComponent::PartnerPortal),
+/// Klien realm sebagai kode (`infra/keycloak/realms/*.json`) ke komponen sumber DD B1, diikat ke realm asal event
+/// (F1-T109 review keamanan, KEPUTUSAN-388): `clientId` adalah isian event yang tidak dijamin milik realm itu, jadi
+/// pasangan (realm, klien) yang tidak ada di definisi realm tidak dipetakan dan jatuh ke komponen bawaan realm.
+fn component_for_client(realm: IdpRealm, client_id: &str) -> Option<SourceComponent> {
+    match (realm, client_id) {
+        (IdpRealm::Pasien, "rs-pasien-mobile") => Some(SourceComponent::PatientApp),
+        (IdpRealm::Admin, "rs-backoffice-bff") => Some(SourceComponent::Backoffice),
+        (IdpRealm::Admin, "rs-portal-bff") => Some(SourceComponent::PartnerPortal),
+        (IdpRealm::Korporat, "rs-korporat-bff") => Some(SourceComponent::CorporatePortal),
         _ => None,
     }
 }
@@ -544,6 +547,57 @@ mod tests {
         .unwrap();
         assert_eq!(unknown_client.component, SourceComponent::Backoffice);
         assert_eq!((unknown_client.user_id, unknown_client.ip), (None, None));
+    }
+
+    // trace: F1-T109 KEPUTUSAN-388 (review keamanan butir 1): klien dari realm lain tidak menentukan komponen sumber.
+    #[test]
+    fn client_component_is_bound_to_the_realm_of_the_event() {
+        let component = |realm: IdpRealm, client: &str| {
+            raw(serde_json::json!({
+                "id": "67a5bdd7-ac56-4601-9235-8a0ca7a400c3", "time": 1, "type": "LOGIN", "clientId": client
+            }))
+            .validate(realm)
+            .unwrap()
+            .component
+        };
+        // Pasangan yang ada di definisi realm.
+        assert_eq!(
+            component(IdpRealm::Pasien, "rs-pasien-mobile"),
+            SourceComponent::PatientApp
+        );
+        assert_eq!(
+            component(IdpRealm::Admin, "rs-backoffice-bff"),
+            SourceComponent::Backoffice
+        );
+        assert_eq!(
+            component(IdpRealm::Admin, "rs-portal-bff"),
+            SourceComponent::PartnerPortal
+        );
+        assert_eq!(
+            component(IdpRealm::Korporat, "rs-korporat-bff"),
+            SourceComponent::CorporatePortal
+        );
+        // Silang realm: komponen bawaan realm asal, bukan komponen klien.
+        assert_eq!(
+            component(IdpRealm::Pasien, "rs-korporat-bff"),
+            SourceComponent::PatientApp
+        );
+        assert_eq!(
+            component(IdpRealm::Korporat, "rs-pasien-mobile"),
+            SourceComponent::CorporatePortal
+        );
+        assert_eq!(
+            component(IdpRealm::Korporat, "rs-portal-bff"),
+            SourceComponent::CorporatePortal
+        );
+        assert_eq!(
+            component(IdpRealm::Admin, "rs-korporat-bff"),
+            SourceComponent::Backoffice
+        );
+        assert_eq!(
+            component(IdpRealm::Pasien, "rs-backoffice-bff"),
+            SourceComponent::PatientApp
+        );
     }
 
     #[test]
