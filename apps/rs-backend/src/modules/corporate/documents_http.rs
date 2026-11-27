@@ -10,8 +10,8 @@
 //! pernah dicatat (`Debug` manual menyamarkannya, KEPUTUSAN-122).
 
 use super::api::{
-    self as corporate, CompanyProfileView, CorporateDocuments, CorporateError, DocumentStatusView,
-    DocumentsOverviewView,
+    self as corporate, CompanyCorrectionInput, CompanyProfileView, CorporateDocuments,
+    CorporateError, DocumentStatusView, DocumentsOverviewView,
 };
 use super::policy;
 use crate::app::AppState;
@@ -26,7 +26,7 @@ use axum::http::HeaderValue;
 use axum::http::header::CACHE_CONTROL;
 use axum::response::{IntoResponse, Response};
 use envelope::{FieldError, Success};
-use foundation::{CorrelationId, Uuid};
+use foundation::{CorrelationId, Sensitive, Uuid};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use time::OffsetDateTime;
@@ -39,6 +39,7 @@ const SLOT_ROUTE: &str = "/v1/corporate/document-upload-slots";
 const CONFIRM_ROUTE: &str = "/v1/corporate/documents";
 const DOWNLOAD_ROUTE: &str = "/v1/corporate/document-download-urls";
 const RESUBMIT_ROUTE: &str = "/v1/corporate/verification-resubmissions";
+const CORRECTION_ROUTE: &str = "/v1/corporate/company-corrections";
 
 pub(super) fn router() -> PolicyRouter<AppState> {
     PolicyRouter::new()
@@ -47,6 +48,7 @@ pub(super) fn router() -> PolicyRouter<AppState> {
         .routes(policy::hr_documents(), routes!(confirm_document))
         .routes(policy::hr_documents(), routes!(download_url))
         .routes(policy::hr_documents(), routes!(resubmit))
+        .routes(policy::hr_documents(), routes!(correct_and_resubmit))
 }
 
 fn deps(state: &AppState) -> CorporateDocuments<'_> {
@@ -637,6 +639,7 @@ async fn download_url(
         (status = 200, description = "Pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu).", body = DocumentsOverviewEnvelope, content_type = "application/json"),
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 409, description = "4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "4290001: terlalu banyak percobaan pengajuan ulang dari akun ini (10 per menit, dihitung bersama koreksi data).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
     )
@@ -655,6 +658,110 @@ async fn resubmit(
     }
 }
 
+/// Koreksi data perusahaan saat Ditolak (CR-036). Hanya field yang dikirim yang dikoreksi; tanpa ID perusahaan
+/// (perusahaan selalu dari keanggotaan sesi, isian lain ditolak `deny_unknown_fields`). NPWP Terbatas (DD A20):
+/// `Debug` manual tanpa isian.
+#[derive(Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CompanyCorrectionRequest {
+    /// Nama badan usaha (maks 200 karakter).
+    #[serde(default)]
+    #[schema(example = "PT Contoh Sintetis", max_length = 200)]
+    legal_name: Option<String>,
+    /// NIB: tepat 13 angka. NIB yang sudah dipakai perusahaan lain diproses sama dengan NIB baru.
+    #[serde(default)]
+    #[schema(
+        example = "1234567890123",
+        min_length = 13,
+        max_length = 13,
+        pattern = "^[0-9]{13}$"
+    )]
+    nib: Option<String>,
+    /// NPWP badan: tepat 16 angka. NPWP 15 angka lama: tambahkan angka 0 di depan sebelum dikirim.
+    #[serde(default)]
+    #[schema(
+        example = "0123456789012345",
+        min_length = 16,
+        max_length = 16,
+        pattern = "^[0-9]{16}$"
+    )]
+    npwp: Option<String>,
+    /// Alamat kantor (maks 500 karakter).
+    #[serde(default)]
+    #[schema(example = "Jl. Contoh No. 1, Jakarta", max_length = 500)]
+    office_address: Option<String>,
+    /// Telepon kantor (maks 32 karakter).
+    #[serde(default)]
+    #[schema(example = "021-0000000", max_length = 32)]
+    office_phone: Option<String>,
+}
+
+impl fmt::Debug for CompanyCorrectionRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompanyCorrectionRequest")
+            .finish_non_exhaustive()
+    }
+}
+
+impl CompanyCorrectionRequest {
+    fn into_input(self) -> CompanyCorrectionInput {
+        CompanyCorrectionInput {
+            legal_name: self.legal_name,
+            nib: self.nib,
+            npwp: self.npwp.map(Sensitive::new),
+            office_address: self.office_address,
+            office_phone: self.office_phone,
+        }
+    }
+}
+
+/// Mengoreksi data perusahaan yang ditolak sekaligus mengajukan ulang (CR-036, keputusan user Q20 = A): satu
+/// aksi, satu transaksi. Hanya saat pengajuan berstatus Ditolak dan ketiga dokumen lengkap; field yang tidak
+/// dikirim tidak berubah. Verifikator melihat data hasil koreksi pada putaran berikutnya.
+#[utoipa::path(
+    post,
+    path = "/v1/corporate/company-corrections",
+    tag = "corporate-documents",
+    operation_id = "corporate_company_correct_and_resubmit",
+    security(("bearer" = [])),
+    request_body(content = CompanyCorrectionRequest, content_type = "application/json"),
+    responses(
+        (status = 200, description = "Data perusahaan dikoreksi dan pengajuan diajukan ulang; status terbaru (Menunggu verifikasi, putaran naik satu, profil hasil koreksi).", body = DocumentsOverviewEnvelope, content_type = "application/json"),
+        (status = 400, description = "Isi permintaan bukan JSON yang dapat dibaca.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 401, description = "Belum login, token tidak sah, sesi dicabut, akun atau perusahaan nonaktif, atau keanggotaan dicabut.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan tidak berstatus Ditolak (masih menunggu verifikasi, termasuk pengajuan ulang ganda); 4090112: perusahaan sudah Aktif; 4090115: dokumen NIB, NPWP, dan bukti kewenangan belum lengkap. Data tidak berubah.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 415, description = "Isi permintaan bukan `application/json`.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 422, description = "4220001: isian tidak valid, galat per field di `errors` (NIB 13 angka, NPWP 16 angka, nama/alamat/telepon wajib dengan batas panjang), isian kosong, atau field tidak dikenal. Data tidak berubah.", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 429, description = "4290001: terlalu banyak percobaan pengajuan ulang dari akun ini (10 per menit, dihitung bersama pengajuan ulang biasa).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 500, description = "Galat internal, termasuk pencatatan audit gagal (aksi dibatalkan).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
+    )
+)]
+async fn correct_and_resubmit(
+    State(state): State<AppState>,
+    Extension(cid): Extension<CorrelationId>,
+    scope: CorporateScope,
+    body: Result<Json<CompanyCorrectionRequest>, JsonRejection>,
+) -> Response {
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => return fail(&state, cid, body_error(&e)),
+    };
+    let input = req.into_input();
+    let r = corporate::correct_and_resubmit_corporate_verification(
+        &deps(&state),
+        &scope,
+        CORRECTION_ROUTE,
+        &input,
+    )
+    .await
+    .and_then(|v| DocumentsOverviewDto::from_view(v).map_err(dto_error));
+    match r {
+        Ok(d) => no_store(ApiSuccess(Success::ok(d).with_correlation_id(cid)).into_response()),
+        Err(e) => fail(&state, cid, e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -664,9 +771,15 @@ mod tests {
     fn route_constants_match_registered_paths_and_every_route_is_corporate_hr() {
         let router = router();
         let entries: Vec<_> = router.registry().iter().collect();
-        assert_eq!(entries.len(), 5);
+        assert_eq!(entries.len(), 6);
         let paths: Vec<String> = entries.iter().map(|((_, p), _)| p.to_string()).collect();
-        for r in [SLOT_ROUTE, CONFIRM_ROUTE, DOWNLOAD_ROUTE, RESUBMIT_ROUTE] {
+        for r in [
+            SLOT_ROUTE,
+            CONFIRM_ROUTE,
+            DOWNLOAD_ROUTE,
+            RESUBMIT_ROUTE,
+            CORRECTION_ROUTE,
+        ] {
             assert!(paths.iter().any(|p| p == r), "{r}");
         }
         for ((_, path), policy) in entries {

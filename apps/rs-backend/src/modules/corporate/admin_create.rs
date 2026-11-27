@@ -149,14 +149,25 @@ pub(super) fn field(name: &str, code: &str, message: &str) -> FieldError {
     FieldError::new(name, code, message)
 }
 
-/// Teks dipangkas 1..=`max` karakter tanpa karakter kontrol; `single_token` melarang spasi di tengah.
+/// Teks dipangkas 1..=`max` karakter tanpa karakter kontrol, tanpa kontrol arah bidi, dan tanpa karakter lebar-nol
+/// ([`is_invisible_format`]); `single_token` melarang spasi di tengah. Dipakai pendaftaran, pembuatan oleh
+/// Verifikator, dan koreksi data HR (review keamanan CR-036 T-01, KEPUTUSAN-418): nama/alamat yang memuat kontrol
+/// bidi dapat tampil berbeda dari isinya di panel Verifikator. Normalisasi Unicode (NFC) belum diterapkan (TD-57).
 pub(super) fn text(raw: &str, max: usize, single_token: bool) -> Option<String> {
     let t = raw.trim();
     let n = t.chars().count();
     let ok = (1..=max).contains(&n)
-        && !t.chars().any(char::is_control)
+        && !t.chars().any(|c| c.is_control() || is_invisible_format(c))
         && !(single_token && t.chars().any(char::is_whitespace));
     ok.then(|| t.to_string())
+}
+
+/// Kontrol arah bidi (U+202A–U+202E, U+2066–U+2069) dan karakter lebar-nol (U+200B–U+200F, U+FEFF).
+pub(super) fn is_invisible_format(c: char) -> bool {
+    matches!(
+        c,
+        '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{200B}'..='\u{200F}' | '\u{FEFF}'
+    )
 }
 
 fn validate(input: &NewCorporateClientInput) -> Result<Validated, CorporateError> {
@@ -508,6 +519,31 @@ async fn record_rejected(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // trace: review keamanan CR-036 T-01 (KEPUTUSAN-418): kontrol bidi dan lebar-nol ditolak di teks bersama
+    #[test]
+    fn shared_text_rejects_bidi_controls_and_zero_width_characters() {
+        assert_eq!(
+            text(" PT Sintetis ", 200, false).as_deref(),
+            Some("PT Sintetis")
+        );
+        for c in [
+            '\u{202A}', '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}', '\u{2066}', '\u{2067}',
+            '\u{2068}', '\u{2069}', '\u{200B}', '\u{200C}', '\u{200D}', '\u{200E}', '\u{200F}',
+            '\u{FEFF}',
+        ] {
+            let v = format!("PT Sint{c}etis");
+            assert_eq!(text(&v, 200, false), None, "U+{:04X}", u32::from(c));
+            assert_eq!(
+                text(&format!("{c}"), 200, false),
+                None,
+                "U+{:04X}",
+                u32::from(c)
+            );
+        }
+        // Huruf beraksen dan tanda baca biasa tetap diterima.
+        assert!(text("PT Café Sejahtera, Tbk.", 200, false).is_some());
+    }
 
     fn input() -> NewCorporateClientInput {
         NewCorporateClientInput {

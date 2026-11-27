@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT legal_name, nib, npwp, office_address, office_phone FROM app.corporate_client WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "legal_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "legal_name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "nib",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "nib"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "npwp",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "npwp"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "office_address",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "office_address"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "office_phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "corporate_client",
+            "name": "office_phone"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "798eb35c645d4c653d6d2f6f161b98c4b8202dc14dd531d711201c3531b15448"
+}

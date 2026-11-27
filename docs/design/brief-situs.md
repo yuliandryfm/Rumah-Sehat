@@ -402,6 +402,8 @@ Saran urutan bila disetujui: C-01 + C-02 + C-03 dulu (dampak visual terbesar), l
 
 **Status (2026-11-26):** user memilih konsep A + seksi gelap ala B (Q15) dan menyetujui C-01, C-02, C-03 (Q16) `[USER 2026-11-26]`; ketiganya dibangun sebagai CR-033 (`docs/backlog.md`, KEPUTUSAN-353–359, DG v1.3 §3.3a/§3.4a). Lanjutan: Q17 menyetujui kelima teks klaim hero apa adanya (§12 butir 4 selesai untuk teks itu) dan Q18 memilih Plus Jakarta Sans di-host sendiri (C-13 dikerjakan) `[USER 2026-11-26]`. Catatan implementasi: ikon SVG buatan sendiri (bukan set C-14); pita nilai memakai tiga butir faktual tanpa klaim yang menunggu legal; penanda `[TIDAK DIKETAHUI]` publik tetap (C-11). C-04–C-16 belum dikerjakan.
 
+**Pembaruan CR-038 (2026-11-27, arahan user `[USER]`):** menu lipat "Menu" diganti deretan tujuh tautan navigasi di header (baris kedua yang dapat digulir di bawah 1140 px); pojok kanan memuat tautan Google Play dan App Store, alamat dari env `SITUS_PLAYSTORE_URL`/`SITUS_APPSTORE_URL` (belum diketahui, fallback ke halaman Unduh). Lencana resmi menunggu aset dan persetujuan lisensi pemilik akun pengembang; sementara teks (KEPUTUSAN-420–424, SRC-945–947). Bagian kerangka di §3 dan §5 yang menyebut menu `details` di bawah 768 px dan "navigasi 8 item" berlaku sampai CR-038: kini tanpa menu lipat.
+
 ## 11. Deliverable yang diminta dari desainer (usulan)
 
 1. **Moodboard dan dua kalimat arah** untuk Konsep A (dan B/C bila user ingin membandingkan), dengan contoh hero Beranda per konsep.

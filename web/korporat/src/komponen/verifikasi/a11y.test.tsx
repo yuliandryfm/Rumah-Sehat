@@ -50,6 +50,7 @@ const klien = (r: Ringkasan): KlienVerifikasi => ({
   unggah: () => Promise.resolve({ ok: true, data: r }),
   urlUnduh: () => Promise.resolve({ ok: false, status: 404, kode: null, pesan: "x" }),
   ajukanUlang: () => Promise.resolve({ ok: true, data: r }),
+  koreksiDanAjukanUlang: () => Promise.resolve({ ok: true, data: r }),
 });
 
 describe("aksesibilitas otomatis status verifikasi (axe-core)", () => {
@@ -75,6 +76,22 @@ describe("aksesibilitas otomatis status verifikasi (axe-core)", () => {
     await screen.findByText("Pengajuan ditolak");
     fireEvent.click(within(screen.getByRole("group", { name: "Dokumen NPWP" })).getByRole("button", { name: "Unggah" }));
     fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await pelanggaranA11y(container)).toEqual([]);
+  });
+
+  test("formulir koreksi data (CR-036) dengan galat per field: tetap tanpa pelanggaran", async () => {
+    const lengkap: Ringkasan = { ...R, complete: true, documents: DOK.map((d) => ({ ...d, uploaded: true })) };
+    const { container } = render(
+      <KerangkaKorporat csrfToken="t">
+        <StatusVerifikasi csrfToken="t" klien={klien(lengkap)} />
+      </KerangkaKorporat>,
+    );
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.click(screen.getByLabelText("Ubah NPWP"));
+    fireEvent.change(screen.getByLabelText("NPWP baru"), { target: { value: "123" } });
+    fireEvent.change(screen.getByLabelText("Telepon kantor"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    await screen.findByText("Telepon kantor wajib diisi.");
     expect(await pelanggaranA11y(container)).toEqual([]);
   });
 
