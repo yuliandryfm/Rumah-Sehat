@@ -77,9 +77,24 @@ export function periksaBerkas(berkas: { readonly type: string; readonly size: nu
   return null;
 }
 
-/** NIB/NPWP termasking (DG §6, brief S4): hanya empat digit terakhir, `************1234`. */
+/**
+ * NIB/NPWP termasking (DG §6, brief S4): hanya empat digit terakhir, `************1234`. Nilai sependek empat
+ * karakter atau kurang dimasking penuh (tidak ada digit yang ditampilkan). Nilai mentah masih dikirim API ke
+ * browser (TD-53); masking ini hanya tampilan.
+ */
 export function termasking(nilai: string): string {
-  return `************${nilai.slice(-4)}`;
+  return nilai.length <= 4 ? "************" : `************${nilai.slice(-4)}`;
+}
+
+/** URL unduh hanya ditampilkan sebagai tautan bila https (http hanya di development); selain itu ditolak. */
+export function urlUnduhAman(url: string, dev = process.env.NODE_ENV === "development"): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  return u.protocol === "https:" || (dev && u.protocol === "http:");
 }
 
 /** Waktu berlabel WIB (pola backoffice, catatan QA N5b): tidak bergantung zona peramban. */

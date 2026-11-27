@@ -24,6 +24,7 @@ import {
   labelDokumen,
   periksaBerkas,
   termasking,
+  urlUnduhAman,
 } from "../../lib/verifikasi/model.ts";
 import { GalatAkses, adalahGalatAkses } from "../hr/GalatAkses.tsx";
 
@@ -304,7 +305,9 @@ function BarisDokumen({ jenis, status, api, onTerima, onGalatAkses }: BarisDokum
     setUnduhSibuk(true);
     const h = await api.urlUnduh(jenis);
     setUnduhSibuk(false);
-    if (h.ok) setUnduh(h.data);
+    // Skema selain https (http hanya development) tidak pernah dirender sebagai tautan (mis. `javascript:`).
+    if (h.ok && urlUnduhAman(h.data.url)) setUnduh(h.data);
+    else if (h.ok) setGalatUnduh("Tautan dokumen tidak dapat dibuka. Coba lagi beberapa saat lagi.");
     else if (adalahGalatAkses(h)) onGalatAkses(h);
     else setGalatUnduh(h.status === 404 ? "Dokumen belum diunggah." : h.pesan);
   };

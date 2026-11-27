@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { buatCsp, originUnggahDariEnv } from "../../keamanan.ts";
 import { galat } from "./klien.ts";
-import { BATAS_FOTO, BATAS_PDF, DOKUMEN, formatWib, labelAlasan, periksaBerkas, termasking } from "./model.ts";
+import { BATAS_FOTO, BATAS_PDF, DOKUMEN, formatWib, labelAlasan, periksaBerkas, termasking, urlUnduhAman } from "./model.ts";
 
 describe("pemeriksaan berkas di klien (NFR-SEC-08; server tetap penentu)", () => {
   test("JPG/PNG sampai 5 MiB dan PDF sampai 10 MiB boleh dicoba", () => {
@@ -29,6 +29,19 @@ describe("tampilan data", () => {
   test("NIB/NPWP termasking: hanya empat digit terakhir", () => {
     expect(termasking("1234567890123")).toBe("************0123");
     expect(termasking("0123456789012345")).toBe("************2345");
+    // Nilai pendek tidak boleh tampil utuh.
+    expect(termasking("1234")).toBe("************");
+    expect(termasking("12")).toBe("************");
+    expect(termasking("")).toBe("************");
+  });
+
+  test("URL unduh hanya https (http hanya development); skema lain ditolak", () => {
+    expect(urlUnduhAman("https://unduh.contoh.test/o?sig=x", false)).toBe(true);
+    expect(urlUnduhAman("http://unduh.contoh.test/o", false)).toBe(false);
+    expect(urlUnduhAman("http://127.0.0.1:18333/o", true)).toBe(true);
+    for (const u of ["javascript:alert(1)", "data:text/html,x", "/relatif", "bukan url", ""]) {
+      expect(urlUnduhAman(u, true)).toBe(false);
+    }
   });
 
   test("alasan penolakan dari kode; kode tidak dikenal atau kosong → teks umum, bukan kode mentah", () => {
@@ -64,7 +77,10 @@ describe("CSP unggah dokumen (F1-T103, ADR-018)", () => {
   test("negatif: env bukan origin https murni diabaikan (gagal tertutup)", () => {
     expect(originUnggahDariEnv("https://unggah.contoh.test")).toBe("https://unggah.contoh.test");
     expect(originUnggahDariEnv("https://unggah.contoh.test/")).toBe("https://unggah.contoh.test");
-    for (const nilai of [undefined, "", "http://unggah.contoh.test", "https://unggah.contoh.test/bucket", "https://u:p@unggah.contoh.test", "https://unggah.contoh.test/?a=1", "*", "bukan url"]) {
+    for (const nilai of [undefined, "", "http://unggah.contoh.test", "https://unggah.contoh.test/bucket", "https://u:p@unggah.contoh.test", "https://unggah.contoh.test/?a=1", "*", "bukan url",
+      // Review T1 F1-T103: host longgar dan pemangkasan diam-diam parser URL ditolak.
+      "https://*", "https://*.x.test", "https://a.test'x'", "https://a,test", "https://a;b.test",
+      "https://unggah.con\ttoh.test", "https://unggah.contoh.test\\", "https://unggah.contoh.test/%2e"]) {
       expect(originUnggahDariEnv(nilai)).toBeNull();
     }
     expect(originUnggahDariEnv("http://127.0.0.1:18333", true)).toBe("http://127.0.0.1:18333");

@@ -29,6 +29,8 @@ let routes: BffRoutes;
 let browser: BffBrowser;
 let unggahan: { url: string; init: RequestInit | undefined }[];
 let setelahUnggah: () => void;
+/** Jawaban object storage tiruan; bawaan 204. */
+let jawabStorage: () => Promise<Response>;
 
 beforeAll(async () => {
   await op.start();
@@ -59,11 +61,14 @@ beforeEach(async () => {
   api.next = null;
   unggahan = [];
   setelahUnggah = () => undefined;
+  jawabStorage = () => Promise.resolve(new Response(null, { status: 204 }));
 });
 
 interface OpsiMasuk {
   /** Token CSRF yang dikirim klien; bawaan token sesi yang benar. */
   readonly csrf?: (benar: string) => string;
+  /** Batas unggah langsung (test timeout). */
+  readonly batasUnggahMs?: number;
 }
 
 async function masuk(o: OpsiMasuk = {}): Promise<KlienVerifikasi> {
@@ -93,9 +98,14 @@ async function masuk(o: OpsiMasuk = {}): Promise<KlienVerifikasi> {
   const fetchUnggah = ((url: string, init?: RequestInit) => {
     unggahan.push({ url, init });
     setelahUnggah();
-    return Promise.resolve(new Response(null, { status: 204 }));
+    return jawabStorage();
   }) as typeof fetch;
-  return buatKlienVerifikasi(o.csrf === undefined ? benar : o.csrf(benar), { basis: `${ORIGIN}/bff`, fetch: jembatan as typeof fetch, fetchUnggah });
+  return buatKlienVerifikasi(o.csrf === undefined ? benar : o.csrf(benar), {
+    basis: `${ORIGIN}/bff`,
+    fetch: jembatan as typeof fetch,
+    fetchUnggah,
+    ...(o.batasUnggahMs === undefined ? {} : { batasUnggahMs: o.batasUnggahMs }),
+  });
 }
 
 const amplop = (data: unknown) => JSON.stringify({ response_code: "2000000", response_description: "Berhasil", data });
@@ -241,5 +251,79 @@ describe("e2e web korporat: status verifikasi dan dokumen lewat BFF (US-1901 AC2
     expect(await klien.urlUnduh("authority_proof")).toMatchObject({ ok: false, status: 404 });
     expect(api.last()?.path).toBe("/v1/corporate/document-download-urls");
     expect(JSON.parse(api.last()?.body ?? "{}")).toEqual({ document_kind: "authority_proof" });
+  });
+  const slotJawaban = (method: "put" | "post") => ({
+    status: 201,
+    body: amplop({
+      upload_slot_id: SLOT,
+      expires_at: "2027-03-01T01:20:00Z",
+      method,
+      url: "https://unggah.contoh.test/bucket",
+      fields: method === "post" ? [{ name: "key", value: "k1" }, { name: "policy", value: "p1" }] : [],
+      headers: [],
+    }),
+  });
+  const adaKonfirmasi = (): boolean => api.requests.some((r) => r.path === "/v1/corporate/documents" && r.method === "POST");
+
+  test.each([401, 403, 500])(
+    "negatif: object storage menjawab %i → status 0 (bukan sesi berakhir/akses ditolak), tanpa konfirmasi, sesi tetap ada",
+    async (kodeStorage) => {
+      const klien = await masuk();
+      api.next = slotJawaban("put");
+      jawabStorage = () => Promise.resolve(new Response("<Error/>", { status: kodeStorage }));
+      const h = await klien.unggah("nib", foto());
+      expect(h).toMatchObject({ ok: false, status: 0, kode: null });
+      expect(!h.ok && h.pesan).toMatch(/Berkas gagal diunggah/);
+      expect(adaKonfirmasi()).toBe(false);
+      expect(sesiAda()).toBe(true);
+    },
+  );
+
+  test("jalur POST formulir: field slot ditambahkan sebelum `file`, tanpa cookie dan tanpa referrer", async () => {
+    const klien = await masuk();
+    api.next = slotJawaban("post");
+    setelahUnggah = () => {
+      api.next = { status: 201, body: amplop(RINGKASAN) };
+    };
+    const berkas = foto();
+    const h = await klien.unggah("npwp", berkas);
+    expect(h.ok).toBe(true);
+    const init = unggahan[0]?.init;
+    expect(init?.method).toBe("POST");
+    expect(init?.credentials).toBe("omit");
+    expect(init?.referrerPolicy).toBe("no-referrer");
+    const f = init?.body as FormData;
+    expect([...f.keys()]).toEqual(["key", "policy", "file"]);
+    expect(f.get("key")).toBe("k1");
+    expect((f.get("file") as File).name).toBe("nib.jpg");
+    expect(JSON.parse(api.last()?.body ?? "{}")).toEqual({ document_kind: "npwp", upload_slot_id: SLOT });
+  });
+
+  test("negatif: unggah ke storage gagal jaringan → 'Gagal terhubung', tanpa konfirmasi", async () => {
+    const klien = await masuk();
+    api.next = slotJawaban("put");
+    jawabStorage = () => Promise.reject(new TypeError("fetch failed"));
+    const h = await klien.unggah("nib", foto());
+    expect(h).toMatchObject({ ok: false, status: 0 });
+    expect(!h.ok && h.pesan).toMatch(/Gagal terhubung/);
+    expect(adaKonfirmasi()).toBe(false);
+    expect(sesiAda()).toBe(true);
+  });
+
+  test("negatif: unggah melewati batas waktu → dibatalkan, 'Gagal terhubung', tanpa konfirmasi", async () => {
+    const klien = await masuk({ batasUnggahMs: 20 });
+    api.next = slotJawaban("put");
+    let sinyal: AbortSignal | null | undefined;
+    jawabStorage = () =>
+      new Promise<Response>((_terima, tolak) => {
+        sinyal = unggahan[0]?.init?.signal;
+        sinyal?.addEventListener("abort", () => {
+          tolak(new DOMException("timeout", "TimeoutError"));
+        });
+      });
+    const h = await klien.unggah("nib", foto());
+    expect(sinyal?.aborted).toBe(true);
+    expect(!h.ok && h.pesan).toMatch(/Gagal terhubung/);
+    expect(adaKonfirmasi()).toBe(false);
   });
 });

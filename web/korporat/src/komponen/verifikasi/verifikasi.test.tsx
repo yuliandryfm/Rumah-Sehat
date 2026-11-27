@@ -144,6 +144,19 @@ describe("StatusVerifikasi: unggah dan ganti dokumen (US-1901 AC2)", () => {
     expect(within(grupDokumen("Dokumen NIB")).getByText(/Dipilih: nib\.jpg/)).toBeDefined();
   });
 
+  test("negatif: storage menolak (status 0) → pesan di field, tanpa pengalihan ke login dan tanpa layar akses", async () => {
+    const arahkan = vi.fn();
+    const unggah = () => Promise.resolve({ ok: false as const, status: 0, kode: null, pesan: "Berkas gagal diunggah. Pilih berkas lalu unggah lagi." });
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ unggah })} arahkan={arahkan} />);
+    await screen.findByText("Menunggu verifikasi");
+    pilihBerkas("Dokumen NIB", jpg());
+    fireEvent.click(within(grupDokumen("Dokumen NIB")).getByRole("button", { name: "Unggah" }));
+    expect(await within(grupDokumen("Dokumen NIB")).findByText(/Berkas gagal diunggah/)).toBeDefined();
+    expect(arahkan).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Status verifikasi perusahaan" })).toBeDefined();
+  });
+
   test("tombol terkunci dengan 'Mengunggah...' selama unggahan (KU-05)", async () => {
     let selesai: (v: Awaited<ReturnType<KlienVerifikasi["unggah"]>>) => void = () => undefined;
     const unggah = vi.fn<KlienVerifikasi["unggah"]>(() => new Promise((r) => { selesai = r; }));
@@ -170,6 +183,21 @@ describe("StatusVerifikasi: unggah dan ganti dokumen (US-1901 AC2)", () => {
     expect(tautan.getAttribute("rel")).toBe("noopener noreferrer");
     expect(within(grupDokumen("Dokumen NIB")).getByText(/berlaku sampai 1 Mar 2027.*08\.20 WIB/)).toBeDefined();
   });
+});
+
+describe("StatusVerifikasi: tautan unduh hanya https", () => {
+  test.each(["javascript:alert(1)", "http://unduh.contoh.test/o", "data:text/html,x"])(
+    "negatif: URL %s tidak dirender sebagai tautan; galat umum",
+    async (url) => {
+      const urlUnduh = () => ok({ url, expires_at: "2027-03-01T01:20:00Z", mime_type: "image/jpeg", size_bytes: 10 });
+      render(<StatusVerifikasi csrfToken="t" klien={klien({ urlUnduh }, ringkasan({ documents: DOK_LENGKAP, complete: true }))} />);
+      await screen.findByText("Dokumen sedang diperiksa");
+      fireEvent.click(within(grupDokumen("Dokumen NIB")).getByRole("button", { name: "Unduh Dokumen NIB" }));
+      expect(await within(grupDokumen("Dokumen NIB")).findByText(/Tautan dokumen tidak dapat dibuka/)).toBeDefined();
+      expect(within(grupDokumen("Dokumen NIB")).queryByRole("link")).toBeNull();
+      expect(document.querySelector(`a[href="${url}"]`)).toBeNull();
+    },
+  );
 });
 
 describe("StatusVerifikasi: Ditolak dan ajukan ulang (KR-10, US-1902 AC3)", () => {
