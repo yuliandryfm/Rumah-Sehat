@@ -82,7 +82,7 @@ KPI bisnis khusus Web Korporat (jumlah perusahaan, waktu verifikasi, konversi pe
 | --- | --- | --- |
 | **Menunggu verifikasi** | Status verifikasi, profil perusahaan (baca-saja) | Katalog, pesanan, peserta, invoice |
 | **Ditolak** | Status, alasan penolakan, profil; tombol memperbaiki dan mengajukan ulang | Idem |
-| **Aktif** | Dasbor, profil, kelola HR; layanan korporat sesuai fase (§4) | Data perusahaan lain (selamanya) |
+| **Aktif** | Beranda, Tim HR (profil dibaca di halaman status verifikasi); layanan korporat sesuai fase (§4) | Data perusahaan lain (selamanya) |
 | **Nonaktif** (oleh Verifikator) | Semua akun HR perusahaan ditolak seketika; sesi terbuka berakhir pada permintaan berikutnya, layar "Akun nonaktif" | Semuanya. Nasib pesanan berjalan `[TIDAK DIKETAHUI]` (PT-63) `[PRD US-1916 AC2, KU-10]` |
 
 Akun HR nonaktif: saat masuk, ditolak dengan pesan seragam login gagal tanpa tanda tambahan; bila sesi terbuka, layar "Akun nonaktif" dengan kontak Layanan Pelanggan `[PRD KU-10]`. Kontak konkret Layanan Pelanggan (nomor/email/jam) `[TIDAK DIKETAHUI]`.
@@ -93,7 +93,7 @@ Skenario S3 `[USER C21-P4]`, jadwal di `[PHASE]`:
 
 | Fase | Isi Web Korporat | Status desain |
 | --- | --- | --- |
-| **Fase 1** (selesai 2026-12-11 menurut rencana) | Pendaftaran bertahap + unggah dokumen, periksa email, aktivasi dan TOTP, masuk/keluar, menunggu verifikasi, ditolak + ajukan ulang, profil, dasbor, kelola HR, akses ditolak/404, akun nonaktif, galat, peringatan idle `[PHASE F1-T85–F1-T110]` | **Didesain dulu, wajib.** Wireframe K01 dan prototipe sudah ada sebagai titik awal |
+| **Fase 1** (selesai 2026-12-11 menurut rencana) | Pendaftaran bertahap + unggah dokumen, periksa email, aktivasi dan TOTP, masuk/keluar, menunggu verifikasi, ditolak + ajukan ulang, profil, Beranda, Tim HR, akses ditolak/404, akun nonaktif, galat, peringatan idle `[PHASE F1-T85–F1-T110]` | **Didesain dulu, wajib.** Wireframe K01 dan prototipe sudah ada sebagai titik awal |
 | **Fase 2** | Pemulihan MFA HR: masuk dengan kode pemulihan lalu daftar ulang TOTP; reset oleh Verifikator `[PRD US-1904 AC7–AC9; PHASE K1-F2]`. Email pemberitahuan keputusan verifikasi `[PRD US-1902 AC3, US-1001]` | Peta, desain setelah Fase 1 |
 | **Fase 3** | Katalog, pemesanan, invoice, impor peserta, undangan peserta, penjadwalan, rekap kehadiran, ringkasan hasil dengan persetujuan (K2 dan K3) `[PHASE §0 v0.3, §8.2]` | Peta lengkap di bawah, dirancang end-to-end. Aturan yang belum diputuskan bisnis (PT-59–PT-79) diisi `[USULAN-DESAIN]`, dan angka/teks hukum/harga tetap `[TIDAK DIKETAHUI]` |
 
@@ -107,7 +107,7 @@ Prioritas semua story korporat: Must `[PRD §5 EP-19]`. Posisi di urutan pengura
 | J2 | Masuk, keluar, sesi, lupa password | 1 |
 | J3 | Menunggu verifikasi, ditolak, ajukan ulang | 1 |
 | J4 | Perusahaan dibuatkan Verifikator: aktivasi HR pertama | 1 |
-| J5 | Dasbor, profil, kelola HR | 1 |
+| J5 | Beranda, profil, Tim HR | 1 |
 | J6 | Keadaan lintas: akses ditolak, akun nonaktif, galat, offline | 1 |
 | J7 | Pemulihan MFA HR | 2 |
 | J8 | Memilih layanan dari katalog | 3 |
@@ -141,8 +141,8 @@ Notasi per layar: **Tujuan · Data · Aksi · Keadaan · Teks ditetapkan / menun
 | KR-09 | Status verifikasi: Menunggu verifikasi | 1 | Ada | Web Korporat |
 | KR-10 | Status verifikasi: Ditolak + ajukan ulang | 1 | Ada | Web Korporat |
 | KR-11 | Profil perusahaan | 1 | Ada (baca-saja); catatan perubahan data `[USULAN-DESAIN]` | Web Korporat |
-| KR-12 | Dasbor | 1 (isi lanjutan 3) | Ada untuk Fase 1; Fase 3 `[USULAN-DESAIN]` | Web Korporat |
-| KR-13 | Kelola HR: daftar, undang, nonaktifkan | 1 | Ada | Web Korporat |
+| KR-12 | Beranda (dahulu Dasbor) | 1 (isi lanjutan 3) | Ada untuk Fase 1; Fase 3 `[USULAN-DESAIN]` | Web Korporat |
+| KR-13 | Tim HR (dahulu Kelola HR): daftar, undang, nonaktifkan | 1 | Ada | Web Korporat |
 | KR-14 | Akses ditolak / data tidak ditemukan | 1 | Ada | Web Korporat |
 | KR-15 | Akun nonaktif | 1 | Ada | Web Korporat |
 | KR-16 | Galat umum dengan kode referensi, gagal terhubung, data sementara tidak tersedia | 1 | Ada | Web Korporat |
@@ -243,19 +243,19 @@ Pola: tiga langkah, penanda langkah ("1 Data perusahaan / 2 Data Anda / 3 Dokume
 
 ### J4 Perusahaan dibuatkan Verifikator (Fase 1)
 
-Tidak ada layar daftar. HR menerima undangan aktivasi email (password + TOTP) lewat KR-05/KR-06, perusahaan sudah **Aktif** `[PRD US-1903 AC1]`. Layar pertama setelah masuk: KR-12. Persetujuan orang kedua di sisi Ruang Sehat (PT-67 sisa) adalah urusan backoffice dan tidak memengaruhi layar HR `[PRD US-1903 AC1]`. `[USULAN-DESAIN]` Pada login pertama, dasbor menampilkan alert info "Akun perusahaan Anda sudah aktif" sekali, dengan tautan ke Kelola HR.
+Tidak ada layar daftar. HR menerima undangan aktivasi email (password + TOTP) lewat KR-05/KR-06, perusahaan sudah **Aktif** `[PRD US-1903 AC1]`. Layar pertama setelah masuk: KR-12. Persetujuan orang kedua di sisi Ruang Sehat (PT-67 sisa) adalah urusan backoffice dan tidak memengaruhi layar HR `[PRD US-1903 AC1]`. `[USULAN-DESAIN]` Pada login pertama, Beranda menampilkan alert info "Akun perusahaan Anda sudah aktif" sekali, dengan tautan ke Tim HR.
 
-### J5 Dasbor, profil, kelola HR (Fase 1)
+### J5 Beranda, profil, Tim HR (Fase 1)
 
 **KR-11 Profil perusahaan** `[PRD §3.1 baris data perusahaan; US-1901 AC6]`
 - Baca-saja: nama badan usaha, NIB, NPWP (termasking), alamat, telepon kantor. HR melihat "perusahaannya (baca)" `[PRD §3.1 CR-021]`.
 - `[USULAN-DESAIN]` Profil seluruhnya **baca-saja** di semua status (meminimalkan risiko perubahan identitas badan usaha setelah diverifikasi). Di bawah profil tampil catatan "Untuk mengubah data perusahaan, hubungi Layanan Pelanggan" dan daftar dokumen (NIB, NPWP, bukti kewenangan) dengan status "Terunggah" **tanpa tautan unduh** (hanya Verifikator yang membuka dokumen, lewat URL berumur pendek `[PRD US-1902 AC1]`).
 
-**KR-12 Dasbor** `[WF K01-9; PROTO 06]`
-- Fase 1: alert "Perusahaan terverifikasi" (sukses), status perusahaan (Aktif), jumlah HR aktif + tautan Kelola HR, kartu "Pesanan berjalan" bertanda belum tersedia. Menu "Layanan korporat" (Pesanan, Peserta, Invoice) tampil **nonaktif dengan alasan tertulis "belum tersedia"** (bukan dihilangkan) `[DG D-K01]`.
+**KR-12 Beranda** (dahulu Dasbor; Fase 1 menurut KEPUTUSAN-431 dan KEPUTUSAN-440: status dan satu tombol utama "Undang rekan HR" saat Aktif; bagian Fase 1 di bawah adalah rancangan awal v0.1 yang digantikan) `[WF K01-9; PROTO 06]`
+- Fase 1: alert "Perusahaan terverifikasi" (sukses), status perusahaan (Aktif), jumlah HR aktif + tautan Tim HR, kartu "Pesanan berjalan" bertanda belum tersedia. Menu Pesanan, Peserta, Tagihan (dahulu "Invoice") tampil **nonaktif dengan alasan tertulis "belum tersedia"** (bukan dihilangkan) `[DG D-K01]`.
 - Fase 3 `[USULAN-DESAIN]`: kartu "Perlu tindakan Anda" (pesanan Menunggu pembayaran; invoice Lewat jatuh tempo; pesanan Lunas yang menunggu jadwal; peserta berstatus undangan "Gagal kirim"), kartu "Pesanan berjalan" (daftar singkat dengan status, tautan ke KR-26), kartu "Jadwal terdekat" (tanggal, jam, lokasi), pintasan "Pesan layanan" ke KR-20. Angka kehadiran per pesanan boleh tampil bila bersumber dari status kehadiran saja. **Batas keras:** tidak boleh ada nilai hasil, ringkasan, jumlah/persentase/statistik/grafik yang berasal dari hasil peserta `[PRD US-1914 AC7, AB-87, BR-143]`.
 
-**KR-13 Kelola HR** `[PRD US-1904 AC2, AC3, AC5; WF K01-10]`
+**KR-13 Tim HR** (dahulu Kelola HR) `[PRD US-1904 AC2, AC3, AC5; WF K01-10]`
 - Tabel anggota HR perusahaan itu saja: nama, email, status (Aktif, Menunggu aktivasi, Nonaktif), aksi. Judul tabel/caption: semua HR berperan sama.
 - Undang HR: isian email, tombol "Kirim undangan". Pesan sukses **sama** bila email sudah terdaftar di tempat lain (anti-enumerasi) `[WF K01-10 draf; pola PRD US-1901 AC4]`.
 - Nonaktifkan: dialog dampak (HR tidak dapat masuk lagi, sesi terbuka diakhiri pada permintaan berikutnya) dengan tombol destruktif "Nonaktifkan" `[DG §4 Dialog]`. **HR aktif terakhir tidak dapat dinonaktifkan** (pesan galat + aksi tidak tersedia dengan alasan tertulis).
