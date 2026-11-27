@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import { NAV_KEBIJAKAN } from "../navigasi.ts";
 import { ambilUrlKorporat } from "../konten/tautan-korporat.ts";
 import { NavUtama } from "./NavUtama.tsx";
+import { TautanToko } from "./TautanToko.tsx";
 
 /**
  * Tata letak situs: tautan lewati, header (logo, navigasi), `<main id="isi">`, footer. Mengikuti
- * docs/wireframes/s01-situs-publik.html. Menu seluler memakai `<details>` tanpa skrip.
+ * docs/wireframes/s01-situs-publik.html. Navigasi berupa deretan tautan di header tanpa menu lipat (CR-038); tautan toko aplikasi di pojok kanan.
  */
 export function KerangkaSitus({ children }: { children: ReactNode }) {
   // Dibaca per permintaan (layout dinamis lewat `connection()`); tidak valid → tautan tidak tampil (CR-032).
@@ -21,14 +22,10 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
           <Link className="situs-logo" href="/">
             Ruang Sehat
           </Link>
-          <span className="situs-grow" />
-          <div className="situs-nav-lebar">
+          <div className="situs-nav-baris">
             <NavUtama label="Utama" />
           </div>
-          <details className="situs-menu">
-            <summary aria-label="Menu utama">Menu</summary>
-            <NavUtama label="Utama (seluler)" />
-          </details>
+          <TautanToko />
         </div>
       </header>
       <main id="isi">{children}</main>

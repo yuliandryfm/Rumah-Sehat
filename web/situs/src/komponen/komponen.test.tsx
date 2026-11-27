@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe("KerangkaSitus: landmark dan navigasi", () => {
-  test("header, main, footer, tautan lewati, dan dua navigasi utama berlabel berbeda", () => {
+  test("header, main, footer, tautan lewati, dan satu navigasi utama (tanpa menu lipat)", () => {
     render(
       <KerangkaSitus>
         <p>isi</p>
@@ -28,7 +28,7 @@ describe("KerangkaSitus: landmark dan navigasi", () => {
     expect(screen.getByRole("contentinfo")).toBeDefined();
     expect(screen.getByRole("link", { name: "Lewati ke isi" }).getAttribute("href")).toBe("#isi");
     const nama = screen.getAllByRole("navigation").map((n) => n.getAttribute("aria-label"));
-    expect(nama).toEqual(["Utama", "Utama (seluler)", "Tautan kaki"]);
+    expect(nama).toEqual(["Utama", "Tautan kaki"]);
     expect(new Set(nama).size).toBe(nama.length);
   });
 
@@ -56,15 +56,24 @@ describe("KerangkaSitus: landmark dan navigasi", () => {
     expect(aktif.map((a) => a.textContent)).toEqual(["Layanan"]);
   });
 
-  test("menu seluler memakai details/summary berlabel teks, tanpa skrip", () => {
+  test("navigasi header berupa deretan tautan berurutan tanpa menu lipat dan tanpa skrip (CR-038)", () => {
     const { container } = render(
       <KerangkaSitus>
         <p>isi</p>
       </KerangkaSitus>,
     );
-    const ringkasan = container.querySelector("details > summary");
-    expect(ringkasan?.textContent).toBe("Menu");
+    expect(container.querySelector("details")).toBeNull();
     expect(container.querySelector("script")).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Utama" });
+    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual([
+      "Beranda",
+      "Tentang Kami",
+      "Layanan",
+      "Untuk Perusahaan",
+      "Rekanan",
+      "Artikel",
+      "Kontak",
+    ]);
   });
 
   test("setiap tautan dan tombol punya nama yang dapat dibaca", () => {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_UNDUH, NAV_UTAMA } from "../navigasi.ts";
+import { NAV_UTAMA } from "../navigasi.ts";
 
 /** Navigasi utama. Klien hanya untuk menandai halaman aktif (`aria-current`); tautannya tetap tautan biasa. */
 export function NavUtama({ label }: { label: string }) {
@@ -15,9 +15,6 @@ export function NavUtama({ label }: { label: string }) {
           {n.label}
         </Link>
       ))}
-      <Link className="situs-nav__cta" href={NAV_UNDUH.href} prefetch={false} aria-current={aktif(NAV_UNDUH.href) ? "page" : undefined}>
-        {NAV_UNDUH.label}
-      </Link>
     </nav>
   );
 }
