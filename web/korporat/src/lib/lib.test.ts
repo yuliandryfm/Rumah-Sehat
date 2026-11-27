@@ -4,7 +4,7 @@ import { idKorelasi, kodeReferensi } from "./korelasi.ts";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MENU, MENU_TERSEDIA } from "./navigasi.ts";
+import { MENU } from "./navigasi.ts";
 
 describe("CSP dan header keamanan", () => {
   test("CSP bernonce: tanpa unsafe-*, tanpa host pihak ketiga, tanpa sematan", () => {
@@ -64,7 +64,7 @@ describe("ID korelasi dan kode referensi (KEPUTUSAN-172)", () => {
 describe("navigasi member area (K01 layar 9)", () => {
   test("lima menu (CR-039); hanya halaman yang ada yang menjadi tautan; fitur belum ada bukan tautan", () => {
     expect(MENU.map((i) => i.label)).toEqual(["Beranda", "Pesanan", "Peserta", "Tagihan", "Tim HR"]);
-    expect(MENU_TERSEDIA.map((i) => i.href)).toEqual(["/", "/kelola-hr"]);
+    expect(MENU.filter((i) => i.href !== undefined).map((i) => i.href)).toEqual(["/", "/kelola-hr"]);
     expect(MENU.filter((i) => i.href === undefined).map((i) => i.label)).toEqual(["Pesanan", "Peserta", "Tagihan"]);
   });
 

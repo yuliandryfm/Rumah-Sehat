@@ -9,14 +9,6 @@ export const LABEL_STATUS: Record<StatusHr, { readonly label: string; readonly t
   inactive: { label: "Nonaktif", tone: "neutral" },
 };
 
-/** Ringkasan untuk dasbor: jumlah HR aktif dan undangan yang belum diaktivasi. */
-export function ringkas(anggota: readonly AnggotaHr[]): { readonly aktif: number; readonly menunggu: number } {
-  return {
-    aktif: anggota.filter((a) => a.status === "active").length,
-    menunggu: anggota.filter((a) => a.status === "pending_activation" || a.status === "invitation_processing").length,
-  };
-}
-
 /** HR dapat dinonaktifkan dari UI bila bukan diri sendiri dan belum nonaktif (server tetap memvalidasi). */
 export function dapatDinonaktifkan(a: AnggotaHr): boolean {
   // Undangan yang masih diproses belum dapat dinonaktifkan (server menolak 409).

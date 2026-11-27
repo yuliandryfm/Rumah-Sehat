@@ -46,7 +46,7 @@ function klien(muat: KlienVerifikasi["muat"]): KlienVerifikasi {
 const KASUS: readonly (readonly [string, Muatan, string, string, string, string])[] = [
   ["dokumen belum lengkap", dokumen(ringkasan({ documents: DOK(true, false, false) })), "Lengkapi dokumen perusahaan", "Unggah dokumen", "/verifikasi", "Menunggu verifikasi"],
   ["menunggu verifikasi (dokumen lengkap)", dokumen(ringkasan({ complete: true, documents: DOK(true, true, true) })), "Dokumen sedang diperiksa", "Lihat status pemeriksaan", "/verifikasi", "Menunggu verifikasi"],
-  ["ditolak", dokumen(ringkasan({ status: "rejected", complete: true, rejection_reason: "authority_proof_insufficient", documents: DOK(true, true, true) })), "Pengajuan perlu diperbaiki", "Ajukan ulang", "/verifikasi", "Ditolak"],
+  ["ditolak", dokumen(ringkasan({ status: "rejected", complete: true, rejection_reason: "authority_proof_insufficient", documents: DOK(true, true, true) })), "Pengajuan perlu diperbaiki", "Perbaiki dan ajukan ulang", "/verifikasi", "Ditolak"],
   ["aktif (4090112)", { jenis: "aktif" }, "Perusahaan Anda sudah aktif", "Undang rekan HR", "/kelola-hr", "Aktif"],
 ];
 
@@ -114,6 +114,34 @@ describe("Beranda: galat", () => {
     expect(screen.queryByRole("link")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Coba lagi" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Perusahaan Anda sudah aktif" })).toBeDefined();
+  });
+});
+
+describe("Beranda: status tak dikenal dan galat yang bukan milik Beranda", () => {
+  test("status tak dikenal (walau dokumen lengkap) → keadaan netral, bukan 'sedang diperiksa'", async () => {
+    const r = { ...ringkasan({ complete: true, documents: DOK(true, true, true) }), status: "suspended" } as unknown as Ringkasan;
+    render(<Beranda csrfToken="t" klien={klien(() => ok(dokumen(r)))} />);
+    expect(await screen.findByRole("heading", { level: 2, name: "Status belum dapat ditampilkan" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Lihat status" }).getAttribute("href")).toBe("/verifikasi");
+    expect(document.body.textContent).not.toMatch(/sedang diperiksa|Unggah dokumen/);
+  });
+
+  test("status tak dikenal dan dokumen belum lengkap → tetap netral, bukan 'Lengkapi dokumen'", () => {
+    const r = { ...ringkasan({ documents: DOK(true, false, false) }), status: "suspended" } as unknown as Ringkasan;
+    expect(isiBeranda(dokumen(r)).kunci).toBe("netral");
+  });
+
+  test.each([
+    ["403 (perusahaan belum aktif)", () => gagal(403)],
+    ["409 4090115", () => gagal(409, "4090115")],
+    ["409 4090001", () => gagal(409, "4090001")],
+  ])("%s → pesan Beranda biasa dengan 'Coba lagi', bukan pesan halaman lain", async (_n, galatnya) => {
+    render(<Beranda csrfToken="t" klien={klien(galatnya)} />);
+    expect(await screen.findByText("Beranda belum bisa dimuat")).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toContain("Status perusahaan belum bisa ditampilkan");
+    expect(screen.getByRole("button", { name: "Coba lagi" })).toBeDefined();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/menu ini belum dapat dipakai|belum aktif, sehingga|Dokumen belum lengkap|tidak dapat diubah lagi/i);
   });
 });
 

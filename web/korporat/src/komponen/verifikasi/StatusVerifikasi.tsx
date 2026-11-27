@@ -35,6 +35,7 @@ import {
   PETUNJUK_BERKAS,
   formatUkuran,
   formatWib,
+  hitungTerunggah,
   labelAlasan,
   labelDokumen,
   periksaBerkas,
@@ -183,7 +184,7 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
           <section aria-labelledby="judul-dokumen" className="kp-bagian">
             <h2 id="judul-dokumen">Dokumen perusahaan</h2>
             <p>
-              {DOKUMEN.filter((d) => muatan.ringkasan.documents.some((x) => x.kind === d.jenis && x.uploaded)).length} dari{" "}
+              {hitungTerunggah(muatan.ringkasan.documents)} dari{" "}
               {DOKUMEN.length} dokumen sudah diunggah.
             </p>
             <p className="kp-kecil" id="petunjuk-berkas">

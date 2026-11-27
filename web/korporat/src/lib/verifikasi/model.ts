@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@rs/ui";
-import type { JenisDokumen, StatusVerifikasi } from "./klien.ts";
+import type { JenisDokumen, Ringkasan, StatusVerifikasi } from "./klien.ts";
 
 /**
  * Model layar status verifikasi dan dokumen perusahaan (F1-T103; US-1901 AC2, AC6; US-1902 AC3; wireframe K01
@@ -119,3 +119,7 @@ export function formatUkuran(byte: number): string {
   if (byte >= 1_048_576) return `${(byte / 1_048_576).toFixed(1).replace(".", ",")} MiB`;
   return `${Math.max(1, Math.round(byte / 1024)).toString()} KiB`;
 }
+
+/** Jumlah dari tiga dokumen wajib yang sudah terunggah (layar Status verifikasi dan Beranda; CR-039). */
+export const hitungTerunggah = (dokumen: Ringkasan["documents"]): number =>
+  DOKUMEN.filter((d) => dokumen.some((x) => x.kind === d.jenis && x.uploaded)).length;

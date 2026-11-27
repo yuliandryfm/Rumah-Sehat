@@ -4,9 +4,17 @@ import { Alert, Badge, Button, Card, Skeleton } from "@rs/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isiBeranda } from "../../lib/beranda/model.ts";
-import type { Gagal } from "../../lib/hr/klien.ts";
+import { KODE_CSRF_DITOLAK, type Gagal } from "../../lib/hr/klien.ts";
 import { buatKlienVerifikasi, type KlienVerifikasi, type Muatan } from "../../lib/verifikasi/klien.ts";
-import { GalatAkses, adalahGalatAkses } from "../hr/GalatAkses.tsx";
+import { GalatAkses } from "../hr/GalatAkses.tsx";
+
+const PESAN_BERANDA_UMUM = "Status perusahaan belum bisa ditampilkan. Muat ulang halaman atau coba lagi nanti.";
+
+/** Pesan Beranda bahasa biasa; 403 (selain penolakan CSRF) dan 409 memakai pesan Beranda, bukan pesan halaman lain. */
+function pesanGalat(g: Gagal): string {
+  if ((g.status === 403 && g.kode !== KODE_CSRF_DITOLAK) || g.status === 409) return PESAN_BERANDA_UMUM;
+  return g.pesan;
+}
 
 export interface BerandaProps {
   readonly csrfToken: string;
@@ -43,7 +51,9 @@ export function Beranda({ csrfToken, klien, arahkan }: BerandaProps) {
     void muat();
   }, [muat]);
 
-  if (adalahGalatAkses(galat)) return <GalatAkses galat={galat} {...(arahkan === undefined ? {} : { arahkan })} />;
+  // Hanya sesi berakhir/akun nonaktif (401) yang punya layar sendiri. 403 dan 409 dari endpoint ini tidak memakai
+  // pesan halaman lain ("menu belum dapat dipakai", "dokumen tidak dapat diubah"): tampil sebagai galat Beranda.
+  if (galat?.status === 401) return <GalatAkses galat={galat} {...(arahkan === undefined ? {} : { arahkan })} />;
 
   const isi = muatan === null ? null : isiBeranda(muatan);
   return (
@@ -51,7 +61,7 @@ export function Beranda({ csrfToken, klien, arahkan }: BerandaProps) {
       <h1 id="judul-beranda">Beranda</h1>
       {galat === null ? null : (
         <Alert variant="danger" title="Beranda belum bisa dimuat">
-          <p>{galat.pesan}</p>
+          <p>{pesanGalat(galat)}</p>
           <Button variant="secondary" loading={memuat} loadingLabel="Memuat..." onClick={() => void muat()}>
             Coba lagi
           </Button>

@@ -58,9 +58,6 @@ main:focus { outline: none; }
 
 /* Tim HR dan bagian umum (F1-T108). */
 .kp-bagian { max-width: 640px; display: flex; flex-direction: column; gap: var(--s3); }
-.kp-kartu { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s4); margin-top: var(--s4); }
-.kp-kartu .rs-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); }
-.kp-angka { font-size: var(--t-title-lg-size); line-height: var(--t-title-lg-line); font-weight: 700; }
 .kp-baris { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
 .kp-aksi-judul { display: flex; flex-direction: column; align-items: flex-end; gap: var(--s1); }
 .kp-tabel-bungkus { overflow-x: auto; margin-top: var(--s4); background: var(--c-bg-surface); border: 1px solid var(--c-border-divider); border-radius: var(--r-md); }

@@ -23,8 +23,5 @@ export const MENU: readonly ItemMenu[] = [
   { label: "Tim HR", href: "/kelola-hr" },
 ];
 
-/** Hanya item yang punya halaman. */
-export const MENU_TERSEDIA: readonly ItemMenu[] = MENU.filter((i) => i.href !== undefined);
-
 /** Teks pengganti tautan pada item yang belum ada. */
 export const LABEL_SEGERA_HADIR = "segera hadir";

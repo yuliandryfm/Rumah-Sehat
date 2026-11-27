@@ -9,7 +9,8 @@ const cocok = (jalur: string, rute: string): boolean =>
 
 /**
  * Navigasi. Klien hanya untuk menandai halaman aktif (`aria-current`); tautan tetap biasa.
- * Item tanpa halaman tampil sebagai teks abu-abu "segera hadir" (`aria-disabled`), bukan tautan (CR-039).
+ * Item tanpa halaman tampil sebagai teks abu-abu "(segera hadir)", bukan tautan (CR-039). Tanpa `aria-disabled`:
+ * atribut itu tidak bermakna pada `span` generik (axe `aria-allowed-attr` pada role tertentu); maknanya dibawa teks.
  */
 export function NavSamping({ menu }: { menu: readonly ItemMenu[] }) {
   const jalur = usePathname();
@@ -18,7 +19,7 @@ export function NavSamping({ menu }: { menu: readonly ItemMenu[] }) {
     <nav className="kp-side" aria-label="Menu">
       {menu.map((i) =>
         i.href === undefined ? (
-          <span key={i.label} className="kp-nonaktif" aria-disabled="true">
+          <span key={i.label} className="kp-nonaktif">
             {i.label} <span className="kp-kecil">({LABEL_SEGERA_HADIR})</span>
           </span>
         ) : (

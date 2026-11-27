@@ -52,8 +52,9 @@ describe("KerangkaKorporat", () => {
     expect(within(nav).getByRole("link", { name: "Beranda" }).getAttribute("aria-current")).toBe("page");
     expect(within(nav).getByRole("link", { name: "Tim HR" }).getAttribute("aria-current")).toBeNull();
     for (const nama of ["Pesanan", "Peserta", "Tagihan"]) {
-      const el = within(nav).getByText(new RegExp(`^${nama}`)).closest("[aria-disabled]");
-      expect(el?.getAttribute("aria-disabled")).toBe("true");
+      const el = within(nav).getByText(new RegExp(`^${nama}`)).closest(".kp-nonaktif");
+      expect(el).not.toBeNull();
+      expect(el?.hasAttribute("aria-disabled")).toBe(false);
       expect(el?.textContent).toContain("segera hadir");
       expect(el?.closest("a")).toBeNull();
       expect(el?.getAttribute("href")).toBeNull();
