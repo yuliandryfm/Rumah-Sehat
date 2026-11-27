@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { DasborHr } from "../../komponen/hr/DasborHr.tsx";
+import { Beranda } from "../../komponen/beranda/Beranda.tsx";
 import { wajibSesi } from "../../lib/server/sesi.ts";
 
-export const metadata: Metadata = { title: "Dasbor" };
+export const metadata: Metadata = { title: "Beranda" };
 
-/** Dasbor HR (F1-T108, wireframe K01 layar 9). Data dimuat dari klien lewat BFF; otorisasi di API Rust. */
-export default async function Dasbor() {
+/** Beranda HR (CR-039, Q32): status perusahaan dan satu langkah berikutnya. Data dimuat lewat BFF; otorisasi di API Rust. */
+export default async function HalamanBeranda() {
   const { csrfToken } = await wajibSesi();
-  return <DasborHr csrfToken={csrfToken} />;
+  return <Beranda csrfToken={csrfToken} />;
 }

@@ -33,20 +33,55 @@ describe("KerangkaKorporat", () => {
     expect(form?.querySelector<HTMLInputElement>("input[name=csrf_token]")?.value).toBe("token-csrf-uji");
   });
 
-  test("halaman aktif ditandai; layanan belum tersedia tampil nonaktif dengan alasan, bukan tautan", () => {
+  test("lima menu berurutan (CR-039); halaman aktif ditandai; fitur belum ada tampil abu-abu 'segera hadir', bukan tautan", () => {
     render(
       <KerangkaKorporat csrfToken="t">
         <p>isi</p>
       </KerangkaKorporat>,
     );
     const nav = screen.getByRole("navigation", { name: "Menu" });
-    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Dasbor", "Status verifikasi", "Kelola HR"]);
-    expect(within(nav).getByRole("link", { name: "Dasbor" }).getAttribute("aria-current")).toBe("page");
-    for (const nama of ["Pesanan", "Peserta", "Invoice"]) {
-      const el = within(nav).getByText(`${nama} (belum tersedia)`);
-      expect(el.getAttribute("aria-disabled")).toBe("true");
-      expect(el.closest("a")).toBeNull();
+    // Urutan DOM = urutan menu: Beranda, Pesanan, Peserta, Tagihan, Tim HR.
+    expect([...nav.children].map((e) => e.textContent)).toEqual([
+      "Beranda",
+      "Pesanan (segera hadir)",
+      "Peserta (segera hadir)",
+      "Tagihan (segera hadir)",
+      "Tim HR",
+    ]);
+    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Beranda", "Tim HR"]);
+    expect(within(nav).getByRole("link", { name: "Beranda" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav).getByRole("link", { name: "Tim HR" }).getAttribute("aria-current")).toBeNull();
+    for (const nama of ["Pesanan", "Peserta", "Tagihan"]) {
+      const el = within(nav).getByText(new RegExp(`^${nama}`)).closest(".kp-nonaktif");
+      expect(el).not.toBeNull();
+      expect(el?.hasAttribute("aria-disabled")).toBe(false);
+      expect(el?.textContent).toContain("segera hadir");
+      expect(el?.closest("a")).toBeNull();
+      expect(el?.getAttribute("href")).toBeNull();
+      expect(el?.getAttribute("tabindex")).toBeNull();
     }
+    // Nama lama tidak muncul lagi.
+    expect(nav.textContent).not.toMatch(/Dasbor|Invoice|Kelola HR|Status verifikasi/);
+  });
+
+  test("Beranda tetap menu aktif di /verifikasi (dicapai dari Beranda); Tim HR aktif di /kelola-hr", () => {
+    jalur.nilai = "/verifikasi";
+    const { unmount } = render(
+      <KerangkaKorporat csrfToken="t">
+        <p>isi</p>
+      </KerangkaKorporat>,
+    );
+    expect(screen.getByRole("link", { name: "Beranda" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Tim HR" }).getAttribute("aria-current")).toBeNull();
+    unmount();
+    jalur.nilai = "/kelola-hr";
+    render(
+      <KerangkaKorporat csrfToken="t">
+        <p>isi</p>
+      </KerangkaKorporat>,
+    );
+    expect(screen.getByRole("link", { name: "Tim HR" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Beranda" }).getAttribute("aria-current")).toBeNull();
   });
 });
 

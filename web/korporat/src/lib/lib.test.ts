@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { HEADER_DINAMIS, HEADER_STATIS, buatCsp, buatNonce } from "../keamanan.ts";
 import { idKorelasi, kodeReferensi } from "./korelasi.ts";
-import { ITEM_BELUM_TERSEDIA, ITEM_NAV } from "./navigasi.ts";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { MENU } from "./navigasi.ts";
 
 describe("CSP dan header keamanan", () => {
   test("CSP bernonce: tanpa unsafe-*, tanpa host pihak ketiga, tanpa sematan", () => {
@@ -59,9 +62,23 @@ describe("ID korelasi dan kode referensi (KEPUTUSAN-172)", () => {
 });
 
 describe("navigasi member area (K01 layar 9)", () => {
-  test("hanya halaman yang ada yang menjadi tautan; layanan korporat belum tersedia bukan tautan", () => {
-    expect(ITEM_NAV.map((i) => i.href)).toEqual(["/", "/verifikasi", "/kelola-hr"]);
-    expect(ITEM_BELUM_TERSEDIA).toEqual(["Pesanan", "Peserta", "Invoice"]);
+  test("lima menu (CR-039); hanya halaman yang ada yang menjadi tautan; fitur belum ada bukan tautan", () => {
+    expect(MENU.map((i) => i.label)).toEqual(["Beranda", "Pesanan", "Peserta", "Tagihan", "Tim HR"]);
+    expect(MENU.filter((i) => i.href !== undefined).map((i) => i.href)).toEqual(["/", "/kelola-hr"]);
+    expect(MENU.filter((i) => i.href === undefined).map((i) => i.label)).toEqual(["Pesanan", "Peserta", "Tagihan"]);
+  });
+
+  test("negatif: setiap tautan menu menunjuk rute yang punya berkas halaman", () => {
+    const akar = fileURLToPath(new URL("../app/(terautentikasi)", import.meta.url));
+    for (const i of MENU) {
+      if (i.href === undefined) continue;
+      const berkas = join(akar, i.href === "/" ? "" : i.href, "page.tsx");
+      expect(existsSync(berkas), `${i.label} -> ${i.href}`).toBe(true);
+    }
+    // Item "segera hadir" tidak punya halaman: tautan ke sana akan menjadi 404.
+    for (const rute of ["pesanan", "peserta", "tagihan", "invoice"]) {
+      expect(existsSync(join(akar, rute, "page.tsx"))).toBe(false);
+    }
   });
 });
 

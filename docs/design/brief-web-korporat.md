@@ -1,7 +1,7 @@
 # Brief Desain: Web Korporat (Member Area HR Perusahaan) Ruang Sehat
 
 Tanggal: 2026-11-21
-Versi: 0.1 (draf untuk diteruskan ke UI/UX Designer)
+Versi: 0.2 (2026-11-27, CR-039: arah "sederhana dan memandu" dan lima menu Beranda, Pesanan, Peserta, Tagihan, Tim HR `[USER]` Q32; diimplementasikan di `web/korporat`, KEPUTUSAN-430–433). Pembaruan v0.2: KR-12 "Dasbor" kini "Beranda" (status dan satu tombol langkah berikutnya, bukan dasbor angka); menu "Invoice" kini "Tagihan"; KR-13 "Kelola HR" kini "Tim HR"; item fitur yang belum ada abu-abu "segera hadir". Bagian di bawah yang masih menyebut nama lama atau kartu dasbor Fase 3 adalah usulan yang harus dibaca menurut pembaruan ini. Versi 0.1 (draf untuk diteruskan ke UI/UX Designer)
 Penyusun: Claude (persona UI/UX Lead + Product Manager)
 Pemilik dan pemutus: user (project manager, meneruskan ke CEO dan CTO)
 Sifat dokumen: mandiri. Desainer tidak perlu akses repositori. Semua fakta bersumber dari dokumen proyek yang disebut di Lampiran A. Dua kategori yang harus dibedakan:

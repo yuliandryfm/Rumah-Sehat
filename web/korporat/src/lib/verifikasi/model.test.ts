@@ -1,7 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { buatCsp, originUnggahDariEnv } from "../../keamanan.ts";
 import { galat } from "./klien.ts";
-import { BATAS_FOTO, BATAS_PDF, DOKUMEN, formatWib, labelAlasan, periksaBerkas, termasking, urlUnduhAman } from "./model.ts";
+import { BATAS_FOTO, BATAS_PDF, DOKUMEN, formatWib, hitungTerunggah, labelAlasan, periksaBerkas, termasking, urlUnduhAman } from "./model.ts";
+
+describe("hitungTerunggah (dipakai Status verifikasi dan Beranda)", () => {
+  test("menghitung hanya tiga dokumen wajib yang terunggah", () => {
+    expect(hitungTerunggah([])).toBe(0);
+    expect(hitungTerunggah([{ kind: "nib", uploaded: true }, { kind: "npwp", uploaded: false }])).toBe(1);
+    expect(hitungTerunggah([{ kind: "nib", uploaded: true }, { kind: "npwp", uploaded: true }, { kind: "authority_proof", uploaded: true }])).toBe(3);
+  });
+});
 
 describe("pemeriksaan berkas di klien (NFR-SEC-08; server tetap penentu)", () => {
   test("JPG/PNG sampai 5 MiB dan PDF sampai 10 MiB boleh dicoba", () => {

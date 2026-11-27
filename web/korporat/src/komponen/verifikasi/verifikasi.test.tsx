@@ -250,11 +250,26 @@ describe("StatusVerifikasi: Ditolak dan ajukan ulang (KR-10, US-1902 AC3)", () =
 });
 
 describe("StatusVerifikasi: keadaan lain", () => {
-  test("perusahaan Aktif (4090112 saat memuat) → badge Aktif dan tautan dasbor, tanpa isian unggah", async () => {
+  test("CR-039: tiga dokumen diberi penanda 'Langkah x dari 3' dan hitungan dokumen terunggah", async () => {
+    const r = ringkasan({ documents: [
+      { kind: "nib", uploaded: true, uploaded_at: "2027-03-01T01:00:00Z" },
+      { kind: "npwp", uploaded: false, uploaded_at: null },
+      { kind: "authority_proof", uploaded: false, uploaded_at: null },
+    ] });
+    render(<StatusVerifikasi csrfToken="t" klien={klien({}, r)} />);
+    expect(await screen.findByText("1 dari 3 dokumen sudah diunggah.")).toBeDefined();
+    expect(screen.getAllByText(/^Langkah \d dari 3$/).map((e) => e.textContent)).toEqual([
+      "Langkah 1 dari 3",
+      "Langkah 2 dari 3",
+      "Langkah 3 dari 3",
+    ]);
+  });
+
+  test("perusahaan Aktif (4090112 saat memuat) → badge Aktif dan tautan ke Beranda, tanpa isian unggah", async () => {
     render(<StatusVerifikasi csrfToken="t" klien={klien({ muat: () => ok({ jenis: "aktif" as const }) })} />);
     expect(await screen.findByText("Perusahaan Anda sudah terverifikasi")).toBeDefined();
     expect(screen.getByText("Aktif")).toBeDefined();
-    expect(screen.getByRole("link", { name: "Buka dasbor" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Kembali ke Beranda" }).getAttribute("href")).toBe("/");
     expect(screen.queryByRole("group")).toBeNull();
   });
 

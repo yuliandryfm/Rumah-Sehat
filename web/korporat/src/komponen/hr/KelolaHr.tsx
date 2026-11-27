@@ -146,7 +146,7 @@ export function KelolaHr({ csrfToken, klien, arahkan }: KelolaHrProps) {
   return (
     <>
       <div className="kp-baris">
-        <h1>Kelola HR</h1>
+        <h1>Tim HR</h1>
         <Button variant="primary" onClick={bukaUndang} disabled={formUndang} aria-expanded={formUndang}>
           Undang HR
         </Button>
