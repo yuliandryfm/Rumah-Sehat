@@ -691,7 +691,7 @@ Status: diimplementasikan di `web/korporat`, commit `2eaa8e8`; menunggu review T
 Diajukan dan diputuskan: 2026-11-27, `[USER]` Q34 A (Telegram, diteruskan orkestrator; menjawab pertanyaan KEPUTUSAN-414 / CR-036 butir 3).
 Isi: saat HR mengoreksi data perusahaan setelah Ditolak lalu mengajukan ulang (CR-036), Verifikator di backoffice melihat penanda singkat "Data dikoreksi" beserta nilai sebelumnya di samping setiap field yang berubah dibandingkan putaran sebelumnya (`submission_round` - 1); tanpa penanda bila tidak ada field yang berubah (pengajuan ulang dokumen saja). Persona: Verifikator internal, langsung tahu apa yang diperiksa ulang tanpa membandingkan manual.
 Pelaksanaan (KEPUTUSAN-442–445): tabel Transaksi baru `corporate_client_correction` (migrasi `20261127440000`, nilai sebelumnya field yang benar-benar berubah, ditulis di transaksi koreksi; NIB/NPWP hanya 4 karakter terakhir), detail Verifikator mendapat `corrected_fields` (`openapi/backoffice.json`, tanpa endpoint dan kode respons baru, otorisasi Verifikator tetap), UI badge "Data dikoreksi" + "Sebelumnya: …" per field dan ringkasan singkat. Koreksi sebelum migrasi tidak bertanda (TD-62).
-Status: disetujui user; diimplementasikan, menunggu review T1 (keamanan + DBA, migrasi skema).
+Status: disetujui user; diimplementasikan commit `6523db0` (verify HIJAU: 25 langkah lulus; Rust 1017 test lulus, web 902 test lulus, db-migrations 1404 pemeriksaan lulus); menunggu review T1 (keamanan + DBA, migrasi skema).
 
 ## Tech Debt
 
