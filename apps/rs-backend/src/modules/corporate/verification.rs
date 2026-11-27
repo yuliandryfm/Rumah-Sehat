@@ -76,7 +76,8 @@ const FAILED_AUDIT_ATTEMPTS: usize = 3;
 const APPROVED_ACTION: &str = "corporate_verification_approved";
 const ALREADY_DECIDED_REASON: &str = "already_decided";
 const NIB_IN_USE_REASON: &str = "nib_in_use_by_active_company";
-/// Keputusan ditolak karena dokumen berubah sejak dilihat Verifikator (F1-T109, KEPUTUSAN-382).
+/// Keputusan ditolak karena pengajuan (dokumen atau putaran) berubah sejak dilihat Verifikator (F1-T109,
+/// KEPUTUSAN-382, KEPUTUSAN-415). Kode alasan tetap `documents_changed` agar riwayat audit konsisten.
 const DOCUMENTS_CHANGED_REASON: &str = "documents_changed";
 /// Persetujuan ditolak karena ketiga dokumen belum lengkap, `4090113` (F1-T109, KEPUTUSAN-382).
 const DOCUMENTS_INCOMPLETE_REASON: &str = "documents_incomplete";

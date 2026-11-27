@@ -244,8 +244,8 @@ pub struct CorporateDetailView {
     /// Jenis dokumen aktif (`authority_proof`, `nib`, `npwp`); lengkap bila ketiganya ada (persetujuan ditolak
     /// `4090113` bila belum, F1-T102).
     pub documents: Vec<&'static str>,
-    /// Token versi dokumen aktif; wajib dikirim kembali saat menyetujui atau menolak (`4090114` bila dokumen
-    /// berubah sejak detail dilihat).
+    /// Token versi pengajuan (putaran + dokumen aktif, KEPUTUSAN-415); wajib dikirim kembali saat menyetujui atau
+    /// menolak (`4090114` bila dokumen diganti atau data dikoreksi dan diajukan ulang sejak detail dilihat).
     pub documents_version: String,
     /// Kode alasan penolakan putaran berjalan (hanya bila `rejected`).
     pub rejection_reason: Option<String>,

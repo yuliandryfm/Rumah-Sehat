@@ -248,7 +248,7 @@ async fn document_url(
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: dokumen berubah sejak detail dilihat (F1-T102). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090113: NIB, NPWP, atau bukti kewenangan belum diunggah (F1-T102). 4090114: pengajuan berubah sejak detail dilihat, yaitu dokumen diunggah atau diganti, atau data dikoreksi dan diajukan ulang oleh HR (token terikat putaran dan dokumen; F1-T102, KEPUTUSAN-415). 4090116: NIB sudah dipakai perusahaan Aktif lain (CR-035).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Field documents_version tidak ada atau ada field yang tidak dikenal (token yang salah nilainya dijawab 409 4090114).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
@@ -299,7 +299,7 @@ async fn approve(
         (status = 401, description = "Belum login, token tidak sah, sesi dicabut, atau akun nonaktif.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 403, description = "Akun tanpa sub-peran Verifikator.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 404, description = "Perusahaan tidak ada.", body = ErrorEnvelope, content_type = "application/problem+json"),
-        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: dokumen berubah sejak detail dilihat (F1-T102).", body = ErrorEnvelope, content_type = "application/problem+json"),
+        (status = 409, description = "4090001: pengajuan sudah diputuskan atau tidak lagi menunggu verifikasi; keputusan pertama yang berlaku (US-1902 AC4). 4090114: pengajuan berubah sejak detail dilihat, yaitu dokumen diunggah atau diganti, atau data dikoreksi dan diajukan ulang oleh HR (token terikat putaran dan dokumen; F1-T102, KEPUTUSAN-415).", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 415, description = "Badan bukan application/json.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 422, description = "Alasan di luar daftar.", body = ErrorEnvelope, content_type = "application/problem+json"),
         (status = 503, description = "Layanan tidak tersedia.", body = ErrorEnvelope, content_type = "application/problem+json")
