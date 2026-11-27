@@ -13,6 +13,7 @@ export interface ItemNav {
 /** Menu aktif. Hanya halaman yang sudah ada. */
 export const ITEM_NAV: readonly ItemNav[] = [
   { href: "/", label: "Dasbor" },
+  { href: "/verifikasi", label: "Status verifikasi" },
   { href: "/kelola-hr", label: "Kelola HR" },
 ];
 

@@ -92,6 +92,17 @@ describe("CSP unggah gambar", () => {
     ["https://u:p@neo.example.test", false, null],
     ["https://neo.example.test/?x=1", false, null],
     ["javascript:alert(1)", true, null],
+    // Review T1 F1-T103: host longgar dan pemangkasan diam-diam parser URL ditolak.
+    ["https://*", false, null],
+    ["https://*.x.test", false, null],
+    ["https://a.test'x'", false, null],
+    ["https://a,test", false, null],
+    ["https://a;b.test", false, null],
+    ["https://neo.exa\tmple.test", false, null],
+    ["https://neo.example.test\\", false, null],
+    ["https://neo.example.test/%2e", false, null],
+    ["https://neo.example.test/", false, "https://neo.example.test"],
+    ["  https://neo.example.test  ", false, "https://neo.example.test"],
   ])("originUnggahDariEnv(%s, dev=%s) = %s", (nilai, dev, harapan) => {
     expect(originUnggahDariEnv(nilai, dev)).toBe(harapan);
   });

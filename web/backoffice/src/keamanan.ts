@@ -63,20 +63,29 @@ export function buatCsp(
   return arahan.join("; ");
 }
 
+/** Host DNS (label huruf kecil/angka/tanda hubung) atau IPv4 bertitik, setelah normalisasi parser URL. */
+const HOST_KETAT = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
+
 /**
  * Origin object storage untuk unggah gambar CMS dari env `BACKOFFICE_UPLOAD_ORIGIN` (hanya origin, tanpa
  * path/kredensial). Nilai tidak valid atau bukan https (kecuali `http` di development) diabaikan: gagal tertutup,
  * unggah gambar saja yang tidak jalan, CSP tidak melonggar.
  */
 export function originUnggahDariEnv(nilai: string | undefined, dev = false): string | null {
-  if (nilai === undefined || nilai === "") return null;
+  if (nilai === undefined) return null;
+  const masukan = nilai.trim();
+  if (masukan === "") return null;
   let u: URL;
   try {
-    u = new URL(nilai);
+    u = new URL(masukan);
   } catch {
     return null;
   }
   const skemaOk = u.protocol === "https:" || (dev && u.protocol === "http:");
-  const hanyaOrigin = u.username === "" && u.password === "" && (u.pathname === "/" || u.pathname === "") && u.search === "" && u.hash === "";
-  return skemaOk && hanyaOrigin ? u.origin : null;
+  // Parser URL WHATWG menerima `*`, `'`, `,`, `;` di host dan diam-diam membuang TAB/LF serta mengubah `\` dan
+  // `/%2e`: host diperiksa dengan pola ketat, dan origin hasil parse wajib sama persis dengan masukan (tanpa
+  // garis miring penutup), supaya nilai CSP tidak pernah berbeda dari yang ditulis operator (review T1 F1-T103).
+  const hostOk = HOST_KETAT.test(u.hostname);
+  const samaPersis = u.origin === masukan.replace(/\/$/, "").toLowerCase();
+  return skemaOk && hostOk && samaPersis ? u.origin : null;
 }

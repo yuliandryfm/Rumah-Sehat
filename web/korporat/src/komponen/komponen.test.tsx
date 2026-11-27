@@ -40,7 +40,7 @@ describe("KerangkaKorporat", () => {
       </KerangkaKorporat>,
     );
     const nav = screen.getByRole("navigation", { name: "Menu" });
-    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Dasbor", "Kelola HR"]);
+    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Dasbor", "Status verifikasi", "Kelola HR"]);
     expect(within(nav).getByRole("link", { name: "Dasbor" }).getAttribute("aria-current")).toBe("page");
     for (const nama of ["Pesanan", "Peserta", "Invoice"]) {
       const el = within(nav).getByText(`${nama} (belum tersedia)`);

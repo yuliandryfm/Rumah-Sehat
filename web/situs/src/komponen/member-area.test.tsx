@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { KerangkaSitus } from "./KerangkaSitus.tsx";
-import { MasukMemberArea } from "./MasukMemberArea.tsx";
+import { MasukMemberArea, urlDaftar } from "./MasukMemberArea.tsx";
 
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: unknown }) => <a href={href}>{children as never}</a>,
@@ -18,11 +18,24 @@ describe("tautan member area korporat (CR-032)", () => {
     const html = renderToStaticMarkup(<MasukMemberArea />);
     expect(html).toContain("Sudah terdaftar?");
     expect(html).toContain(`href="${URL_UJI}"`);
-    expect(html).toContain('class="rs-btn rs-btn--primary"');
-    expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain("Masuk member area");
+    expect(html).toMatch(/<a class="rs-btn rs-btn--secondary" href="https:\/\/member\.contoh\.test\/" rel="noopener noreferrer">Masuk member area<\/a>/);
     expect(html).toContain("Member area adalah aplikasi terpisah dari situs ini.");
-    expect(html).not.toContain("Daftarkan perusahaan");
+  });
+
+  test("F1-T103: tombol utama Daftarkan perusahaan ke /daftar di origin web korporat, rel aman", () => {
+    vi.stubEnv("SITUS_KORPORAT_URL", URL_UJI);
+    const html = renderToStaticMarkup(<MasukMemberArea />);
+    expect(html).toContain("Belum terdaftar?");
+    expect(html).toMatch(/<a class="rs-btn rs-btn--primary" href="https:\/\/member\.contoh\.test\/daftar" rel="noopener noreferrer">Daftarkan perusahaan<\/a>/);
+    // Satu tombol utama per layar (DG §4).
+    expect(html.match(/rs-btn--primary/g)).toHaveLength(1);
+    // Tidak ada formulir ke domain korporat (KEPUTUSAN-352).
+    expect(html).not.toContain("<form");
+  });
+
+  test("F1-T103: URL korporat berjalur tetap menghasilkan /daftar di origin yang sama", () => {
+    expect(urlDaftar("https://member.contoh.test/masuk")).toBe("https://member.contoh.test/daftar");
+    expect(urlDaftar("http://localhost:3002/")).toBe("http://localhost:3002/daftar");
   });
 
   test("footer: tautan Masuk HR ke URL yang sama", () => {
@@ -40,6 +53,7 @@ describe("tautan member area korporat (CR-032)", () => {
       const kerangka = renderToStaticMarkup(<KerangkaSitus>isi</KerangkaSitus>);
       expect(kerangka).not.toContain("Masuk HR");
       expect(kerangka).not.toContain("member area");
+      expect(kerangka).not.toContain("Daftarkan perusahaan");
     },
   );
 });

@@ -60,7 +60,7 @@ describe("ID korelasi dan kode referensi (KEPUTUSAN-172)", () => {
 
 describe("navigasi member area (K01 layar 9)", () => {
   test("hanya halaman yang ada yang menjadi tautan; layanan korporat belum tersedia bukan tautan", () => {
-    expect(ITEM_NAV.map((i) => i.href)).toEqual(["/", "/kelola-hr"]);
+    expect(ITEM_NAV.map((i) => i.href)).toEqual(["/", "/verifikasi", "/kelola-hr"]);
     expect(ITEM_BELUM_TERSEDIA).toEqual(["Pesanan", "Peserta", "Invoice"]);
   });
 });

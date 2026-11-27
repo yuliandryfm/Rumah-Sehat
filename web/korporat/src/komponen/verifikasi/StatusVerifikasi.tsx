@@ -1,0 +1,388 @@
+"use client";
+
+import { Alert, Badge, Button, Skeleton } from "@rs/ui";
+import Link from "next/link";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react";
+import type { Gagal } from "../../lib/hr/klien.ts";
+import {
+  buatKlienVerifikasi,
+  type JenisDokumen,
+  type KlienVerifikasi,
+  type Muatan,
+  type Ringkasan,
+  type StatusDokumen,
+  type UrlUnduh,
+} from "../../lib/verifikasi/klien.ts";
+import {
+  ACCEPT,
+  DOKUMEN,
+  LABEL_STATUS,
+  PETUNJUK_BERKAS,
+  formatUkuran,
+  formatWib,
+  labelAlasan,
+  labelDokumen,
+  periksaBerkas,
+  termasking,
+  urlUnduhAman,
+} from "../../lib/verifikasi/model.ts";
+import { GalatAkses, adalahGalatAkses } from "../hr/GalatAkses.tsx";
+
+export interface StatusVerifikasiProps {
+  readonly csrfToken: string;
+  /** Hanya untuk test. */
+  readonly klien?: KlienVerifikasi;
+  readonly arahkan?: (url: string) => void;
+}
+
+/**
+ * Status verifikasi perusahaan (F1-T103; US-1901 AC2, AC6; US-1902 AC3; wireframe K01 layar 7-8; brief KR-09,
+ * KR-10): status (Menunggu verifikasi / Ditolak dengan alasan / Aktif), tiga dokumen wajib dengan status,
+ * unggah dan ganti lewat slot, unduh lewat URL berumur pendek, dan "Ajukan ulang" saat Ditolak. Koreksi data
+ * perusahaan saat pengajuan ulang belum diputuskan (P-T102b-1/Q20), jadi tidak ada formulir ubah data di sini.
+ * Status "Aktif" berasal dari 409 `4090112` (endpoint dokumen hanya melayani perusahaan yang belum Aktif).
+ * Semua keputusan di server; layar ini tidak menyimpan berkas atau isian di perangkat (DG D-K01).
+ */
+export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasiProps) {
+  const api = useMemo(() => klien ?? buatKlienVerifikasi(csrfToken), [klien, csrfToken]);
+  const [muatan, setMuatan] = useState<Muatan | null>(null);
+  const [galat, setGalat] = useState<Gagal | null>(null);
+  const [galatAksi, setGalatAksi] = useState<Gagal | null>(null);
+  const [galatAjukan, setGalatAjukan] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [ajukanSibuk, setAjukanSibuk] = useState(false);
+  const [memuat, setMemuat] = useState(false);
+
+  const muat = useCallback(async () => {
+    setMemuat(true);
+    const h = await api.muat();
+    setMemuat(false);
+    if (h.ok) {
+      setMuatan(h.data);
+      setGalat(null);
+    } else {
+      setGalat(h);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    void muat();
+  }, [muat]);
+
+  const terima = useCallback((r: Ringkasan) => {
+    setMuatan({ jenis: "dokumen", ringkasan: r });
+  }, []);
+
+  if (adalahGalatAkses(galat)) return <GalatAkses galat={galat} {...(arahkan === undefined ? {} : { arahkan })} />;
+  // 401 saat aksi (sesi berakhir atau akun dinonaktifkan di tengah jalan) sama dengan saat memuat.
+  if (adalahGalatAkses(galatAksi)) return <GalatAkses galat={galatAksi} {...(arahkan === undefined ? {} : { arahkan })} />;
+
+  const ajukanUlang = async (r: Ringkasan) => {
+    setInfo(null);
+    setGalatAjukan(null);
+    if (!r.complete) {
+      // Bantuan klien; server tetap menolak 4090115 bila dokumen belum lengkap.
+      setGalatAjukan("Dokumen belum lengkap. Unggah ketiga dokumen terlebih dahulu, lalu ajukan ulang.");
+      return;
+    }
+    setAjukanSibuk(true);
+    const h = await api.ajukanUlang();
+    setAjukanSibuk(false);
+    if (h.ok) {
+      terima(h.data);
+      setInfo("Pengajuan ulang terkirim. Status perusahaan kembali Menunggu verifikasi.");
+    } else if (adalahGalatAkses(h)) {
+      setGalatAksi(h);
+    } else {
+      setGalatAjukan(h.pesan);
+    }
+  };
+
+  return (
+    <section aria-labelledby="judul-verifikasi" className="kp-bagian kp-lebar">
+      <h1 id="judul-verifikasi">Status verifikasi perusahaan</h1>
+      <div role="status" aria-live="polite" className="kp-umum">
+        {info}
+      </div>
+      {galat === null ? null : (
+        <Alert variant="danger" title="Status verifikasi tidak dapat dimuat">
+          <p>{galat.pesan}</p>
+          <Button variant="secondary" loading={memuat} loadingLabel="Memuat..." onClick={() => void muat()}>
+            Coba lagi
+          </Button>
+        </Alert>
+      )}
+      {muatan === null && galat === null ? <Skeleton lines={4} /> : null}
+      {muatan?.jenis === "aktif" ? <Aktif /> : null}
+      {muatan?.jenis === "dokumen" ? (
+        <>
+          <RingkasanStatus r={muatan.ringkasan} />
+          <section aria-labelledby="judul-dokumen" className="kp-bagian">
+            <h2 id="judul-dokumen">Dokumen perusahaan</h2>
+            <p className="kp-kecil" id="petunjuk-berkas">
+              {PETUNJUK_BERKAS}
+            </p>
+            {DOKUMEN.map((d) => {
+              const status = muatan.ringkasan.documents.find((x) => x.kind === d.jenis) ?? { kind: d.jenis, uploaded: false };
+              return (
+                <BarisDokumen
+                  key={d.jenis}
+                  jenis={d.jenis}
+                  status={status}
+                  api={api}
+                  onTerima={(r) => {
+                    terima(r);
+                    setGalatAjukan(null);
+                    setInfo(`${labelDokumen(d.jenis)} berhasil diunggah.`);
+                  }}
+                  onGalatAkses={setGalatAksi}
+                />
+              );
+            })}
+          </section>
+          {muatan.ringkasan.status === "rejected" ? (
+            <section aria-labelledby="judul-ajukan" className="kp-bagian">
+              <h2 id="judul-ajukan">Ajukan ulang</h2>
+              <p>Setelah dokumen yang perlu diperbaiki diganti, ajukan ulang supaya Verifikator memeriksa kembali.</p>
+              <div>
+                <Button
+                  loading={ajukanSibuk}
+                  loadingLabel="Mengajukan..."
+                  aria-describedby={galatAjukan === null ? undefined : "galat-ajukan"}
+                  onClick={() => void ajukanUlang(muatan.ringkasan)}
+                >
+                  Ajukan ulang
+                </Button>
+              </div>
+              {galatAjukan === null ? null : (
+                <p id="galat-ajukan" className="rs-field__error" role="alert">
+                  <span aria-hidden="true" className="rs-field__error-icon">
+                    !
+                  </span>
+                  <span>{galatAjukan}</span>
+                </p>
+              )}
+            </section>
+          ) : null}
+          <Profil r={muatan.ringkasan} />
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function Aktif() {
+  const s = LABEL_STATUS.active;
+  return (
+    <>
+      <p>
+        <Badge tone={s.tone}>{s.label}</Badge>
+      </p>
+      <Alert variant="success" title="Perusahaan Anda sudah terverifikasi">
+        Dokumen perusahaan tidak perlu diunggah lagi. <Link href="/" prefetch={false}>Buka dasbor</Link>
+      </Alert>
+    </>
+  );
+}
+
+const LANGKAH = ["Pendaftaran terkirim", "Pemeriksaan dokumen oleh Verifikator", "Keputusan"] as const;
+
+function RingkasanStatus({ r }: { r: Ringkasan }) {
+  const s = LABEL_STATUS[r.status];
+  const sekarang = r.status === "rejected" ? 2 : r.complete ? 1 : 0;
+  return (
+    <>
+      <p className="kp-baris-status">
+        <Badge tone={s.tone}>{s.label}</Badge>
+        <span className="kp-kecil">Diajukan {formatWib(r.company.submitted_at)}</span>
+      </p>
+      {r.status === "rejected" ? (
+        <Alert variant="danger" title="Pengajuan ditolak">
+          <p>
+            Alasan: <span data-testid="alasan-tolak">{labelAlasan(r.rejection_reason)}</span>.
+          </p>
+          <p>Ganti dokumen yang perlu diperbaiki di bawah, lalu tekan Ajukan ulang.</p>
+        </Alert>
+      ) : r.complete ? (
+        <Alert variant="info" title="Dokumen sedang diperiksa">
+          Tim Ruang Sehat sedang memeriksa dokumen perusahaan Anda. Layanan pesanan terbuka setelah perusahaan
+          disetujui. Pemberitahuan lewat email belum tersedia, jadi periksa halaman ini secara berkala.
+        </Alert>
+      ) : (
+        <Alert variant="warning" title="Lengkapi dokumen perusahaan">
+          Pengajuan baru diperiksa Verifikator setelah Dokumen NIB, Dokumen NPWP, dan Bukti kewenangan pendaftar
+          diunggah.
+        </Alert>
+      )}
+      <ol className="kp-linimasa" aria-label="Tahapan verifikasi">
+        {LANGKAH.map((l, i) => (
+          <li key={l} aria-current={i === sekarang ? "step" : undefined} data-selesai={i < sekarang ? "true" : undefined}>
+            {l}
+            {i === 2 && r.status === "rejected" ? ": Ditolak" : ""}
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+function Profil({ r }: { r: Ringkasan }) {
+  const p = r.company;
+  return (
+    <section aria-labelledby="judul-profil" className="kp-bagian">
+      <h2 id="judul-profil">Profil perusahaan</h2>
+      <dl className="kp-profil">
+        <dt>Nama badan usaha</dt>
+        <dd>{p.legal_name}</dd>
+        <dt>NIB</dt>
+        <dd>{termasking(p.nib)}</dd>
+        <dt>NPWP</dt>
+        <dd>{termasking(p.npwp)}</dd>
+        <dt>Alamat kantor</dt>
+        <dd>{p.office_address}</dd>
+        <dt>Telepon kantor</dt>
+        <dd>{p.office_phone}</dd>
+      </dl>
+      {/* Q31 = A [USER 2026-11-27]: teks sementara sampai koreksi data saat Ditolak (Q20 = A, CR-036) dibangun. */}
+      <p className="kp-kecil">Bila ada data yang salah, hubungi Layanan Pelanggan.</p>
+    </section>
+  );
+}
+
+interface BarisDokumenProps {
+  readonly jenis: JenisDokumen;
+  readonly status: StatusDokumen;
+  readonly api: KlienVerifikasi;
+  readonly onTerima: (r: Ringkasan) => void;
+  readonly onGalatAkses: (g: Gagal) => void;
+}
+
+function BarisDokumen({ jenis, status, api, onTerima, onGalatAkses }: BarisDokumenProps) {
+  const id = useId();
+  const label = labelDokumen(jenis);
+  const bantuan = DOKUMEN.find((d) => d.jenis === jenis)?.bantuan ?? "";
+  const isian = useRef<HTMLInputElement>(null);
+  const [berkas, setBerkas] = useState<File | null>(null);
+  const [galat, setGalat] = useState<string | null>(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [unduhSibuk, setUnduhSibuk] = useState(false);
+  const [unduh, setUnduh] = useState<UrlUnduh | null>(null);
+  const [galatUnduh, setGalatUnduh] = useState<string | null>(null);
+
+  const tampilGalat = (pesan: string) => {
+    setGalat(pesan);
+    // Fokus ke isian galat (DG §5.3, A12); pesan terhubung lewat aria-describedby.
+    isian.current?.focus();
+  };
+
+  const pilih = (e: ChangeEvent<HTMLInputElement>) => {
+    setGalat(null);
+    setBerkas(e.target.files?.[0] ?? null);
+  };
+
+  const unggah = async () => {
+    const salah = periksaBerkas(berkas);
+    if (salah !== null || berkas === null) {
+      tampilGalat(salah ?? "Pilih berkas terlebih dahulu.");
+      return;
+    }
+    setSibuk(true);
+    const h = await api.unggah(jenis, berkas);
+    setSibuk(false);
+    if (h.ok) {
+      setBerkas(null);
+      setUnduh(null);
+      if (isian.current !== null) isian.current.value = "";
+      onTerima(h.data);
+    } else if (adalahGalatAkses(h)) {
+      onGalatAkses(h);
+    } else {
+      tampilGalat(h.pesan);
+    }
+  };
+
+  const mintaUnduh = async () => {
+    setGalatUnduh(null);
+    setUnduhSibuk(true);
+    const h = await api.urlUnduh(jenis);
+    setUnduhSibuk(false);
+    // Skema selain https (http hanya development) tidak pernah dirender sebagai tautan (mis. `javascript:`).
+    if (h.ok && urlUnduhAman(h.data.url)) setUnduh(h.data);
+    else if (h.ok) setGalatUnduh("Tautan dokumen tidak dapat dibuka. Coba lagi beberapa saat lagi.");
+    else if (adalahGalatAkses(h)) onGalatAkses(h);
+    else setGalatUnduh(h.status === 404 ? "Dokumen belum diunggah." : h.pesan);
+  };
+
+  const galatId = `${id}-galat`;
+  const terjelaskan = [`${id}-bantuan`, "petunjuk-berkas", galat === null ? null : galatId].filter(Boolean).join(" ");
+
+  return (
+    <div className="kp-dokumen" role="group" aria-labelledby={`${id}-judul`}>
+      <div className="kp-baris-status">
+        <h3 id={`${id}-judul`}>{label}</h3>
+        <Badge tone={status.uploaded ? "success" : "neutral"}>{status.uploaded ? "Terunggah" : "Belum diunggah"}</Badge>
+        {status.uploaded && status.uploaded_at !== null && status.uploaded_at !== undefined ? (
+          <span className="kp-kecil">Diunggah {formatWib(status.uploaded_at)}</span>
+        ) : null}
+      </div>
+      <p id={`${id}-bantuan`} className="kp-kecil">
+        {bantuan}
+      </p>
+      <div className="rs-field">
+        <label className="rs-field__label" htmlFor={`${id}-berkas`}>
+          {status.uploaded ? `Berkas pengganti ${label}` : `Berkas ${label}`}
+        </label>
+        <input
+          ref={isian}
+          id={`${id}-berkas`}
+          type="file"
+          accept={ACCEPT}
+          className="kp-berkas"
+          aria-invalid={galat === null ? undefined : true}
+          aria-describedby={terjelaskan}
+          onChange={pilih}
+        />
+        {berkas === null ? null : (
+          <p className="rs-field__hint">
+            Dipilih: {berkas.name} ({formatUkuran(berkas.size)})
+          </p>
+        )}
+        {galat === null ? null : (
+          <p id={galatId} className="rs-field__error">
+            <span aria-hidden="true" className="rs-field__error-icon">
+              !
+            </span>
+            <span>{galat}</span>
+          </p>
+        )}
+      </div>
+      <div className="kp-baris-aksi kp-kiri">
+        <Button variant="secondary" loading={sibuk} loadingLabel="Mengunggah..." onClick={() => void unggah()}>
+          {status.uploaded ? "Ganti dokumen" : "Unggah"}
+        </Button>
+        {status.uploaded ? (
+          <Button variant="text" loading={unduhSibuk} loadingLabel="Menyiapkan..." onClick={() => void mintaUnduh()}>
+            {`Unduh ${label}`}
+          </Button>
+        ) : null}
+      </div>
+      {unduh === null ? null : (
+        <p className="kp-kecil" role="status">
+          {/* URL bertanda tangan berumur pendek (ADR-018): tanpa referrer, tidak disimpan di riwayat aplikasi. */}
+          <a href={unduh.url} target="_blank" rel="noopener noreferrer">
+            Buka {label}
+          </a>{" "}
+          (tautan berlaku sampai {formatWib(unduh.expires_at)})
+        </p>
+      )}
+      {galatUnduh === null ? null : (
+        <p className="rs-field__error" role="alert">
+          <span aria-hidden="true" className="rs-field__error-icon">
+            !
+          </span>
+          <span>{galatUnduh}</span>
+        </p>
+      )}
+    </div>
+  );
+}
