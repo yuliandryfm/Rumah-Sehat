@@ -15,6 +15,7 @@
 mod admin_create;
 mod admin_create_http;
 pub mod api;
+mod correction;
 mod documents;
 mod documents_http;
 mod domain;

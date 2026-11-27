@@ -43,6 +43,7 @@ function klien(o: Partial<KlienVerifikasi> = {}, r: Ringkasan = ringkasan()): Kl
     unggah: () => ok(r),
     urlUnduh: () => ok({ url: "https://unduh.contoh.test/o?sig=x", expires_at: "2027-03-01T01:20:00Z", mime_type: "image/jpeg", size_bytes: 10 }),
     ajukanUlang: () => ok(ringkasan({ status: "pending_verification", complete: true, documents: DOK_LENGKAP, submission_round: 2 })),
+    koreksiDanAjukanUlang: () => ok(ringkasan({ status: "pending_verification", complete: true, documents: DOK_LENGKAP, submission_round: 2 })),
     ...o,
   };
 }
@@ -72,7 +73,7 @@ describe("StatusVerifikasi: Menunggu verifikasi (KR-09, US-1901 AC6)", () => {
     for (const l of ["Dokumen NIB", "Dokumen NPWP", "Bukti kewenangan pendaftar"]) {
       expect(within(grupDokumen(l)).getByText("Belum diunggah")).toBeDefined();
     }
-    // Tidak ada formulir koreksi data perusahaan (Q20 belum diputuskan) dan tidak ada Ajukan ulang saat menunggu.
+    // Formulir koreksi data perusahaan hanya saat Ditolak (CR-036); tidak ada Ajukan ulang saat menunggu.
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Ajukan ulang" })).toBeNull();
     expect(screen.getByText(/PDF bertanda tangan digital tidak diterima/)).toBeDefined();
@@ -283,5 +284,142 @@ describe("StatusVerifikasi: keadaan lain", () => {
     fireEvent.click(screen.getByRole("button", { name: "Coba lagi" }));
     expect(await screen.findByText("Menunggu verifikasi")).toBeDefined();
     expect(muat).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("StatusVerifikasi: koreksi data perusahaan saat Ditolak (CR-036, Q20 = A)", () => {
+  const isian = (label: string) => screen.getByLabelText<HTMLInputElement>(label);
+  const MENUNGGU = ringkasan({ complete: true, documents: DOK_LENGKAP, submission_round: 2 });
+
+  test("formulir terisi dari profil; NIB/NPWP tetap tersamar dan tidak pernah dimasukkan ke isian (Q23 = A)", async () => {
+    render(<StatusVerifikasi csrfToken="t" klien={klien({}, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    expect(screen.getByRole("group", { name: "Koreksi data perusahaan" })).toBeDefined();
+    expect(isian("Nama badan usaha").value).toBe("PT Contoh Sintetis");
+    expect(isian("Alamat kantor").value).toBe("Jl. Contoh No. 1, Jakarta");
+    expect(isian("Telepon kantor").value).toBe("021-0000000");
+    expect(screen.queryByLabelText("NIB baru")).toBeNull();
+    expect(screen.queryByLabelText("NPWP baru")).toBeNull();
+    expect(screen.getByText("NIB saat ini: ************0123")).toBeDefined();
+    expect(screen.getByText("NPWP saat ini: ************2345")).toBeDefined();
+    const nilaiIsian = [...document.querySelectorAll("input")].map((i) => i.value);
+    expect(nilaiIsian).not.toContain("1234567890123");
+    expect(nilaiIsian).not.toContain("0123456789012345");
+    expect(document.body.textContent).not.toContain("0123456789012345");
+    // Teks sementara Q31 diganti.
+    expect(document.body.textContent).not.toContain("hubungi Layanan Pelanggan");
+    expect(screen.getByText(/koreksi di bagian Ajukan ulang/)).toBeDefined();
+  });
+
+  test("hanya field yang diubah dikirim bersama pengajuan ulang; NPWP baru diketik lengkap", async () => {
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>(() => ok(MENUNGGU));
+    const ajukanUlang = vi.fn(() => ok(MENUNGGU));
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi, ajukanUlang }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.change(isian("Telepon kantor"), { target: { value: " 021-1111111 " } });
+    fireEvent.click(screen.getByLabelText("Ubah NPWP"));
+    fireEvent.change(isian("NPWP baru"), { target: { value: "0999999999999999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await screen.findByText(/Data perusahaan dikoreksi dan pengajuan ulang terkirim/)).toBeDefined();
+    expect(koreksi).toHaveBeenCalledWith({ office_phone: "021-1111111", npwp: "0999999999999999" });
+    expect(ajukanUlang).not.toHaveBeenCalled();
+    expect(screen.getByText("Menunggu verifikasi")).toBeDefined();
+    expect(screen.queryByRole("group", { name: "Koreksi data perusahaan" })).toBeNull();
+    expect(screen.getByText("Data perusahaan dapat dikoreksi bila pengajuan ditolak Verifikator.")).toBeDefined();
+  });
+
+  test("tanpa perubahan → pengajuan ulang biasa; 'Ubah NIB' dibatalkan → NIB tidak dikirim", async () => {
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>(() => ok(MENUNGGU));
+    const ajukanUlang = vi.fn(() => ok(MENUNGGU));
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi, ajukanUlang }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.click(screen.getByLabelText("Ubah NIB"));
+    fireEvent.change(isian("NIB baru"), { target: { value: "12" } });
+    fireEvent.click(screen.getByLabelText("Ubah NIB"));
+    expect(screen.queryByLabelText("NIB baru")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await screen.findByText(/^Pengajuan ulang terkirim/)).toBeDefined();
+    expect(ajukanUlang).toHaveBeenCalledTimes(1);
+    expect(koreksi).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["Ubah NIB", "NIB baru", "123456789012", /Format NIB tidak sesuai/],
+    ["Ubah NPWP", "NPWP baru", "099999999999999", /Tambahkan angka 0 di depan/],
+    ["Ubah NPWP", "NPWP baru", "", /NPWP wajib diisi/],
+  ])("negatif: %s dengan nilai tidak sah → galat di field (aria-invalid, terhubung, fokus), server tidak dipanggil", async (kotak, label, nilai, pesan) => {
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>();
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.click(screen.getByLabelText(kotak));
+    fireEvent.change(isian(label), { target: { value: nilai } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    const el = await screen.findByText(pesan);
+    const f = isian(label);
+    expect(f.getAttribute("aria-invalid")).toBe("true");
+    expect(f.getAttribute("aria-describedby")).toContain(el.closest("[id]")?.id ?? "tidak-ada");
+    await waitFor(() => {
+      expect(document.activeElement).toBe(f);
+    });
+    expect(koreksi).not.toHaveBeenCalled();
+    expect(screen.getByText(/Ada data perusahaan yang perlu diperbaiki/).closest("#galat-ajukan")).not.toBeNull();
+  });
+
+  test("negatif: nama badan usaha dikosongkan → galat wajib diisi, server tidak dipanggil", async () => {
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>();
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.change(isian("Nama badan usaha"), { target: { value: "  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await screen.findByText("Nama badan usaha wajib diisi.")).toBeDefined();
+    expect(koreksi).not.toHaveBeenCalled();
+  });
+
+  test("negatif: galat validasi server (422) per field → pesan server di isian, fokus ke isian pertama, isian tetap", async () => {
+    const koreksi = vi.fn<KlienVerifikasi["koreksiDanAjukanUlang"]>(() =>
+      Promise.resolve({
+        ok: false as const,
+        status: 422,
+        kode: "4220001",
+        pesan: "Ada data perusahaan yang perlu diperbaiki. Periksa pesan di setiap isian.",
+        isian: { nib: "NIB harus tepat 13 angka", tidak_dikenal: "x" },
+      }),
+    );
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.click(screen.getByLabelText("Ubah NIB"));
+    fireEvent.change(isian("NIB baru"), { target: { value: "9900000000001" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect(await screen.findByText("NIB harus tepat 13 angka")).toBeDefined();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(isian("NIB baru"));
+    });
+    expect(isian("NIB baru").value).toBe("9900000000001");
+    expect(screen.getByText("Pengajuan ditolak")).toBeDefined();
+  });
+
+  test.each([
+    ["4090001", 409, /sudah menunggu verifikasi/],
+    ["4030101", 403, /Muat ulang halaman/],
+  ])("negatif: koreksi ditolak server %s → pesan di dekat tombol, isian tetap", async (kode, status, pesan) => {
+    const koreksi = () => Promise.resolve({ ...galat(status, { response_code: kode }), isian: {} });
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.change(isian("Telepon kantor"), { target: { value: "021-2222222" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    expect((await screen.findByText(pesan)).closest("#galat-ajukan")).not.toBeNull();
+    expect(isian("Telepon kantor").value).toBe("021-2222222");
+  });
+
+  test("negatif: sesi kedaluwarsa saat koreksi (401) → dialihkan ke /auth/login", async () => {
+    const arahkan = vi.fn();
+    const koreksi = () => Promise.resolve({ ...galat(401, { response_code: "4010001" }), isian: {} });
+    render(<StatusVerifikasi csrfToken="t" klien={klien({ koreksiDanAjukanUlang: koreksi }, DITOLAK)} arahkan={arahkan} />);
+    await screen.findByText("Pengajuan ditolak");
+    fireEvent.change(isian("Alamat kantor"), { target: { value: "Jl. Koreksi No. 2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ajukan ulang" }));
+    await waitFor(() => {
+      expect(arahkan).toHaveBeenCalledWith("/auth/login");
+    });
   });
 });

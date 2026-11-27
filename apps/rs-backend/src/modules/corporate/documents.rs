@@ -25,9 +25,15 @@
 //! Penggantian juga mencatat E-16 `corporate_document_soft_deleted` atas dokumen lama (waktu dan kode alasan
 //! hapus lunak, ADR-003) di transaksi yang sama; pengajuan ulang yang ditolak aturan (dokumen belum lengkap,
 //! sudah diajukan) tercatat E-10 hasil gagal di transaksi tersendiri (F1-T109, KEPUTUSAN-384, KEPUTUSAN-383).
+//!
+//! **Koreksi data saat Ditolak** (CR-036, KEPUTUSAN-410): satu aksi dengan pengajuan ulang
+//! ([`correct_and_resubmit`]); aturan, validasi, dan kebijakan auditnya di `correction.rs`.
 
 use super::api::{
     CompanyProfileView, CorporateDocuments, DocumentStatusView, DocumentsOverviewView,
+};
+use super::correction::{
+    self, CORRECTED_ACTION, CORRECTION_POLICY, CompanyCorrectionInput, ValidatedCorrection,
 };
 use super::domain::{
     self, DOCUMENT_SLOT_WINDOW, DOCUMENT_SLOTS_PER_WINDOW, DocumentKind, may_manage_documents,
@@ -534,27 +540,52 @@ pub(super) async fn confirm(
 /// (`verification.rs`: kolom status Master + kunci baris, bukan `status-flow`, karena skema F1-T98 tidak memakai
 /// pasangan `_status_event`/`_state`).
 ///
-/// Data perusahaan (nama, NIB, NPWP, alamat, telepon) TIDAK diubah di sini: PRD tidak mengatur koreksi data saat
-/// pengajuan ulang (pertanyaan untuk user, F1-T102b). Dokumen sudah dapat diganti saat Ditolak (F1-T102).
+/// Data perusahaan TIDAK diubah di sini; koreksi data saat Ditolak (CR-036) memakai [`correct_and_resubmit`],
+/// yang menjalankan jalur yang sama dengan koreksi di dalam `UPDATE` yang sama.
 pub(super) async fn resubmit(
     s: &CorporateDocuments<'_>,
     scope: &CorporateScope,
     route: &str,
 ) -> Result<DocumentsOverviewView, CorporateError> {
+    resubmit_with(s, scope, route, None).await
+}
+
+/// Koreksi data perusahaan sekaligus pengajuan ulang (CR-036, Q20 = A, KEPUTUSAN-410): jalur [`resubmit`]
+/// ditambah validasi isian (422 per field, setelah batas laju dan sebelum database) dan koreksi di `UPDATE`
+/// pengajuan ulang yang sama. Lihat `correction.rs`.
+pub(super) async fn correct_and_resubmit(
+    s: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    input: &CompanyCorrectionInput,
+) -> Result<DocumentsOverviewView, CorporateError> {
+    resubmit_with(s, scope, route, Some(input)).await
+}
+
+async fn resubmit_with(
+    s: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    route: &str,
+    input: Option<&CompanyCorrectionInput>,
+) -> Result<DocumentsOverviewView, CorporateError> {
     let ip = client_ip(scope, route)?;
     // Batas laju per akun HR lebih dulu (KEPUTUSAN-389): percobaan berulang, termasuk yang ditolak aturan dan
     // dicatat E-10 gagal, dibatasi sebelum menyentuh database atau audit. Security log sekali per jendela.
+    // Koreksi data (CR-036) memakai anggaran yang sama (KEPUTUSAN-412).
     if let Verdict::Limited { first } = s.resubmission_limit.check(scope.account_id()) {
         if first {
             security::rate_limited(Some(scope.account_id()), route);
         }
         return Err(CorporateError::RateLimited);
     }
+    // Validasi isian koreksi: galat masukan (422), tanpa efek dan tanpa event aksi (bukan penolakan aturan).
+    let correction = input.map(correction::validate).transpose()?;
+    let corrected = correction.is_some();
     // Gerbang cepat dari cakupan sesi: Aktif = 4090112 (seperti endpoint dokumen lain), Menunggu = 4090001.
     gate(scope)?;
     let context = audit_context(scope, ip);
     if !may_resubmit(scope.client_status()) {
-        record_refused_resubmission(s, scope, &context, NOT_RESUBMITTABLE_REASON).await;
+        record_refused_resubmission(s, scope, &context, NOT_RESUBMITTABLE_REASON, corrected).await;
         return Err(CorporateError::NotResubmittable);
     }
     let account_id = scope.account_id();
@@ -582,10 +613,31 @@ pub(super) async fn resubmit(
             if !domain::documents_complete(&kinds) {
                 return Err(CorporateError::ResubmissionIncomplete);
             }
-            let changed =
-                repo::resubmit_client(conn, client_id, locked.submission_round, account_id, now)
-                    .await
-                    .map_err(db_error)?;
+            // Field yang benar-benar berubah dibandingkan dengan baris yang sudah dikunci (bukan dari klien).
+            let changed_fields = match &correction {
+                Some(c) => {
+                    let current = repo::client_profile(&mut *conn, client_id)
+                        .await
+                        .map_err(db_error)?
+                        .ok_or(CorporateError::NotFound)?;
+                    c.changed_fields(&current)
+                }
+                None => Vec::new(),
+            };
+            let repo_correction = correction
+                .as_ref()
+                .map(ValidatedCorrection::as_repo)
+                .unwrap_or_default();
+            let changed = repo::resubmit_client(
+                conn,
+                client_id,
+                locked.submission_round,
+                account_id,
+                now,
+                &repo_correction,
+            )
+            .await
+            .map_err(db_error)?;
             if changed != 1 {
                 // Baris terkunci dan statusnya sudah diperiksa; selisih berarti data tidak konsisten.
                 return Err(CorporateError::Internal("status_not_updated"));
@@ -597,27 +649,48 @@ pub(super) async fn resubmit(
             let to = CorporateClientStatus::PendingVerification;
             let action = Code::new(RESUBMITTED_ACTION)
                 .map_err(|_| CorporateError::Internal("audit_action"))?;
-            let event = AuditEvent::new(
-                EventCode::E10,
-                action,
-                tx_actor,
-                ObjectRef::with_uuid(&RESUBMISSION_POLICY, client_id),
-            )
-            .tenant(client_id)
-            .outcome(Outcome::success())
-            .context(&tx_context)
-            .change(FieldChange::new(
-                "status",
-                Some(code_value(from.as_str())?),
-                Some(code_value(to.as_str())?),
-            ))
-            .change(FieldChange::new(
-                "submission_round",
-                Some(Value::Int(i64::from(locked.submission_round))),
-                Some(Value::Int(i64::from(next_round))),
-            ));
+            let mut events = Vec::with_capacity(2);
+            if !changed_fields.is_empty() {
+                // KEPUTUSAN-411: hanya nama field yang berubah, tanpa nilai lama atau baru.
+                let action = Code::new(CORRECTED_ACTION)
+                    .map_err(|_| CorporateError::Internal("audit_action"))?;
+                let mut event = AuditEvent::new(
+                    EventCode::E10,
+                    action,
+                    tx_actor.clone(),
+                    ObjectRef::with_uuid(&CORRECTION_POLICY, client_id),
+                )
+                .tenant(client_id)
+                .outcome(Outcome::success())
+                .context(&tx_context);
+                for name in changed_fields {
+                    event = event.change(FieldChange::changed(name));
+                }
+                events.push(event);
+            }
+            events.push(
+                AuditEvent::new(
+                    EventCode::E10,
+                    action,
+                    tx_actor,
+                    ObjectRef::with_uuid(&RESUBMISSION_POLICY, client_id),
+                )
+                .tenant(client_id)
+                .outcome(Outcome::success())
+                .context(&tx_context)
+                .change(FieldChange::new(
+                    "status",
+                    Some(code_value(from.as_str())?),
+                    Some(code_value(to.as_str())?),
+                ))
+                .change(FieldChange::new(
+                    "submission_round",
+                    Some(Value::Int(i64::from(locked.submission_round))),
+                    Some(Value::Int(i64::from(next_round))),
+                )),
+            );
             let view = read_overview(&mut *conn, client_id).await?;
-            Ok((view, vec![event]))
+            Ok((view, events))
         })
     })
     .await;
@@ -625,6 +698,7 @@ pub(super) async fn resubmit(
         Ok(view) => {
             tracing::info!(
                 submission_round = view.submission_round,
+                corrected = corrected,
                 "corporate_verification_resubmitted"
             );
             Ok(view)
@@ -637,7 +711,7 @@ pub(super) async fn resubmit(
                 _ => None,
             };
             if let Some(reason) = reason {
-                record_refused_resubmission(s, scope, &context, reason).await;
+                record_refused_resubmission(s, scope, &context, reason, corrected).await;
             }
             Err(e)
         }
@@ -646,13 +720,18 @@ pub(super) async fn resubmit(
 
 /// Pengajuan ulang yang ditolak aturan (dokumen belum lengkap `4090115`, atau sudah diajukan/bukan Ditolak
 /// `4090001`): E-10 hasil gagal di transaksi tersendiri, dicoba ulang, tanpa mengubah jawaban (coding-standards
-/// §4.4 butir 3; F1-T109, KEPUTUSAN-383).
+/// §4.4 butir 3; F1-T109, KEPUTUSAN-383). Bila permintaan membawa koreksi data (CR-036), aksi koreksi juga
+/// tercatat gagal dengan alasan yang sama (KEPUTUSAN-411), tanpa field.
 async fn record_refused_resubmission(
     s: &CorporateDocuments<'_>,
     scope: &CorporateScope,
     context: &AuditContext,
     reason: &'static str,
+    corrected: bool,
 ) {
+    if corrected && let Ok(event) = rejected_event(scope, context, CORRECTED_ACTION, reason) {
+        record_failed(s.pool, s.clock, event).await;
+    }
     if let Ok(event) = rejected_event(scope, context, RESUBMITTED_ACTION, reason) {
         record_failed(s.pool, s.clock, event).await;
     }

@@ -533,25 +533,47 @@ where
     .await
 }
 
+/// Koreksi data perusahaan yang ikut pengajuan ulang (CR-036, KEPUTUSAN-410): `None` = kolom tidak diubah.
+/// Nilai sudah divalidasi dan dipangkas (`correction.rs`). Sengaja tanpa `Debug` (memuat NPWP, Terbatas).
+#[derive(Default)]
+pub(super) struct ClientCorrection<'a> {
+    pub(super) legal_name: Option<&'a str>,
+    pub(super) nib: Option<&'a str>,
+    pub(super) npwp: Option<&'a str>,
+    pub(super) office_address: Option<&'a str>,
+    pub(super) office_phone: Option<&'a str>,
+}
+
 /// Pengajuan ulang (US-1902 AC3, F1-T102b): "Ditolak" putaran `submission_round` kembali "Menunggu verifikasi"
-/// putaran berikutnya dengan `submitted_at` baru (antrean urut pengajuan terakhir). Jumlah baris berubah (0 =
-/// baris tidak lagi berada di keadaan yang dikunci pemanggil).
+/// putaran berikutnya dengan `submitted_at` baru (antrean urut pengajuan terakhir), sekaligus menerapkan koreksi
+/// data perusahaan bila ada (CR-036, KEPUTUSAN-410): satu `UPDATE` bersyarat status + putaran, sehingga koreksi
+/// tidak pernah tersimpan tanpa pengajuan ulang atau di luar status Ditolak. Jumlah baris berubah (0 = baris
+/// tidak lagi berada di keadaan yang dikunci pemanggil). NIB tidak dibandingkan dengan perusahaan lain: status
+/// hasil `pending_verification` tidak terkena `uqp_corporate_client_nib_active` (CR-035, KEPUTUSAN-365).
 pub(super) async fn resubmit_client(
     conn: &mut PgConnection,
     corporate_client_id: Uuid,
     submission_round: i32,
     actor_id: Uuid,
     now: OffsetDateTime,
+    correction: &ClientCorrection<'_>,
 ) -> Result<u64, sqlx::Error> {
     let r = sqlx::query!(
         "UPDATE app.corporate_client \
          SET status = 'pending_verification', submission_round = submission_round + 1, submitted_at = $4, \
-             updated_at = $4, updated_by = $3 \
+             updated_at = $4, updated_by = $3, \
+             legal_name = COALESCE($5, legal_name), nib = COALESCE($6, nib), npwp = COALESCE($7, npwp), \
+             office_address = COALESCE($8, office_address), office_phone = COALESCE($9, office_phone) \
          WHERE id = $1 AND submission_round = $2 AND status = 'rejected' AND deleted_at IS NULL",
         corporate_client_id,
         submission_round,
         actor_id,
         now,
+        correction.legal_name,
+        correction.nib,
+        correction.npwp,
+        correction.office_address,
+        correction.office_phone,
     )
     .execute(conn)
     .await?;

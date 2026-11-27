@@ -59,6 +59,37 @@ export interface KlienVerifikasi {
   unggah(jenis: JenisDokumen, berkas: File): Promise<Hasil<Ringkasan>>;
   urlUnduh(jenis: JenisDokumen): Promise<Hasil<UrlUnduh>>;
   ajukanUlang(): Promise<Hasil<Ringkasan>>;
+  /**
+   * Koreksi data perusahaan sekaligus ajukan ulang (CR-036; satu aksi di server). `badan` hanya berisi field
+   * yang dikoreksi. Galat 422 membawa pesan server per field di `isian`.
+   */
+  koreksiDanAjukanUlang(badan: BadanKoreksi): Promise<Hasil<Ringkasan> | GagalKoreksi>;
+}
+
+export type BadanKoreksi = S["CompanyCorrectionRequest"];
+
+/** Galat koreksi: seperti [`Gagal`] ditambah pesan per field dari 422 (`errors[]`, ADR-023). */
+export interface GagalKoreksi extends Gagal {
+  readonly isian: Readonly<Record<string, string>>;
+}
+
+/** Galat koreksi dari envelope RFC 9457: pesan per field dari server, teks umum dari tabel layar ini. */
+export function galatKoreksi(status: number, badan: unknown): GagalKoreksi {
+  const g = galat(status, badan);
+  const b = (typeof badan === "object" && badan !== null ? badan : {}) as { errors?: unknown };
+  const isian: Record<string, string> = {};
+  if (Array.isArray(b.errors)) {
+    for (const e of b.errors as { field?: unknown; message?: unknown }[]) {
+      if (typeof e.field === "string" && typeof e.message === "string" && !(e.field in isian)) isian[e.field] = e.message;
+    }
+  }
+  const pesan =
+    status === 422
+      ? "Ada data perusahaan yang perlu diperbaiki. Periksa pesan di setiap isian."
+      : status === 429
+        ? "Terlalu banyak percobaan pengajuan ulang. Coba lagi beberapa saat lagi; isian Anda masih ada."
+        : g.pesan;
+  return { ...g, pesan, isian };
 }
 
 export interface OpsiKlienVerifikasi {
@@ -144,5 +175,16 @@ export function buatKlienVerifikasi(csrfToken: string, opsi: OpsiKlienVerifikasi
     urlUnduh: (jenis) =>
       kerjakan(c.POST("/v1/corporate/document-download-urls", { body: { document_kind: jenis } }), (d) => d as UrlUnduh),
     ajukanUlang: () => kerjakan(c.POST("/v1/corporate/verification-resubmissions"), ringkasan),
+    koreksiDanAjukanUlang: async (badan) => {
+      let r: Respons;
+      try {
+        r = await c.POST("/v1/corporate/company-corrections", { body: badan });
+      } catch {
+        return { ...gagalTerhubung(), isian: {} };
+      }
+      if (!r.response.ok) return galatKoreksi(r.response.status, r.error);
+      const amplop = (typeof r.data === "object" && r.data !== null ? r.data : {}) as { data?: unknown };
+      return { ok: true, data: ringkasan(amplop.data) };
+    },
   };
 }
