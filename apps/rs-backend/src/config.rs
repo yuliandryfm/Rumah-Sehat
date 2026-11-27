@@ -1,5 +1,6 @@
 //! Konfigurasi proses `api` (KEPUTUSAN-132): struct bertipe, gagal cepat, tanpa membaca env langsung.
 
+use crate::http_support::TrustedProxies;
 use crate::modules::identity::api::{IdpWorkerConfig, KeycloakEventConfig};
 use crate::modules::platform::api::{
     DEFAULT_PDF_INSPECT_TIMEOUT_SECONDS, FileStorageConfig, QpdfConfig,
@@ -53,6 +54,11 @@ pub struct ApiConfig {
     /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten, gambar, dan teks
     /// persetujuan pendaftaran (F1-T49).
     pub public_rate: RateBudget,
+    /// `TRUSTED_PROXY_CIDRS` (KEPUTUSAN-400, TD-22): alamat atau CIDR proxy tepercaya dipisah koma (alamat/jaringan
+    /// Caddy di depan API). Tidak diisi = tidak ada proxy tepercaya (alamat klien = peer TCP). Diisi tetapi kosong
+    /// atau tidak valid (prefiks 0, bit host, nama host, port, zona, lebih dari 64 entri) = start gagal tanpa
+    /// mencetak nilainya.
+    pub trusted_proxies: TrustedProxies,
 }
 
 /// Konfigurasi validasi token satu realm. Alamat JWKS dikonfigurasi terpisah dari issuer dan tidak
@@ -201,6 +207,7 @@ impl ApiConfig {
                 per_source: env.optional_or("PUBLIC_RATE_LIMIT_PER_SOURCE_PER_MINUTE", 300)?,
                 global: env.optional_or("PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE", 3_000)?,
             },
+            trusted_proxies: env.optional_or("TRUSTED_PROXY_CIDRS", TrustedProxies::none())?,
         })
     }
 }
@@ -836,11 +843,40 @@ mod tests {
                 global: 3_000
             }
         );
+        assert!(c.trusted_proxies.is_empty(), "bawaan tanpa proxy tepercaya");
         // Rahasia tidak muncul di Debug (KEPUTUSAN-132).
         let dbg = format!("{c:?}");
         assert!(!dbg.contains("postgres://"), "{dbg}");
         assert!(!dbg.contains("0123456789abcdef"), "{dbg}");
         assert!(!dbg.contains("token-uji-sintetis-api"), "{dbg}");
+    }
+
+    // trace: TD-22, KEPUTUSAN-400 (daftar proxy tepercaya; nilai tidak valid = start gagal tanpa mencetak nilai)
+    #[test]
+    fn trusted_proxy_cidrs_are_parsed_and_invalid_values_fail_start() {
+        let c = ApiConfig::load(&api_env(&[(
+            "TRUSTED_PROXY_CIDRS",
+            "172.30.0.10/32, 10.10.0.0/24",
+        )]))
+        .unwrap();
+        assert_eq!(c.trusted_proxies.len(), 2);
+        assert!(!format!("{c:?}").contains("172.30.0.10"));
+        for bad in [
+            "",
+            "0.0.0.0/0",
+            "10.0.0.1/8",
+            "caddy",
+            "10.0.0.0/8,",
+            "198.51.100.77:80",
+        ] {
+            let e = ApiConfig::load(&api_env(&[("TRUSTED_PROXY_CIDRS", bad)])).unwrap_err();
+            assert_eq!(e.name(), "TRUSTED_PROXY_CIDRS", "{bad:?}");
+            let shown = e.to_string();
+            assert!(
+                !shown.contains("198.51.100.77") && !shown.contains("caddy"),
+                "{shown}"
+            );
+        }
     }
 
     #[test]

@@ -1,11 +1,12 @@
 //! Batas laju dalam proses untuk endpoint publik (F1-T94/F1-T93; ADR-012 butir 3 "batas laju per sumber dan
 //! batas laju global", ADR-027 butir 5, M-47 "anggaran batas laju publik terpisah dari API pasien").
 //!
-//! Jendela tetap 60 detik dengan dua anggaran: global (seluruh sumber) dan per sumber (alamat IP peer TCP,
+//! Jendela tetap 60 detik dengan dua anggaran: global (seluruh sumber) dan per sumber (alamat IP klien,
 //! `http_support::ClientAddr`). Penghitung hanya di memori satu proses `api`; batas laju terdistribusi di
 //! Valkey (ADR-007, ADR-025) dan batas per IP di Caddy belum terpasang, sehingga batas efektif = batas ini
-//! dikali jumlah instans. Di balik reverse proxy, "sumber" adalah proxy (IP klien asli `[TIDAK DIKETAHUI]`,
-//! PT-39), jadi anggaran per sumber praktis menjadi anggaran per proxy/BFF situs.
+//! dikali jumlah instans. Alamat klien = peer TCP, atau alamat dari `X-Forwarded-For` bila peer termasuk
+//! `TRUSTED_PROXY_CIDRS` (KEPUTUSAN-400). Tanpa daftar itu di balik reverse proxy, "sumber" adalah proxy dan
+//! anggaran per sumber praktis menjadi anggaran per proxy/BFF. Kunci IPv6 adalah alamat penuh (TD-55).
 //!
 //! Kunci sumber bawaan adalah alamat IP; pembatas yang sama dipakai dengan kunci ID akun untuk batas laju per
 //! pengguna terautentikasi (F1-T109, KEPUTUSAN-389: pengajuan ulang verifikasi perusahaan per akun HR).
