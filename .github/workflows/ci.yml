@@ -129,12 +129,14 @@ jobs:
   # tidak muat dalam batas waktu. Fixture dibagi ke kelompok (kelompok_blok di scripts/test/test-verify.sh,
   # satu fixture penuh per kelompok, kecuali pasangan yang murah) dan dijalankan sebagai job matrix paralel di runner standar GitHub
   # (ubuntu-24.04, bukan larger runner berbayar). fail-fast mati supaya semua kelompok terlapor, bukan hanya yang
-  # pertama merah. Batas waktu job tetap 60 menit; ukuran kelompok yang diperkecil, bukan batasnya dinaikkan.
+  # pertama merah. Batas waktu job 90 menit (KEPUTUSAN-395): job terpanjang terukur 51,2 menit (`cache-isi`, run
+  # 45973841577; margin 15% terhadap 60 menit, TD-54 b), sedangkan run yang terpotong batas tidak memberi hasil
+  # sama sekali. Menaikkan batas tidak melonggarkan standar hijau: setiap kelompok tetap harus lulus.
   # Daftar kelompok di bawah dijaga sama dengan skrip oleh scripts/test/test-verify-kelompok.sh (job verify).
   test-verify:
     name: test-verify.sh (${{ matrix.kelompok }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:

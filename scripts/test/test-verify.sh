@@ -152,6 +152,14 @@ nilai() { # nilai <nama> <kode-diharapkan> <kode-aktual> <log> [pola-ERE-wajib .
     sed -n '/== Ringkasan verify.sh ==/,$p' "$log" >&2
     echo "  baris galat (maks. 40):" >&2
     grep -E 'panicked|FAILED|FAIL |×|AssertionError|timed out|Timeout|^error|GAGAL|tidak ditemukan|ditolak' "$log" | sed -n '1,40p' >&2 || true
+    # Penyaring di atas mudah tertukar keluaran langkah lain (mis. vitest) dan melewatkan galat langkah yang
+    # sebenarnya gagal (mis. schemathesis, docker pull). Maka 60 baris terakhir sebelum setiap penanda
+    # "==> [langkah] GAGAL" dicetak apa adanya, supaya penyebab kegagalan terlihat di log CI (TD-61).
+    local n
+    while IFS=: read -r n _; do
+      echo "  --- 60 baris keluaran sebelum baris $n (penanda GAGAL) ---" >&2
+      sed -n "$((n > 60 ? n - 60 : 1)),$((n))p" "$log" >&2
+    done < <(grep -n -E '^==> \[[^]]+\] GAGAL' "$log" | sed -n '1,3p')
   fi
 }
 
