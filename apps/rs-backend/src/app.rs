@@ -1,6 +1,7 @@
 //! Perakitan aplikasi HTTP: router berkebijakan (KEPUTUSAN-127, crate `authz`), validasi token (`authn`)
 //! dan resolver akun, middleware korelasi (KEPUTUSAN-123), dan penolakan berformat envelope.
 
+use crate::http_support::{FORWARDED_FOR_HEADER, TrustedProxies};
 use crate::modules::content_support;
 use crate::modules::corporate;
 use crate::modules::corporate::api::CorporateDirectory;
@@ -19,7 +20,7 @@ use authz::{
     ClientIp, DenialSink, EndpointKey, EnforcedRouter, Enforcement, Policy, PolicyRouter,
     PolicySetupError, PrincipalResolver, SessionGuard, is_corporate_path,
 };
-use axum::extract::{ConnectInfo, Request};
+use axum::extract::{ConnectInfo, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use foundation::{Clock, Uuid};
@@ -90,6 +91,7 @@ pub struct AppState {
     consent_drafts: DraftPolicy,
     registration: Arc<RegistrationGuard>,
     corporate_resubmission_limit: Arc<RateLimiter<Uuid>>,
+    trusted_proxies: Arc<TrustedProxies>,
 }
 
 /// Anggaran batas laju pengajuan ulang verifikasi perusahaan per akun HR (F1-T109, KEPUTUSAN-389): 10 per akun dan
@@ -115,7 +117,15 @@ impl AppState {
             consent_drafts: DraftPolicy::Allow,
             registration: Arc::new(RegistrationGuard::standard()),
             corporate_resubmission_limit: Arc::new(RateLimiter::new(CORPORATE_RESUBMISSION_BUDGET)),
+            trusted_proxies: Arc::new(TrustedProxies::none()),
         }
+    }
+
+    /// Proxy tepercaya untuk alamat klien (`TRUSTED_PROXY_CIDRS`, KEPUTUSAN-400); bawaan tidak ada.
+    #[must_use]
+    pub fn with_trusted_proxies(mut self, proxies: TrustedProxies) -> Self {
+        self.trusted_proxies = Arc::new(proxies);
+        self
     }
 
     /// Mengganti batas laju dan waktu respons minimum pendaftaran perusahaan (test dan konfigurasi).
@@ -257,15 +267,21 @@ pub(crate) fn all_routes() -> PolicyRouter<AppState> {
         .merge(corporate_router())
 }
 
-/// Memasang [`ClientIp`] dari alamat peer TCP (`ConnectInfo`, tersedia lewat
-/// `EnforcedRouter::serve_with_peer_addr`) untuk field "Sumber" audit (PRD §7.2) dan batas laju per sumber.
-/// Tidak ada header klien yang dipercaya (IP asli di balik proxy `[TIDAK DIKETAHUI]`, PT-39).
-async fn client_ip_middleware(mut req: Request, next: Next) -> Response {
-    if let Some(ip) = req
+/// Memasang [`ClientIp`] untuk field "Sumber" audit (PRD §7.2), E-05 penolakan, dan batas laju per sumber. Dasarnya
+/// alamat peer TCP (`ConnectInfo`, tersedia lewat `EnforcedRouter::serve_with_peer_addr`); `X-Forwarded-For` hanya
+/// dibaca bila peer termasuk proxy tepercaya, alamat paling kanan yang bukan proxy tepercaya
+/// ([`TrustedProxies::client_ip`], KEPUTUSAN-400, TD-22).
+async fn client_ip_middleware(
+    State(proxies): State<Arc<TrustedProxies>>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    if let Some(peer) = req
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
         .map(|c| c.0.ip())
     {
+        let ip = proxies.client_ip(peer, req.headers().get_all(FORWARDED_FOR_HEADER).iter());
         req.extensions_mut().insert(ClientIp(ip));
     }
     next.run(req).await
@@ -293,12 +309,16 @@ pub fn build_router(
     denials: DenialSink,
 ) -> Result<EnforcedRouter, PolicySetupError> {
     let corporate = Arc::new(CorporateDirectory::new(state.pool().clone()));
+    let proxies = Arc::clone(&state.trusted_proxies);
     let (router, _spec) = all_routes().finish(
         Enforcement::new(auth, resolver, sessions, denials).with_corporate_scopes(corporate),
     )?;
     Ok(router
         .with_state(state)
-        .layer(axum::middleware::from_fn(client_ip_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            proxies,
+            client_ip_middleware,
+        ))
         .layer(axum::middleware::from_fn(correlation_middleware)))
 }
 

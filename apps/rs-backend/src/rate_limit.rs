@@ -1,11 +1,14 @@
 //! Batas laju dalam proses untuk endpoint publik (F1-T94/F1-T93; ADR-012 butir 3 "batas laju per sumber dan
 //! batas laju global", ADR-027 butir 5, M-47 "anggaran batas laju publik terpisah dari API pasien").
 //!
-//! Jendela tetap 60 detik dengan dua anggaran: global (seluruh sumber) dan per sumber (alamat IP peer TCP,
+//! Jendela tetap 60 detik dengan dua anggaran: global (seluruh sumber) dan per sumber (alamat IP klien,
 //! `http_support::ClientAddr`). Penghitung hanya di memori satu proses `api`; batas laju terdistribusi di
 //! Valkey (ADR-007, ADR-025) dan batas per IP di Caddy belum terpasang, sehingga batas efektif = batas ini
-//! dikali jumlah instans. Di balik reverse proxy, "sumber" adalah proxy (IP klien asli `[TIDAK DIKETAHUI]`,
-//! PT-39), jadi anggaran per sumber praktis menjadi anggaran per proxy/BFF situs.
+//! dikali jumlah instans. Alamat klien = peer TCP, atau alamat dari `X-Forwarded-For` bila peer termasuk
+//! `TRUSTED_PROXY_CIDRS` (KEPUTUSAN-400). Tanpa daftar itu di balik reverse proxy, "sumber" adalah proxy dan
+//! anggaran per sumber praktis menjadi anggaran per proxy/BFF. Kunci IPv6 diagregasi per /64 ([`RateKey`],
+//! KEPUTUSAN-402, TD-56): satu klien IPv6 biasanya memegang satu /64, sehingga berganti alamat di dalamnya tidak
+//! memberi anggaran baru. Hanya kunci batas laju; `source_ip` audit tetap alamat penuh.
 //!
 //! Kunci sumber bawaan adalah alamat IP; pembatas yang sama dipakai dengan kunci ID akun untuk batas laju per
 //! pengguna terautentikasi (F1-T109, KEPUTUSAN-389: pengajuan ulang verifikasi perusahaan per akun HR).
@@ -15,7 +18,7 @@
 
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv6Addr};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -55,14 +58,53 @@ pub enum Verdict {
     },
 }
 
-/// Pembatas jendela tetap; aman dibagi antar-thread. `K` = kunci sumber (bawaan: alamat IP peer).
+/// Panjang prefiks agregasi kunci batas laju IPv6 (KEPUTUSAN-402).
+pub const IPV6_RATE_KEY_PREFIX: u8 = 64;
+
+/// Kunci sumber batas laju. [`RateKey::rate_key`] dipanggil sebelum menghitung, sehingga semua sumber yang
+/// dianggap satu pemilik berbagi satu penghitung.
+pub trait RateKey: Eq + Hash {
+    /// Kunci yang dihitung.
+    fn rate_key(self) -> Self;
+}
+
+/// Alamat IP klien: IPv4 apa adanya, IPv6 dinolkan di luar /64 ([`IPV6_RATE_KEY_PREFIX`]).
+impl RateKey for Option<IpAddr> {
+    fn rate_key(self) -> Self {
+        self.map(|ip| match ip.to_canonical() {
+            IpAddr::V6(a) => {
+                let mask = u128::MAX
+                    .checked_shl(128 - u32::from(IPV6_RATE_KEY_PREFIX))
+                    .unwrap_or(0);
+                IpAddr::V6(Ipv6Addr::from(u128::from(a) & mask))
+            }
+            v4 => v4,
+        })
+    }
+}
+
+/// ID akun (KEPUTUSAN-389): apa adanya.
+impl RateKey for foundation::Uuid {
+    fn rate_key(self) -> Self {
+        self
+    }
+}
+
+/// Kunci numerik (test): apa adanya.
+impl RateKey for u128 {
+    fn rate_key(self) -> Self {
+        self
+    }
+}
+
+/// Pembatas jendela tetap; aman dibagi antar-thread. `K` = kunci sumber (bawaan: alamat IP klien).
 #[derive(Debug)]
 pub struct RateLimiter<K = Option<IpAddr>> {
     budget: RateBudget,
     window: Mutex<Window<K>>,
 }
 
-impl<K: Eq + Hash> RateLimiter<K> {
+impl<K: RateKey> RateLimiter<K> {
     /// Pembatas baru. Anggaran 0 menolak semua permintaan (gagal-tertutup).
     pub fn new(budget: RateBudget) -> Self {
         Self {
@@ -88,6 +130,7 @@ impl<K: Eq + Hash> RateLimiter<K> {
 
     /// Mencatat satu permintaan pada instan `now` (untuk test).
     pub fn check_at(&self, source: K, now: Instant) -> Verdict {
+        let source = source.rate_key();
         // Mutex yang teracuni tetap dipakai: isinya hanya penghitung, tidak ada invarian yang rusak.
         let mut w = self.window.lock().unwrap_or_else(|e| e.into_inner());
         if now.saturating_duration_since(w.started) >= WINDOW {
@@ -164,6 +207,34 @@ mod tests {
             global: 0,
         });
         assert!(matches!(l.check(None), Verdict::Limited { .. }));
+    }
+
+    // trace: KEPUTUSAN-402, TD-56: alamat IPv6 dalam /64 yang sama berbagi anggaran; /64 lain dan IPv4 terpisah
+    #[test]
+    fn ipv6_sources_share_budget_per_slash_64() {
+        let l = RateLimiter::new(RateBudget {
+            per_source: 2,
+            global: 100,
+        });
+        let t = Instant::now();
+        let v6 = |s: &str| Some(s.parse::<IpAddr>().unwrap());
+        assert_eq!(l.check_at(v6("2001:db8:1:2::1"), t), Verdict::Allowed);
+        assert_eq!(l.check_at(v6("2001:db8:1:2:ffff::9"), t), Verdict::Allowed);
+        assert_eq!(
+            l.check_at(v6("2001:db8:1:2:abcd:1234:5678:9abc"), t),
+            Verdict::Limited { first: true }
+        );
+        assert_eq!(l.check_at(v6("2001:db8:1:3::1"), t), Verdict::Allowed);
+        // IPv4 tidak diagregasi; IPv4 yang dipetakan IPv6 sama dengan IPv4-nya.
+        assert_eq!(l.check_at(v6("198.51.100.1"), t), Verdict::Allowed);
+        assert_eq!(l.check_at(v6("198.51.100.2"), t), Verdict::Allowed);
+        assert_eq!(l.check_at(v6("::ffff:198.51.100.1"), t), Verdict::Allowed);
+        assert_eq!(
+            l.check_at(v6("198.51.100.1"), t),
+            Verdict::Limited { first: true }
+        );
+        assert_eq!(v6("2001:db8:1:2:abcd::1").rate_key(), v6("2001:db8:1:2::"));
+        assert_eq!(None::<IpAddr>.rate_key(), None);
     }
 
     // trace: F1-T109 KEPUTUSAN-389: kunci ID akun (batas per pengguna terautentikasi) memakai anggaran yang sama.

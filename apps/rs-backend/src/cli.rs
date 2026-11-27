@@ -619,6 +619,13 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
             consent_text_limit: Arc::new(RateLimiter::new(config.public_rate)),
         },
     );
+    // KEPUTUSAN-400 (TD-22): X-Forwarded-For hanya dipercaya dari proxy di TRUSTED_PROXY_CIDRS. Hanya jumlahnya
+    // yang dicatat. Production tanpa daftar sudah ditolak saat memuat konfigurasi (KEPUTUSAN-403).
+    tracing::info!(
+        networks = config.trusted_proxies.len(),
+        "trusted_proxies_loaded"
+    );
+    let state = state.with_trusted_proxies(config.trusted_proxies.clone());
     // KEPUTUSAN-289: production juga menolak teks draf di jalur layanan, bukan hanya di probe kesiapan.
     let state = if production {
         state.reject_consent_drafts()
@@ -631,8 +638,8 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         std::io::Error::other("policy_setup_failed")
     })?;
     tracing::info!(bind = %listener.local_addr()?, "api_listening");
-    // Alamat peer TCP (ConnectInfo -> authz::ClientIp) untuk sumber audit dan batas laju per sumber. Di balik
-    // reverse proxy alamat ini milik proxy; IP klien asli `[TIDAK DIKETAHUI]` (docs/05-stack.md, PT-39).
+    // Alamat peer TCP (ConnectInfo -> authz::ClientIp) untuk sumber audit dan batas laju per sumber; dari proxy
+    // tepercaya diganti alamat klien dari X-Forwarded-For (KEPUTUSAN-400).
     router
         .serve_with_peer_addr(listener, shutdown_signal())
         .await
