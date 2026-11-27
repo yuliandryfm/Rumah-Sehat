@@ -1,12 +1,11 @@
 import { Button } from "@rs/ui";
 import type { ReactNode } from "react";
-import { ITEM_BELUM_TERSEDIA, ITEM_NAV, type ItemNav } from "../lib/navigasi.ts";
+import { MENU, type ItemMenu } from "../lib/navigasi.ts";
 import { NavSamping } from "./NavSamping.tsx";
 
 export interface KerangkaKorporatProps {
   readonly csrfToken: string;
-  readonly daftarMenu?: readonly ItemNav[];
-  readonly belumTersedia?: readonly string[];
+  readonly menu?: readonly ItemMenu[];
   readonly children: ReactNode;
 }
 
@@ -15,12 +14,7 @@ export interface KerangkaKorporatProps {
  * samping, `<main id="isi">`. Identitas HR dan nama perusahaan belum ditampilkan: endpoint profil di API
  * Rust belum ada `[TIDAK DIKETAHUI]` (F1-T108). Keluar = formulir POST dengan field `csrf_token`.
  */
-export function KerangkaKorporat({
-  csrfToken,
-  daftarMenu = ITEM_NAV,
-  belumTersedia = ITEM_BELUM_TERSEDIA,
-  children,
-}: KerangkaKorporatProps) {
+export function KerangkaKorporat({ csrfToken, menu = MENU, children }: KerangkaKorporatProps) {
   return (
     <div className="kp-app">
       <a className="kp-skip" href="#isi">
@@ -36,7 +30,7 @@ export function KerangkaKorporat({
           </Button>
         </form>
       </header>
-      <NavSamping menu={daftarMenu} belumTersedia={belumTersedia} />
+      <NavSamping menu={menu} />
       <main id="isi" tabIndex={-1} className="kp-main">
         {children}
       </main>

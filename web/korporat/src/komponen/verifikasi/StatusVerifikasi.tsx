@@ -182,15 +182,20 @@ export function StatusVerifikasi({ csrfToken, klien, arahkan }: StatusVerifikasi
           <RingkasanStatus r={muatan.ringkasan} />
           <section aria-labelledby="judul-dokumen" className="kp-bagian">
             <h2 id="judul-dokumen">Dokumen perusahaan</h2>
+            <p>
+              {DOKUMEN.filter((d) => muatan.ringkasan.documents.some((x) => x.kind === d.jenis && x.uploaded)).length} dari{" "}
+              {DOKUMEN.length} dokumen sudah diunggah.
+            </p>
             <p className="kp-kecil" id="petunjuk-berkas">
               {PETUNJUK_BERKAS}
             </p>
-            {DOKUMEN.map((d) => {
+            {DOKUMEN.map((d, urutan) => {
               const status = muatan.ringkasan.documents.find((x) => x.kind === d.jenis) ?? { kind: d.jenis, uploaded: false };
               return (
                 <BarisDokumen
                   key={d.jenis}
                   jenis={d.jenis}
+                  urutan={urutan + 1}
                   status={status}
                   api={api}
                   onTerima={(r) => {
@@ -264,7 +269,7 @@ function Aktif() {
         <Badge tone={s.tone}>{s.label}</Badge>
       </p>
       <Alert variant="success" title="Perusahaan Anda sudah terverifikasi">
-        Dokumen perusahaan tidak perlu diunggah lagi. <Link href="/" prefetch={false}>Buka dasbor</Link>
+        Dokumen perusahaan tidak perlu diunggah lagi. <Link href="/" prefetch={false}>Kembali ke Beranda</Link>
       </Alert>
     </>
   );
@@ -423,13 +428,14 @@ function FormKoreksi({ ref, profil, isian, ubah, galat, onIsian, onUbah }: FormK
 
 interface BarisDokumenProps {
   readonly jenis: JenisDokumen;
+  readonly urutan: number;
   readonly status: StatusDokumen;
   readonly api: KlienVerifikasi;
   readonly onTerima: (r: Ringkasan) => void;
   readonly onGalatAkses: (g: Gagal) => void;
 }
 
-function BarisDokumen({ jenis, status, api, onTerima, onGalatAkses }: BarisDokumenProps) {
+function BarisDokumen({ jenis, urutan, status, api, onTerima, onGalatAkses }: BarisDokumenProps) {
   const id = useId();
   const label = labelDokumen(jenis);
   const bantuan = DOKUMEN.find((d) => d.jenis === jenis)?.bantuan ?? "";
@@ -490,6 +496,9 @@ function BarisDokumen({ jenis, status, api, onTerima, onGalatAkses }: BarisDokum
 
   return (
     <div className="kp-dokumen" role="group" aria-labelledby={`${id}-judul`}>
+      <p className="kp-kecil kp-langkah-ke">
+        Langkah {urutan} dari {DOKUMEN.length}
+      </p>
       <div className="kp-baris-status">
         <h3 id={`${id}-judul`}>{label}</h3>
         <Badge tone={status.uploaded ? "success" : "neutral"}>{status.uploaded ? "Terunggah" : "Belum diunggah"}</Badge>

@@ -24,7 +24,7 @@ main:focus { outline: none; }
 .kp-logo { font-size: var(--t-title-size); font-weight: 700; color: var(--c-primary-strong); }
 .kp-kecil { font-size: var(--t-body-sm-size); line-height: var(--t-body-sm-line); }
 .kp-side { background: var(--c-bg-surface); border-right: 1px solid var(--c-border-divider); padding: var(--s3); display: flex; flex-direction: column; gap: 2px; }
-.kp-side a { min-height: 40px; display: flex; align-items: center; padding: 0 var(--s3); border-radius: var(--r-md); color: var(--c-text-primary); text-decoration: none; }
+.kp-side a { min-height: 44px; display: flex; align-items: center; padding: 0 var(--s3); border-radius: var(--r-md); color: var(--c-text-primary); text-decoration: none; }
 .kp-side a:hover { background: var(--c-bg-neutral); }
 .kp-side a[aria-current="page"] { background: var(--c-mint); color: var(--c-primary-strong); font-weight: 700; }
 .kp-main { padding: var(--s6); }
@@ -41,11 +41,22 @@ main:focus { outline: none; }
   .kp-side { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--c-border-divider); }
 }
 
-/* Navigasi layanan yang belum tersedia (K01 layar 9). */
-.kp-sec { padding: var(--s3) var(--s3) 0; font-size: var(--t-caption-size); line-height: var(--t-caption-line); color: var(--c-text-secondary); text-transform: uppercase; }
-.kp-nonaktif { min-height: 40px; display: flex; align-items: center; padding: 0 var(--s3); color: var(--c-text-secondary); }
+/* Item menu "segera hadir" (CR-039): abu-abu, bukan tautan. */
+.kp-nonaktif { min-height: 44px; gap: var(--s1); display: flex; align-items: center; padding: 0 var(--s3); color: var(--c-text-secondary); }
 
-/* Dasbor dan Kelola HR (F1-T108). */
+/* Beranda "sederhana dan memandu" (CR-039, Q32): satu status, satu tombol utama, target sentuh >= 44 px (DG §7). */
+.kp-beranda { display: flex; flex-direction: column; gap: var(--s3); max-width: 560px; }
+.kp-beranda h2 { font-size: var(--t-title-lg-size); line-height: var(--t-title-lg-line); margin: 0; }
+.kp-beranda p { margin: 0; }
+.kp-aksi-utama { min-height: 48px; }
+.kp-aksi-utama:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.kp-langkah-ke { margin: 0; color: var(--c-text-secondary); }
+@media (max-width: 767px) {
+  .kp-main { padding: var(--s4); }
+  .kp-aksi-utama { display: flex; width: 100%; }
+}
+
+/* Tim HR dan bagian umum (F1-T108). */
 .kp-bagian { max-width: 640px; display: flex; flex-direction: column; gap: var(--s3); }
 .kp-kartu { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s4); margin-top: var(--s4); }
 .kp-kartu .rs-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); }

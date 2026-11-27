@@ -2,28 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ItemNav } from "../lib/navigasi.ts";
+import { LABEL_SEGERA_HADIR, type ItemMenu } from "../lib/navigasi.ts";
+
+const cocok = (jalur: string, rute: string): boolean =>
+  rute === "/" ? jalur === "/" : jalur === rute || jalur.startsWith(`${rute}/`);
 
 /**
- * Navigasi samping. Klien hanya untuk menandai halaman aktif (`aria-current`); tautan tetap biasa.
- * Layanan yang belum ada tampil sebagai teks nonaktif dengan alasan tertulis "belum tersedia" (K01 layar 9).
+ * Navigasi. Klien hanya untuk menandai halaman aktif (`aria-current`); tautan tetap biasa.
+ * Item tanpa halaman tampil sebagai teks abu-abu "segera hadir" (`aria-disabled`), bukan tautan (CR-039).
  */
-export function NavSamping({ menu, belumTersedia }: { menu: readonly ItemNav[]; belumTersedia: readonly string[] }) {
+export function NavSamping({ menu }: { menu: readonly ItemMenu[] }) {
   const jalur = usePathname();
-  const aktif = (href: string) => (href === "/" ? jalur === "/" : jalur === href || jalur.startsWith(`${href}/`));
+  const aktif = (i: ItemMenu) => [i.href, ...(i.cakup ?? [])].some((r) => r !== undefined && cocok(jalur, r));
   return (
     <nav className="kp-side" aria-label="Menu">
-      {menu.map((i) => (
-        <Link key={i.href} href={i.href} prefetch={false} aria-current={aktif(i.href) ? "page" : undefined}>
-          {i.label}
-        </Link>
-      ))}
-      {belumTersedia.length === 0 ? null : <span className="kp-sec">Layanan korporat</span>}
-      {belumTersedia.map((nama) => (
-        <span key={nama} className="kp-nonaktif" aria-disabled="true">
-          {nama} (belum tersedia)
-        </span>
-      ))}
+      {menu.map((i) =>
+        i.href === undefined ? (
+          <span key={i.label} className="kp-nonaktif" aria-disabled="true">
+            {i.label} <span className="kp-kecil">({LABEL_SEGERA_HADIR})</span>
+          </span>
+        ) : (
+          <Link key={i.label} href={i.href} prefetch={false} aria-current={aktif(i) ? "page" : undefined}>
+            {i.label}
+          </Link>
+        ),
+      )}
     </nav>
   );
 }

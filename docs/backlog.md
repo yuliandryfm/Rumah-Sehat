@@ -680,6 +680,12 @@ Isi: (1) menu lipat "Menu" diganti deretan tujuh tautan di header (di layar semp
 **Berbeda dari permintaan:** pedoman merek resmi (SRC-945–947) melarang logo Apple berdiri sendiri dan mengarahkan lencana resmi untuk ajakan unduh; aset lencana hanya terunduh setelah menyetujui perjanjian lisensi atas nama pemegang akun pengembang (Apple: hanya untuk aplikasi yang sudah ada di App Store). Agent tidak dapat menyetujuinya, sehingga sementara tautan berupa teks "Google Play" dan "App Store"; lencana resmi menunggu aset dari pemilik akun (KEPUTUSAN-422).
 Status: sebagian diimplementasikan (butir 1 dan 3 selesai, butir 2 teks sementara); menunggu review T1 dan keputusan user soal aset lencana.
 
+### CR-039: Web korporat "sederhana dan memandu" dengan lima menu (Beranda, Pesanan, Peserta, Tagihan, Tim HR)
+
+Diajukan dan diputuskan: 2026-11-27, arahan user `[USER]` (Q32 "ya" untuk arah tampilan "sederhana dan memandu"; "Ya" untuk lima menu). Persona: HR perusahaan pelanggan, sibuk, bukan orang teknis, "tidak mau yang ribet".
+Isi: (1) Beranda menampilkan status perusahaan dan satu tombol langkah berikutnya, bukan dasbor angka (KEPUTUSAN-431); (2) menu Beranda, Pesanan, Peserta, Tagihan, Tim HR; fitur yang belum ada abu-abu "segera hadir"; "Invoice" menjadi "Tagihan", "Kelola HR" menjadi "Tim HR" (KEPUTUSAN-430); (3) status verifikasi tetap di `/verifikasi`, dicapai dari Beranda, ditambah penanda "Langkah x dari 3" (KEPUTUSAN-432); (4) target sentuh 44 px dan mobile-first (KEPUTUSAN-433). Tanpa perubahan backend, OpenAPI, BFF, dan dependensi.
+Status: diimplementasikan di `web/korporat` (commit tertera di papan); menunggu review T1 (BFF). Catatan: PRD US-1904 dan wireframe K01 layar 9 menyebut "Dasbor" dan "Invoice"; nama baru mengikuti keputusan user, penyelarasan PRD/wireframe bila diperlukan dilakukan orkestrator.
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |

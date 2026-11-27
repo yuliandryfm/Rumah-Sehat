@@ -1,9 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import * as halamanDasbor from "../../app/(terautentikasi)/page.tsx";
 import * as halamanKelola from "../../app/(terautentikasi)/kelola-hr/page.tsx";
 import { buatKlienHr, galat, type AnggotaHr, type KlienHr } from "../../lib/hr/klien.ts";
-import { DasborHr } from "./DasborHr.tsx";
 import { PESAN_UNDANGAN_DIPROSES } from "../../lib/hr/model.ts";
 import { KelolaHr } from "./KelolaHr.tsx";
 
@@ -44,47 +42,14 @@ afterEach(() => {
   cleanup();
 });
 
-describe("DasborHr", () => {
-  test("perusahaan Aktif: status, jumlah HR aktif, tautan Kelola HR; layanan korporat belum tersedia", async () => {
-    render(<DasborHr csrfToken="t" klien={klien()} />);
-    expect(await screen.findByText("Perusahaan terverifikasi")).toBeDefined();
-    expect(screen.getByTestId("jumlah-hr-aktif").textContent).toBe("2");
-    expect(screen.getByRole("link", { name: "Kelola HR" }).getAttribute("href")).toBe("/kelola-hr");
-    expect(screen.getByText(/Belum tersedia/)).toBeDefined();
-    expect(document.body.textContent).not.toMatch(/hasil pemeriksaan|diagnosis/i);
-  });
-
-  test("403 perusahaan belum Aktif → layar akses ditolak tanpa menebak status verifikasi", async () => {
-    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(403) })} />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Menu ini belum dapat dipakai" })).toBeDefined();
-    expect(screen.queryByText("Perusahaan terverifikasi")).toBeNull();
-    expect(document.body.textContent).not.toMatch(/ditolak karena|alasan penolakan/i);
-    // F1-T103: status dan dokumen ada di halaman Status verifikasi, bukan ditebak di sini.
-    expect(screen.getByRole("link", { name: "Lihat status verifikasi dan dokumen perusahaan" }).getAttribute("href")).toBe("/verifikasi");
-  });
-
-  test("401 4010002 → layar akun nonaktif (hanya pemegang sesi sah), tanpa data HR", async () => {
-    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(401, "4010002") })} />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Akun nonaktif" })).toBeDefined();
-    expect(screen.getByRole("alert").textContent).toContain("Layanan Pelanggan");
-    expect(screen.queryByTestId("jumlah-hr-aktif")).toBeNull();
-  });
-
-  test("401 lain (sesi berakhir) → dialihkan ke /auth/login", async () => {
-    const arahkan = vi.fn();
-    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(401, "4010001") })} arahkan={arahkan} />);
-    await waitFor(() => { expect(arahkan).toHaveBeenCalledWith("/auth/login"); });
-    expect(screen.getByRole("link", { name: "Masuk lagi" }).getAttribute("href")).toBe("/auth/login");
-  });
-
-  test("503 → pesan galat umum, bukan layar akses", async () => {
-    render(<DasborHr csrfToken="t" klien={klien({ daftar: () => gagal(503) })} />);
-    expect(await screen.findByText("Dasbor tidak dapat dimuat")).toBeDefined();
-    expect(screen.getByRole("alert").textContent).toContain("Layanan sedang tidak tersedia");
-  });
-});
-
 describe("KelolaHr", () => {
+  test("CR-039: judul halaman 'Tim HR' (bukan 'Kelola HR')", async () => {
+    render(<KelolaHr csrfToken="t" klien={klien()} />);
+    await screen.findByRole("table");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tim HR");
+    expect(document.body.textContent).not.toContain("Kelola HR");
+  });
+
   test("daftar: status dengan teks, diri sendiri tanpa tombol, nonaktif tanpa tombol, tombol Undang HR aktif", async () => {
     render(<KelolaHr csrfToken="t" klien={klien()} />);
     const tabel = await screen.findByRole("table");
@@ -374,8 +339,7 @@ describe("klien HR", () => {
 });
 
 describe("halaman", () => {
-  test("rute dasbor dan kelola HR mengekspor halaman server (tanpa sesi → login lewat wajibSesi)", () => {
-    expect(typeof halamanDasbor.default).toBe("function");
+  test("rute Beranda dan Tim HR mengekspor halaman server (tanpa sesi → login lewat wajibSesi)", () => {
     expect(typeof halamanKelola.default).toBe("function");
   });
 });
