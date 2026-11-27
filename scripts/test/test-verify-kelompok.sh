@@ -38,9 +38,20 @@ periksa_skrip() {
   mkdir -p "$d/scripts/test"
   cp "$skrip" "$d/scripts/test/test-verify.sh"
   pasangan="$(bash "$d/scripts/test/test-verify.sh" --daftar)" || { echo "  --daftar gagal" >&2; return 1; }
-  # Daftar fungsi dari bash sendiri (declare -F), jadi bentuk penulisan apa pun terhitung (N-4):
-  # blok_x() {, blok_x () {, function blok_x {.
-  fungsi="$(bash "$d/scripts/test/test-verify.sh" --daftar-fungsi)" || { echo "  --daftar-fungsi gagal" >&2; return 1; }
+  # Daftar fungsi = gabungan dua sumber (R-1, KEPUTUSAN-394):
+  #   (a) bash sendiri (`--daftar-fungsi`, declare -F): gaya penulisan apa pun terhitung, tetapi hanya fungsi yang
+  #       benar-benar terdefinisi sebelum alur utama;
+  #   (b) pindaian teks semua gaya (blok_x() {, blok_x () {, function blok_x {, function blok_x() {): menangkap fungsi
+  #       yang ditaruh setelah alur utama atau exit, yang tidak pernah terdefinisi sehingga fixture-nya tidak pernah jalan.
+  # Fungsi yang ada di teks tetapi tidak di (a) membuat pemeriksa GAGAL.
+  fungsi_bash="$(bash "$d/scripts/test/test-verify.sh" --daftar-fungsi)" || { echo "  --daftar-fungsi gagal" >&2; return 1; }
+  fungsi_teks="$(sed -nE 's/^[[:space:]]*(function[[:space:]]+)?(blok_[a-z0-9_]+)[[:space:]]*(\(\))?[[:space:]]*\{.*/\2/p' "$skrip" | sort -u)"
+  tersembunyi="$(comm -13 <(printf '%s\n' "$fungsi_bash" | sort -u) <(printf '%s\n' "$fungsi_teks"))"
+  if [ -n "$tersembunyi" ]; then
+    echo "  fungsi blok_ didefinisikan setelah alur utama (tidak pernah terdefinisi, fixture tidak jalan): $(printf '%s\n' "$tersembunyi" | tr '\n' ' ')" >&2
+    ok=1
+  fi
+  fungsi="$(printf '%s\n%s\n' "$fungsi_bash" "$fungsi_teks" | sed '/^$/d' | sort -u)"
   terdaftar="$(printf '%s\n' "$pasangan" | awk 'NF == 2 { print "blok_" $2 }' | sort)"
   if [ -z "$fungsi" ]; then
     echo "  tidak ada fungsi blok_ di $skrip" >&2
@@ -144,6 +155,17 @@ k=0
 periksa_skrip "$KERJA/gaya2.sh" 2>"$KERJA/gaya2.err" || k=$?
 hasil "negatif-blok-gaya-function-gagal" "$k" 1
 grep -q 'blok_gaya_function' "$KERJA/gaya2.err" && hasil "negatif-blok-gaya-function-pesan" 0 0 || hasil "negatif-blok-gaya-function-pesan" 1 0
+
+# R-1: blok di akhir berkas (setelah alur utama dan exit) tidak pernah terdefinisi; harus GAGAL walau terdaftar di kelompok.
+{ cat "$ASLI"; printf 'blok_di_akhir() {\n  :\n}\n'; } >"$KERJA/akhir.sh"
+k=0
+periksa_skrip "$KERJA/akhir.sh" 2>"$KERJA/akhir.err" || k=$?
+hasil "negatif-blok-di-akhir-berkas-gagal" "$k" 1
+grep -q 'setelah alur utama' "$KERJA/akhir.err" && grep -q 'blok_di_akhir' "$KERJA/akhir.err" && hasil "negatif-blok-di-akhir-pesan" 0 0 || hasil "negatif-blok-di-akhir-pesan" 1 0
+{ cat "$ASLI"; printf 'function blok_di_akhir_f {\n  :\n}\n'; } >"$KERJA/akhir2.sh"
+k=0
+periksa_skrip "$KERJA/akhir2.sh" 2>"$KERJA/akhir2.err" || k=$?
+hasil "negatif-blok-function-di-akhir-gagal" "$k" 1
 
 # Blok dicabut dari kelompok.
 sed 's/^    web-a) echo "web_artefak web_lock_basi" ;;$/    web-a) echo "web_artefak" ;;/' "$ASLI" >"$KERJA/dicabut.sh"
