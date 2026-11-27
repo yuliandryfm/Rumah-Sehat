@@ -620,10 +620,7 @@ async fn serve(config: ApiConfig) -> std::io::Result<()> {
         },
     );
     // KEPUTUSAN-400 (TD-22): X-Forwarded-For hanya dipercaya dari proxy di TRUSTED_PROXY_CIDRS. Hanya jumlahnya
-    // yang dicatat. Production tanpa proxy tepercaya di balik Caddy = batas laju per sumber menjadi global.
-    if production && config.trusted_proxies.is_empty() {
-        tracing::warn!("trusted_proxies_empty");
-    }
+    // yang dicatat. Production tanpa daftar sudah ditolak saat memuat konfigurasi (KEPUTUSAN-403).
     tracing::info!(
         networks = config.trusted_proxies.len(),
         "trusted_proxies_loaded"

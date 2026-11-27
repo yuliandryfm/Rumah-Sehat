@@ -54,8 +54,9 @@ pub struct ApiConfig {
     /// teknis; lalu lintas situs yang diharapkan `[TIDAK DIKETAHUI]`. Berlaku terpisah untuk konten, gambar, dan teks
     /// persetujuan pendaftaran (F1-T49).
     pub public_rate: RateBudget,
-    /// `TRUSTED_PROXY_CIDRS` (KEPUTUSAN-400, TD-22): alamat atau CIDR proxy tepercaya dipisah koma (alamat/jaringan
-    /// Caddy di depan API). Tidak diisi = tidak ada proxy tepercaya (alamat klien = peer TCP). Diisi tetapi kosong
+    /// `TRUSTED_PROXY_CIDRS` (KEPUTUSAN-400, TD-22): alamat atau CIDR proxy tepercaya dipisah koma (alamat Caddy di
+    /// depan API, `/32`). Tidak diisi = tidak ada proxy tepercaya (alamat klien = peer TCP); di
+    /// `DEPLOY_ENV=production` wajib diisi (KEPUTUSAN-403). Diisi tetapi kosong
     /// atau tidak valid (prefiks 0, bit host, nama host, port, zona, lebih dari 64 entri) = start gagal tanpa
     /// mencetak nilainya.
     pub trusted_proxies: TrustedProxies,
@@ -165,7 +166,7 @@ impl std::str::FromStr for PoolSize {
 impl ApiConfig {
     /// Memuat dari sumber; nilai tidak valid menggagalkan start tanpa mencetak nilainya.
     pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
-        Ok(Self {
+        let config = Self {
             base: BaseConfig::load(env)?,
             problem_type_base: env
                 .optional_or("PROBLEM_TYPE_BASE", DEFAULT_PROBLEM_TYPE_BASE.to_string())?,
@@ -208,7 +209,15 @@ impl ApiConfig {
                 global: env.optional_or("PUBLIC_RATE_LIMIT_GLOBAL_PER_MINUTE", 3_000)?,
             },
             trusted_proxies: env.optional_or("TRUSTED_PROXY_CIDRS", TrustedProxies::none())?,
-        })
+        };
+        // KEPUTUSAN-403: production selalu di balik Caddy; tanpa proxy tepercaya batas laju per sumber menjadi
+        // global (ADR-031), jadi `TRUSTED_PROXY_CIDRS` wajib diisi (start gagal bila tidak).
+        if config.files.object_storage.deployment == object_storage::Deployment::Production
+            && config.trusted_proxies.is_empty()
+        {
+            return Err(ConfigError::invalid("TRUSTED_PROXY_CIDRS"));
+        }
+        Ok(config)
     }
 }
 
@@ -877,6 +886,40 @@ mod tests {
                 "{shown}"
             );
         }
+    }
+
+    // trace: KEPUTUSAN-403 (production tanpa proxy tepercaya = start gagal; staging/local boleh tanpa)
+    #[test]
+    fn production_requires_trusted_proxy_cidrs() {
+        let prod = [
+            ("DEPLOY_ENV", "production"),
+            (
+                "OBJECT_STORAGE_ENDPOINT",
+                "https://objek.ruang-sehat.invalid",
+            ),
+        ];
+        let e = ApiConfig::load(&api_env(&prod)).unwrap_err();
+        assert_eq!(
+            (e.kind(), e.name()),
+            (ConfigErrorKind::Invalid, "TRUSTED_PROXY_CIDRS")
+        );
+        let mut with = prod.to_vec();
+        with.push(("TRUSTED_PROXY_CIDRS", "172.30.0.10/32"));
+        assert_eq!(
+            ApiConfig::load(&api_env(&with))
+                .unwrap()
+                .trusted_proxies
+                .len(),
+            1
+        );
+        let staging = [
+            ("DEPLOY_ENV", "staging"),
+            (
+                "OBJECT_STORAGE_ENDPOINT",
+                "https://objek.ruang-sehat.invalid",
+            ),
+        ];
+        assert!(ApiConfig::load(&api_env(&staging)).is_ok());
     }
 
     #[test]

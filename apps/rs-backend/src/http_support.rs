@@ -118,7 +118,8 @@ pub const FORWARDED_FOR_HEADER: &str = "x-forwarded-for";
 /// (pakai peer TCP). Caddy di depan API mengirim satu alamat (SRC-926), jadi batas ini hanya tercapai bila ada
 /// proxy tepercaya yang meneruskan rantai panjang.
 pub const MAX_FORWARDED_FOR_BYTES: usize = 1024;
-/// Jumlah entri maksimum yang diperiksa dari kanan; bila belum menemukan alamat tak tepercaya = tidak valid.
+/// Jumlah entri maksimum yang diperiksa dari kanan, termasuk alamat klien: paling banyak 15 entri tepercaya lalu
+/// 1 alamat klien. Bila entri ke-16 dari kanan masih tepercaya = tidak valid (KEPUTUSAN-401, diperjelas KEPUTUSAN-404).
 pub const MAX_FORWARDED_FOR_HOPS: usize = 16;
 /// Jumlah jaringan maksimum di `TRUSTED_PROXY_CIDRS`.
 pub const MAX_TRUSTED_PROXY_NETWORKS: usize = 64;
@@ -243,8 +244,8 @@ impl TrustedProxies {
     ///   semua entri tepercaya, entri paling kiri. Entri di kiri alamat terpilih tidak pernah dibaca, sehingga
     ///   nilai palsu kiriman klien di kiri tidak berpengaruh.
     /// - Header tidak ada, bukan teks ASCII, lebih dari [`MAX_FORWARDED_FOR_BYTES`], entri yang perlu dibaca
-    ///   bukan alamat IP polos (port, kurung siku, zona, kosong), atau lebih dari [`MAX_FORWARDED_FOR_HOPS`]
-    ///   entri tepercaya: `peer`.
+    ///   bukan alamat IP polos (port, kurung siku, zona, kosong), atau alamat tak tepercaya tidak ditemukan dalam
+    ///   [`MAX_FORWARDED_FOR_HOPS`] entri dari kanan (lebih dari 15 entri tepercaya berturut-turut): `peer`.
     ///
     /// Alamat IPv6 yang memetakan IPv4 dinormalkan ke IPv4, supaya satu klien tidak punya dua kunci batas laju.
     pub fn client_ip<'a>(
