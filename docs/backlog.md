@@ -197,7 +197,7 @@ Story yang terblokir pertanyaan terbuka: US-1605 dan US-1606 (PT-24, L-06). Stor
 
 | Story | Judul | Induk BR | Prioritas | Fase | Status |
 | --- | --- | --- | --- | --- | --- |
-| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | 1 (event fase berikutnya ditambahkan per story; peringatan email AC3 di Fase 2 setelah EN-16; DoR AC terpenuhi, PRD v1.2 final) | Backlog |
+| US-1501 | Pencatatan event audit | BR-080, BR-081, BR-107 | Must | 1 (event fase berikutnya ditambahkan per story; peringatan email AC3 di Fase 2 setelah EN-16; DoR AC terpenuhi, PRD v1.2 final) | Sebagian: F1-T69 (pustaka + inventaris pemancar); F1-T109 event korporat selesai, commit F1T109HASH (tabel cakupan aksi korporat di `docs/traceability.md` bagian "Cakupan audit korporat"; realm `korporat` bawaan pengambil event E-01–E-04 + tenant HR, E-16 dokumen diganti, E-10 gagal untuk keputusan/pengajuan ulang yang ditolak aturan, pemeriksa bersama `assert_corporate_events_clean`, test rantai `corporate_audit_chain.rs`; KEPUTUSAN-380–385; menunggu review T1 security + DBA) |
 | US-1502 | Halaman Audit Log | BR-080 | Must | 3 | Backlog |
 | US-1503 | Export audit log | BR-080 | Must | 3 | Backlog |
 | US-1504 | Perlindungan audit log | BR-080 | Must | 1 (DoR AC terpenuhi, PRD v1.2 final; peringatan email AC3 di Fase 2) | Backlog |

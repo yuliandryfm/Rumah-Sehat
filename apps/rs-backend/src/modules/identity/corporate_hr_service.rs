@@ -159,6 +159,38 @@ static CORPORATE_ADMIN_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical
     ],
 );
 
+// trace: F1-T109 (US-1501 AC2, PRD §7.3, DD A20): objek akun HR tidak menerima email, nama, jabatan, atau data
+// perusahaan; alasan teks hanya nama field.
+#[cfg(test)]
+#[test]
+fn corporate_admin_account_policy_admits_no_personal_or_company_value() {
+    assert!(CORPORATE_ADMIN_ACCOUNT_POLICY.validate().is_ok());
+    for f in [
+        "email",
+        "full_name",
+        "job_title",
+        "npwp",
+        "nib",
+        "legal_name",
+        "office_address",
+        "office_phone",
+    ] {
+        assert!(
+            CORPORATE_ADMIN_ACCOUNT_POLICY
+                .fields()
+                .iter()
+                .all(|r| r.name() != f),
+            "{f}"
+        );
+    }
+    assert!(
+        CORPORATE_ADMIN_ACCOUNT_POLICY
+            .fields()
+            .iter()
+            .any(|r| r.name() == "status_reason" && r.kind() == audit::FieldKind::NameOnly)
+    );
+}
+
 /// Alasan penonaktifan (`account.status_reason`, `corporate_member.delete_reason`).
 const DEACTIVATION_REASON: &str = "deactivated_by_corporate_hr";
 

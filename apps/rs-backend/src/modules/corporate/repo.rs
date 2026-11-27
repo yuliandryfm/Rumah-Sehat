@@ -32,6 +32,33 @@ pub(super) async fn active_membership(
     .await
 }
 
+/// Perusahaan tenant audit akun HR `account_id` (F1-T109, KEPUTUSAN-381): keanggotaan aktif lebih dulu (index
+/// `uqp_corporate_member_account_id`); bila sudah dicabut, keanggotaan terakhir yang dihapus lunak (penonaktifan
+/// HR diikuti job IdP dan event logout yang tetap milik perusahaan itu). Langkah kedua tanpa index `account_id`
+/// penuh: dipanggil hanya untuk akun HR tanpa keanggotaan aktif (jarang), atas tabel kecil (satu baris per HR).
+pub(super) async fn hr_account_tenant(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    let active = sqlx::query_scalar!(
+        "SELECT corporate_client_id FROM app.corporate_member \
+         WHERE account_id = $1 AND deleted_at IS NULL",
+        account_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if active.is_some() {
+        return Ok(active);
+    }
+    sqlx::query_scalar!(
+        "SELECT corporate_client_id FROM app.corporate_member \
+         WHERE account_id = $1 ORDER BY deleted_at DESC NULLS LAST, id DESC LIMIT 1",
+        account_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await
+}
+
 // ----- verifikasi perusahaan (F1-T104, US-1902) -----
 
 /// Satu pengajuan di antrean (tanpa NPWP: NPWP hanya di detail, klasifikasi Terbatas DD A20).

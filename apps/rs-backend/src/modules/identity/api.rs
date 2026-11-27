@@ -147,7 +147,8 @@ impl FromStr for TimeoutSecs {
 pub struct KeycloakEventConfig {
     /// `KEYCLOAK_ADMIN_URL`: `http://<ip-loopback>:<port>` (TLS lintas host belum diterapkan).
     pub keycloak_url: KeycloakAddress,
-    /// `KEYCLOAK_EVENT_REALMS` (bawaan `pasien,admin`, realm yang sudah ada sebagai kode).
+    /// `KEYCLOAK_EVENT_REALMS` (bawaan `pasien,admin,korporat`, realm yang sudah ada sebagai kode; `korporat`
+    /// sejak F1-T109, KEPUTUSAN-380: E-01–E-04 akun HR).
     pub realms: RealmList,
     /// `KEYCLOAK_EVENT_CLIENT_ID` (bawaan [`DEFAULT_EVENT_CLIENT_ID`]).
     pub client_id: String,
@@ -176,7 +177,7 @@ impl KeycloakEventConfig {
     pub fn load(env: &EnvSource) -> Result<Self, ConfigError> {
         let realms: RealmList = env.optional_or(
             "KEYCLOAK_EVENT_REALMS",
-            RealmList(vec![IdpRealm::Pasien, IdpRealm::Admin]),
+            RealmList(vec![IdpRealm::Pasien, IdpRealm::Admin, IdpRealm::Korporat]),
         )?;
         let client_id: String = env.optional_or(
             "KEYCLOAK_EVENT_CLIENT_ID",
@@ -252,13 +253,17 @@ mod tests {
             ("KEYCLOAK_ADMIN_URL", "http://127.0.0.1:18081"),
             ("KEYCLOAK_EVENT_SECRET_PASIEN", "rahasia-pasien"),
             ("KEYCLOAK_EVENT_SECRET_ADMIN", "rahasia-admin"),
+            ("KEYCLOAK_EVENT_SECRET_KORPORAT", "rahasia-korporat"),
         ]
     }
 
     #[test]
     fn defaults_follow_adr_011() {
         let c = KeycloakEventConfig::load(&EnvSource::from_pairs(base())).unwrap();
-        assert_eq!(c.realms.realms(), &[IdpRealm::Pasien, IdpRealm::Admin]);
+        assert_eq!(
+            c.realms.realms(),
+            &[IdpRealm::Pasien, IdpRealm::Admin, IdpRealm::Korporat]
+        );
         assert_eq!(c.client_id, DEFAULT_EVENT_CLIENT_ID);
         assert_eq!(c.poll_interval(), Duration::from_secs(60));
         let o = c.options();

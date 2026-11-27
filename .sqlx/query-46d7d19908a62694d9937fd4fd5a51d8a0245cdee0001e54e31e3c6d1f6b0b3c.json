@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT corporate_client_id FROM app.corporate_member WHERE account_id = $1 ORDER BY deleted_at DESC NULLS LAST, id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "corporate_client_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "corporate_member",
+            "name": "corporate_client_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "46d7d19908a62694d9937fd4fd5a51d8a0245cdee0001e54e31e3c6d1f6b0b3c"
+}

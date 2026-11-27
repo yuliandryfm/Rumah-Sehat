@@ -492,6 +492,36 @@ impl Env {
     }
 }
 
+/// Perusahaan sintetis dan keanggotaan akun HR `account_id` (tenant event worker, F1-T109).
+async fn bind_to_company(pool: &PgPool, account_id: Uuid) -> Uuid {
+    let company = new_id();
+    let digits = |n: usize| -> String {
+        let tail = new_id().as_u128().to_string();
+        format!("99{}", &tail[tail.len() - (n - 2)..])
+    };
+    sqlx::query(
+        "INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) \
+         VALUES ($1, 'PT Worker Sintetis', $2, $3, 'Jl. Worker Sintetis', '0210000009', 'pending_verification', \
+                 'self_registered')",
+    )
+    .bind(company)
+    .bind(digits(13))
+    .bind(digits(16))
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO app.corporate_member (id, account_id, corporate_client_id) VALUES ($1, $2, $3)",
+    )
+    .bind(new_id())
+    .bind(account_id)
+    .bind(company)
+    .execute(pool)
+    .await
+    .unwrap();
+    company
+}
+
 fn email(tag: &str) -> String {
     format!(
         "hr-{tag}-{}@contoh.invalid",
@@ -508,6 +538,7 @@ async fn create_user_adopts_after_crash_and_lease_loss_without_duplicates() {
     let env = start().await;
     let mail = email("adopsi");
     let p = env.register(&mail, IntentPurpose::HrSelfRegistration).await;
+    let company = bind_to_company(&env.pool, p.account_id).await;
     assert_eq!(env.account(p.account_id).await.0, "pending_provisioning");
     assert_eq!(env.intent_status(p.intent_id).await, "pending");
 
@@ -612,6 +643,15 @@ async fn create_user_adopts_after_crash_and_lease_loss_without_duplicates() {
     assert_eq!(events.len(), 2);
     assert_event_complete(&events[1], "e_10");
     assert_eq!(events[1]["action_name"], "idp_activation_email_sent");
+    // F1-T109 (KEPUTUSAN-381): hasil worker atas akun HR bertenant perusahaannya; tanpa email atau ID pengguna
+    // Keycloak.
+    let tenant = company.to_string();
+    audit_support::assert_corporate_events_clean(
+        &events,
+        &["e_10"],
+        Some(&tenant),
+        &[mail.as_str(), kc_id.as_str(), "PT Worker Sintetis"],
+    );
 
     env.assert_no_email_in_job_or_intent(&mail).await;
 }
@@ -658,6 +698,8 @@ async fn activation_and_orphan_deletion_refuse_credentialed_or_foreign_users() {
     assert_event_complete(refused, "e_10");
     assert_eq!(refused["action_name"], "idp_activation_email_refused");
     assert_eq!(refused["outcome_reason_code"], "idp_user_credentialed");
+    // F1-T109: akun HR yang belum pernah menjadi anggota perusahaan = tanpa tenant (tidak ditebak).
+    assert!(refused["tenant_id"].is_null(), "{refused}");
 
     // (b) Atribut rs_intent_id milik niat lain: ditolak.
     let p2 = env

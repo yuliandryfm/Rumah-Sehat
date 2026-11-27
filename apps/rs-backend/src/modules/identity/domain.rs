@@ -232,6 +232,7 @@ fn component_for_client(client_id: &str) -> Option<SourceComponent> {
         "rs-pasien-mobile" => Some(SourceComponent::PatientApp),
         "rs-backoffice-bff" => Some(SourceComponent::Backoffice),
         "rs-portal-bff" => Some(SourceComponent::PartnerPortal),
+        "rs-korporat-bff" => Some(SourceComponent::CorporatePortal),
         _ => None,
     }
 }

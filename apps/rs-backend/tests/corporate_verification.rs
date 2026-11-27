@@ -529,6 +529,7 @@ async fn document_url_is_issued_only_after_e05_is_recorded() {
     let (verifier, tok) = f.verifier().await;
     let c = company(&f.pool, "pending_verification", 5).await;
 
+    let mut urls = Vec::new();
     for kind in ["nib", "npwp", "authority_proof"] {
         let file = file_of(&f.pool, c.id, kind).await;
         let r = f
@@ -542,6 +543,7 @@ async fn document_url_is_issued_only_after_e05_is_recorded() {
         assert_eq!(r.header("cache-control"), Some("no-store"));
         let d = &r.json()["data"];
         assert!(d["url"].as_str().unwrap().contains("X-Amz-Signature"));
+        urls.push(d["url"].as_str().unwrap().to_string());
         assert_eq!(d["mime_type"], "image/jpeg");
         let events = tenant_events(&f, "e_05", "stored_file_opened", c.id).await;
         let e = events
@@ -554,6 +556,13 @@ async fn document_url_is_issued_only_after_e05_is_recorded() {
         assert_eq!(e["object_type"], "corporate_document_file");
         assert_eq!(e["subjects"], json!([]), "perusahaan bukan subjek data");
     }
+    // F1-T109: E-05 Verifikator atas dokumen perusahaan bertenant perusahaan, tanpa URL presign, NPWP, atau nama.
+    let opened = tenant_events(&f, "e_05", "stored_file_opened", c.id).await;
+    assert_eq!(opened.len(), 3);
+    let tenant = c.id.to_string();
+    let mut raw: Vec<&str> = urls.iter().map(String::as_str).collect();
+    raw.extend([c.npwp.as_str(), "PT Sintetis Uji", "Jl. Sintetis"]);
+    audit_support::assert_corporate_events_clean(&opened, &["e_05"], Some(&tenant), &raw);
 
     // Jenis di luar daftar, perusahaan tanpa dokumen jenis itu, dan berkas kategori lain → 404.
     let before = outbox_total(&f).await;
@@ -639,6 +648,18 @@ async fn approval_activates_the_company_and_records_e10() {
     assert_eq!(e["after_values"]["submission_round"], 1);
     assert_eq!(e["source_component"], "backoffice");
     assert!(e["source_ip"].is_string());
+    let tenant = c.id.to_string();
+    audit_support::assert_corporate_events_clean(
+        &events,
+        &["e_10"],
+        Some(&tenant),
+        &[
+            c.npwp.as_str(),
+            "PT Sintetis Uji",
+            "Jl. Sintetis",
+            "0210000001",
+        ],
+    );
 
     let r = f.get(&format!("{BASE}/{}", c.id), &tok).await;
     let d = &r.json()["data"];

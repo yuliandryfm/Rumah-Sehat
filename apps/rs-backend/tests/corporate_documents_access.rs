@@ -539,14 +539,26 @@ async fn queue_marks_incomplete_submissions_and_approval_requires_all_three_docu
         .unwrap();
         assert_eq!(decisions, 0);
     }
-    assert_eq!(
-        (
-            w.all_tenant_events(partial.id).await.len(),
-            w.all_tenant_events(none.id).await.len(),
-        ),
-        events_before,
-        "penolakan persetujuan tidak menulis audit keputusan"
-    );
+    // F1-T109 (KEPUTUSAN-382): persetujuan yang ditolak aturan tidak menulis keputusan, tetapi tercatat tepat
+    // satu E-10 hasil gagal `documents_incomplete` per percobaan (coding-standards §4.4 butir 3).
+    for (c, before) in [(&partial, events_before.0), (&none, events_before.1)] {
+        let all = w.all_tenant_events(c.id).await;
+        assert_eq!(all.len(), before + 1, "{all:?}");
+        let refused: Vec<_> = all
+            .into_iter()
+            .filter(|e| e["action_name"] == "corporate_verification_approved")
+            .collect();
+        assert_eq!(refused.len(), 1, "{refused:?}");
+        assert_eq!(refused[0]["outcome"], "failure");
+        assert_eq!(refused[0]["outcome_reason_code"], "documents_incomplete");
+        let tenant = c.id.to_string();
+        audit_support::assert_corporate_events_clean(
+            &refused,
+            &["e_10"],
+            Some(&tenant),
+            &[c.nib.as_str(), c.npwp.as_str()],
+        );
+    }
     // Penolakan dengan alasan tetap boleh (Verifikator dapat menolak pengajuan yang tidak lengkap).
     let r = w
         .decide(&verifier, partial.id, Some("nib_document_invalid"))
@@ -596,7 +608,23 @@ async fn decision_is_bound_to_the_document_version_the_verifier_saw() {
         client_status(&w.app, c.id).await,
         ("pending_verification".to_string(), 1)
     );
-    assert_eq!(w.all_tenant_events(c.id).await.len(), events_before);
+    // F1-T109 (KEPUTUSAN-382): tanpa keputusan tersimpan, tetapi setiap percobaan tercatat E-10 gagal
+    // `documents_changed` (4 token x setuju/tolak).
+    let after = w.all_tenant_events(c.id).await;
+    let refused: Vec<_> = after.iter().skip(events_before).cloned().collect();
+    assert_eq!(refused.len(), 8, "{refused:?}");
+    for e in &refused {
+        assert_eq!(e["outcome"], "failure");
+        assert_eq!(e["outcome_reason_code"], "documents_changed");
+        assert!(e["changed_fields"].as_array().is_none_or(Vec::is_empty));
+    }
+    let tenant = c.id.to_string();
+    audit_support::assert_corporate_events_clean(
+        &refused,
+        &["e_10"],
+        Some(&tenant),
+        &[c.nib.as_str(), c.npwp.as_str(), seen.as_str()],
+    );
     // Token wajib ada: tanpa field = 422; field asing = 422.
     let r = w
         .verifier_post(

@@ -53,6 +53,9 @@ const NOW: OffsetDateTime = datetime!(2027-03-01 03:00:00 UTC);
 const CLIENT_ID: &str = "rs-backend-event-reader";
 const SECRET_PASIEN: &str = "rahasia-uji-pasien-0123456789abcdef";
 const SECRET_ADMIN: &str = "rahasia-uji-admin-0123456789abcdef";
+const SECRET_KORPORAT: &str = "rahasia-uji-korporat-0123456789abcdef";
+const HR_EMAIL: &str = "hr.uji@example.invalid";
+const FORMER_HR_EMAIL: &str = "hr.lama.uji@example.invalid";
 const PATIENT_EMAIL: &str = "budi.uji@example.invalid";
 const UNKNOWN_EMAIL: &str = "tidak.terdaftar@example.invalid";
 const ADMIN_EMAIL: &str = "admin.uji@example.invalid";
@@ -308,6 +311,10 @@ async fn start_fake() -> (Fake, SocketAddr) {
         .lock()
         .unwrap()
         .insert("admin".into(), SECRET_ADMIN.into());
+    kc.secrets
+        .lock()
+        .unwrap()
+        .insert("korporat".into(), SECRET_KORPORAT.into());
     let app = Router::new()
         .route("/realms/{realm}/protocol/openid-connect/token", post(token))
         .route("/admin/realms/{realm}/events", get(events))
@@ -441,6 +448,13 @@ fn client(addr: SocketAddr, secret_pasien: &str) -> Arc<KeycloakClient> {
         RealmCredential {
             client_id: CLIENT_ID.into(),
             secret: Sensitive::new(SECRET_ADMIN.into()),
+        },
+    );
+    creds.insert(
+        IdpRealm::Korporat,
+        RealmCredential {
+            client_id: CLIENT_ID.into(),
+            secret: Sensitive::new(SECRET_KORPORAT.into()),
         },
     );
     let a: KeycloakAddress = format!("http://{addr}").parse().unwrap();
@@ -1176,4 +1190,210 @@ async fn first_admin_login_activates_pending_admin_account() {
     assert_eq!(a["source_ip"], "203.0.113.7");
     assert_eq!(by_action(&rows, "login").len(), 3);
     assert!(!serde_json::to_string(&rows).unwrap().contains(ADMIN_EMAIL));
+}
+
+/// Perusahaan sintetis; `revoked` = keanggotaan HR `account` sudah dicabut (hapus lunak).
+async fn bind_hr(app: &PgPool, account: Uuid, revoked: bool) -> Uuid {
+    let company = new_id();
+    let digits = |n: usize| -> String {
+        let tail = new_id().as_u128().to_string();
+        format!("99{}", &tail[tail.len() - (n - 2)..])
+    };
+    sqlx::query(
+        "INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin) \
+         VALUES ($1, 'PT Event Sintetis', $2, $3, 'Jl. Event Sintetis', '0210000008', 'active', 'created_by_admin')",
+    )
+    .bind(company)
+    .bind(digits(13))
+    .bind(digits(16))
+    .execute(app)
+    .await
+    .unwrap();
+    let deleted_at = revoked.then_some(NOW);
+    sqlx::query(
+        "INSERT INTO app.corporate_member (id, account_id, corporate_client_id, deleted_at, deleted_by, delete_reason) \
+         VALUES ($1, $2, $3, $4, CASE WHEN $4 IS NULL THEN NULL ELSE $2 END, \
+                 CASE WHEN $4 IS NULL THEN NULL ELSE 'deactivated_by_corporate_hr' END)",
+    )
+    .bind(new_id())
+    .bind(account)
+    .bind(company)
+    .bind(deleted_at)
+    .execute(app)
+    .await
+    .unwrap();
+    company
+}
+
+// trace: F1-T109 (US-1501 AC1-AC2, US-1904 audit E-01-E-04, KEPUTUSAN-380/381): realm `korporat` ikut diambil;
+// login, login gagal, perubahan kredensial (password dan TOTP saat aktivasi), dan logout HR menjadi E-01-E-04
+// dengan komponen member area korporat dan tenant = perusahaan HR (keanggotaan aktif, atau terakhir bila sudah
+// dicabut). Subjek tidak dikenal tanpa tenant. Tanpa email, ID token, atau ID sesi di payload.
+#[tokio::test]
+async fn hr_events_from_korporat_realm_are_recorded_with_the_company_as_tenant() {
+    let _serial = SERIAL.lock().await;
+    let e = env().await;
+    let kc_hr = new_id().hyphenated().to_string();
+    let kc_former = new_id().hyphenated().to_string();
+    let hr = insert_account(&e.app, "corporate_admin", "korporat", &kc_hr, HR_EMAIL).await;
+    let former = insert_account(
+        &e.app,
+        "corporate_admin",
+        "korporat",
+        &kc_former,
+        FORMER_HR_EMAIL,
+    )
+    .await;
+    let company = bind_hr(&e.app, hr, false).await;
+    let former_company = bind_hr(&e.app, former, true).await;
+
+    let t0 = ms(NOW) - 60_000;
+    let h = Some(kc_hr.as_str());
+    let korporat = |mut ev: Value| {
+        ev["clientId"] = json!("rs-korporat-bff");
+        ev
+    };
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(t0, "LOGIN", h, None, login_details(HR_EMAIL))),
+    );
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(
+            t0 + 1,
+            "UPDATE_CREDENTIAL",
+            h,
+            None,
+            json!({"credential_type": "password", "username": HR_EMAIL}),
+        )),
+    );
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(
+            t0 + 2,
+            "UPDATE_CREDENTIAL",
+            h,
+            None,
+            json!({"credential_type": "otp", "username": HR_EMAIL, "custom_required_action": "CONFIGURE_TOTP"}),
+        )),
+    );
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(
+            t0 + 3,
+            "LOGIN_ERROR",
+            Some(kc_former.as_str()),
+            Some("user_disabled"),
+            json!({"auth_method": "openid-connect", "username": FORMER_HR_EMAIL, "redirect_uri": "x"}),
+        )),
+    );
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(
+            t0 + 4,
+            "LOGIN_ERROR",
+            None,
+            Some("user_not_found"),
+            json!({"auth_method": "openid-connect", "username": UNKNOWN_EMAIL, "redirect_uri": "x"}),
+        )),
+    );
+    push(
+        &e.kc,
+        "korporat",
+        korporat(kc_event(
+            t0 + 5,
+            "LOGOUT",
+            h,
+            None,
+            json!({"redirect_uri": "x"}),
+        )),
+    );
+
+    let mut l = lock().await;
+    let clock = FixedClock::new(NOW);
+    let mut puller = Puller::new(
+        options(&[IdpRealm::Korporat], 100),
+        client(e.addr, SECRET_PASIEN),
+        clock.now(),
+    );
+    puller.round(&mut l, &e.app, &clock).await.unwrap();
+    l.release().await.unwrap();
+
+    let rows = outbox(&e.relay).await;
+    let actions: Vec<&str> = rows
+        .iter()
+        .map(|p| p["action_name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        actions,
+        [
+            "login",
+            "password_changed",
+            "otp_configured",
+            "login_failed",
+            "login_failed",
+            "logout"
+        ],
+        "{rows:?}"
+    );
+    let hr_id = hr.to_string();
+    let of_hr: Vec<Value> = rows
+        .iter()
+        .filter(|p| p["object_id"] == hr_id.as_str())
+        .cloned()
+        .collect();
+    assert_eq!(of_hr.len(), 4);
+    let raw = [
+        HR_EMAIL,
+        FORMER_HR_EMAIL,
+        UNKNOWN_EMAIL,
+        TOKEN_ID,
+        REFRESH_TOKEN_ID,
+        SESSION_ID,
+        kc_hr.as_str(),
+        kc_former.as_str(),
+    ];
+    let tenant = company.to_string();
+    audit_support::assert_corporate_events_clean(
+        &of_hr,
+        &["e_01", "e_03", "e_04"],
+        Some(&tenant),
+        &raw,
+    );
+    for p in &of_hr {
+        assert_eq!(p["actor_account_type"], "corporate_admin");
+        assert_eq!(p["source_component"], "corporate_portal");
+        assert_eq!(p["source_ip"], "203.0.113.7");
+    }
+    let e04: Vec<&Value> = of_hr.iter().filter(|p| p["event_code"] == "e_04").collect();
+    assert_eq!(e04.len(), 2, "password dan TOTP saat aktivasi = E-04");
+    // HR yang keanggotaannya sudah dicabut: tenant = perusahaan terakhirnya.
+    let former_rows: Vec<Value> = rows
+        .iter()
+        .filter(|p| p["object_id"] == former.to_string().as_str())
+        .cloned()
+        .collect();
+    assert_eq!(former_rows.len(), 1);
+    assert_eq!(former_rows[0]["outcome_reason_code"], "user_disabled");
+    let former_tenant = former_company.to_string();
+    audit_support::assert_corporate_events_clean(
+        &former_rows,
+        &["e_02"],
+        Some(&former_tenant),
+        &raw,
+    );
+    // Subjek tidak dikenal: aktor sistem, tanpa objek dan tanpa tenant.
+    let unknown: Vec<Value> = rows
+        .iter()
+        .filter(|p| p["object_id"].is_null())
+        .cloned()
+        .collect();
+    assert_eq!(unknown.len(), 1);
+    assert_eq!(unknown[0]["actor_type"], "system");
+    audit_support::assert_corporate_events_clean(&unknown, &["e_02"], None, &raw);
 }

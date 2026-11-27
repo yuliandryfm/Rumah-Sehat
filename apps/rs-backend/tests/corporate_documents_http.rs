@@ -405,6 +405,14 @@ async fn hr_uploads_three_documents_which_are_validated_stored_and_audited_witho
         "image/jpeg".to_string(),
     ];
     forbidden.extend(sha_hexes.clone());
+    // F1-T109: semua event perusahaan ini (E-10 unggah, E-12 unduh) lolos pemeriksa korporat bersama: tenant =
+    // perusahaan, tanpa URL unduh/kunci objek/email/NIB/NPWP/deret digit panjang.
+    let all = w.all_tenant_events(c.id).await;
+    let tenant = c.id.to_string();
+    let mut raw: Vec<&str> = forbidden.iter().map(String::as_str).collect();
+    raw.push(hr.email.as_str());
+    audit_support::assert_corporate_events_clean(&all, &["e_10", "e_12"], Some(&tenant), &raw);
+    audit_support::corporate_checker_rejects_leaks(&all[0], &tenant);
     for e in w.all_tenant_events(c.id).await {
         let text = e.to_string();
         for needle in &forbidden {
@@ -667,6 +675,53 @@ async fn replacing_a_document_soft_deletes_the_old_one_and_concurrent_confirms_k
         assert_eq!(e["after_values"]["replaced"], true);
         assert_eq!(e["after_values"]["document_kind"], "nib");
     }
+    // F1-T109 (KEPUTUSAN-384): E-16 atas setiap dokumen lama yang dihapus lunak, di transaksi yang sama, dengan
+    // waktu dan kode alasan saja; objeknya dokumen lama (bukan berkas).
+    let deleted = w
+        .tenant_events("e_16", "corporate_document_soft_deleted", c.id)
+        .await;
+    assert_eq!(deleted.len(), 2, "{deleted:?}");
+    let mut deleted_ids: Vec<&str> = deleted
+        .iter()
+        .map(|e| e["object_id"].as_str().unwrap())
+        .collect();
+    deleted_ids.sort_unstable();
+    let mut expected_ids: Vec<String> = sqlx::query_scalar!(
+        "SELECT id FROM app.corporate_client_document \
+         WHERE corporate_client_id = $1 AND document_kind = 'nib' AND deleted_at IS NOT NULL",
+        c.id
+    )
+    .fetch_all(&w.app)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|id| id.to_string())
+    .collect();
+    expected_ids.sort_unstable();
+    assert_eq!(deleted_ids, expected_ids);
+    for e in &deleted {
+        assert_eq!(e["object_type"], "corporate_client_document");
+        assert_eq!(e["outcome"], "success");
+        assert_eq!(e["actor_account_id"], hr.account_id.to_string());
+        assert_eq!(e["after_values"]["delete_reason"], "replaced");
+        assert_eq!(e["after_values"]["document_kind"], "nib");
+        assert!(e["after_values"]["deleted_at"].is_string());
+        assert_eq!(e["changed_fields"].as_array().unwrap().len(), 3);
+    }
+    let tenant = c.id.to_string();
+    audit_support::assert_corporate_events_clean(
+        &w.all_tenant_events(c.id).await,
+        &["e_10", "e_12", "e_16"],
+        Some(&tenant),
+        &[
+            c.nib.as_str(),
+            c.npwp.as_str(),
+            hr.email.as_str(),
+            old_nib.object_key.as_str(),
+            first.object_key.as_str(),
+            second.object_key.as_str(),
+        ],
+    );
 
     // Dua konfirmasi bersamaan untuk jenis yang sama: berurutan oleh kunci baris perusahaan, keduanya sah,
     // tepat satu dokumen aktif tersisa (UQp), yang lain terhapus lunak.

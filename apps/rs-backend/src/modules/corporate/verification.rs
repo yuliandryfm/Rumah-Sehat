@@ -73,6 +73,10 @@ const FAILED_AUDIT_ATTEMPTS: usize = 3;
 const APPROVED_ACTION: &str = "corporate_verification_approved";
 const ALREADY_DECIDED_REASON: &str = "already_decided";
 const NIB_IN_USE_REASON: &str = "nib_in_use_by_active_company";
+/// Keputusan ditolak karena dokumen berubah sejak dilihat Verifikator (F1-T109, KEPUTUSAN-382).
+const DOCUMENTS_CHANGED_REASON: &str = "documents_changed";
+/// Persetujuan ditolak karena ketiga dokumen belum lengkap, `4090113` (F1-T109, KEPUTUSAN-382).
+const DOCUMENTS_INCOMPLETE_REASON: &str = "documents_incomplete";
 const REJECTED_ACTION: &str = "corporate_verification_rejected";
 
 /// Kebijakan audit objek perusahaan (daftar izin before/after, ADR-009 butir 7): hanya status, kode alasan,
@@ -551,6 +555,8 @@ async fn decide(
             let failure = match e {
                 CorporateError::AlreadyDecided => Some(ALREADY_DECIDED_REASON),
                 CorporateError::NibInUseByActive => Some(NIB_IN_USE_REASON),
+                CorporateError::DocumentsChanged => Some(DOCUMENTS_CHANGED_REASON),
+                CorporateError::DocumentsIncomplete => Some(DOCUMENTS_INCOMPLETE_REASON),
                 _ => None,
             };
             if let Some(reason) = failure {
@@ -564,6 +570,8 @@ async fn decide(
 
 /// AC4: keputusan yang kalah tercatat E-10 hasil gagal di transaksi tersendiri: `already_decided`, atau
 /// `nib_in_use_by_active_company` untuk persetujuan yang NIB-nya sudah dipakai perusahaan Aktif lain (CR-035).
+/// F1-T109 (KEPUTUSAN-382): keputusan yang ditolak aturan dokumen juga tercatat, `documents_changed` (versi
+/// dokumen berbeda dari yang dilihat) dan `documents_incomplete` (persetujuan tanpa ketiga dokumen).
 async fn record_lost_decision(
     s: &CorporateVerification<'_>,
     principal: &Principal,
@@ -624,6 +632,8 @@ mod tests {
             REJECTED_ACTION,
             ALREADY_DECIDED_REASON,
             NIB_IN_USE_REASON,
+            DOCUMENTS_CHANGED_REASON,
+            DOCUMENTS_INCOMPLETE_REASON,
         ] {
             assert!(Code::new(a).is_ok(), "{a}");
         }

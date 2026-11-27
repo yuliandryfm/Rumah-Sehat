@@ -14,7 +14,9 @@
 # audit_events, audit_events_for_object: apps/rs-backend/tests/identity_support/mod.rs (memeriksa semua payload
 # outbox sebelum relay; varian kedua memilih event menurut objek, untuk event hasil gagal tanpa subjek)
 # e05_events: apps/rs-backend/tests/platform_files_download.rs (idem)
-checkers = ["assert_event_complete", "assert_events_complete", "audit_events", "audit_events_for_object", "e05_events"]
+# assert_corporate_events_clean: apps/rs-backend/tests/audit_support/mod.rs (F1-T109: kelengkapan + tenant perusahaan +
+# tanpa nilai mentah/URL/kunci objek/email/deret digit NIB-NPWP-NIK untuk event korporat)
+checkers = ["assert_event_complete", "assert_events_complete", "audit_events", "audit_events_for_object", "e05_events", "assert_corporate_events_clean"]
 
 # E-05 hasil gagal atas penerima layanan milik pasien lain (F1-T38, KU-03).
 [[emitter]]
@@ -24,12 +26,14 @@ tests = [
   "apps/rs-backend/tests/authz_care_recipient.rs::patient_reaches_own_recipients_only_and_foreign_attempts_are_audited_as_failed_e05",
 ]
 
-# E-01–E-04 dari event Keycloak: pemetaan (domain.rs) dan penyusunan event + aktivasi admin (jobs.rs).
+# E-01–E-04 dari event Keycloak: pemetaan (domain.rs) dan penyusunan event + aktivasi admin (jobs.rs). Sejak F1-T109
+# realm `korporat` termasuk bawaan dan event akun HR bertenant perusahaannya (KEPUTUSAN-380/381).
 [[emitter]]
 file = "apps/rs-backend/src/modules/identity/domain.rs"
 codes = ["E01", "E02", "E03", "E04"]
 tests = [
   "apps/rs-backend/tests/identity_keycloak_events.rs::events_are_mapped_masked_and_written_once",
+  "apps/rs-backend/tests/identity_keycloak_events.rs::hr_events_from_korporat_realm_are_recorded_with_the_company_as_tenant",
 ]
 
 [[emitter]]
@@ -38,6 +42,7 @@ codes = ["E01", "E03"]
 tests = [
   "apps/rs-backend/tests/identity_keycloak_events.rs::events_are_mapped_masked_and_written_once",
   "apps/rs-backend/tests/identity_keycloak_events.rs::first_admin_login_activates_pending_admin_account",
+  "apps/rs-backend/tests/identity_keycloak_events.rs::hr_events_from_korporat_realm_are_recorded_with_the_company_as_tenant",
 ]
 
 # E-10/E-11 penonaktifan dan undangan anggota HR perusahaan (F1-T107, US-1904 AC2, AC5), termasuk penolakan
@@ -140,21 +145,28 @@ tests = [
 ]
 
 # E-10 unggah dokumen NIB, NPWP, dan bukti kewenangan oleh HR, termasuk penggantian dan penolakan isi berkas
-# (F1-T102, US-1901 AC2).
+# (F1-T102, US-1901 AC2); E-16 dokumen lama yang dihapus lunak saat diganti, E-10 pengajuan ulang berhasil dan yang
+# ditolak aturan (F1-T102b, F1-T109).
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/documents.rs"
-codes = ["E10"]
+codes = ["E10", "E16"]
 tests = [
+  "apps/rs-backend/tests/corporate_resubmission.rs::rejected_company_resubmits_into_the_queue_with_a_new_round_and_audit",
+  "apps/rs-backend/tests/corporate_resubmission.rs::resubmission_is_refused_outside_rejected_or_without_complete_documents",
+  "apps/rs-backend/tests/corporate_audit_chain.rs::corporate_events_are_clean_and_chained_in_the_audit_database",
   "apps/rs-backend/tests/corporate_documents_http.rs::hr_uploads_three_documents_which_are_validated_stored_and_audited_without_secrets",
   "apps/rs-backend/tests/corporate_documents_http.rs::rejected_content_is_removed_never_recorded_and_audited_as_failed_upload",
   "apps/rs-backend/tests/corporate_documents_http.rs::replacing_a_document_soft_deletes_the_old_one_and_concurrent_confirms_keep_one_active",
 ]
 
-# E-10 keputusan Verifikator atas pengajuan perusahaan, berhasil dan kalah (F1-T104, US-1902 AC2-AC4).
+# E-10 keputusan Verifikator atas pengajuan perusahaan, berhasil dan kalah (F1-T104, US-1902 AC2-AC4), termasuk
+# keputusan yang ditolak aturan dokumen (F1-T109).
 [[emitter]]
 file = "apps/rs-backend/src/modules/corporate/verification.rs"
 codes = ["E10"]
 tests = [
+  "apps/rs-backend/tests/corporate_documents_access.rs::decision_is_bound_to_the_document_version_the_verifier_saw",
+  "apps/rs-backend/tests/corporate_documents_access.rs::queue_marks_incomplete_submissions_and_approval_requires_all_three_documents",
   "apps/rs-backend/tests/corporate_verification.rs::approval_activates_the_company_and_records_e10",
   "apps/rs-backend/tests/corporate_verification.rs::rejection_requires_an_active_listed_reason",
   "apps/rs-backend/tests/corporate_verification.rs::first_decision_wins_when_two_verifiers_decide_concurrently",

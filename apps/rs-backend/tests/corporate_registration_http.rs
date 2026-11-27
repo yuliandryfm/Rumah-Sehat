@@ -435,6 +435,23 @@ async fn corporate_registration_creates_pending_company_hr_account_consent_and_c
     codes.sort_unstable();
     assert_eq!(codes, ["e_10", "e_10", "e_11", "e_13"], "{events:?}");
     audit_support::assert_events_complete(&events, &["e_10", "e_11", "e_13"]);
+    // F1-T109: pemeriksa korporat bersama (tenant = perusahaan baru, tanpa data pendaftaran mentah).
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &events,
+        &["e_10", "e_11", "e_13"],
+        Some(&tenant),
+        &[
+            f.nib.as_str(),
+            f.npwp.as_str(),
+            f.email.as_str(),
+            f.legal_name.as_str(),
+            "sari pendaftar",
+            "manajer sdm",
+            "jl. uji sintetis",
+            "021-5550101",
+        ],
+    );
     let e13 = events.iter().find(|e| e["event_code"] == "e_13").unwrap();
     assert_eq!(e13["object_type"], "corporate_hr_consent_record");
     assert_eq!(e13["actor_account_type"], "corporate_admin");
@@ -588,6 +605,18 @@ async fn corporate_registration_existing_email_gets_identical_answer_and_changes
             "{label}: tidak membuka perusahaan lain"
         );
         audit_support::assert_event_complete(e, "e_10");
+        // F1-T109: penolakan tanpa tenant (tidak membuka perusahaan lain) dan tanpa data mentah.
+        audit_support::assert_corporate_events_clean(
+            std::slice::from_ref(e),
+            &["e_10"],
+            None,
+            &[
+                first.nib.as_str(),
+                nib_rejected.as_str(),
+                first.email.as_str(),
+                hr_email.as_str(),
+            ],
+        );
         let dump = serde_json::to_string(e).unwrap().to_lowercase();
         for secret in [
             first.nib.as_str(),

@@ -372,6 +372,14 @@ async fn active_hr_invites_a_colleague_bound_to_its_own_company() {
         ]
     );
     audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
+    // F1-T109: pemeriksa korporat bersama (tenant = perusahaan pengundang, tanpa email undangan).
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_10", "e_11"],
+        Some(&tenant),
+        &[mixed.as_str(), a.email.as_str()],
+    );
     for e in &evs {
         assert_eq!(e["actor_account_id"], a.account_id.to_string());
         assert_eq!(e["actor_account_type"], "corporate_admin");
@@ -449,6 +457,17 @@ async fn already_registered_email_gets_an_identical_answer_and_changes_nothing()
         .filter(|e| e["outcome"] == "failure")
         .collect();
     assert_eq!(failed.len(), 6, "{failed:?}");
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &failed,
+        &["e_10"],
+        Some(&tenant),
+        &[
+            pending_email.as_str(),
+            foreign.email.as_str(),
+            a.email.as_str(),
+        ],
+    );
     for e in &failed {
         audit_support::assert_event_complete(e, "e_10");
         assert_eq!(e["action_name"], "corporate_admin_account_invited");

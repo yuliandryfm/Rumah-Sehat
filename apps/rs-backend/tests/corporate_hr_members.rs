@@ -314,6 +314,19 @@ async fn deactivating_another_hr_revokes_access_immediately_and_is_audited() {
         assert!(!text.contains(&b.subject), "subjek Keycloak tidak dicatat");
     }
     audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
+    // F1-T109: pemeriksa korporat bersama (tenant, tanpa email/subjek Keycloak/data mentah).
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_10", "e_11"],
+        Some(&tenant),
+        &[
+            a.email.as_str(),
+            b.email.as_str(),
+            b.subject.as_str(),
+            a.subject.as_str(),
+        ],
+    );
     assert_eq!(evs[0]["before_values"]["status"], "active");
     assert_eq!(evs[0]["after_values"]["status"], "inactive");
     assert_eq!(
@@ -349,6 +362,13 @@ async fn self_deactivation_is_rejected_without_side_effects() {
     assert_eq!(evs[0]["outcome"], "failure");
     assert_eq!(evs[0]["outcome_reason_code"], "self_deactivation");
     assert!(evs[0]["changed_fields"].is_null());
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_10"],
+        Some(&tenant),
+        &[a.email.as_str(), a.subject.as_str()],
+    );
 }
 
 // trace: US-1904 AC2 (HR aktif satu-satunya: tidak dapat dinonaktifkan; undangan dapat dinonaktifkan)

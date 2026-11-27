@@ -58,6 +58,7 @@ use super::repo::{self, AccountRef};
 use super::service::{
     AccountDirectory, RecordedRevocation, RevocationReason, record_revocation_in_tx,
 };
+use crate::modules::corporate::api as corporate;
 use audit::{
     Actor, AuditContext, AuditErrorKind, AuditEvent, AuditedTxError, Code, EventCode, ObjectPolicy,
     ObjectRef, Outcome, Source,
@@ -82,8 +83,11 @@ pub const MAX_PAGES_PER_ROUND: usize = 200;
 pub const PAGE_SIZE_RANGE: std::ops::RangeInclusive<usize> = 1..=500;
 /// Tanda terima disimpan sekian lama di luar jendela tumpang-tindih sebelum dihapus.
 pub const RECEIPT_MARGIN: time::Duration = time::Duration::hours(1);
-/// Umur pencabutan sesi dari event LOGOUT, dihitung dari waktu event: umur token akses realm `pasien` dan
-/// `admin` (`accessTokenLifespan` 300 detik, `infra/keycloak/realms/*.json`, diperiksa
+/// Jenis akun HR perusahaan (DD A1.1 `account_type`, realm `korporat`).
+const CORPORATE_ADMIN_ACCOUNT_TYPE: &str = "corporate_admin";
+
+/// Umur pencabutan sesi dari event LOGOUT, dihitung dari waktu event: umur token akses realm `pasien`,
+/// `admin`, dan `korporat` (`accessTokenLifespan` 300 detik, `infra/keycloak/realms/*.json`, diperiksa
 /// `scripts/keycloak-check.sh`) ditambah 60 detik kelonggaran jam antar-node.
 pub const LOGOUT_REVOCATION_TTL: time::Duration = time::Duration::seconds(360);
 /// Jeda minimum antar-peringatan keterlambatan per realm.
@@ -489,8 +493,17 @@ async fn record(ctx: &RecordCtx<'_>, ev: KcEvent) -> Result<RecordOutcome, PullE
                     .map_err(TxWork::Db)?,
                 None => None,
             };
-            let event =
-                build_event(&ev, mapped, account.as_ref(), correlation).map_err(TxWork::Audit)?;
+            // F1-T109 (KEPUTUSAN-381): event akun HR realm `korporat` membawa perusahaannya sebagai tenant.
+            let tenant = match account.as_ref() {
+                Some(a) if a.account_type == CORPORATE_ADMIN_ACCOUNT_TYPE => {
+                    corporate::hr_account_tenant(conn, a.id)
+                        .await
+                        .map_err(TxWork::Db)?
+                }
+                _ => None,
+            };
+            let event = build_event(&ev, mapped, account.as_ref(), tenant, correlation)
+                .map_err(TxWork::Audit)?;
             let mut events = vec![event];
             // F1-T65 (US-208 AC1/AC4): login pertama yang berhasil di realm `admin` (password + TOTP wajib,
             // undangan aktivasi sudah dijalankan) mengaktifkan akun admin yang menunggu aktivasi, dengan E-10
@@ -582,6 +595,7 @@ fn build_event(
     ev: &KcEvent,
     mapped: Mapped,
     account: Option<&AccountRef>,
+    tenant: Option<foundation::Uuid>,
     correlation: CorrelationId,
 ) -> Result<AuditEvent, AuditErrorKind> {
     let code = |s: &str| Code::new(s).map_err(|e| e.kind());
@@ -605,11 +619,13 @@ fn build_event(
         None => Outcome::success(),
         Some(reason) => Outcome::failure(code(reason)?),
     };
-    Ok(
-        AuditEvent::new(mapped.code, code(mapped.action)?, actor, object)
-            .outcome(outcome)
-            .context(&ctx),
-    )
+    let event = AuditEvent::new(mapped.code, code(mapped.action)?, actor, object)
+        .outcome(outcome)
+        .context(&ctx);
+    Ok(match tenant {
+        Some(t) => event.tenant(t),
+        None => event,
+    })
 }
 
 /// Pengaturan proses `rs-backend worker` untuk pengambil event.

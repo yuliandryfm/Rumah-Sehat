@@ -33,6 +33,7 @@ use super::idp_repo::{self, IntentEventDetails, IntentRow, IntentStatusStore, Re
 use super::idp_service::{IntentActor, IntentError, IntentRequest, record_intent};
 use super::idp_worker_client::{CreateOutcome, IdpUserAdmin};
 use super::keycloak::KeycloakError;
+use crate::modules::corporate::api as corporate;
 use audit::{
     Actor, AuditContext, AuditEvent, AuditedTxError, Code, EventCode, FieldChange, FieldRule,
     ObjectPolicy, ObjectRef, Outcome, Source, SourceComponent, Value, in_audited_tx,
@@ -66,6 +67,40 @@ static IDP_ACCOUNT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
         FieldRule::name_only("delete_reason"),
     ],
 );
+
+// trace: F1-T109 (US-1501 AC2, PRD §7.3): hasil worker IdP atas akun HR tidak memuat email, nama, atau ID pengguna
+// Keycloak sebagai nilai (hanya nama field).
+#[cfg(test)]
+#[test]
+fn idp_account_policy_records_no_identifier_value() {
+    assert!(IDP_ACCOUNT_POLICY.validate().is_ok());
+    for f in [
+        "email",
+        "full_name",
+        "username",
+        "password",
+        "activation_link",
+    ] {
+        assert!(
+            IDP_ACCOUNT_POLICY.fields().iter().all(|r| r.name() != f),
+            "{f}"
+        );
+    }
+    for f in [
+        "idp_subject",
+        "activation_email",
+        "idp_user",
+        "delete_reason",
+    ] {
+        assert!(
+            IDP_ACCOUNT_POLICY
+                .fields()
+                .iter()
+                .any(|r| r.name() == f && r.kind() == audit::FieldKind::NameOnly),
+            "{f}"
+        );
+    }
+}
 
 /// Hasil akhir yang akan ditulis.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -576,9 +611,14 @@ fn audit_code(s: &str) -> Result<Code, Work> {
     Code::new(s).map_err(|_| Work::Audit)
 }
 
-fn base_event(i: &Intent, action: &str, outcome: Outcome) -> Result<AuditEvent, Work> {
+fn base_event(
+    i: &Intent,
+    tenant: Option<Uuid>,
+    action: &str,
+    outcome: Outcome,
+) -> Result<AuditEvent, Work> {
     let ctx = AuditContext::new(i.correlation, Source::component(SourceComponent::Worker));
-    Ok(AuditEvent::new(
+    let event = AuditEvent::new(
         EventCode::E10,
         audit_code(action)?,
         Actor::system(),
@@ -595,7 +635,22 @@ fn base_event(i: &Intent, action: &str, outcome: Outcome) -> Result<AuditEvent, 
         "idp_operation",
         None,
         Some(Value::Code(audit_code(i.kind.operation())?)),
-    )))
+    ));
+    Ok(match tenant {
+        Some(t) => event.tenant(t),
+        None => event,
+    })
+}
+
+/// Perusahaan tenant event hasil job atas akun HR realm `korporat` (F1-T109, KEPUTUSAN-381); realm lain tanpa
+/// tenant.
+async fn intent_tenant(conn: &mut PgConnection, i: &Intent) -> Result<Option<Uuid>, Work> {
+    if i.realm != IdpRealm::Korporat {
+        return Ok(None);
+    }
+    corporate::hr_account_tenant(conn, i.account_id)
+        .await
+        .map_err(|_| Work::Db)
 }
 
 fn status_value(s: &str) -> Result<Value, Work> {
@@ -653,12 +708,13 @@ async fn write_result(
             }
         }
     }
+    let tenant = intent_tenant(conn, i).await?;
     let mut events = Vec::new();
     let rejected = matches!(finish, Finish::Rejected(_));
     let failed = match finish {
         Finish::Succeeded { adopt, found } => {
             transition(conn, i, IntentStatus::Succeeded, None).await?;
-            let mut e = base_event(i, success_action(i.kind), Outcome::success())?;
+            let mut e = base_event(i, tenant, success_action(i.kind), Outcome::success())?;
             if adopt.is_some() {
                 e = e
                     .change(FieldChange::new(
@@ -723,6 +779,7 @@ async fn write_result(
             transition(conn, i, to, Some(r.code())).await?;
             let mut e = base_event(
                 i,
+                tenant,
                 failure_action(i.kind),
                 Outcome::failure(audit_code(r.code())?),
             )?;

@@ -109,6 +109,16 @@ pub async fn member_owner(
     repo::member_owner(pool, corporate_member_id).await
 }
 
+/// Perusahaan yang dicatat sebagai `tenant_id` event audit atas akun HR `account_id` dari luar modul ini
+/// (pengambil event Keycloak E-01–E-04 dan hasil worker IdP E-10, F1-T109): keanggotaan aktif, atau keanggotaan
+/// terakhir bila sudah dicabut. `None` bila akun tidak pernah menjadi anggota perusahaan.
+pub async fn hr_account_tenant(
+    conn: &mut PgConnection,
+    account_id: Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    repo::hr_account_tenant(conn, account_id).await
+}
+
 /// Mencabut keanggotaan aktif (hapus lunak dengan alasan) di transaksi pemanggil setelah [`lock_members`].
 /// `false` bila tidak ada keanggotaan aktif `corporate_member_id` milik `corporate_client_id`.
 pub async fn revoke_member(

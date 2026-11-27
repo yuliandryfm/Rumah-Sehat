@@ -22,6 +22,9 @@
 //! mengganti; tanpa nama berkas, ukuran, isi, atau kunci objek) di transaksi yang sama dengan penulisan; unggahan
 //! yang ditolak validasi isi (413/415, termasuk PDF berkonten aktif) tercatat E-10 hasil gagal dengan kode
 //! tertutup di transaksi tersendiri. Unduhan HR dicatat E-12 oleh modul `platform` sebelum URL terbit.
+//! Penggantian juga mencatat E-16 `corporate_document_soft_deleted` atas dokumen lama (waktu dan kode alasan
+//! hapus lunak, ADR-003) di transaksi yang sama; pengajuan ulang yang ditolak aturan (dokumen belum lengkap,
+//! sudah diajukan) tercatat E-10 hasil gagal di transaksi tersendiri (F1-T109, KEPUTUSAN-384, KEPUTUSAN-383).
 
 use super::api::{
     CompanyProfileView, CorporateDocuments, DocumentStatusView, DocumentsOverviewView,
@@ -53,6 +56,10 @@ use std::sync::Arc;
 const FAILED_AUDIT_ATTEMPTS: usize = 3;
 const UPLOADED_ACTION: &str = "corporate_document_uploaded";
 const RESUBMITTED_ACTION: &str = "corporate_verification_resubmitted";
+const SOFT_DELETED_ACTION: &str = "corporate_document_soft_deleted";
+/// Kode alasan E-10 gagal pengajuan ulang (F1-T109, KEPUTUSAN-383).
+const RESUBMISSION_INCOMPLETE_REASON: &str = "documents_incomplete";
+const NOT_RESUBMITTABLE_REASON: &str = "not_resubmittable";
 /// Alasan penghapusan lunak dokumen yang digantikan (kolom `delete_reason`).
 const REPLACED_REASON: &str = "replaced";
 
@@ -64,6 +71,8 @@ static DOCUMENT_POLICY: ObjectPolicy = ObjectPolicy::non_clinical(
     &[
         FieldRule::value("document_kind"),
         FieldRule::value("replaced"),
+        FieldRule::value("deleted_at"),
+        FieldRule::value("delete_reason"),
     ],
 );
 /// Kebijakan audit objek perusahaan untuk event hasil gagal (tanpa perubahan field).
@@ -286,14 +295,15 @@ async fn discard(s: &CorporateDocuments<'_>, upload: Arc<ValidatedUpload>) {
     }
 }
 
-/// Event hasil gagal unggahan yang ditolak isinya, tanpa data berkas.
+/// Event E-10 hasil gagal atas perusahaan pemanggil tanpa perubahan field: unggahan yang ditolak isinya (tanpa
+/// data berkas) atau pengajuan ulang yang ditolak aturan.
 fn rejected_event(
     scope: &CorporateScope,
     context: &AuditContext,
+    action: &'static str,
     reason: &'static str,
 ) -> Result<AuditEvent, CorporateError> {
-    let action =
-        Code::new(UPLOADED_ACTION).map_err(|_| CorporateError::Internal("audit_action"))?;
+    let action = Code::new(action).map_err(|_| CorporateError::Internal("audit_action"))?;
     let reason = Code::new(reason).map_err(|_| CorporateError::Internal("audit_reason"))?;
     let client_id = scope.corporate_client_id();
     Ok(AuditEvent::new(
@@ -364,7 +374,7 @@ pub(super) async fn confirm(
         Ok(u) => Arc::new(u),
         Err(e) => {
             if let Some(reason) = rejection_reason(&e)
-                && let Ok(event) = rejected_event(scope, &context, reason)
+                && let Ok(event) = rejected_event(scope, &context, UPLOADED_ACTION, reason)
             {
                 record_failed(s.pool, s.clock, event).await;
             }
@@ -437,6 +447,38 @@ pub(super) async fn confirm(
             )
             .await
             .map_err(db_error)?;
+            let mut events = Vec::with_capacity(2);
+            if let Some(old) = old {
+                // E-16: dokumen lama dihapus lunak (ADR-003); hanya waktu dan kode alasan tertutup.
+                let action = Code::new(SOFT_DELETED_ACTION)
+                    .map_err(|_| CorporateError::Internal("audit_action"))?;
+                events.push(
+                    AuditEvent::new(
+                        EventCode::E16,
+                        action,
+                        tx_actor.clone(),
+                        ObjectRef::with_uuid(&DOCUMENT_POLICY, old.id),
+                    )
+                    .tenant(client_id)
+                    .outcome(Outcome::success())
+                    .context(&tx_context)
+                    .change(FieldChange::new(
+                        "document_kind",
+                        None,
+                        Some(code_value(kind.as_str())?),
+                    ))
+                    .change(FieldChange::new(
+                        "deleted_at",
+                        None,
+                        Some(Value::Timestamp(now)),
+                    ))
+                    .change(FieldChange::new(
+                        "delete_reason",
+                        None,
+                        Some(code_value(REPLACED_REASON)?),
+                    )),
+                );
+            }
             let action =
                 Code::new(UPLOADED_ACTION).map_err(|_| CorporateError::Internal("audit_action"))?;
             let event = AuditEvent::new(
@@ -458,10 +500,11 @@ pub(super) async fn confirm(
                 None,
                 Some(Value::Bool(old.is_some())),
             ));
+            events.push(event);
             // Respons dibangun dari data di dalam transaksi (baris perusahaan masih terkunci), bukan dibaca
             // ulang setelah commit.
             let view = read_overview(&mut *conn, client_id).await?;
-            Ok((view, vec![event]))
+            Ok((view, events))
         })
     })
     .await;
@@ -499,13 +542,15 @@ pub(super) async fn resubmit(
     let ip = client_ip(scope, route)?;
     // Gerbang cepat dari cakupan sesi: Aktif = 4090112 (seperti endpoint dokumen lain), Menunggu = 4090001.
     gate(scope)?;
+    let context = audit_context(scope, ip);
     if !may_resubmit(scope.client_status()) {
+        record_refused_resubmission(s, scope, &context, NOT_RESUBMITTABLE_REASON).await;
         return Err(CorporateError::NotResubmittable);
     }
-    let context = audit_context(scope, ip);
     let account_id = scope.account_id();
     let client_id = scope.corporate_client_id();
     let tx_actor = actor(scope)?;
+    let tx_context = context.clone();
     let now = s.clock.now();
     let result = in_audited_tx(s.pool, s.clock, move |conn| {
         Box::pin(async move {
@@ -550,7 +595,7 @@ pub(super) async fn resubmit(
             )
             .tenant(client_id)
             .outcome(Outcome::success())
-            .context(&context)
+            .context(&tx_context)
             .change(FieldChange::new(
                 "status",
                 Some(code_value(from.as_str())?),
@@ -574,7 +619,32 @@ pub(super) async fn resubmit(
             );
             Ok(view)
         }
-        Err(e) => Err(audited_error(e)),
+        Err(e) => {
+            let e = audited_error(e);
+            let reason = match e {
+                CorporateError::ResubmissionIncomplete => Some(RESUBMISSION_INCOMPLETE_REASON),
+                CorporateError::NotResubmittable => Some(NOT_RESUBMITTABLE_REASON),
+                _ => None,
+            };
+            if let Some(reason) = reason {
+                record_refused_resubmission(s, scope, &context, reason).await;
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Pengajuan ulang yang ditolak aturan (dokumen belum lengkap `4090115`, atau sudah diajukan/bukan Ditolak
+/// `4090001`): E-10 hasil gagal di transaksi tersendiri, dicoba ulang, tanpa mengubah jawaban (coding-standards
+/// §4.4 butir 3; F1-T109, KEPUTUSAN-383).
+async fn record_refused_resubmission(
+    s: &CorporateDocuments<'_>,
+    scope: &CorporateScope,
+    context: &AuditContext,
+    reason: &'static str,
+) {
+    if let Ok(event) = rejected_event(scope, context, RESUBMITTED_ACTION, reason) {
+        record_failed(s.pool, s.clock, event).await;
     }
 }
 
@@ -641,6 +711,25 @@ mod tests {
         }
         assert!(Code::new(UPLOADED_ACTION).is_ok());
         assert!(Code::new(RESUBMITTED_ACTION).is_ok());
+        // F1-T109: E-16 penggantian dan alasan pengajuan ulang yang ditolak berupa kode sah.
+        for c in [
+            SOFT_DELETED_ACTION,
+            REPLACED_REASON,
+            RESUBMISSION_INCOMPLETE_REASON,
+            NOT_RESUBMITTABLE_REASON,
+        ] {
+            assert!(Code::new(c).is_ok(), "{c}");
+        }
+        // Hapus lunak hanya waktu dan kode alasan; pelaku hapus sudah di field aktor.
+        for f in ["deleted_at", "delete_reason"] {
+            assert!(
+                DOCUMENT_POLICY
+                    .fields()
+                    .iter()
+                    .any(|r| r.name() == f && r.kind() == audit::FieldKind::Value),
+                "{f}"
+            );
+        }
         assert!(RESUBMISSION_POLICY.validate().is_ok());
         for f in [
             "npwp",

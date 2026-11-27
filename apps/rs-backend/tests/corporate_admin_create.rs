@@ -388,6 +388,18 @@ async fn verifier_creates_an_active_company_with_one_provisioning_intent_and_aud
         ]
     );
     audit_support::assert_events_complete(&evs, &["e_10", "e_11"]);
+    // F1-T109: pemeriksa korporat bersama (tenant = perusahaan, tanpa email HR/NIB/nama).
+    let tenant = client.to_string();
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_10", "e_11"],
+        Some(&tenant),
+        &[
+            mixed_email.as_str(),
+            nib.as_str(),
+            "PT Dibuatkan Verifikator",
+        ],
+    );
     for e in &evs {
         assert_eq!(e["outcome"], "success");
         assert_eq!(e["actor_account_id"], verifier.to_string());
@@ -457,6 +469,13 @@ async fn duplicate_nib_is_rejected_generically_without_any_side_effect() {
         assert!(e["changed_fields"].is_null());
         assert!(!e.to_string().contains(&nib));
     }
+    // F1-T109: penolakan tanpa tenant (perusahaan pemilik NIB tidak terbuka), tanpa NIB/email.
+    audit_support::assert_corporate_events_clean(
+        &evs,
+        &["e_10"],
+        None,
+        &[nib.as_str(), hr_email.as_str(), "PT Pemilik NIB Lama"],
+    );
 }
 
 // trace: CR-035 (Q10 = B2, TD-46): pengajuan Menunggu verifikasi, Ditolak, atau Nonaktif dengan NIB yang sama tidak
