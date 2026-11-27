@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>K01 Member area HR: daftar, verifikasi, dasbor, kelola HR - Wireframe Ruang Sehat</title>
+<title>K01 Member area HR: daftar, verifikasi, Beranda, Tim HR - Wireframe Ruang Sehat</title>
 <link rel="stylesheet" href="wireframe.css">
 <link rel="stylesheet" href="wireframe-situs.css">
 </head>
 <body>
 <header class="doc-head">
-  <h1>K01 Member area HR <code>web/korporat</code>: daftar perusahaan, menunggu verifikasi, dasbor, kelola HR <span class="draft-tag">DRAF F1-T84</span></h1>
+  <h1>K01 Member area HR <code>web/korporat</code>: daftar perusahaan, menunggu verifikasi, Beranda, Tim HR <span class="draft-tag">DRAF F1-T84</span></h1>
   <p>Story: US-1901, US-1902 AC3 (sisi HR), US-1904; BR-132, BR-136, BR-145; ADR-027, ADR-028. Realm Keycloak <code>korporat</code>, MFA TOTP wajib (KEPUTUSAN-253), sesi 30 menit tidak aktif dan 12 jam mutlak. Layar autentikasi memakai tema login Keycloak (browser), layar lain di Next.js dengan BFF. Pesan galat mengikuti UP-73 (seragam, tidak membuka status akun). Logo placeholder (PT-40). Layanan korporat (katalog, pesanan, peserta, invoice) belum dirancang di sini (US-1905 dst., Fase 3). <a href="index.html">Kembali ke indeks</a></p>
 </header>
 <main class="flow" style="flex-direction:column">
@@ -133,7 +133,7 @@
 <section aria-labelledby="k7">
   <div class="web">
     <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
-    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Status verifikasi</a><a href="#">Profil perusahaan</a></nav>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Beranda</a><span class="muted">Pesanan (segera hadir)</span><span class="muted">Peserta (segera hadir)</span><span class="muted">Tagihan (segera hadir)</span><a href="#">Tim HR</a></nav>
     <div class="web-main">
       <h1 class="t-title">Status verifikasi perusahaan</h1>
       <div class="panel"><div class="row"><span class="badge warning">Menunggu verifikasi</span><span class="t-small muted">Diajukan Sen, 1 Mar 2027 08.15 WIB</span></div>
@@ -150,7 +150,7 @@
 <section aria-labelledby="k8">
   <div class="web">
     <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
-    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Status verifikasi</a><a href="#">Profil perusahaan</a></nav>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Beranda</a><span class="muted">Pesanan (segera hadir)</span><span class="muted">Peserta (segera hadir)</span><span class="muted">Tagihan (segera hadir)</span><a href="#">Tim HR</a></nav>
     <div class="web-main">
       <h1 class="t-title">Status verifikasi perusahaan</h1>
       <div class="alert danger" role="status"><span aria-hidden="true">&#10005;</span><span><b>Ditolak</b>Alasan: Bukti kewenangan tidak memadai. Keterangan Verifikator: [teks keterangan, bila ada]. Daftar kode alasan final <span class="td">[TIDAK DIKETAHUI]</span>.</span></div>
@@ -166,28 +166,23 @@
 <section aria-labelledby="k9">
   <div class="web">
     <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
-    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Dasbor</a><a href="#">Profil perusahaan</a><a href="#">Kelola HR</a><span class="sec">Layanan korporat</span><a href="#" aria-disabled="true" class="muted">Pesanan (belum tersedia)</a><a href="#" aria-disabled="true" class="muted">Peserta (belum tersedia)</a><a href="#" aria-disabled="true" class="muted">Invoice (belum tersedia)</a></nav>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Beranda</a><span class="muted">Pesanan (segera hadir)</span><span class="muted">Peserta (segera hadir)</span><span class="muted">Tagihan (segera hadir)</span><a href="#">Tim HR</a></nav>
     <div class="web-main">
-      <h1 class="t-title">Dasbor</h1>
-      <div class="alert success" role="status"><span aria-hidden="true">&#10003;</span><span><b>Perusahaan terverifikasi</b>Status: Aktif. Akun HR Anda dapat memakai menu pesanan saat tersedia.</span></div>
-      <div class="cards">
-        <div class="panel"><span class="t-cap">Status perusahaan</span><span class="badge success">Aktif</span></div>
-        <div class="panel"><span class="t-cap">HR aktif</span><span class="t-title">2</span><a href="#">Kelola HR</a></div>
-        <div class="panel"><span class="t-cap">Pesanan berjalan</span><span class="t-small muted">Belum tersedia. [Isi dasbor layanan korporat: kehadiran, invoice] <span class="td">[TIDAK DIKETAHUI]</span> (US-1905 dst., Fase 3)</span></div>
+      <h1 class="t-title">Beranda</h1>
+      <div class="panel"><span class="badge success">Aktif</span><h2 class="t-sub">Perusahaan Anda sudah aktif</h2><p class="t-body">Akun HR Anda sudah dapat dipakai. Ajak rekan HR lain agar bisa membantu mengurus layanan.</p><button class="btn btn-primary">Undang rekan HR</button></div>
+      <p class="note"><b>Catatan:</b> Beranda hanya memuat status perusahaan dan satu tombol langkah berikutnya (KEPUTUSAN-431, KEPUTUSAN-440). Pesanan, peserta, tagihan, rekap kehadiran, dan ringkasan hasil dirancang di task Fase 3 <span class="td">[TIDAK DIKETAHUI]</span>. Beranda tidak pernah menampilkan hasil pemeriksaan peserta (BR-143).</p>
       </div>
-      <p class="note"><b>Catatan:</b> dasbor Fase 1 hanya memuat status perusahaan, jumlah HR, dan tautan. Pesanan, peserta, invoice, rekap kehadiran, dan ringkasan hasil dirancang di task Fase 3. Dasbor tidak pernah menampilkan hasil pemeriksaan peserta (BR-143).</p>
-    </div>
   </div>
-  <p class="web-caption"><b id="k9">9. Dasbor HR perusahaan Aktif (US-1902 AC2, US-1904)</b>Menu layanan korporat tampil nonaktif dengan alasan tertulis "belum tersedia" (bukan hilang), agar HR tidak bingung. Isian dasbor lanjutan <span class="td">[TIDAK DIKETAHUI]</span> sampai fase layanan korporat.</p>
+  <p class="web-caption"><b id="k9">9. Beranda HR perusahaan Aktif (US-1902 AC2, US-1904; KEPUTUSAN-430, 431, 440)</b>Menu: Beranda, Pesanan, Peserta, Tagihan, Tim HR. Menu yang fiturnya belum ada tampil abu-abu bertuliskan "segera hadir", bukan tautan dan tidak hilang, agar HR tidak bingung. Beranda Aktif punya satu tombol utama "Undang rekan HR" (HR tidak perlu memilih). Isian lanjutan <span class="td">[TIDAK DIKETAHUI]</span> sampai fase layanan korporat.</p>
 </section>
 
 <!-- 10. Kelola HR -->
 <section aria-labelledby="k10">
   <div class="web">
     <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span><span class="grow"></span><span class="t-small">PT Contoh Sejahtera &middot; hr@contoh.id</span><button class="btn btn-secondary">Keluar</button></div>
-    <nav class="web-side" aria-label="Menu"><a href="#">Dasbor</a><a href="#">Profil perusahaan</a><a class="on" href="#" aria-current="page">Kelola HR</a></nav>
+    <nav class="web-side" aria-label="Menu"><a href="#">Beranda</a><span class="muted">Pesanan (segera hadir)</span><span class="muted">Peserta (segera hadir)</span><span class="muted">Tagihan (segera hadir)</span><a class="on" href="#" aria-current="page">Tim HR</a></nav>
     <div class="web-main">
-      <div class="row between"><h1 class="t-title">Kelola HR</h1><button class="btn btn-primary">Undang HR</button></div>
+      <div class="row between"><h1 class="t-title">Tim HR</h1><button class="btn btn-primary">Undang HR</button></div>
       <div class="table-wrap"><table class="tbl"><caption class="t-cap" style="text-align:left;padding:8px">Anggota HR perusahaan. Semua HR berperan sama (PT-68 terbuka).</caption>
         <thead><tr><th scope="col">Nama</th><th scope="col">Email</th><th scope="col">Status</th><th scope="col">Aksi</th></tr></thead>
         <tbody>
@@ -206,14 +201,14 @@
       </div>
     </div>
   </div>
-  <p class="web-caption"><b id="k10">10. Kelola HR (US-1904 AC2, AC3, AC5)</b>Undang HR lain lewat email, nonaktifkan dengan dialog dampak, HR aktif terakhir tidak dapat dinonaktifkan. Data perusahaan lain tidak pernah tampil; objek perusahaan lain dijawab "Data tidak ditemukan" (AC3, KU-03). Nonaktif mengakhiri sesi pada permintaan berikutnya (AC5). Dialog fokus terkunci dan kembali ke tombol pemicu saat ditutup. Status diumumkan tanpa memindah fokus (A15). Alasan nonaktif wajib atau tidak <span class="td">[TIDAK DIKETAHUI]</span> (tidak disebut di PRD, tidak ditambahkan).</p>
+  <p class="web-caption"><b id="k10">10. Tim HR (US-1904 AC2, AC3, AC5)</b>Undang HR lain lewat email, nonaktifkan dengan dialog dampak, HR aktif terakhir tidak dapat dinonaktifkan. Data perusahaan lain tidak pernah tampil; objek perusahaan lain dijawab "Data tidak ditemukan" (AC3, KU-03). Nonaktif mengakhiri sesi pada permintaan berikutnya (AC5). Dialog fokus terkunci dan kembali ke tombol pemicu saat ditutup. Status diumumkan tanpa memindah fokus (A15). Alasan nonaktif wajib atau tidak <span class="td">[TIDAK DIKETAHUI]</span> (tidak disebut di PRD, tidak ditambahkan).</p>
 </section>
 
 <!-- 11. Sesi -->
 <section aria-labelledby="k11">
   <div class="web" style="min-height:300px">
     <div class="web-top"><span class="logo">Ruang Sehat &middot; Member area</span></div>
-    <nav class="web-side" aria-label="Menu"><a href="#">Dasbor</a></nav>
+    <nav class="web-side" aria-label="Menu"><a class="on" href="#" aria-current="page">Beranda</a><span class="muted">Pesanan (segera hadir)</span><span class="muted">Peserta (segera hadir)</span><span class="muted">Tagihan (segera hadir)</span><a href="#">Tim HR</a></nav>
     <div class="web-main"><p class="t-body muted">(isi halaman di belakang dialog)</p></div>
     <div class="scrim center" role="presentation"><div class="dialog" role="alertdialog" aria-labelledby="ss-t" aria-describedby="ss-d" style="max-width:420px;margin:0 auto"><h2 class="t-sub" id="ss-t">Sesi akan berakhir</h2><p class="t-small" id="ss-d">Anda tidak aktif. Sesi berakhir dalam 2 menit demi keamanan.</p><div class="row" style="justify-content:flex-end"><button class="btn btn-secondary">Keluar</button><button class="btn btn-primary">Tetap masuk</button></div></div></div>
   </div>
