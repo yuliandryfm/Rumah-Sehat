@@ -555,7 +555,7 @@ Ketentuan berikut adalah perbaikan B-02 review keamanan, selaras dengan ADR-025 
   - hanya alamat kontainer Caddy dalam bentuk `/32` (IPv6: `/128`), dengan alamat tetap di Compose (`ipv4_address` pada jaringan bridge Caddy-api), bukan CIDR jaringan bridge;
   - layanan `api` tanpa `ports:` (hanya terjangkau dari jaringan Docker lewat Caddy);
   - nilai tidak boleh memuat alamat gateway bridge Docker. Alasan (review keamanan T1 TD-22): koneksi dari luar lewat port yang dipublikasikan dapat tampak berasal dari gateway bridge (userland-proxy Docker), sehingga mempercayai gateway sama dengan mempercayai `X-Forwarded-For` dari internet. Perilaku alamat sumber itu `[TIDAK DIKETAHUI]` di dokumentasi resmi Docker yang sudah dibuka `[SRC-928]`; aturan ini tetap aman walau perilakunya berbeda;
-  - alamat BFF Next.js tidak dimasukkan sebelum TD-57 selesai.
+  - alamat BFF Next.js tidak dimasukkan sebelum TD-58 selesai.
   Tanpa nilai ini, di balik Caddy semua klien terlihat sebagai alamat Caddy dan batas laju per sumber menjadi global (ADR-031: rute Caddy `/daftar` tidak boleh dipasang di production sebelum nilai ini terisi). Caddy di depan `api` tidak diberi `trusted_proxies` kecuali ada LB yang terbukti meneruskan IP asli (PT-39); tanpa itu Caddy mengganti `X-Forwarded-For` kiriman klien dengan alamat peernya `[SRC-925]` `[SRC-926]` `[SRC-927]` `[KEPUTUSAN-400]` `[KEPUTUSAN-401]`.
 
 ---
