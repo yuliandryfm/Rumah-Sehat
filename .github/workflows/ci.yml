@@ -255,3 +255,53 @@ jobs:
         env:
           HASIL_MATRIX: ${{ needs.test-verify.result }}
         run: test "$HASIL_MATRIX" = success
+
+  # KEPUTUSAN-450 (user Q11 = B, TD-48 a) dan KEPUTUSAN-451: test penetralan PDF dengan qpdf asli
+  # (apps/rs-backend/tests/corporate_documents_pdf_qpdf.rs, bertanda #[ignore] di lokal) dijalankan di CI dengan
+  # qpdf 12.4.2 dari rilis resmi (scripts/ci/pasang-qpdf.sh, sha256 diperiksa), versi yang sama dengan produksi.
+  # Job terpisah supaya job `verify` (sekitar 24 menit) tidak bertambah dan tidak mendekati batas 60 menit.
+  # Butuh Rust, sqlx-cli 0.9.1 dan Docker (db-ephemeral.sh: PostgreSQL sekali pakai; SeaweedFS untuk test alur
+  # unggah penuh). Tidak butuh Node atau alat pemindai. Skrip verifikasi tidak diubah.
+  test-qpdf:
+    name: test qpdf asli (PDF, --ignored)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # KEPUTUSAN-451: versi sama dengan produksi (12.4.2, docs/05-stack.md §1.4), bukan paket apt 11.9.0 (TD-64).
+      # Skrip yang sama wajib dipakai image api (TD-48); hash tidak cocok = langkah merah, tidak ada yang terpasang.
+      - name: Pasang qpdf 12.4.2 (rilis resmi, sha256 diperiksa)
+        run: |
+          bash scripts/ci/pasang-qpdf.sh "$RUNNER_TEMP/qpdf-12.4.2"
+          test "$(env -i "$RUNNER_TEMP/qpdf-12.4.2/bin/qpdf" --version | sed -n '1p')" = "qpdf version 12.4.2"
+
+      - name: Pasang toolchain Rust sesuai rust-toolchain.toml
+        run: |
+          channel="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml | sed -n '1p')"
+          test -n "$channel"
+          rustup toolchain install "$channel" --profile minimal --component rustfmt,clippy --no-self-update
+          rustc --version
+
+      - name: Pasang sqlx-cli 0.9.1 (crates.io, --locked)
+        run: |
+          root="$HOME/.local/share/ruang-sehat/sqlx-cli-0.9.1"
+          cargo install sqlx-cli --version 0.9.1 --locked --no-default-features --features postgres,rustls --root "$root"
+          test "$("$root/bin/sqlx" --version | sed -n '1p')" = "sqlx-cli 0.9.1"
+
+      - name: Periksa Docker tersedia (db-ephemeral, SeaweedFS)
+        run: |
+          docker version
+          docker info --format '{{.OperatingSystem}} {{.ServerVersion}}'
+
+      - name: Periksa tidak ada konfigurasi cargo di luar repo
+        run: bash scripts/ci/periksa-lingkungan-bersih.sh
+
+      - name: cargo test corporate_documents_pdf_qpdf --ignored (qpdf asli 12.4.2)
+        env:
+          RS_TEST_QPDF: ${{ runner.temp }}/qpdf-12.4.2/bin/qpdf
+          SQLX_OFFLINE: "true"
+        run: bash scripts/db-ephemeral.sh cargo test -p rs-backend --test corporate_documents_pdf_qpdf --locked -- --ignored --test-threads=1

@@ -59,6 +59,13 @@ fn qpdf_path() -> PathBuf {
 fn inspector() -> QpdfInspector {
     let mut config = QpdfConfig::new(qpdf_path());
     config.timeout = Duration::from_secs(20);
+    // Seperti produksi (start api): direktori berkas sementara disiapkan (0700) sebelum pemeriksa dipakai (TD-65).
+    // Direktori unik per pemeriksa: `prepare` menghapus sisa `rs-pdf-*`, jangan sampai mengenai test paralel.
+    config.temp_dir = std::env::temp_dir().join(format!(
+        "rs-pdf-inspect-test-{}",
+        foundation::new_id().hyphenated()
+    ));
+    QpdfInspector::prepare(&config).unwrap();
     QpdfInspector::new(config)
 }
 
@@ -122,6 +129,106 @@ fn qpdf_tool(args: &[&str], input: &[u8]) -> Vec<u8> {
 
 async fn verdict(bytes: &[u8]) -> PdfVerdict {
     inspector().inspect(bytes).await
+}
+
+/// Rentang byte angka setelah `startxref\n` TERAKHIR (pencarian pada byte, bukan pada teks lossy).
+fn startxref_value_range(pdf: &[u8]) -> (usize, usize) {
+    let marker = b"startxref\n";
+    let pos = pdf
+        .windows(marker.len())
+        .rposition(|w| w == marker)
+        .unwrap();
+    let start = pos + marker.len();
+    let len = pdf[start..].iter().position(|b| *b == b'\n').unwrap();
+    (start, start + len)
+}
+
+/// Salinan `pdf` dengan angka `startxref` terakhir diganti `value`.
+fn with_startxref(pdf: &[u8], value: &str) -> Vec<u8> {
+    let (start, end) = startxref_value_range(pdf);
+    let mut out = pdf[..start].to_vec();
+    out.extend(value.bytes());
+    out.extend(&pdf[end..]);
+    out
+}
+
+/// Salinan `pdf` tanpa baris `startxref` dan angkanya (penanda `%%EOF` tetap ada).
+fn without_startxref(pdf: &[u8]) -> Vec<u8> {
+    let (start, _) = startxref_value_range(pdf);
+    let pos = start - b"startxref\n".len();
+    let mut out = pdf[..pos].to_vec();
+    out.extend(b"%%EOF\n");
+    out
+}
+
+/// Pembaruan inkremental sah: halaman 3 diganti dan seksi xref baru (`/Prev` ke xref lama) ditambahkan.
+fn incremental_update(base: &[u8]) -> Vec<u8> {
+    let (start, end) = startxref_value_range(base);
+    let prev: usize = std::str::from_utf8(&base[start..end])
+        .unwrap()
+        .parse()
+        .unwrap();
+    let object_at = base.len();
+    let mut out = base.to_vec();
+    out.extend(
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] >>\nendobj\n".iter(),
+    );
+    let xref_at = out.len();
+    out.extend(
+        format!(
+            "xref\n3 1\n{object_at:010} 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R /Prev {prev} >>\nstartxref\n{xref_at}\n%%EOF\n"
+        )
+        .bytes(),
+    );
+    out
+}
+
+#[tokio::test]
+#[ignore = "butuh biner qpdf 12.4.2 (RS_TEST_QPDF); lihat dokumentasi berkas"]
+async fn damaged_startxref_is_never_safe() {
+    // Penjaga xref rusak = qpdf memulihkan dengan peringatan, kode keluar 3, ditolak pemeriksa (KEPUTUSAN-346,
+    // KEPUTUSAN-452). Setiap kasus memastikan berkas memang berubah dibanding aslinya.
+    let base = build_pdf("", &[]);
+    let object_2_at = base.windows(7).position(|w| w == b"2 0 obj").unwrap();
+    let cases: Vec<(&str, Vec<u8>)> = vec![
+        (
+            "offset lewat EOF",
+            with_startxref(&base, &(base.len() + 1000).to_string()),
+        ),
+        (
+            "offset di tengah objek",
+            with_startxref(&base, &(object_2_at + 3).to_string()),
+        ),
+        ("offset 0", with_startxref(&base, "0")),
+        ("startxref hilang", without_startxref(&base)),
+    ];
+    for (name, damaged) in cases {
+        assert_ne!(damaged, base, "{name}: berkas tidak berubah");
+        assert_eq!(verdict(&damaged).await, PdfVerdict::Unreadable, "{name}");
+    }
+}
+
+#[tokio::test]
+#[ignore = "butuh biner qpdf 12.4.2 (RS_TEST_QPDF); lihat dokumentasi berkas"]
+async fn legitimate_xref_layouts_stay_safe() {
+    let base = build_pdf("", &[]);
+    assert_eq!(verdict(&base).await, PdfVerdict::Safe, "xref klasik");
+    let incremental = incremental_update(&base);
+    assert_eq!(
+        verdict(&incremental).await,
+        PdfVerdict::Safe,
+        "pembaruan inkremental"
+    );
+    // xref stream (PDF 1.5+): qpdf menulisnya saat object stream dibangkitkan.
+    let xref_stream = qpdf_tool(
+        &["--object-streams=generate", "--compress-streams=y"],
+        &base,
+    );
+    assert!(
+        xref_stream.windows(5).any(|w| w == b"/XRef"),
+        "keluaran qpdf harus memuat xref stream"
+    );
+    assert_eq!(verdict(&xref_stream).await, PdfVerdict::Safe, "xref stream");
 }
 
 #[tokio::test]
@@ -289,10 +396,13 @@ async fn encrypted_damaged_and_non_pdf_inputs_are_rejected() {
     );
     assert_ne!(verdict(&owner_only).await, PdfVerdict::Safe);
     // xref rusak (offset digeser): qpdf memulihkan dengan peringatan (kode keluar 3), ditolak kebijakan.
-    let mut damaged = build_pdf("", &[]);
-    let text = String::from_utf8_lossy(&damaged).to_string();
-    let at = text.rfind("startxref\n").unwrap() + "startxref\n".len();
+    // Posisi dicari pada BYTE (bukan pada teks `from_utf8_lossy`: header memuat byte non-UTF8 sehingga offset
+    // teks bergeser dan yang rusak malah `%%EOF`, TD-66).
+    let base = build_pdf("", &[]);
+    let at = startxref_value_range(&base).0;
+    let mut damaged = base.clone();
     damaged.splice(at..at + 1, *b"9");
+    assert_ne!(damaged, base);
     assert_eq!(verdict(&damaged).await, PdfVerdict::Unreadable);
     // Bukan PDF walau diawali penanda.
     assert_eq!(
