@@ -48,8 +48,8 @@ describe("hero Beranda (C-03)", () => {
     expect(ponsel?.getAttribute("aria-hidden")).toBe("true");
     expect(ponsel?.textContent).toBe("");
     expect(container.querySelector(".situs-hero img")).toBeNull();
-    expect(screen.getByText("Konsultasi chat dan video")).toBeDefined();
-    expect(screen.getByText("Biaya MCU dan lab terlihat sebelum daftar")).toBeDefined();
+    // Teks mockup apa adanya atas keputusan user (2026-11-28 "A", KEPUTUSAN-494).
+    for (const t of ["Chat & Video Privat", "Resep digital resmi", "Biaya MCU terlihat awal", "100% Transparan"]) expect(screen.getByText(t)).toBeDefined();
     expect(screen.getByRole("link", { name: "Unduh aplikasi" }).getAttribute("href")).toBe("/unduh");
     expect(screen.getByRole("link", { name: "Untuk Perusahaan" }).getAttribute("href")).toBe("/untuk-perusahaan");
     const chip = screen.getByRole("list", { name: "Sorotan Ruang Sehat" });

@@ -180,6 +180,10 @@ main:focus { outline: none; }
 
 /* Kartu mengambang: putih, garis tipis, sudut 20 (desain "Floating Card"). */
 .situs-mengambang { position: absolute; z-index: 2; display: flex; align-items: center; gap: var(--s3); max-width: 250px; margin: 0; padding: var(--s3) var(--s4) var(--s3) var(--s3); border-radius: var(--situs-r-dalam); background: var(--c-bg-surface); border: 1px solid var(--c-border-divider); box-shadow: var(--e2); font-family: var(--situs-f-judul); font-size: 14px; line-height: 20px; font-weight: 600; color: var(--c-text-primary); } /* K1 */
+.situs-mengambang__teks { display: flex; flex-direction: column; }
+.situs-mengambang__label { font-size: 12px; line-height: 16px; color: var(--c-primary-strong); } /* K6 di atas putih */
+.situs-mengambang__isi { font-weight: 400; color: var(--c-text-primary); }
+.situs-mengambang--b .situs-mengambang__isi { font-family: var(--situs-f-angka); font-variant-numeric: tabular-nums; }
 .situs-mengambang--a { top: 18%; left: 0; }
 .situs-mengambang--b { bottom: 14%; right: 0; }
 

@@ -57,8 +57,8 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
     const tautan = within(band).getAllByRole("link");
     expect(tautan.map((a) => a.textContent)).toEqual(["Google Play", "App Store"]);
     expect(tautan.map((a) => a.getAttribute("href"))).toEqual(["/unduh", "/unduh"]);
-    // Tanpa klaim harga yang belum diputuskan dan tanpa angka karangan.
-    expect(band.textContent).not.toMatch(/gratis|\d/i);
+    // Teks mockup apa adanya atas keputusan user (2026-11-28 "A", KEPUTUSAN-494).
+    expect(band.textContent).toContain("Tersedia gratis untuk perangkat Android dan iOS. Semua layanan kesehatan terpadu dalam genggaman.");
   });
 
   test("alamat toko valid dipakai di pita; pita tetap ada di halaman Unduh aplikasi (header tidak lagi memuat tautan toko)", () => {
@@ -80,8 +80,9 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
     expect(within(screen.getByRole("region", { name: "Mulai hidup lebih sehat bersama Ruang Sehat" })).getByRole("link", { name: "Unduh di Google Play" })).toBeDefined();
   });
 
-  test("teks pita bervariasi per halaman mengikuti desain; tanpa klaim harga atau angka", () => {
+  test("teks pita bervariasi per halaman, persis teks mockup (keputusan user 2026-11-28 \"A\")", () => {
     const hasil: Record<string, string> = {};
+    const hasilIsi: Record<string, string> = {};
     for (const j of ["/layanan", "/kontak", "/untuk-perusahaan", "/artikel"]) {
       jalur.nilai = j;
       render(
@@ -91,7 +92,7 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
       );
       const band = within(screen.getByRole("main")).getByRole("region");
       hasil[j] = band.querySelector("h2")?.textContent ?? "";
-      expect(band.textContent, j).not.toMatch(/gratis|\d/i);
+      hasilIsi[j] = band.querySelector("p")?.textContent ?? "";
       cleanup();
     }
     expect(hasil).toEqual({
@@ -99,6 +100,12 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
       "/kontak": "Ajukan keluhan lebih cepat lewat aplikasi",
       "/untuk-perusahaan": "Aplikasi Ruang Sehat untuk peserta",
       "/artikel": "Mulai hidup lebih sehat bersama Ruang Sehat",
+    });
+    expect(hasilIsi).toEqual({
+      "/layanan": "Unduh aplikasi untuk mulai. Tersedia gratis untuk perangkat Android dan iOS.",
+      "/kontak": "Pantau status penanganan keluhan langsung dari aplikasi Ruang Sehat di Android dan iOS.",
+      "/untuk-perusahaan": "Karyawan menerima undangan lewat email dan memakai aplikasi Ruang Sehat untuk jadwal serta hasil pemeriksaan.",
+      "/artikel": "Tersedia gratis untuk perangkat Android dan iOS. Semua layanan kesehatan terpadu dalam genggaman.",
     });
   });
 });

@@ -26,21 +26,18 @@ const CHIP_NILAI: readonly { teks: string; sumber: string }[] = [
   { teks: "Panggilan video tidak direkam", sumber: "BRD BR-016" },
   { teks: "Android & iOS", sumber: "BRIEF" },
 ];
+/**
+ * Kartu mengambang hero: teks mockup apa adanya atas keputusan user (`[USER]` 2026-11-28 "A (pakai teks mockup
+ * apa adanya)", KEPUTUSAN-494); klaim bisnisnya milik user.
+ */
 const KARTU_MENGAMBANG: readonly {
-  teks: string;
+  label: string;
+  isi: string;
   ikon: NamaIkon;
   kelas: string;
 }[] = [
-  {
-    teks: "Konsultasi chat dan video",
-    ikon: "video",
-    kelas: "situs-mengambang--a",
-  }, // BRD BR-010, BR-011
-  {
-    teks: "Biaya MCU dan lab terlihat sebelum daftar",
-    ikon: "struk",
-    kelas: "situs-mengambang--b",
-  }, // BRD BR-023
+  { label: "Chat & Video Privat", isi: "Resep digital resmi", ikon: "video", kelas: "situs-mengambang--a" },
+  { label: "Biaya MCU terlihat awal", isi: "100% Transparan", ikon: "struk", kelas: "situs-mengambang--b" },
 ];
 const UBIN_PONSEL: readonly NamaIkon[] = ["konsultasi", "psikolog", "klinik", "lab", "home-visit", "belanja"];
 
@@ -86,9 +83,12 @@ function VisualHero({ beranda }: { beranda: Konten | null }) {
         <MockupPonsel />
       )}
       {KARTU_MENGAMBANG.map((k) => (
-        <p key={k.teks} className={`situs-mengambang ${k.kelas}`}>
+        <p key={k.label} className={`situs-mengambang ${k.kelas}`}>
           <IkonLingkar nama={k.ikon} kelas="situs-ikon-lingkar--kecil" />
-          <span>{k.teks}</span>
+          <span className="situs-mengambang__teks">
+            <span className="situs-mengambang__label">{k.label}</span>
+            <span className="situs-mengambang__isi">{k.isi}</span>
+          </span>
         </p>
       ))}
     </div>

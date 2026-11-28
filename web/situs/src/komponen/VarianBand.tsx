@@ -9,27 +9,26 @@ interface TeksBand {
 }
 
 /**
- * Variasi teks pita unduh per halaman, mengikuti desain Stitch. Teks di kode, faktual, bersumber dokumen: tujuh
- * layanan dipakai di aplikasi (BRIEF), keluhan diajukan dan dipantau di aplikasi (PRD US-1103), peserta korporat
- * menautkan akun lewat undangan di aplikasi (PRD AB-85). Klaim "gratis" dari desain tidak dipakai (belum ada
- * keputusan bisnis), KEPUTUSAN-480.
+ * Variasi teks pita unduh per halaman, mengikuti desain Stitch. Teks mockup apa adanya atas keputusan user
+ * (`[USER]` 2026-11-28 "A (pakai teks mockup apa adanya)", KEPUTUSAN-494): termasuk "gratis" (keputusan bisnis
+ * milik user), "Pantau status penanganan keluhan" (PRD US-1103), dan "undangan lewat email" (PRD AB-85).
  */
 const TEKS_UMUM: TeksBand = {
   judul: "Mulai hidup lebih sehat bersama Ruang Sehat",
-  isi: "Tersedia untuk perangkat Android dan iOS. Tujuh layanan kesehatan dalam satu aplikasi.",
+  isi: "Tersedia gratis untuk perangkat Android dan iOS. Semua layanan kesehatan terpadu dalam genggaman.",
 };
 const TEKS_HALAMAN: Readonly<Record<string, TeksBand>> = {
   "/layanan": {
     judul: "Semua layanan dipesan dan dipakai di aplikasi Ruang Sehat",
-    isi: "Unduh aplikasi untuk mulai. Tersedia untuk perangkat Android dan iOS.",
+    isi: "Unduh aplikasi untuk mulai. Tersedia gratis untuk perangkat Android dan iOS.",
   },
   "/kontak": {
     judul: "Ajukan keluhan lebih cepat lewat aplikasi",
-    isi: "Ajukan dan pantau penanganan keluhan langsung dari aplikasi Ruang Sehat di Android dan iOS.",
+    isi: "Pantau status penanganan keluhan langsung dari aplikasi Ruang Sehat di Android dan iOS.",
   },
   "/untuk-perusahaan": {
     judul: "Aplikasi Ruang Sehat untuk peserta",
-    isi: "Peserta menerima undangan dari perusahaan lalu menautkan akunnya di aplikasi Ruang Sehat.",
+    isi: "Karyawan menerima undangan lewat email dan memakai aplikasi Ruang Sehat untuk jadwal serta hasil pemeriksaan.",
   },
 };
 
