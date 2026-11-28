@@ -2648,7 +2648,7 @@
             "example": "hr@perusahaan.example",
             "maxLength": 254,
             "minLength": 5,
-            "pattern": "^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+            "pattern": "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
           },
           "legal_name": {
             "type": "string",

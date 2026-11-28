@@ -132,7 +132,7 @@ pub(super) struct HrInvitationRequest {
         example = "hr.baru@perusahaan.example",
         min_length = 5,
         max_length = 254,
-        pattern = "^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+        pattern = "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
     )]
     email: String,
 }
