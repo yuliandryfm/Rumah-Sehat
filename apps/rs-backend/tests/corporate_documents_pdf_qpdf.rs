@@ -59,6 +59,13 @@ fn qpdf_path() -> PathBuf {
 fn inspector() -> QpdfInspector {
     let mut config = QpdfConfig::new(qpdf_path());
     config.timeout = Duration::from_secs(20);
+    // Seperti produksi (start api): direktori berkas sementara disiapkan (0700) sebelum pemeriksa dipakai (TD-65).
+    // Direktori unik per pemeriksa: `prepare` menghapus sisa `rs-pdf-*`, jangan sampai mengenai test paralel.
+    config.temp_dir = std::env::temp_dir().join(format!(
+        "rs-pdf-inspect-test-{}",
+        foundation::new_id().hyphenated()
+    ));
+    QpdfInspector::prepare(&config).unwrap();
     QpdfInspector::new(config)
 }
 

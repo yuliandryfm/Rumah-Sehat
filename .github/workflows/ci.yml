@@ -256,13 +256,12 @@ jobs:
           HASIL_MATRIX: ${{ needs.test-verify.result }}
         run: test "$HASIL_MATRIX" = success
 
-  # KEPUTUSAN-450 (user Q11 = B, TD-48 a): test penetralan PDF dengan qpdf asli
+  # KEPUTUSAN-450 (user Q11 = B, TD-48 a) dan KEPUTUSAN-451: test penetralan PDF dengan qpdf asli
   # (apps/rs-backend/tests/corporate_documents_pdf_qpdf.rs, bertanda #[ignore] di lokal) dijalankan di CI dengan
-  # paket Ubuntu `qpdf`. Job terpisah supaya job `verify` (sekitar 24 menit) tidak bertambah dan tidak mendekati
-  # batas 60 menit. Butuh Rust, sqlx-cli 0.9.1 dan Docker (db-ephemeral.sh: PostgreSQL sekali pakai; SeaweedFS
-  # untuk test alur unggah penuh). Tidak butuh Node atau alat pemindai. Skrip verifikasi tidak diubah.
-  # `apt-get install` hanya memakai nama paket tetap (tanpa masukan dari luar); versi paket dicocokkan dengan
-  # SRC-980 (11.9.0 di noble) supaya perubahan versi paket tidak lolos diam-diam.
+  # qpdf 12.4.2 dari rilis resmi (scripts/ci/pasang-qpdf.sh, sha256 diperiksa), versi yang sama dengan produksi.
+  # Job terpisah supaya job `verify` (sekitar 24 menit) tidak bertambah dan tidak mendekati batas 60 menit.
+  # Butuh Rust, sqlx-cli 0.9.1 dan Docker (db-ephemeral.sh: PostgreSQL sekali pakai; SeaweedFS untuk test alur
+  # unggah penuh). Tidak butuh Node atau alat pemindai. Skrip verifikasi tidak diubah.
   test-qpdf:
     name: test qpdf asli (PDF, --ignored)
     runs-on: ubuntu-24.04
@@ -273,14 +272,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Pasang paket qpdf (Ubuntu 24.04 noble, universe)
+      # KEPUTUSAN-451: versi sama dengan produksi (12.4.2, docs/05-stack.md §1.4), bukan paket apt 11.9.0 (TD-64).
+      # Skrip yang sama wajib dipakai image api (TD-48); hash tidak cocok = langkah merah, tidak ada yang terpasang.
+      - name: Pasang qpdf 12.4.2 (rilis resmi, sha256 diperiksa)
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends qpdf
-          command -v qpdf
-          qpdf --version
-          dpkg-query --show --showformat='${Package} ${Version}\n' qpdf
-          test "$(dpkg-query --show --showformat='${Version}' qpdf | cut -d- -f1)" = "11.9.0"
+          bash scripts/ci/pasang-qpdf.sh "$RUNNER_TEMP/qpdf-12.4.2"
+          test "$(env -i "$RUNNER_TEMP/qpdf-12.4.2/bin/qpdf" --version | sed -n '1p')" = "qpdf version 12.4.2"
 
       - name: Pasang toolchain Rust sesuai rust-toolchain.toml
         run: |
@@ -303,16 +300,8 @@ jobs:
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh
 
-      # Run 46093789597: test memakai QpdfConfig::new tanpa QpdfInspector::prepare, jadi direktori berkas sementara
-      # bawaan (temp_dir/rs-pdf-inspect) tidak ada dan pemeriksa menjawab Unavailable. Itu cacat test (belum pernah
-      # dijalankan, TD-48), bukan cacat qpdf; perbaikan benar adalah memanggil prepare di test (TD-65). Sementara,
-      # direktori disiapkan di sini dengan izin 0700 seperti prepare, tanpa mengubah kode di luar kepemilikan task.
-      - name: Siapkan direktori berkas sementara pemeriksa PDF (0700, seperti QpdfInspector::prepare)
-        run: |
-          install -d -m 700 "${TMPDIR:-/tmp}/rs-pdf-inspect"
-
-      - name: cargo test corporate_documents_pdf_qpdf --ignored (qpdf asli)
+      - name: cargo test corporate_documents_pdf_qpdf --ignored (qpdf asli 12.4.2)
         env:
-          RS_TEST_QPDF: /usr/bin/qpdf
+          RS_TEST_QPDF: ${{ runner.temp }}/qpdf-12.4.2/bin/qpdf
           SQLX_OFFLINE: "true"
         run: bash scripts/db-ephemeral.sh cargo test -p rs-backend --test corporate_documents_pdf_qpdf --locked -- --ignored --test-threads=1
