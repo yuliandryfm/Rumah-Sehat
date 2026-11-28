@@ -175,8 +175,8 @@ export function Beranda({ data }: { data: DataBeranda }) {
         </div>
       </section>
       <section className="situs-sec situs-sec--gelap" aria-labelledby="b-korporat">
-        <OrnamenGelap />
         <div className="situs-wadah situs-korporat">
+          <OrnamenGelap />
           <div className="situs-tumpuk">
             <p className="situs-eyebrow">Untuk HR dan perusahaan</p>
             <h2 id="b-korporat">Untuk Perusahaan</h2>

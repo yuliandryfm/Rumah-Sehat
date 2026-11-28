@@ -13,6 +13,9 @@ Arahan user untuk brief ini: tampilan situs harus "lebih fancy, profesional, eye
 
 ## 0. Cara membaca
 
+> **Pembaruan CR-042 (2026-11-28, `[USER]`: "buat UIUX situs sama seperti tampilan pada file yang saya upload"):** tampilan situs kini mengikuti paket desain Stitch (`docs/design/stitch-ruang-sehat-design-system.md`, logo `docs/design/aset/logo-ruang-sehat.svg`) dan **menggantikan konsep visual CR-033** (konsep A "Ruang Teduh" + seksi gelap konsep B, Q15/Q16/Q18) di §7. Perubahan utama: font Instrument Sans/Alata/Spline Sans Mono (menggantikan Plus Jakarta Sans), header berlatar bg.app dengan pil aktif, lencana pil di hero dan pita judul, kartu layanan berpanel mint, tata letak artikel majalah, pita ajakan unduh, pita judul Untuk Perusahaan terang, seksi korporat gelap sebagai kartu bersudut 28. Aturan §6 (keamanan, konten, fakta) dan §9 (CSP ketat, tanpa sumber daya eksternal) tetap berlaku; isi tetap dari dokumen proyek, bukan salinan mockup. Keputusan: KEPUTUSAN-475–480; sisa: TD-68–70. Bagian §7 di bawah adalah riwayat konsep CR-033.
+
+
 | Penanda | Arti |
 | --- | --- |
 | `[BRD BR-xxx]` | BRD (`docs/02-brd.md`) |

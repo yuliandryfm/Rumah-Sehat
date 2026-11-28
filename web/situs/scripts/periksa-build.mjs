@@ -97,16 +97,17 @@ try {
   }
   periksa(!/\son[a-z]+\s*=/i.test(html), "/: ada atribut event handler inline");
   periksa(!/\sstyle\s*=/i.test(html), "/: ada atribut style inline");
+  periksa(!/googleapis|gstatic|googleusercontent|cdn\.tailwindcss|material-symbols/i.test(html), "/: ada rujukan ke CDN atau font jarak jauh (CR-042)");
   periksa(html.includes("[TIDAK DIKETAHUI]"), "/: penanda [TIDAK DIKETAHUI] tidak tampil");
   periksa(/<main[^>]*id="isi"/.test(html), "/: landmark <main id=isi> tidak ada");
 
-  // Font merek (CR-033, Q18): satu woff2 di-preload dari origin sendiri, tanpa font jarak jauh.
+  // Font merek (CR-042): dua woff2 (Instrument Sans, Alata) di-preload dari origin sendiri, tanpa font jarak jauh.
   // Next mengirim preload font lewat header `Link` (bukan elemen <link> di HTML).
   const fontPreload = [...(beranda.headers.get("link") ?? "").matchAll(/<([^>]+)>;[^,]*rel=preload[^,]*as="font"/g)].map((m) => m[1]);
-  periksa(fontPreload.length === 1, `/: preload font harus tepat satu, ada ${fontPreload.length}`);
-  const fontHref = fontPreload[0];
-  periksa(fontHref !== undefined && /^\/_next\/static\/media\/[^/]+\.woff2$/.test(fontHref), `/: preload font bukan berkas woff2 lokal: ${fontHref}`);
-  if (fontHref !== undefined && fontHref.startsWith("/")) {
+  periksa(fontPreload.length === 2, `/: preload font harus tepat dua, ada ${fontPreload.length}`);
+  for (const fontHref of fontPreload) {
+    periksa(fontHref !== undefined && /^\/_next\/static\/media\/[^/]+\.woff2$/.test(fontHref), `/: preload font bukan berkas woff2 lokal: ${fontHref}`);
+    if (fontHref === undefined || !fontHref.startsWith("/")) continue;
     const resFont = await fetch(`${dasar}${fontHref}`);
     periksa(resFont.status === 200, `font: status ${resFont.status}`);
     periksaHeader("font", resFont);

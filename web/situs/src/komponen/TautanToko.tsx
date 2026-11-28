@@ -22,9 +22,9 @@ function label(t: { nama: string; awal: string }) {
  * diatur atau tidak valid, mengarah ke halaman Unduh aplikasi. Sementara ini berupa teks; lencana resmi
  * Google Play dan App Store menunggu aset resmi dan persetujuan lisensinya (KEPUTUSAN-422).
  */
-export function TautanToko() {
+export function TautanToko({ varian = "kepala" }: { varian?: "kepala" | "band" }) {
   return (
-    <div className="situs-toko" role="group" aria-label="Unduh aplikasi">
+    <div className={varian === "band" ? "situs-toko situs-toko--band" : "situs-toko"} role="group" aria-label="Unduh aplikasi">
       {TOKO.map((t) => {
         const url = ambilUrlToko(t.id);
         return url === null ? (

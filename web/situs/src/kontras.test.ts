@@ -37,6 +37,14 @@ const PASANGAN_TEKS: [string, string, string][] = [
   ["butir pita isi Beranda", "text-primary", "bg-app"],
   ["kutipan Markdown", "text-primary", "mint"],
   ["spanduk draf", "text-primary", "warning-bg"],
+  // CR-042 (desain Stitch): pasangan baru atau pemakaian baru.
+  ["lencana pil hero dan pita judul (eyebrow, tanggal artikel unggulan)", "primary-strong", "mint"],
+  ["tanggal dan keterangan di kartu artikel unggulan (mint)", "text-secondary", "mint"],
+  ["judul dan teks pita ajakan unduh (mint)", "text-primary", "mint"],
+  ["tombol sekunder pita ajakan unduh", "primary-strong", "bg-surface"],
+  ["tombol toko di header dan pita (putih di atas primary)", "on-primary", "primary"],
+  ["hover tombol toko (putih di atas primary-strong)", "on-primary", "primary-strong"],
+  ["tanda cek butir nilai hero (putih di atas primary-strong)", "on-primary", "primary-strong"],
 ];
 
 /** Elemen non-teks yang diperlukan untuk memahami isi (ikon kartu, tanda cek, cincin fokus): ≥ 3:1. */
