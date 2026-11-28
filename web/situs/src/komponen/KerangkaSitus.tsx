@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { NAV_KEBIJAKAN } from "../navigasi.ts";
+import { NAV_KEBIJAKAN, NAV_UNDUH } from "../navigasi.ts";
 import { ambilUrlKorporat } from "../konten/tautan-korporat.ts";
 import { BandUnduh } from "./BandUnduh.tsx";
+import { Ikon } from "./Ikon.tsx";
 import { Logo } from "./Logo.tsx";
 import { NavUtama } from "./NavUtama.tsx";
-import { TautanToko } from "./TautanToko.tsx";
 
 /**
  * Tata letak situs: tautan lewati, header (logo, navigasi), `<main id="isi">`, footer. Mengikuti
@@ -28,7 +28,18 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
           <div className="situs-nav-baris">
             <NavUtama label="Utama" />
           </div>
-          <TautanToko />
+          <div className="situs-aksi">
+            {/* Desain Stitch: "Masuk HR" sebagai tautan teks di sebelah tombol unduh. Seperti di footer, hanya tampil bila alamat portal valid (CR-032: tanpa alamat, tidak ada tautan). */}
+            {urlKorporat === null ? null : (
+              <a className="situs-aksi__masuk" href={urlKorporat} rel="noopener noreferrer">
+                Masuk HR
+              </a>
+            )}
+            <Link className="situs-aksi__unduh" href={NAV_UNDUH.href} prefetch={false}>
+              <Ikon nama="unduh" />
+              {NAV_UNDUH.label}
+            </Link>
+          </div>
         </div>
       </header>
       <main id="isi">

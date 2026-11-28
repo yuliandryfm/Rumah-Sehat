@@ -1,4 +1,5 @@
 import { Parser, type Node } from "commonmark";
+import { FOTO_LAYANAN } from "./foto.ts";
 
 /**
  * Konvensi struktur Markdown CMS untuk tampilan situs (CR-033 C-02, KEPUTUSAN-354). Pengurai yang sama dengan
@@ -33,6 +34,37 @@ export function ikonUntukJudul(judul: string): NamaIkonLayanan {
   return "generik";
 }
 
+/** Kelompok tab filter penggeser layanan di Beranda (desain Stitch `beranda_ruang_sehat`, KEPUTUSAN-490). */
+export type KategoriLayanan = "konsultasi" | "klinik-lab" | "home-belanja";
+
+export const TAB_KATEGORI: readonly { id: KategoriLayanan; label: string }[] = [
+  { id: "konsultasi", label: "Konsultasi" },
+  { id: "klinik-lab", label: "Klinik & Lab" },
+  { id: "home-belanja", label: "Home & Belanja" },
+];
+
+/**
+ * Kelompok kartu menurut ikon hasil `ikonUntukJudul` (model konten CMS belum punya kolom kategori). Pengelompokan
+ * dari desain user: Konsultasi = dokter + psikolog; Klinik & Lab = pendaftaran klinik, lab, informasi biaya MCU/lab;
+ * Home & Belanja = home visit + belanja produk. Kartu lain (korporat, generik) hanya tampil di tab "Semua".
+ */
+export function kategoriLayanan(ikon: NamaIkonLayanan): KategoriLayanan | null {
+  switch (ikon) {
+    case "konsultasi":
+    case "psikolog":
+      return "konsultasi";
+    case "klinik":
+    case "lab":
+    case "biaya":
+      return "klinik-lab";
+    case "home-visit":
+    case "belanja":
+      return "home-belanja";
+    default:
+      return null;
+  }
+}
+
 /** Teks polos seluruh isi node (judul kartu, ringkasan, teks alternatif gambar). */
 export function teksPolos(node: Node): string {
   let s = "";
@@ -51,6 +83,12 @@ function anakTingkatAtas(teks: string): Node[] {
   return hasil;
 }
 
+/** Foto kartu: hanya jalur lokal situs (CSP `img-src 'self'`), teks alternatif Indonesia wajib. */
+export interface GambarKartu {
+  src: string;
+  alt: string;
+}
+
 export interface KartuLayanan {
   /** ID jangkar buatan kode (`layanan-1`, …), bukan dari konten. */
   id: string;
@@ -58,8 +96,15 @@ export interface KartuLayanan {
   /** Paragraf pertama bagian sebagai teks polos (kartu Beranda seluruhnya tautan; tanpa tautan bersarang). */
   ringkasan: string;
   ikon: NamaIkonLayanan;
+  /** Slot foto (opsional): terisi bila berkas foto lokal sudah ada (TD-69); selama kosong kartu memakai panel ikon. */
+  gambar?: GambarKartu;
   /** Node bagian selain judul dan paragraf ringkasan (dirender di kartu rinci halaman Layanan). */
   sisa: Node[];
+}
+
+/** Kartu tanpa node Markdown (`sisa`): bentuk yang dapat diserialisasi ke komponen klien. */
+export function tanpaSisa(k: KartuLayanan): Omit<KartuLayanan, "sisa"> {
+  return { id: k.id, judul: k.judul, ringkasan: k.ringkasan, ikon: k.ikon, ...(k.gambar === undefined ? {} : { gambar: k.gambar }) };
 }
 
 export interface UraianLayanan {
@@ -77,7 +122,7 @@ export const BATAS_KARTU = 24;
  * (tingkat 1), tidak ada `##`, lebih dari `BATAS_KARTU` bagian, judul kosong, atau bagian tanpa paragraf
  * berisi teks.
  */
-export function uraiLayanan(teks: string | null | undefined): UraianLayanan | null {
+export function uraiLayanan(teks: string | null | undefined, foto: Readonly<Partial<Record<NamaIkonLayanan, GambarKartu>>> = FOTO_LAYANAN): UraianLayanan | null {
   if (teks === null || teks === undefined || teks.trim() === "") return null;
   const pengantar: Node[] = [];
   const bagian: { judul: Node; isi: Node[] }[] = [];
@@ -100,11 +145,14 @@ export function uraiLayanan(teks: string | null | undefined): UraianLayanan | nu
     const paragraf = posisi < 0 ? undefined : b.isi[posisi];
     const ringkasan = paragraf === undefined ? "" : teksPolos(paragraf).replace(/\s+/g, " ").trim();
     if (judul === "" || ringkasan === "") return null;
+    const ikon = ikonUntukJudul(judul);
+    const gambar = foto[ikon];
     kartu.push({
       id: `layanan-${String(i + 1)}`,
       judul,
       ringkasan,
-      ikon: ikonUntukJudul(judul),
+      ikon,
+      ...(gambar === undefined ? {} : { gambar }),
       sisa: b.isi.filter((_, j) => j !== posisi),
     });
   }

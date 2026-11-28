@@ -57,11 +57,11 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
     const tautan = within(band).getAllByRole("link");
     expect(tautan.map((a) => a.textContent)).toEqual(["Google Play", "App Store"]);
     expect(tautan.map((a) => a.getAttribute("href"))).toEqual(["/unduh", "/unduh"]);
-    // Tanpa klaim harga yang belum diputuskan dan tanpa angka karangan.
-    expect(band.textContent).not.toMatch(/gratis|\d/i);
+    // Teks mockup apa adanya atas keputusan user (2026-11-28 "A", KEPUTUSAN-494).
+    expect(band.textContent).toContain("Tersedia gratis untuk perangkat Android dan iOS. Semua layanan kesehatan terpadu dalam genggaman.");
   });
 
-  test("alamat toko valid dipakai juga di pita; tidak tampil di halaman Unduh aplikasi", () => {
+  test("alamat toko valid dipakai di pita; pita tetap ada di halaman Unduh aplikasi (header tidak lagi memuat tautan toko)", () => {
     vi.stubEnv("SITUS_PLAYSTORE_URL", "https://play.google.com/store/apps/details?id=id.contoh.uji");
     render(
       <KerangkaSitus>
@@ -77,7 +77,36 @@ describe("tampilan baru (CR-042): pita ajakan unduh", () => {
         <p>isi</p>
       </KerangkaSitus>,
     );
-    expect(screen.queryByRole("region", { name: "Mulai hidup lebih sehat bersama Ruang Sehat" })).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Mulai hidup lebih sehat bersama Ruang Sehat" })).getByRole("link", { name: "Unduh di Google Play" })).toBeDefined();
+  });
+
+  test("teks pita bervariasi per halaman, persis teks mockup (keputusan user 2026-11-28 \"A\")", () => {
+    const hasil: Record<string, string> = {};
+    const hasilIsi: Record<string, string> = {};
+    for (const j of ["/layanan", "/kontak", "/untuk-perusahaan", "/artikel"]) {
+      jalur.nilai = j;
+      render(
+        <KerangkaSitus>
+          <p>isi</p>
+        </KerangkaSitus>,
+      );
+      const band = within(screen.getByRole("main")).getByRole("region");
+      hasil[j] = band.querySelector("h2")?.textContent ?? "";
+      hasilIsi[j] = band.querySelector("p")?.textContent ?? "";
+      cleanup();
+    }
+    expect(hasil).toEqual({
+      "/layanan": "Semua layanan dipesan dan dipakai di aplikasi Ruang Sehat",
+      "/kontak": "Ajukan keluhan lebih cepat lewat aplikasi",
+      "/untuk-perusahaan": "Aplikasi Ruang Sehat untuk peserta",
+      "/artikel": "Mulai hidup lebih sehat bersama Ruang Sehat",
+    });
+    expect(hasilIsi).toEqual({
+      "/layanan": "Unduh aplikasi untuk mulai. Tersedia gratis untuk perangkat Android dan iOS.",
+      "/kontak": "Pantau status penanganan keluhan langsung dari aplikasi Ruang Sehat di Android dan iOS.",
+      "/untuk-perusahaan": "Karyawan menerima undangan lewat email dan memakai aplikasi Ruang Sehat untuk jadwal serta hasil pemeriksaan.",
+      "/artikel": "Tersedia gratis untuk perangkat Android dan iOS. Semua layanan kesehatan terpadu dalam genggaman.",
+    });
   });
 });
 
@@ -129,7 +158,7 @@ describe("tampilan baru (CR-042): panel ilustrasi kartu layanan dekoratif", () =
   test("panel ikon aria-hidden, tanpa <img> (foto belum ada, TD-69); nama kartu hanya dari judul", () => {
     const md = "Pengantar.\n\n## Konsultasi dokter\n\nChat dan video.\n\n## Home visit\n\nTenaga medis datang.";
     const { container } = render(<Beranda data={{ ...KOSONG, layanan: konten({ body: md }) }} />);
-    const kartu = [...container.querySelectorAll(".situs-grid-layanan > li")];
+    const kartu = [...container.querySelectorAll(".situs-slider__daftar > li")];
     expect(kartu).toHaveLength(2);
     for (const k of kartu) {
       const panel = k.querySelector(".situs-ikon-lingkar");
@@ -165,32 +194,51 @@ describe("tampilan baru (CR-042): tata letak majalah artikel (KEPUTUSAN-479)", (
   });
 });
 
-describe("tampilan baru (CR-042): pil toko di header", () => {
-  test("dua pil di banner (Google Play, App Store) memakai kelas pil terisi; pil band memakai varian band", () => {
+describe("tampilan baru (CR-042 lanjutan): aksi header (KEPUTUSAN-491)", () => {
+  test("satu tombol Unduh aplikasi ke /unduh di header; pil toko hanya di pita (varian band)", () => {
     vi.stubEnv("SITUS_PLAYSTORE_URL", "");
     vi.stubEnv("SITUS_APPSTORE_URL", "");
+    vi.stubEnv("SITUS_KORPORAT_URL", "");
     render(
       <KerangkaSitus>
         <p>isi</p>
       </KerangkaSitus>,
     );
-    const grupHeader = within(screen.getByRole("banner")).getByRole("group", { name: "Unduh aplikasi" });
-    expect(grupHeader.className).toBe("situs-toko");
-    const pil = within(grupHeader).getAllByRole("link");
-    expect(pil.map((a) => a.textContent)).toEqual(["Google Play", "App Store"]);
-    for (const a of pil) expect(a.className).toBe("situs-toko__tautan");
+    const header = screen.getByRole("banner");
+    expect(within(header).queryByRole("group", { name: "Unduh aplikasi" })).toBeNull();
+    const unduh = within(header).getByRole("link", { name: "Unduh aplikasi" });
+    expect(unduh.getAttribute("href")).toBe("/unduh");
+    expect(unduh.className).toBe("situs-aksi__unduh");
+    expect(unduh.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(within(header).queryByRole("link", { name: "Masuk HR" })).toBeNull();
     const grupBand = within(screen.getByRole("main")).getByRole("group", { name: "Unduh aplikasi" });
     expect(grupBand.className).toBe("situs-toko situs-toko--band");
-    expect(css).toMatch(/\.situs-toko__tautan \{[^}]*background: var\(--c-primary\);[^}]*color: var\(--c-on-primary\);/);
+    expect(css).toMatch(/\.situs-aksi__unduh \{[^}]*background: var\(--c-primary\);[^}]*color: var\(--c-on-primary\);/);
+  });
+
+  test("Masuk HR di header (tautan teks sebelum tombol unduh) hanya bila alamat portal valid (CR-032)", () => {
+    vi.stubEnv("SITUS_KORPORAT_URL", "https://member.contoh.test/");
+    render(
+      <KerangkaSitus>
+        <p>isi</p>
+      </KerangkaSitus>,
+    );
+    const header = screen.getByRole("banner");
+    const masuk = within(header).getByRole("link", { name: "Masuk HR" });
+    expect(masuk.getAttribute("href")).toBe("https://member.contoh.test/");
+    expect(masuk.getAttribute("rel")).toBe("noopener noreferrer");
+    const aksi = masuk.parentElement;
+    expect([...(aksi?.children ?? [])].map((e) => e.textContent)).toEqual(["Masuk HR", "Unduh aplikasi"]);
   });
 });
 
 describe("tampilan baru (CR-042): navigasi seluler dan gerak", () => {
-  test("di bawah 768 px navigasi membungkus (tanpa terpotong atau gulir tersembunyi) dan header tidak lengket", () => {
+  test("di bawah 1024 px navigasi utama tidak tampil (desain: hidden lg:flex, tanpa hamburger) dan header tetap lengket", () => {
+    const sempit = css.includes("@media (max-width: 1023px) {\n  .situs-nav-baris { display: none; }");
+    expect(sempit).toBe(true);
     const ponsel = /@media \(max-width: 767px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
-    expect(ponsel).toMatch(/\.situs-nav-baris \{[^}]*overflow: visible;[^}]*mask-image: none;/);
-    expect(ponsel).toMatch(/\.situs-nav \{ flex-wrap: wrap; \}/);
-    expect(ponsel).toMatch(/\.situs-top \{ position: static; \}/);
+    expect(ponsel).not.toMatch(/\.situs-top \{ position: static; \}/);
+    expect(css).toMatch(/\.situs-top \{ position: sticky;/);
   });
 
   test("setiap hover yang menggeser (transform translate) dimatikan di blok prefers-reduced-motion", () => {

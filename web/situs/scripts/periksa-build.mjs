@@ -121,8 +121,8 @@ try {
   periksa(nonce2 !== undefined && nonce2 !== nonce, "nonce tidak berganti antar permintaan");
 
   // Sembilan halaman BR-130 (US-1801 AC5): 200, header keamanan, tanpa Set-Cookie (periksaHeader), tanpa
-  // atribut event/style inline. Detail artikel dengan ID bukan UUID atau tidak tayang: 404 yang sama.
-  for (const jalur of ["/tentang-kami", "/layanan", "/untuk-perusahaan", "/rekanan", "/artikel", "/kontak", "/unduh", "/kebijakan"]) {
+  // atribut event/style inline. Detail artikel dengan ID bukan UUID atau tidak tayang, dan detail layanan dengan ID di luar pola atau tak ada: 404 yang sama.
+  for (const jalur of ["/tentang-kami", "/layanan", "/layanan/layanan-1", "/untuk-perusahaan", "/rekanan", "/artikel", "/kontak", "/unduh", "/kebijakan"]) {
     const res = await fetch(`${dasar}${jalur}`);
     periksa(res.status === 200, `${jalur}: status ${res.status}, seharusnya 200`);
     periksaHeader(jalur, res);
@@ -133,7 +133,7 @@ try {
   }
   const kebijakan = await (await fetch(`${dasar}/kebijakan`)).text();
   periksa(kebijakan.includes("Draf."), "/kebijakan: penanda draf tidak tampil");
-  for (const jalur of ["/artikel/bukan-uuid", "/artikel/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"]) {
+  for (const jalur of ["/artikel/bukan-uuid", "/artikel/0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b", "/layanan/layanan-999", "/layanan/xyz"]) {
     const res = await fetch(`${dasar}${jalur}`);
     periksa(res.status === 404, `${jalur}: status ${res.status}, seharusnya 404`);
     periksaHeader(jalur, res);

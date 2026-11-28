@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { pisahPembuka, teksPolos, uraiLayanan } from "../konten/struktur.ts";
+import { pisahPembuka, tanpaSisa, teksPolos, uraiLayanan } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
 import { KartuArtikel } from "./Artikel.tsx";
 import { adaGambar, GambarKonten } from "./HalamanKonten.tsx";
 import { Ikon, IkonLingkar, type NamaIkon } from "./Ikon.tsx";
-import { GridLayanan } from "./Layanan.tsx";
 import { BlokMarkdown } from "./Markdown.tsx";
 import { OrnamenGelap, OrnamenHero } from "./Ornamen.tsx";
+import { SliderLayanan } from "./SliderLayanan.tsx";
 import { TidakDiketahui } from "./TidakDiketahui.tsx";
 
 export interface DataBeranda {
@@ -22,25 +22,22 @@ export interface DataBeranda {
  * nama rekanan). Klaim publik tetap menunggu persetujuan teks final (brief situs §12 butir 4).
  */
 const CHIP_NILAI: readonly { teks: string; sumber: string }[] = [
-  { teks: "Tujuh layanan dalam satu aplikasi", sumber: "BRIEF" },
+  { teks: "Tujuh layanan terpadu", sumber: "BRIEF" },
   { teks: "Panggilan video tidak direkam", sumber: "BRD BR-016" },
-  { teks: "Untuk Android dan iOS", sumber: "BRIEF" },
+  { teks: "Android & iOS", sumber: "BRIEF" },
 ];
+/**
+ * Kartu mengambang hero: teks mockup apa adanya atas keputusan user (`[USER]` 2026-11-28 "A (pakai teks mockup
+ * apa adanya)", KEPUTUSAN-494); klaim bisnisnya milik user.
+ */
 const KARTU_MENGAMBANG: readonly {
-  teks: string;
+  label: string;
+  isi: string;
   ikon: NamaIkon;
   kelas: string;
 }[] = [
-  {
-    teks: "Konsultasi chat dan video",
-    ikon: "video",
-    kelas: "situs-mengambang--a",
-  }, // BRD BR-010, BR-011
-  {
-    teks: "Biaya MCU dan lab terlihat sebelum daftar",
-    ikon: "struk",
-    kelas: "situs-mengambang--b",
-  }, // BRD BR-023
+  { label: "Chat & Video Privat", isi: "Resep digital resmi", ikon: "video", kelas: "situs-mengambang--a" },
+  { label: "Biaya MCU terlihat awal", isi: "100% Transparan", ikon: "struk", kelas: "situs-mengambang--b" },
 ];
 const UBIN_PONSEL: readonly NamaIkon[] = ["konsultasi", "psikolog", "klinik", "lab", "home-visit", "belanja"];
 
@@ -86,9 +83,12 @@ function VisualHero({ beranda }: { beranda: Konten | null }) {
         <MockupPonsel />
       )}
       {KARTU_MENGAMBANG.map((k) => (
-        <p key={k.teks} className={`situs-mengambang ${k.kelas}`}>
+        <p key={k.label} className={`situs-mengambang ${k.kelas}`}>
           <IkonLingkar nama={k.ikon} kelas="situs-ikon-lingkar--kecil" />
-          <span>{k.teks}</span>
+          <span className="situs-mengambang__teks">
+            <span className="situs-mengambang__label">{k.label}</span>
+            <span className="situs-mengambang__isi">{k.isi}</span>
+          </span>
         </p>
       ))}
     </div>
@@ -144,29 +144,33 @@ export function Beranda({ data }: { data: DataBeranda }) {
           <VisualHero beranda={beranda} />
         </div>
       </div>
-      {isiBeranda === null || isiBeranda.sisa.length === 0 ? null : (
-        <div className="situs-pita">
-          <div className="situs-wadah">
-            <BlokMarkdown nodes={isiBeranda.sisa} kelas="situs-md situs-pita__isi" />
-          </div>
-        </div>
-      )}
       <section className="situs-sec" aria-labelledby="b-layanan">
         <div className="situs-wadah situs-tumpuk situs-tumpuk--lebar">
-          <div className="situs-kepala-sec">
-            <p className="situs-eyebrow">Untuk pasien</p>
-            <h2 id="b-layanan">Layanan</h2>
-            <p className="situs-lead">
+          {uraianLayanan === null ? (
+            <div className="situs-kepala-sec">
+              <p className="situs-eyebrow">Untuk pasien</p>
               {layanan === null ? (
                 <>
-                  [Ringkasan layanan dari CMS.] <TidakDiketahui />
+                  <h2 id="b-layanan">Layanan</h2>
+                  <p className="situs-lead">
+                    [Ringkasan layanan dari CMS.] <TidakDiketahui />
+                  </p>
                 </>
               ) : (
-                layanan.title
+                <h2 id="b-layanan">{layanan.title}</h2>
               )}
-            </p>
-          </div>
-          {uraianLayanan === null ? null : <GridLayanan kartu={uraianLayanan.kartu} />}
+            </div>
+          ) : (
+            <SliderLayanan
+              kartu={uraianLayanan.kartu.map(tanpaSisa)}
+              kepala={
+                <div className="situs-kepala-sec">
+                  <p className="situs-eyebrow">Untuk pasien</p>
+                  <h2 id="b-layanan">{layanan?.title}</h2>
+                </div>
+              }
+            />
+          )}
           <p>
             <Link className="situs-tautan-panah" href="/layanan" prefetch={false}>
               Lihat semua layanan <Ikon nama="panah" />
@@ -219,9 +223,14 @@ export function Beranda({ data }: { data: DataBeranda }) {
       </section>
       <section className="situs-sec" aria-labelledby="b-artikel">
         <div className="situs-wadah situs-tumpuk situs-tumpuk--lebar">
-          <div className="situs-kepala-sec">
-            <p className="situs-eyebrow">Edukasi kesehatan</p>
-            <h2 id="b-artikel">Artikel terbaru</h2>
+          <div className="situs-kepala-baris">
+            <div className="situs-kepala-sec">
+              <p className="situs-eyebrow">Edukasi kesehatan</p>
+              <h2 id="b-artikel">Artikel terbaru</h2>
+            </div>
+            <Link className="situs-tautan-panah" href="/artikel" prefetch={false}>
+              Lihat semua artikel <Ikon nama="panah" />
+            </Link>
           </div>
           {artikelTerbaru.length === 0 ? (
             <p>

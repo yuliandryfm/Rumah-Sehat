@@ -1,61 +1,17 @@
 import Link from "next/link";
-import type { KartuLayanan, UraianLayanan } from "../konten/struktur.ts";
-import { uraiLayanan } from "../konten/struktur.ts";
+import type { KartuLayanan } from "../konten/struktur.ts";
+import { tanpaSisa, uraiLayanan } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
+import { BagianHalaman } from "./BagianHalaman.tsx";
+import { DaftarLayanan } from "./DaftarLayanan.tsx";
 import { HalamanKonten, HeroHalaman } from "./HalamanKonten.tsx";
-import { Ikon, IkonLingkar } from "./Ikon.tsx";
+import { Ikon } from "./Ikon.tsx";
 import { BlokMarkdown } from "./Markdown.tsx";
 
-function kelasKartu(k: KartuLayanan, rinci: boolean): string {
-  const dasar = rinci ? "situs-layanan situs-layanan--rinci" : "situs-layanan";
-  return k.ikon === "korporat" ? `${dasar} situs-layanan--korporat` : dasar;
-}
-
 /**
- * Kartu layanan ringkas di Beranda (CR-033 C-02): ikon, judul, ringkasan, "Selengkapnya". Seluruh kartu dapat
- * diklik lewat satu tautan di judul (perluasan area dengan CSS), sehingga hanya ada satu tautan per kartu dan
- * cincin fokus tampil di kartu (`:focus-within`). Tujuan: jangkar kartu rinci di halaman Layanan.
- */
-export function GridLayanan({ kartu }: { kartu: readonly KartuLayanan[] }) {
-  return (
-    <ul className="situs-grid-layanan situs-daftar">
-      {kartu.map((k) => (
-        <li key={k.id} className={kelasKartu(k, false)}>
-          <IkonLingkar nama={k.ikon} />
-          <h3 className="situs-layanan__judul">
-            <Link className="situs-tautan-kartu" href={`/layanan#${k.id}`} prefetch={false}>
-              {k.judul}
-            </Link>
-          </h3>
-          <p className="situs-layanan__ringkas">{k.ringkasan}</p>
-          <span className="situs-layanan__lanjut" aria-hidden="true">
-            Selengkapnya <Ikon nama="panah" />
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** Kartu rinci halaman Layanan: ringkasan dan sisa isi bagian (Markdown aman). */
-function GridLayananRinci({ uraian }: { uraian: UraianLayanan }) {
-  return (
-    <ul className="situs-grid-layanan situs-grid-layanan--rinci situs-daftar">
-      {uraian.kartu.map((k) => (
-        <li key={k.id} id={k.id} className={kelasKartu(k, true)}>
-          <IkonLingkar nama={k.ikon} />
-          <h2 className="situs-layanan__judul">{k.judul}</h2>
-          <p className="situs-layanan__ringkas">{k.ringkasan}</p>
-          <BlokMarkdown nodes={k.sisa} kelas="situs-md situs-layanan__isi" judulMulai={3} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/**
- * Halaman Layanan (SP-03). Isi `services` yang cocok konvensi `##` menjadi kartu berikon (urutan dari CMS,
- * PRD US-1801 AC2); bila tidak cocok, halaman isi biasa (Markdown utuh, tidak ada isi yang hilang).
+ * Halaman Layanan (SP-03). Isi `services` yang cocok konvensi `##` menjadi daftar kartu berfilter (urutan dari CMS,
+ * PRD US-1801 AC2; `DaftarLayanan`); bila tidak cocok, halaman isi biasa (Markdown utuh, tidak ada isi yang hilang).
+ * Isi lengkap tiap layanan ada di halaman detail (`DetailLayanan`).
  */
 export function HalamanLayanan({ konten }: { konten: Konten }) {
   const uraian = uraiLayanan(konten.body);
@@ -65,7 +21,15 @@ export function HalamanLayanan({ konten }: { konten: Konten }) {
   const sisaPengantar = pembuka === null ? pengantar : pengantar.slice(1);
   return (
     <article className="situs-halaman">
-      <HeroHalaman judul={konten.title} label="Layanan">
+      <HeroHalaman
+        judul={konten.title}
+        label="Layanan"
+        aksi={
+          <Link className="situs-btn situs-btn--utama" href="/unduh" prefetch={false}>
+            Unduh aplikasi untuk mulai <Ikon nama="panah" />
+          </Link>
+        }
+      >
         {pembuka === null ? null : <BlokMarkdown nodes={[pembuka]} kelas="situs-md situs-lead" />}
       </HeroHalaman>
       <div className="situs-sec situs-sec--rapat">
@@ -75,7 +39,30 @@ export function HalamanLayanan({ konten }: { konten: Konten }) {
               <BlokMarkdown nodes={sisaPengantar} />
             </div>
           )}
-          <GridLayananRinci uraian={uraian} />
+          <DaftarLayanan kartu={uraian.kartu.map(tanpaSisa)} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Halaman detail satu layanan (desain Stitch detail_layanan_ruang_sehat, KEPUTUSAN-492): pita judul dari judul dan
+ * ringkasan kartu CMS, lalu isi kartu (bagian ### menjadi bagian halaman, #### menjadi kartu/langkah/akordeon
+ * lewat BagianHalaman). Tidak ada teks karangan: isi di luar CMS tidak muncul.
+ */
+export function DetailLayanan({ kartu }: { kartu: KartuLayanan }) {
+  return (
+    <article className="situs-halaman">
+      <HeroHalaman judul={kartu.judul} label="Layanan">
+        <p className="situs-lead">{kartu.ringkasan}</p>
+      </HeroHalaman>
+      <BagianHalaman nodes={kartu.sisa} tingkat={3} />
+      <div className="situs-sec situs-sec--rapat">
+        <div className="situs-wadah">
+          <Link className="situs-tautan-panah situs-tautan-panah--balik" href="/layanan" prefetch={false}>
+            <Ikon nama="panah" /> Semua layanan
+          </Link>
         </div>
       </div>
     </article>

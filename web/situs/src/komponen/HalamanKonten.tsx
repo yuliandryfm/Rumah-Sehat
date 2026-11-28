@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { gambarDiizinkan } from "../konten/aturan-aman.ts";
 import { pisahPembuka } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
+import { BagianHalaman } from "./BagianHalaman.tsx";
 import { BlokMarkdown, Markdown } from "./Markdown.tsx";
 import { OrnamenHalaman } from "./Ornamen.tsx";
 import { TidakDiketahui } from "./TidakDiketahui.tsx";
@@ -47,14 +48,26 @@ export function IsiKonten({ konten }: { konten: Konten }) {
  * Pita judul halaman (CR-042, desain Stitch): lencana pil (label), judul display, kalimat pembuka; latar rata `bg.app`
  * dengan ornamen lengkung mint di kanan (tanpa varian gelap). Teks `text.primary` 14,14; label `primary.strong` di atas mint.
  */
-export function HeroHalaman({ judul, label, children }: { judul: string; label?: string; children?: ReactNode }) {
+export function HeroHalaman({ judul, label, children, aksi }: { judul: string; label?: string; children?: ReactNode; aksi?: ReactNode }) {
+  const isi = (
+    <>
+      {label === undefined ? null : <p className="situs-eyebrow">{label}</p>}
+      <h1>{judul}</h1>
+      {children}
+    </>
+  );
   return (
     <div className="situs-halhero">
       <OrnamenHalaman />
       <div className="situs-wadah situs-halhero__isi">
-        {label === undefined ? null : <p className="situs-eyebrow">{label}</p>}
-        <h1>{judul}</h1>
-        {children}
+        {aksi === undefined ? (
+          isi
+        ) : (
+          <div className="situs-halhero__baris">
+            <div className="situs-halhero__teks">{isi}</div>
+            <div className="situs-halhero__aksi">{aksi}</div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -66,7 +79,7 @@ export function HeroHalaman({ judul, label, children }: { judul: string; label?:
  * sisanya dirender di kolom baca. `draf` menampilkan penanda draf serta tanggal berlaku dan versi
  * (US-1801 AC4).
  */
-export function HalamanKonten({ konten, draf = false, label }: { konten: Konten; draf?: boolean; label?: string }) {
+export function HalamanKonten({ konten, draf = false, label, susunan = "bagian" }: { konten: Konten; draf?: boolean; label?: string; susunan?: "bagian" | "kartu" }) {
   const berlaku = formatTanggal(konten.published_at);
   // Draf (Kebijakan, US-1801 AC4): paragraf pembuka tidak dipindah ke pita judul, sehingga spanduk "Draf."
   // tampil sebelum teks isi pertama.
@@ -79,7 +92,20 @@ export function HalamanKonten({ konten, draf = false, label }: { konten: Konten;
       <HeroHalaman judul={konten.title} {...(label === undefined ? {} : { label })}>
         {pembuka === null ? null : <BlokMarkdown nodes={[pembuka]} kelas="situs-md situs-lead" />}
       </HeroHalaman>
-      {draf || adaGambar(konten) || !kosongSesudahPembuka ? (
+      {!draf && bagian !== null && bagian.sisa.length > 0 ? (
+        <>
+          {adaGambar(konten) ? (
+            <div className="situs-sec situs-sec--rapat">
+              <div className="situs-baca">
+                <div className="situs-bingkai">
+                  <GambarKonten konten={konten} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <BagianHalaman nodes={bagian.sisa} susunan={susunan} />
+        </>
+      ) : draf || adaGambar(konten) || !kosongSesudahPembuka ? (
         <div className="situs-sec situs-sec--rapat">
           <div className="situs-baca">
             {draf ? (
