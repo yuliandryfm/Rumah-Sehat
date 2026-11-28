@@ -60,11 +60,12 @@ describe("hero Beranda (C-03)", () => {
     ]);
   });
 
-  test("paragraf pembuka di hero; sisa isi (daftar) di pita di bawah hero", () => {
+  test("paragraf pembuka di hero; sisa isi CMS (daftar) tidak ditampilkan karena desain tidak punya pita itu (CR-042 lanjutan)", () => {
     const { container } = render(<Beranda data={{ ...KOSONG, beranda: dasar({ title: "Halo", body: "Pembuka **singkat**.\n\n- butir satu\n- butir dua" }) }} />);
     expect(container.querySelector(".situs-hero .situs-lead strong")?.textContent).toBe("singkat");
     expect(container.querySelector(".situs-hero ul.situs-chip-nilai")).not.toBeNull();
-    expect(container.querySelector(".situs-pita li")?.textContent).toBe("butir satu");
+    expect(container.querySelector(".situs-pita")).toBeNull();
+    expect(container.textContent).not.toContain("butir satu");
   });
 
   test("dengan gambar CMS: gambar di bingkai (bukan kotak putus-putus) dengan teks alternatif, tanpa mockup", () => {
@@ -140,18 +141,18 @@ describe("seksi Untuk Perusahaan di Beranda (seksi gelap, Q15)", () => {
 });
 
 describe("halaman Layanan (C-02)", () => {
-  test("format cocok: hero dengan pembuka, kartu rinci h2 ber-id jangkar, sisa isi Markdown di kartu", () => {
+  test("format cocok: hero dengan pembuka, kartu h2 ber-id jangkar, ringkasan pendek (sisa isi hanya di halaman detail)", () => {
     const { container } = render(<HalamanLayanan konten={dasar({ title: "Tujuh layanan", body: LAYANAN_MD })} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tujuh layanan");
     expect(container.querySelector(".situs-halhero .situs-lead")?.textContent).toBe("Semua layanan ada di aplikasi.");
     const kartu = [...container.querySelectorAll(".situs-grid-layanan--rinci > li")];
     expect(kartu.map((k) => k.id)).toEqual(["layanan-1", "layanan-2", "layanan-3", "layanan-4"]);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Konsultasi dokter", "Home visit", "Layanan korporat", "Kolaborasi"]);
-    expect(kartu[0]?.querySelector("li")?.textContent).toBe("Resep digital");
-    // Judul di dalam isi kartu dimulai dari h3 (di bawah judul kartu h2), tanpa lompatan.
-    cleanup();
-    const { container: c2 } = render(<HalamanLayanan konten={dasar({ body: "## Dokter\n\nRingkas.\n\n#### Rincian\n\nTeks." })} />);
-    expect(c2.querySelector(".situs-layanan__isi h3")?.textContent).toBe("Rincian");
+    // Kartu tidak memuat seluruh isi bagian: butir "Resep digital" dan teks di bawah ringkasan hanya di halaman detail.
+    expect(kartu[0]?.querySelector("li")).toBeNull();
+    expect(container.textContent).not.toContain("Resep digital");
+    expect(kartu[0]?.querySelector(".situs-layanan__ringkas")?.textContent).toBe("Chat dan video dengan dokter rekanan.");
+    expect(within(kartu[0] as HTMLElement).getByRole("link", { name: /Lihat detail layanan/ }).getAttribute("href")).toBe("/layanan/layanan-1");
     expect(kartu[3]?.querySelector(".situs-ikon-lingkar")).not.toBeNull();
   });
 

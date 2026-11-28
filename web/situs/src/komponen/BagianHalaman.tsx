@@ -21,7 +21,13 @@ interface Bagian {
 }
 
 const POLA_LANGKAH = /\b(cara|langkah|alur)\b/i;
-const POLA_TANYA = /tanya|faq|pertanyaan/i;
+const POLA_TANYA = /\b(faq|pertanyaan|ditanyakan|tanya)\b/i;
+
+/**
+ * Batas kartu (KEPUTUSAN-492): bagian dengan tepat satu sub-judul BUKAN kartu; sub-judulnya tampil sebagai h3 di
+ * bagian itu, bersama isinya. Grid kartu mulai dari dua sub-judul. Akordeon pertanyaan berlaku untuk satu atau lebih.
+ */
+export const MIN_KARTU = 2;
 
 export function pecahBagian(nodes: readonly Node[], tingkat: number): { awal: Node[]; bagian: Bagian[] } {
   const awal: Node[] = [];
@@ -90,11 +96,17 @@ export function BagianHalaman({ nodes, tingkat = 2, susunan = "bagian" }: { node
         <section className="situs-sec situs-sec--rapat">
           <div className="situs-wadah">
             <ul className="situs-kartu-grid situs-daftar">
-              {bagian.map((b) => (
-                <li key={b.judul} className="situs-kartu-info">
+              {bagian.map((b, i) => (
+                <li key={`${String(i)}-${b.judul}`} className="situs-kartu-info">
                   <IkonLingkar nama={ikonUntukJudul(b.judul)} />
                   <h2>{b.judul}</h2>
-                  <BlokMarkdown nodes={[...b.pembuka, ...b.kartu.flatMap((k) => k.isi)]} kelas="situs-md situs-kartu-info__isi" judulMulai={3} />
+                  <BlokMarkdown nodes={b.pembuka} kelas="situs-md situs-kartu-info__isi" judulMulai={3} />
+                  {b.kartu.map((k, j) => (
+                    <div key={`${String(j)}-${k.judul}`} className="situs-kartu-info__sub">
+                      <h3>{k.judul}</h3>
+                      <BlokMarkdown nodes={k.isi} kelas="situs-md situs-kartu-info__isi" judulMulai={3} />
+                    </div>
+                  ))}
                 </li>
               ))}
             </ul>
@@ -113,14 +125,23 @@ export function BagianHalaman({ nodes, tingkat = 2, susunan = "bagian" }: { node
                 </div>
                 {b.kartu.length === 0 ? null : tanya ? (
                   <div className="situs-tanya-daftar">
-                    {b.kartu.map((k) => (
-                      <Tanya key={k.judul} judul={k.judul} isi={k.isi} />
+                    {b.kartu.map((k, j) => (
+                      <Tanya key={`${String(j)}-${k.judul}`} judul={k.judul} isi={k.isi} />
+                    ))}
+                  </div>
+                ) : b.kartu.length < MIN_KARTU ? (
+                  <div className="situs-baca situs-baca--kiri situs-tumpuk">
+                    {b.kartu.map((k, j) => (
+                      <div key={`${String(j)}-${k.judul}`} className="situs-tumpuk">
+                        <h3 className="situs-sub-judul">{k.judul}</h3>
+                        <BlokMarkdown nodes={k.isi} judulMulai={3} />
+                      </div>
                     ))}
                   </div>
                 ) : (
                   <ul className="situs-kartu-grid situs-daftar">
                     {b.kartu.map((k, j) => (
-                      <Kartu key={k.judul} judul={k.judul} isi={k.isi} nomor={bernomor ? j + 1 : null} />
+                      <Kartu key={`${String(j)}-${k.judul}`} judul={k.judul} isi={k.isi} nomor={bernomor ? j + 1 : null} />
                     ))}
                   </ul>
                 )}

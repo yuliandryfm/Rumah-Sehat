@@ -48,14 +48,26 @@ export function IsiKonten({ konten }: { konten: Konten }) {
  * Pita judul halaman (CR-042, desain Stitch): lencana pil (label), judul display, kalimat pembuka; latar rata `bg.app`
  * dengan ornamen lengkung mint di kanan (tanpa varian gelap). Teks `text.primary` 14,14; label `primary.strong` di atas mint.
  */
-export function HeroHalaman({ judul, label, children }: { judul: string; label?: string; children?: ReactNode }) {
+export function HeroHalaman({ judul, label, children, aksi }: { judul: string; label?: string; children?: ReactNode; aksi?: ReactNode }) {
+  const isi = (
+    <>
+      {label === undefined ? null : <p className="situs-eyebrow">{label}</p>}
+      <h1>{judul}</h1>
+      {children}
+    </>
+  );
   return (
     <div className="situs-halhero">
       <OrnamenHalaman />
       <div className="situs-wadah situs-halhero__isi">
-        {label === undefined ? null : <p className="situs-eyebrow">{label}</p>}
-        <h1>{judul}</h1>
-        {children}
+        {aksi === undefined ? (
+          isi
+        ) : (
+          <div className="situs-halhero__baris">
+            <div className="situs-halhero__teks">{isi}</div>
+            <div className="situs-halhero__aksi">{aksi}</div>
+          </div>
+        )}
       </div>
     </div>
   );

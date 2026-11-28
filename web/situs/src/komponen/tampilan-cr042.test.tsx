@@ -226,11 +226,12 @@ describe("tampilan baru (CR-042 lanjutan): aksi header (KEPUTUSAN-491)", () => {
 });
 
 describe("tampilan baru (CR-042): navigasi seluler dan gerak", () => {
-  test("di bawah 768 px navigasi membungkus (tanpa terpotong atau gulir tersembunyi) dan header tidak lengket", () => {
+  test("di bawah 1024 px navigasi utama tidak tampil (desain: hidden lg:flex, tanpa hamburger) dan header tetap lengket", () => {
+    const sempit = css.includes("@media (max-width: 1023px) {\n  .situs-nav-baris { display: none; }");
+    expect(sempit).toBe(true);
     const ponsel = /@media \(max-width: 767px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
-    expect(ponsel).toMatch(/\.situs-nav-baris \{[^}]*overflow: visible;[^}]*mask-image: none;/);
-    expect(ponsel).toMatch(/\.situs-nav \{ flex-wrap: wrap; \}/);
-    expect(ponsel).toMatch(/\.situs-top \{ position: static; \}/);
+    expect(ponsel).not.toMatch(/\.situs-top \{ position: static; \}/);
+    expect(css).toMatch(/\.situs-top \{ position: sticky;/);
   });
 
   test("setiap hover yang menggeser (transform translate) dimatikan di blok prefers-reduced-motion", () => {

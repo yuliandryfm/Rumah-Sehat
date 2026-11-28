@@ -144,13 +144,6 @@ export function Beranda({ data }: { data: DataBeranda }) {
           <VisualHero beranda={beranda} />
         </div>
       </div>
-      {isiBeranda === null || isiBeranda.sisa.length === 0 ? null : (
-        <div className="situs-pita">
-          <div className="situs-wadah">
-            <BlokMarkdown nodes={isiBeranda.sisa} kelas="situs-md situs-pita__isi" />
-          </div>
-        </div>
-      )}
       <section className="situs-sec" aria-labelledby="b-layanan">
         <div className="situs-wadah situs-tumpuk situs-tumpuk--lebar">
           {uraianLayanan === null ? (

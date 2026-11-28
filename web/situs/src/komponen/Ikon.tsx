@@ -6,7 +6,7 @@ import type { NamaIkonLayanan } from "../konten/struktur.ts";
  * membulat, warna `currentColor` (warna dari kelas CSS, bukan atribut). Tanpa set ikon pihak ketiga, tanpa
  * berkas eksternal. Selalu dekoratif (`aria-hidden`): makna dibawa teks di sebelahnya (DG §3.5).
  */
-export type NamaIkon = NamaIkonLayanan | "cek" | "panah" | "video" | "struk" | "unduh";
+export type NamaIkon = NamaIkonLayanan | "cek" | "panah" | "video" | "struk" | "unduh" | "perisai";
 
 const JALUR: Readonly<Record<NamaIkon, ReactNode>> = {
   konsultasi: (
@@ -76,6 +76,12 @@ const JALUR: Readonly<Record<NamaIkon, ReactNode>> = {
     <>
       <rect x="3" y="6" width="13" height="12" rx="2" />
       <path d="m16 10.5 5-3v9l-5-3" />
+    </>
+  ),
+  perisai: (
+    <>
+      <path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z" />
+      <path d="M9 12l2 2 4-4" />
     </>
   ),
   unduh: <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />,

@@ -189,13 +189,6 @@ main:focus { outline: none; }
 .situs-bingkai--hero { width: min(100%, 460px); }
 .situs-bingkai--hero img { aspect-ratio: 4 / 5; }
 
-/* Sisa isi `home` di bawah hero (pita putih; butir daftar menjadi kolom bertanda cek gambar CSS). */
-.situs-pita { position: relative; z-index: 1; padding: var(--s10) 0; background: var(--c-bg-surface); border-block: 1px solid var(--c-border-divider); }
-.situs-pita__isi ul { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
-.situs-pita__isi li { position: relative; padding: var(--s4) var(--s4) var(--s4) 60px; border-radius: var(--situs-r-dalam); background: var(--c-bg-app); } /* K1 */
-.situs-pita__isi li + li { margin-top: 0; }
-.situs-pita__isi li::before { content: ""; position: absolute; left: var(--s4); top: var(--s4); width: 28px; height: 28px; border-radius: var(--r-full); background: var(--c-mint); }
-.situs-pita__isi li::after { content: ""; position: absolute; left: 26px; top: 23px; width: 7px; height: 12px; border: solid var(--c-primary-strong); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); } /* N3 */
 
 /* ---------- Seksi ---------- */
 .situs-sec { position: relative; padding: var(--situs-sec-y) 0; }
@@ -393,6 +386,31 @@ main:focus { outline: none; }
 .situs-slider__kepala .situs-kepala-sec { flex: 1 1 360px; }
 .situs-slider__kontrol { flex: 0 1 auto; }
 
+/* ---------- Daftar layanan halaman Layanan, banner gelap Kontak, pita judul beraksi ---------- */
+.situs-daftar-layanan { display: flex; flex-direction: column; gap: var(--s6); }
+.situs-daftar-layanan__kepala { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s4); }
+.situs-daftar-layanan__jumlah { margin: 0; font-family: var(--situs-f-angka); font-size: 15px; line-height: 24px; color: var(--c-text-secondary); font-variant-numeric: tabular-nums; margin-left: auto; } /* K2 */
+.situs-daftar-layanan .situs-grid-layanan--rinci { align-items: stretch; }
+.situs-daftar-layanan .situs-layanan { height: 100%; }
+.situs-daftar-layanan .situs-layanan[hidden] { display: none; }
+.situs-layanan__baris { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.situs-layanan__ikon { width: 24px; height: 24px; color: var(--c-primary-strong); } /* N3 */
+.situs-layanan__kaki { margin-top: auto; padding-top: var(--s3); border-top: 1px solid var(--c-border-divider); }
+.situs-daftar-layanan .situs-layanan--rinci { padding: var(--s6); }
+.situs-daftar-layanan .situs-layanan--rinci .situs-ikon-lingkar { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: var(--situs-r-dalam); }
+.situs-daftar-layanan .situs-layanan--rinci .situs-ikon-lingkar .situs-ikon { width: 44px; height: 44px; }
+.situs-banner-gelap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s5); padding: var(--s10); border-radius: var(--situs-r-kartu); background: var(--c-primary-strong); color: var(--c-on-primary); } /* K7 */
+.situs-banner-gelap__ikon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border-radius: var(--r-lg); background: var(--c-bg-surface); color: var(--c-primary-strong); } /* N3 */
+.situs-banner-gelap__ikon .situs-ikon { width: 26px; height: 26px; }
+.situs-banner-gelap__teks { display: flex; flex-direction: column; gap: var(--s1); max-width: 48em; flex: 1 1 320px; }
+.situs-banner-gelap h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; color: var(--c-on-primary); }
+.situs-banner-gelap p { margin: 0; font-size: 15px; line-height: 24px; color: var(--c-mint); } /* mint di atas primary-strong */
+.situs-halhero__baris { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s6); }
+.situs-halhero__teks { display: flex; flex-direction: column; gap: var(--s4); max-width: 42em; }
+.situs-kartu-info__sub { display: flex; flex-direction: column; gap: var(--s1); }
+.situs-kartu-info__sub h3 { font-size: 18px; line-height: 26px; }
+.situs-sub-judul { margin: 0; font-size: var(--situs-h3-size); line-height: var(--situs-h3-line); font-weight: 600; }
+
 /* ---------- Responsif ---------- */
 /* Header sempit (CR-038): logo dan tautan toko di baris pertama, deretan tautan navigasi di baris kedua
    yang dapat digulir mendatar (tanpa menu lipat) dengan pudar di tepi sebagai petunjuk. */
@@ -422,12 +440,7 @@ main:focus { outline: none; }
 @media (max-width: 767px) {
   /* Header ponsel (CR-038, KEPUTUSAN-421): logo + dua pill toko harus muat satu baris di 320 px. */
   .situs-top__isi { column-gap: var(--s2); }
-  /* Navigasi seluler (CR-042): tautan membungkus menjadi beberapa baris pil, tidak terpotong; header tidak lengket
-     supaya tidak memakan layar (tanpa menu JS). */
-  .situs-top { position: static; }
-  html { scroll-padding-top: var(--s4); }
-  .situs-nav-baris { overflow: visible; -webkit-mask-image: none; mask-image: none; padding: var(--s1) 0 var(--s2); }
-  .situs-nav { flex-wrap: wrap; }
+  html { scroll-padding-top: calc(var(--situs-tinggi-kepala) + var(--s4)); }
   .situs-logo { font-size: 18px; }
   .situs-logo__tanda { width: 30px; height: 30px; }
   .situs-toko { gap: var(--s1); }
@@ -476,6 +489,14 @@ main:focus { outline: none; }
   .situs-foot__nav { grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
   .situs-status { margin: var(--s10) var(--s4); }
   .situs-status h1 { font-size: 32px; line-height: 38px; }
+}
+
+
+/* Desain Stitch: navigasi utama `hidden lg:flex` tanpa menu hamburger; di bawah 1024 px hanya logo dan aksi (tautan ada di footer). */
+@media (max-width: 1023px) {
+  .situs-nav-baris { display: none; }
+  .situs-top__isi { padding-top: 0; min-height: var(--situs-tinggi-kepala); flex-wrap: nowrap; }
+  html { scroll-padding-top: calc(var(--situs-tinggi-kepala) + var(--s4)); }
 }
 
 /* Kurangi gerakan: semua animasi dan pergeseran mati; hanya perubahan warna tersisa (brief §7.6, SRC-880). */

@@ -1,4 +1,5 @@
 import { Parser, type Node } from "commonmark";
+import { FOTO_LAYANAN } from "./foto.ts";
 
 /**
  * Konvensi struktur Markdown CMS untuk tampilan situs (CR-033 C-02, KEPUTUSAN-354). Pengurai yang sama dengan
@@ -121,7 +122,7 @@ export const BATAS_KARTU = 24;
  * (tingkat 1), tidak ada `##`, lebih dari `BATAS_KARTU` bagian, judul kosong, atau bagian tanpa paragraf
  * berisi teks.
  */
-export function uraiLayanan(teks: string | null | undefined): UraianLayanan | null {
+export function uraiLayanan(teks: string | null | undefined, foto: Readonly<Partial<Record<NamaIkonLayanan, GambarKartu>>> = FOTO_LAYANAN): UraianLayanan | null {
   if (teks === null || teks === undefined || teks.trim() === "") return null;
   const pengantar: Node[] = [];
   const bagian: { judul: Node; isi: Node[] }[] = [];
@@ -144,11 +145,14 @@ export function uraiLayanan(teks: string | null | undefined): UraianLayanan | nu
     const paragraf = posisi < 0 ? undefined : b.isi[posisi];
     const ringkasan = paragraf === undefined ? "" : teksPolos(paragraf).replace(/\s+/g, " ").trim();
     if (judul === "" || ringkasan === "") return null;
+    const ikon = ikonUntukJudul(judul);
+    const gambar = foto[ikon];
     kartu.push({
       id: `layanan-${String(i + 1)}`,
       judul,
       ringkasan,
-      ikon: ikonUntukJudul(judul),
+      ikon,
+      ...(gambar === undefined ? {} : { gambar }),
       sisa: b.isi.filter((_, j) => j !== posisi),
     });
   }

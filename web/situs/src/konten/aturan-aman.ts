@@ -42,3 +42,14 @@ export function tautanDiizinkan(tujuan: string): boolean {
 export function gambarDiizinkan(tujuan: string): boolean {
   return tujuan.startsWith(JALUR_GAMBAR_PUBLIK) && POLA_UUID.test(tujuan.slice(JALUR_GAMBAR_PUBLIK.length));
 }
+
+/**
+ * Foto statis situs (slot foto kartu, CR-042 lanjutan): hanya jalur lokal yang diawali satu `/` (bukan `//`,
+ * yang berarti host lain), tanpa karakter kendali/spasi, tanpa `\`, tanpa `:` (skema), tanpa `..`, `?`, `#`.
+ * CSP `img-src 'self'` tetap menjadi lapis kedua.
+ */
+export function fotoLokalDiizinkan(src: string): boolean {
+  if (!src.startsWith("/") || src.startsWith("//")) return false;
+  if (POLA_KENDALI_ATAU_SPASI.test(src) || /[\\:?#]/.test(src)) return false;
+  return !src.split("/").includes("..");
+}

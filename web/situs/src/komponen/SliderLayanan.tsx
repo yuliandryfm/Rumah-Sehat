@@ -1,38 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { type KartuLayanan, type KategoriLayanan, kategoriLayanan, TAB_KATEGORI } from "../konten/struktur.ts";
-import { Ikon, IkonLingkar } from "./Ikon.tsx";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import type { KartuLayanan } from "../konten/struktur.ts";
+import { Ikon } from "./Ikon.tsx";
+import { PanelKartu } from "./PanelKartu.tsx";
+import { bangunTab, cocokKategori, idTab, type Pilihan, TabKategori, useSiap } from "./TabKategori.tsx";
 
 /** Kartu yang dikirim ke komponen klien: hanya data yang dapat diserialisasi (tanpa node Markdown). */
 export type KartuSlider = Omit<KartuLayanan, "sisa">;
-type Pilihan = "semua" | KategoriLayanan;
-
-const langgananKosong = () => () => {
-  // Nilai tidak berubah setelah hidrasi: tidak ada yang perlu dilanggan.
-};
-/** `false` saat render server dan hidrasi pertama, `true` sesudahnya: kontrol hanya muncul bila JS berjalan. */
-function useSiap(): boolean {
-  return useSyncExternalStore(
-    langgananKosong,
-    () => true,
-    () => false,
-  );
-}
 
 function kurangiGerak(): boolean {
   return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/** Panel kartu: foto lokal bila slot terisi (TD-69), selain itu ilustrasi ikon dekoratif. */
-function PanelKartu({ kartu }: { kartu: KartuSlider }) {
-  if (kartu.gambar === undefined) return <IkonLingkar nama={kartu.ikon} />;
-  return (
-    <span className="situs-layanan__foto">
-      <img src={kartu.gambar.src} alt={kartu.gambar.alt} loading="lazy" />
-    </span>
-  );
 }
 
 /**
@@ -47,15 +26,12 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
   const [pilihan, setPilihan] = useState<Pilihan>("semua");
   const [ujung, setUjung] = useState({ awal: true, akhir: false });
   const jalur = useRef<HTMLDivElement>(null);
-  const tabRef = useRef(new Map<Pilihan, HTMLButtonElement>());
+  const tombolAwal = useRef<HTMLButtonElement>(null);
+  const tombolAkhir = useRef<HTMLButtonElement>(null);
 
-  const tab: { id: Pilihan; label: string }[] = [
-    { id: "semua", label: "Semua" },
-    ...TAB_KATEGORI.filter((t) => kartu.some((k) => kategoriLayanan(k.ikon) === t.id)),
-  ];
-  // Filter hanya berguna bila ada dua kategori atau lebih.
-  const adaTab = tab.length >= 3;
-  const tampil = (k: KartuSlider) => pilihan === "semua" || kategoriLayanan(k.ikon) === pilihan;
+  const tab = bangunTab(kartu, "Semua");
+  const adaTab = tab.length > 0;
+  const tampil = (k: KartuSlider) => cocokKategori(k.ikon, pilihan);
   const jumlah = kartu.filter(tampil).length;
 
   const ukur = useCallback(() => {
@@ -77,6 +53,14 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
     };
   }, [ukur]);
 
+  // Tombol panah yang sedang fokus lalu nonaktif (sampai di ujung) tidak boleh menjatuhkan fokus: pindah ke
+  // tombol lawannya, atau ke jalur bila keduanya nonaktif.
+  useEffect(() => {
+    const aktif = document.activeElement;
+    if (aktif === tombolAwal.current && ujung.awal) (ujung.akhir ? jalur.current : tombolAkhir.current)?.focus();
+    else if (aktif === tombolAkhir.current && ujung.akhir) (ujung.awal ? jalur.current : tombolAwal.current)?.focus();
+  }, [ujung]);
+
   function pilih(p: Pilihan) {
     setPilihan(p);
     jalur.current?.scrollTo({ left: 0, behavior: "auto" });
@@ -94,22 +78,6 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
     el.scrollBy({ left: arah * langkah, behavior: kurangiGerak() ? "auto" : "smooth" });
   }
 
-  function tombolTab(e: KeyboardEvent<HTMLDivElement>) {
-    const i = tab.findIndex((t) => t.id === pilihan);
-    let baru: number;
-    if (e.key === "ArrowRight") baru = (i + 1) % tab.length;
-    else if (e.key === "ArrowLeft") baru = (i - 1 + tab.length) % tab.length;
-    else if (e.key === "Home") baru = 0;
-    else if (e.key === "End") baru = tab.length - 1;
-    else return;
-    e.preventDefault();
-    const tujuan = tab[baru];
-    if (tujuan === undefined) return;
-    pilih(tujuan.id);
-    tabRef.current.get(tujuan.id)?.focus();
-  }
-
-  const idTab = (p: Pilihan) => `${id}-tab-${p}`;
   const idPanel = `${id}-panel`;
   const sebagaiTab = siap && adaTab;
 
@@ -118,33 +86,10 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
       <div className="situs-slider__kepala">
         {kepala}
         <div className="situs-slider__kontrol" hidden={!siap}>
-          {adaTab ? (
-            <div className="situs-slider__tab" role="tablist" aria-label="Filter kategori layanan" onKeyDown={tombolTab}>
-              {tab.map((t) => (
-                <button
-                  key={t.id}
-                  ref={(el) => {
-                    if (el === null) tabRef.current.delete(t.id);
-                    else tabRef.current.set(t.id, el);
-                  }}
-                  type="button"
-                  role="tab"
-                  id={idTab(t.id)}
-                  aria-selected={pilihan === t.id}
-                  aria-controls={idPanel}
-                  tabIndex={pilihan === t.id ? 0 : -1}
-                  className="situs-slider__tab-satu"
-                  onClick={() => {
-                    pilih(t.id);
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          {adaTab ? <TabKategori tab={tab} pilihan={pilihan} onPilih={pilih} idDasar={id} idPanel={idPanel} /> : null}
           <div className="situs-slider__panah">
             <button
+              ref={tombolAwal}
               type="button"
               className="situs-slider__tombol situs-slider__tombol--balik"
               aria-label="Layanan sebelumnya"
@@ -156,6 +101,7 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
               <Ikon nama="panah" />
             </button>
             <button
+              ref={tombolAkhir}
               type="button"
               className="situs-slider__tombol"
               aria-label="Layanan berikutnya"
@@ -176,7 +122,7 @@ export function SliderLayanan({ kartu, kepala }: { kartu: readonly KartuSlider[]
         tabIndex={0}
         role={sebagaiTab ? "tabpanel" : "region"}
         aria-label={sebagaiTab ? undefined : "Daftar layanan"}
-        aria-labelledby={sebagaiTab ? idTab(pilihan) : undefined}
+        aria-labelledby={sebagaiTab ? idTab(id, pilihan) : undefined}
         onScroll={ukur}
       >
         <ul className="situs-slider__daftar situs-daftar">
