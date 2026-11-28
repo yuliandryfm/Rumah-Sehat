@@ -304,4 +304,10 @@ jobs:
         env:
           RS_TEST_QPDF: ${{ runner.temp }}/qpdf-12.4.2/bin/qpdf
           SQLX_OFFLINE: "true"
-        run: bash scripts/db-ephemeral.sh cargo test -p rs-backend --test corporate_documents_pdf_qpdf --locked -- --ignored --test-threads=1
+        # Jumlah test yang berjalan ditegaskan (bukan hanya kode keluar): job tidak boleh lulus kosong bila
+        # `#[ignore]` berubah atau test diganti nama. Mengubah jumlah test berarti mengubah angka 7 di sini.
+        # Shell `bash` eksplisit memakai `-eo pipefail`, jadi kegagalan cargo tetap menggagalkan langkah.
+        run: |
+          bash scripts/db-ephemeral.sh cargo test -p rs-backend --test corporate_documents_pdf_qpdf --locked -- --ignored --test-threads=1 | tee "$RUNNER_TEMP/qpdf-test.log"
+          grep -Fxq "running 7 tests" "$RUNNER_TEMP/qpdf-test.log"
+          grep -Eq "^test result: ok\. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out" "$RUNNER_TEMP/qpdf-test.log"
