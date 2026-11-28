@@ -303,6 +303,14 @@ jobs:
       - name: Periksa tidak ada konfigurasi cargo di luar repo
         run: bash scripts/ci/periksa-lingkungan-bersih.sh
 
+      # Run 46093789597: test memakai QpdfConfig::new tanpa QpdfInspector::prepare, jadi direktori berkas sementara
+      # bawaan (temp_dir/rs-pdf-inspect) tidak ada dan pemeriksa menjawab Unavailable. Itu cacat test (belum pernah
+      # dijalankan, TD-48), bukan cacat qpdf; perbaikan benar adalah memanggil prepare di test (TD-65). Sementara,
+      # direktori disiapkan di sini dengan izin 0700 seperti prepare, tanpa mengubah kode di luar kepemilikan task.
+      - name: Siapkan direktori berkas sementara pemeriksa PDF (0700, seperti QpdfInspector::prepare)
+        run: |
+          install -d -m 700 "${TMPDIR:-/tmp}/rs-pdf-inspect"
+
       - name: cargo test corporate_documents_pdf_qpdf --ignored (qpdf asli)
         env:
           RS_TEST_QPDF: /usr/bin/qpdf
