@@ -2662,13 +2662,17 @@
             "type": "string",
             "description": "NIB (maks 64 karakter, tanpa spasi; format resmi belum ditetapkan).",
             "example": "1234567890123",
-            "maxLength": 64
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
           },
           "npwp": {
             "type": "string",
             "description": "NPWP (Terbatas; maks 64 karakter, tanpa spasi).",
             "example": "012345678901234",
-            "maxLength": 64
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
           },
           "office_address": {
             "type": "string",

@@ -354,7 +354,10 @@ pub(super) struct CorporateUploadSlotEnvelope {
 pub(super) struct DocumentConfirmRequest {
     document_kind: DocumentKindDto,
     /// ID slot dari `POST /v1/corporate/document-upload-slots` yang berkasnya sudah diunggah.
-    #[schema(example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b")]
+    #[schema(
+        example = "0193a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b",
+        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )]
     upload_slot_id: String,
 }
 
@@ -666,7 +669,12 @@ async fn resubmit(
 pub(super) struct CompanyCorrectionRequest {
     /// Nama badan usaha (maks 200 karakter).
     #[serde(default)]
-    #[schema(example = "PT Contoh Sintetis", max_length = 200)]
+    #[schema(
+        example = "PT Contoh Sintetis",
+        min_length = 1,
+        max_length = 200,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     legal_name: Option<String>,
     /// NIB: tepat 13 angka. NIB yang sudah dipakai perusahaan lain diproses sama dengan NIB baru.
     #[serde(default)]
@@ -688,11 +696,21 @@ pub(super) struct CompanyCorrectionRequest {
     npwp: Option<String>,
     /// Alamat kantor (maks 500 karakter).
     #[serde(default)]
-    #[schema(example = "Jl. Contoh No. 1, Jakarta", max_length = 500)]
+    #[schema(
+        example = "Jl. Contoh No. 1, Jakarta",
+        min_length = 1,
+        max_length = 500,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_address: Option<String>,
     /// Telepon kantor (maks 32 karakter).
     #[serde(default)]
-    #[schema(example = "021-0000000", max_length = 32)]
+    #[schema(
+        example = "021-0000000",
+        min_length = 1,
+        max_length = 32,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_phone: Option<String>,
 }
 

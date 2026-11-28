@@ -121,6 +121,11 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * @description ID butir persetujuan (UUID bertanda hubung); skema memuat pola yang sama dengan penguraian server.
+         * @example 01a2008d-7400-7000-8000-000000000b02
+         */
+        ConsentItemId: string;
+        /**
          * @description Jenis konten (`ck_cms_content_content_type`).
          * @enum {string}
          */
@@ -152,7 +157,7 @@ export interface components {
              *       "01a2008d-7400-7000-8000-000000000b02"
              *     ]
              */
-            consent_item_ids: string[];
+            consent_item_ids: components["schemas"]["ConsentItemId"][];
             /**
              * @description Versi teks persetujuan yang ditampilkan (dari `GET .../consent-text`).
              * @example 01a2008d-7400-7000-8000-000000000b01

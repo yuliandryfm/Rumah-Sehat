@@ -43,6 +43,15 @@ pub(super) fn router() -> PolicyRouter<AppState> {
         .routes(policy::registration(), routes!(registration_consent_text))
 }
 
+/// ID butir persetujuan (UUID bertanda hubung); skema memuat pola yang sama dengan penguraian server.
+#[derive(Deserialize, ToSchema)]
+#[serde(transparent)]
+#[schema(
+    example = "01a2008d-7400-7000-8000-000000000b02",
+    pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)]
+pub(super) struct ConsentItemId(String);
+
 /// Isian pendaftaran perusahaan. Tanpa password: password diatur lewat tautan aktivasi email (KEPUTUSAN-303).
 #[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -120,7 +129,7 @@ pub(super) struct CorporateRegistrationRequest {
     consent_text_version_id: String,
     /// Butir persetujuan yang dicentang; butir wajib harus ada.
     #[schema(example = json!(["01a2008d-7400-7000-8000-000000000b02"]), max_items = 20)]
-    consent_item_ids: Vec<String>,
+    consent_item_ids: Vec<ConsentItemId>,
 }
 
 impl fmt::Debug for CorporateRegistrationRequest {
@@ -312,7 +321,7 @@ fn to_input(req: CorporateRegistrationRequest) -> Result<NewCorporateRegistratio
     let consent_item_ids = req
         .consent_item_ids
         .iter()
-        .map(|s| parse_uuid("consent_item_ids", s))
+        .map(|s| parse_uuid("consent_item_ids", &s.0))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(NewCorporateRegistration {
         legal_name: req.legal_name,

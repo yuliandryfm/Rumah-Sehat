@@ -46,10 +46,20 @@ pub(super) struct CorporateClientCreateRequest {
     )]
     legal_name: String,
     /// NIB (maks 64 karakter, tanpa spasi; format resmi belum ditetapkan).
-    #[schema(example = "1234567890123", max_length = 64)]
+    #[schema(
+        example = "1234567890123",
+        min_length = 1,
+        max_length = 64,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
+    )]
     nib: String,
     /// NPWP (Terbatas; maks 64 karakter, tanpa spasi).
-    #[schema(example = "012345678901234", max_length = 64)]
+    #[schema(
+        example = "012345678901234",
+        min_length = 1,
+        max_length = 64,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
+    )]
     npwp: String,
     /// Alamat kantor (maks 500 karakter).
     #[schema(

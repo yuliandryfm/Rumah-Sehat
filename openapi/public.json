@@ -447,6 +447,12 @@
   },
   "components": {
     "schemas": {
+      "ConsentItemId": {
+        "type": "string",
+        "description": "ID butir persetujuan (UUID bertanda hubung); skema memuat pola yang sama dengan penguraian server.",
+        "example": "01a2008d-7400-7000-8000-000000000b02",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      },
       "ContentType": {
         "type": "string",
         "description": "Jenis konten (`ck_cms_content_content_type`).",
@@ -520,7 +526,7 @@
           "consent_item_ids": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ConsentItemId"
             },
             "description": "Butir persetujuan yang dicentang; butir wajib harus ada.",
             "example": [
