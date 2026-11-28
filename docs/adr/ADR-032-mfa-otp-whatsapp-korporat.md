@@ -392,7 +392,7 @@ Demo dengan kode tetap butuh A32-T1 sampai A32-T9 (±41 jam-task). A32-T10 dan a
 | P32-4 | Kapan HR memasukkan nomor WhatsApp | A: saat login pertama setelah membuat password. B: di formulir `/daftar` dan undangan (pengundang mengetik nomor rekan), tetap diverifikasi saat login pertama | A |
 | P32-5 | Nomor yang diterima | A: hanya nomor Indonesia (+62) di Fase 1. B: semua negara | A |
 | P32-6 | "Demo" memakai kode tetap di lingkungan mana | A: lokal dan staging (data sintetis). B: lokal saja | A  Catatan `[USER]` 2026-11-28 (Telegram): "saat demo pakai static" (menegaskan kode tetap di demo). **Dijawab** `[USER]` 2026-11-28 (terminal): "P32-6 A" = kode tetap berlaku di `local` dan `staging` (data sintetis); production selalu WhatsApp. |
-| P32-7 | Jalur pemulihan oleh Verifikator (nomor dan kode pemulihan hilang) | A: tetap Fase 2 seperti rencana. B: dimajukan ke Fase 1 | A |
+| P32-7 | Jalur pemulihan oleh Verifikator (nomor dan kode pemulihan hilang) | A: tetap Fase 2 seperti rencana. B: dimajukan ke Fase 1 | A  **Dijawab** `[USER]` 2026-11-28 (terminal): "P32-7 B" = pemulihan lewat tiket ke tim support dimajukan ke Fase 1 (konsekuensi P32-3 B). Wajib verifikasi identitas sebelum reset nomor (konfirmasi HR aktif lain di perusahaan yang sama atau kontak terdaftar), audit trail, dan notifikasi ke pemilik akun; rincian dan task tambahan disusun di revisi ADR ini. |
 
 ## Riwayat revisi
 
