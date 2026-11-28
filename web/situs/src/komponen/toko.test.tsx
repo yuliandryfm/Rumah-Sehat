@@ -44,14 +44,14 @@ describe("TautanToko (CR-038)", () => {
     expect(within(screen.getByRole("group")).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/unduh", "/unduh"]);
   });
 
-  test("tautan toko ada di banner header bersama navigasi", () => {
+  test("header memuat navigasi dan tombol Unduh aplikasi (tautan toko pindah ke pita unduh, KEPUTUSAN-491)", () => {
     render(
       <KerangkaSitus>
         <p>isi</p>
       </KerangkaSitus>,
     );
     const banner = screen.getByRole("banner");
-    expect(within(banner).getByRole("group", { name: "Unduh aplikasi" })).toBeDefined();
+    expect(within(banner).getByRole("link", { name: "Unduh aplikasi" }).getAttribute("href")).toBe("/unduh");
     expect(within(banner).getByRole("navigation", { name: "Utama" })).toBeDefined();
   });
 });

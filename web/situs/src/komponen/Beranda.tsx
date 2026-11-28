@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { pisahPembuka, teksPolos, uraiLayanan } from "../konten/struktur.ts";
+import { pisahPembuka, tanpaSisa, teksPolos, uraiLayanan } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
 import { KartuArtikel } from "./Artikel.tsx";
 import { adaGambar, GambarKonten } from "./HalamanKonten.tsx";
 import { Ikon, IkonLingkar, type NamaIkon } from "./Ikon.tsx";
-import { GridLayanan } from "./Layanan.tsx";
 import { BlokMarkdown } from "./Markdown.tsx";
 import { OrnamenGelap, OrnamenHero } from "./Ornamen.tsx";
+import { SliderLayanan } from "./SliderLayanan.tsx";
 import { TidakDiketahui } from "./TidakDiketahui.tsx";
 
 export interface DataBeranda {
@@ -22,9 +22,9 @@ export interface DataBeranda {
  * nama rekanan). Klaim publik tetap menunggu persetujuan teks final (brief situs §12 butir 4).
  */
 const CHIP_NILAI: readonly { teks: string; sumber: string }[] = [
-  { teks: "Tujuh layanan dalam satu aplikasi", sumber: "BRIEF" },
+  { teks: "Tujuh layanan terpadu", sumber: "BRIEF" },
   { teks: "Panggilan video tidak direkam", sumber: "BRD BR-016" },
-  { teks: "Untuk Android dan iOS", sumber: "BRIEF" },
+  { teks: "Android & iOS", sumber: "BRIEF" },
 ];
 const KARTU_MENGAMBANG: readonly {
   teks: string;
@@ -153,20 +153,31 @@ export function Beranda({ data }: { data: DataBeranda }) {
       )}
       <section className="situs-sec" aria-labelledby="b-layanan">
         <div className="situs-wadah situs-tumpuk situs-tumpuk--lebar">
-          <div className="situs-kepala-sec">
-            <p className="situs-eyebrow">Untuk pasien</p>
-            <h2 id="b-layanan">Layanan</h2>
-            <p className="situs-lead">
+          {uraianLayanan === null ? (
+            <div className="situs-kepala-sec">
+              <p className="situs-eyebrow">Untuk pasien</p>
               {layanan === null ? (
                 <>
-                  [Ringkasan layanan dari CMS.] <TidakDiketahui />
+                  <h2 id="b-layanan">Layanan</h2>
+                  <p className="situs-lead">
+                    [Ringkasan layanan dari CMS.] <TidakDiketahui />
+                  </p>
                 </>
               ) : (
-                layanan.title
+                <h2 id="b-layanan">{layanan.title}</h2>
               )}
-            </p>
-          </div>
-          {uraianLayanan === null ? null : <GridLayanan kartu={uraianLayanan.kartu} />}
+            </div>
+          ) : (
+            <SliderLayanan
+              kartu={uraianLayanan.kartu.map(tanpaSisa)}
+              kepala={
+                <div className="situs-kepala-sec">
+                  <p className="situs-eyebrow">Untuk pasien</p>
+                  <h2 id="b-layanan">{layanan?.title}</h2>
+                </div>
+              }
+            />
+          )}
           <p>
             <Link className="situs-tautan-panah" href="/layanan" prefetch={false}>
               Lihat semua layanan <Ikon nama="panah" />
@@ -219,9 +230,14 @@ export function Beranda({ data }: { data: DataBeranda }) {
       </section>
       <section className="situs-sec" aria-labelledby="b-artikel">
         <div className="situs-wadah situs-tumpuk situs-tumpuk--lebar">
-          <div className="situs-kepala-sec">
-            <p className="situs-eyebrow">Edukasi kesehatan</p>
-            <h2 id="b-artikel">Artikel terbaru</h2>
+          <div className="situs-kepala-baris">
+            <div className="situs-kepala-sec">
+              <p className="situs-eyebrow">Edukasi kesehatan</p>
+              <h2 id="b-artikel">Artikel terbaru</h2>
+            </div>
+            <Link className="situs-tautan-panah" href="/artikel" prefetch={false}>
+              Lihat semua artikel <Ikon nama="panah" />
+            </Link>
           </div>
           {artikelTerbaru.length === 0 ? (
             <p>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { gambarDiizinkan } from "../konten/aturan-aman.ts";
 import { pisahPembuka } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
+import { BagianHalaman } from "./BagianHalaman.tsx";
 import { BlokMarkdown, Markdown } from "./Markdown.tsx";
 import { OrnamenHalaman } from "./Ornamen.tsx";
 import { TidakDiketahui } from "./TidakDiketahui.tsx";
@@ -66,7 +67,7 @@ export function HeroHalaman({ judul, label, children }: { judul: string; label?:
  * sisanya dirender di kolom baca. `draf` menampilkan penanda draf serta tanggal berlaku dan versi
  * (US-1801 AC4).
  */
-export function HalamanKonten({ konten, draf = false, label }: { konten: Konten; draf?: boolean; label?: string }) {
+export function HalamanKonten({ konten, draf = false, label, susunan = "bagian" }: { konten: Konten; draf?: boolean; label?: string; susunan?: "bagian" | "kartu" }) {
   const berlaku = formatTanggal(konten.published_at);
   // Draf (Kebijakan, US-1801 AC4): paragraf pembuka tidak dipindah ke pita judul, sehingga spanduk "Draf."
   // tampil sebelum teks isi pertama.
@@ -79,7 +80,20 @@ export function HalamanKonten({ konten, draf = false, label }: { konten: Konten;
       <HeroHalaman judul={konten.title} {...(label === undefined ? {} : { label })}>
         {pembuka === null ? null : <BlokMarkdown nodes={[pembuka]} kelas="situs-md situs-lead" />}
       </HeroHalaman>
-      {draf || adaGambar(konten) || !kosongSesudahPembuka ? (
+      {!draf && bagian !== null && bagian.sisa.length > 0 ? (
+        <>
+          {adaGambar(konten) ? (
+            <div className="situs-sec situs-sec--rapat">
+              <div className="situs-baca">
+                <div className="situs-bingkai">
+                  <GambarKonten konten={konten} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <BagianHalaman nodes={bagian.sisa} susunan={susunan} />
+        </>
+      ) : draf || adaGambar(konten) || !kosongSesudahPembuka ? (
         <div className="situs-sec situs-sec--rapat">
           <div className="situs-baca">
             {draf ? (

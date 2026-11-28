@@ -54,9 +54,9 @@ describe("hero Beranda (C-03)", () => {
     expect(screen.getByRole("link", { name: "Untuk Perusahaan" }).getAttribute("href")).toBe("/untuk-perusahaan");
     const chip = screen.getByRole("list", { name: "Sorotan Ruang Sehat" });
     expect(within(chip).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
-      "Tujuh layanan dalam satu aplikasi",
+      "Tujuh layanan terpadu",
       "Panggilan video tidak direkam",
-      "Untuk Android dan iOS",
+      "Android & iOS",
     ]);
   });
 
@@ -100,24 +100,24 @@ describe("hero Beranda (C-03)", () => {
 });
 
 describe("kartu layanan di Beranda (C-02)", () => {
-  test("format cocok: satu kartu per ##, urutan CMS, satu tautan per kartu ke jangkar halaman Layanan", () => {
+  test("format cocok: satu kartu per ##, urutan CMS, satu tautan per kartu ke halaman detail layanan", () => {
     const { container } = render(<Beranda data={{ ...KOSONG, layanan: dasar({ title: "Tujuh layanan", body: LAYANAN_MD }) }} />);
-    const kartu = [...container.querySelectorAll(".situs-grid-layanan > li")];
+    const kartu = [...container.querySelectorAll(".situs-slider__daftar > li")];
     expect(kartu.map((k) => k.querySelector("h3")?.textContent)).toEqual(["Konsultasi dokter", "Home visit", "Layanan korporat", "Kolaborasi"]);
     for (const [i, k] of kartu.entries()) {
       const tautan = k.querySelectorAll("a");
       expect(tautan).toHaveLength(1);
-      expect(tautan[0]?.getAttribute("href")).toBe(`/layanan#layanan-${String(i + 1)}`);
+      expect(tautan[0]?.getAttribute("href")).toBe(`/layanan/layanan-${String(i + 1)}`);
     }
     // Ringkasan berupa teks polos: tautan di Markdown tidak menjadi tautan bersarang di kartu.
     expect(kartu[0]?.querySelector("p")?.textContent).toBe("Chat dan video dengan dokter rekanan.");
     expect(kartu[2]?.classList.contains("situs-layanan--korporat")).toBe(true);
-    expect(screen.getByText("Tujuh layanan").tagName).toBe("P");
+    expect(screen.getByText("Tujuh layanan").tagName).toBe("H2");
   });
 
   test("format tidak cocok: tanpa kartu, judul konten sebagai ringkasan dan tautan ke Layanan tetap ada", () => {
     const { container } = render(<Beranda data={{ ...KOSONG, layanan: dasar({ title: "Layanan kami", body: "# Satu\n\nTeks." }) }} />);
-    expect(container.querySelector(".situs-grid-layanan")).toBeNull();
+    expect(container.querySelector(".situs-slider")).toBeNull();
     expect(screen.getByText("Layanan kami")).toBeDefined();
     expect(screen.getByRole("link", { name: "Lihat semua layanan" }).getAttribute("href")).toBe("/layanan");
   });
@@ -157,7 +157,7 @@ describe("halaman Layanan (C-02)", () => {
 
   test("format tidak cocok: Markdown biasa utuh (tanpa kartu), isi tidak hilang", () => {
     const { container } = render(<HalamanLayanan konten={dasar({ title: "Layanan", body: "# Bagian\n\nIsi **penting**." })} />);
-    expect(container.querySelector(".situs-grid-layanan")).toBeNull();
+    expect(container.querySelector(".situs-slider")).toBeNull();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Bagian");
     expect(screen.getByText("penting").tagName).toBe("STRONG");
   });
@@ -175,10 +175,10 @@ describe("halaman Layanan (C-02)", () => {
 });
 
 describe("halaman isi (C-01)", () => {
-  test("pita judul terang; paragraf pembuka di pita, sisa di kolom baca", () => {
+  test("pita judul terang; paragraf pembuka di pita, tiap ## menjadi bagian halaman (CR-042 lanjutan)", () => {
     const { container } = render(<HalamanKonten konten={dasar({ title: "Tentang", body: "Pembuka.\n\n## Siapa kami\n\nIsi." })} />);
     expect(container.querySelector(".situs-halhero .situs-lead")?.textContent).toBe("Pembuka.");
-    expect(container.querySelector(".situs-baca h2")?.textContent).toBe("Siapa kami");
+    expect(container.querySelector("section.situs-sec h2")?.textContent).toBe("Siapa kami");
   });
 
   test("Untuk Perusahaan (CR-042: tanpa varian gelap): pita judul terang dengan label", () => {
@@ -210,10 +210,10 @@ describe("tinjauan CR-033: draf dan masukan berbahaya", () => {
     for (const el of container.querySelectorAll("*")) {
       for (const a of el.getAttributeNames()) expect(a.startsWith("on") || a === "style", `${el.tagName} ${a}`).toBe(false);
     }
-    const judul = [...container.querySelectorAll(".situs-grid-layanan h3")].map((h) => h.textContent);
+    const judul = [...container.querySelectorAll(".situs-slider__daftar h3")].map((h) => h.textContent);
     // teksPolos hanya mengambil node teks: tag HTML mentah sebaris dibuang (isi di antaranya tetap teks), tidak pernah elemen.
     expect(judul).toEqual(["Dokter", "Lab"]);
-    expect(container.querySelector(".situs-grid-layanan p")?.textContent).toBe("x alert(1)");
+    expect(container.querySelector(".situs-slider__daftar p")?.textContent).toBe("x alert(1)");
     expect(screen.getByRole("list", { name: "Di halaman Untuk Perusahaan" }).textContent).toBe("Sorotan");
     expect(container.textContent).not.toContain("alert(2)</script>.");
   });

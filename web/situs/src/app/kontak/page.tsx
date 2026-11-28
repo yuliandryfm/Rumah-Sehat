@@ -5,5 +5,5 @@ import { ambilHalamanTayang } from "../../konten/halaman.ts";
 export const metadata: Metadata = { title: "Kontak" };
 
 export default async function HalamanKontak() {
-  return <HalamanKonten konten={await ambilHalamanTayang("contact")} />;
+  return <HalamanKonten konten={await ambilHalamanTayang("contact")} susunan="kartu" />;
 }
