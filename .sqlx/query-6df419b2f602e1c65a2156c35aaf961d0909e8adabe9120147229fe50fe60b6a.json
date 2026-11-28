@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM app.corporate_client_correction WHERE corporate_client_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6df419b2f602e1c65a2156c35aaf961d0909e8adabe9120147229fe50fe60b6a"
+}

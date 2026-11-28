@@ -439,3 +439,108 @@ BEGIN
   END IF;
   RAISE NOTICE 'LULUS pembersihan tabel-app-a20: tidak ada data uji tersisa (ROLLBACK)';
 END $$;
+
+-- 3. CR-040 (keputusan user Q34 = A, KEPUTUSAN-442/443): corporate_client_correction (T), nilai sebelumnya field
+-- yang dikoreksi HR pada satu pengajuan ulang. Aturan kelas T generik (hak, trigger) juga diperiksa kelas-app.sql.
+SELECT pg_temp.uji_nol('A20 corporate_client_correction: komentar kelas T (alias), kolom persis, tanpa kolom berkomentar (anonymize)',
+  ARRAY(SELECT coalesce(obj_description('app.corporate_client_correction'::regclass, 'pg_class'), '<tidak ada>')
+         WHERE obj_description('app.corporate_client_correction'::regclass, 'pg_class')
+               IS DISTINCT FROM 'class:T module:korporat alias:corp_client_corr'
+        UNION ALL
+        SELECT format('kolom %s', x) FROM (
+          SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod) || ':' || CASE WHEN attnotnull THEN 'nn' ELSE 'n' END,
+                            ',' ORDER BY attnum) AS x
+            FROM pg_attribute WHERE attrelid = 'app.corporate_client_correction'::regclass AND attnum > 0 AND NOT attisdropped) s
+         WHERE x IS DISTINCT FROM
+           'id:uuid:nn,created_at:timestamp with time zone:nn,created_by:uuid:n,corporate_client_id:uuid:nn,'
+           || 'submission_round:integer:nn,previous_legal_name:text:n,previous_nib_last4:text:n,previous_npwp_last4:text:n,'
+           || 'previous_office_address:text:n,previous_office_phone:text:n'
+        UNION ALL
+        SELECT format('kolom berkomentar %s', attname) FROM pg_attribute
+         WHERE attrelid = 'app.corporate_client_correction'::regclass AND attnum > 0 AND NOT attisdropped
+           AND col_description(attrelid, attnum) IS NOT NULL));
+SELECT pg_temp.uji_nol('A20 corporate_client_correction: hak persis rs_app S,I (Transaksi); tanpa pekerja privasi, relay, PUBLIC, hak per kolom',
+  ARRAY(SELECT format('corporate_client_correction: %s', coalesce(a.k, '<kosong>'))
+          FROM (SELECT string_agg(CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END || ':' || x.privilege_type,
+                                  ',' ORDER BY 1) AS k
+                  FROM pg_class c, aclexplode(c.relacl) x
+                 WHERE c.oid = 'app.corporate_client_correction'::regclass AND x.grantee <> c.relowner) a
+         WHERE a.k IS DISTINCT FROM 'rs_app:INSERT,rs_app:SELECT'
+        UNION ALL
+        SELECT format('hak per kolom %s', attname) FROM pg_attribute
+         WHERE attrelid = 'app.corporate_client_correction'::regclass AND attnum > 0 AND attacl IS NOT NULL));
+SELECT pg_temp.uji_nol('A20 corporate_client_correction: index persis pk, uq (perusahaan, putaran)',
+  ARRAY(SELECT pg_temp.uji_indeks('app.corporate_client_correction', ARRAY[
+    'CREATE UNIQUE INDEX pk_corporate_client_correction ON app.corporate_client_correction USING btree (id)',
+    'CREATE UNIQUE INDEX uq_corp_client_corr_corporate_client_id_submission_round ON app.corporate_client_correction USING btree (corporate_client_id, submission_round)'])));
+SELECT pg_temp.uji_nol('A20 corporate_client_correction: FK persis tanpa CASCADE, CHECK putaran dan 4 karakter NIB/NPWP, dua trigger penolak',
+  ARRAY(SELECT x FROM (VALUES
+      ('fk_corporate_client_correction_created_by', 'FOREIGN KEY (created_by) REFERENCES app.account(id)'),
+      ('fk_corporate_client_correction_corporate_client_id', 'FOREIGN KEY (corporate_client_id) REFERENCES app.corporate_client(id)'),
+      ('ck_corp_client_corr_submission_round', 'CHECK ((submission_round >= 2))'),
+      ('ck_corp_client_corr_prev_nib_last4_length', 'CHECK (((previous_nib_last4 IS NULL) OR ((char_length(previous_nib_last4) >= 1) AND (char_length(previous_nib_last4) <= 4))))'),
+      ('ck_corp_client_corr_prev_npwp_last4_length', 'CHECK (((previous_npwp_last4 IS NULL) OR ((char_length(previous_npwp_last4) >= 1) AND (char_length(previous_npwp_last4) <= 4))))')) v(n, def),
+        LATERAL (SELECT format('%s: %s', v.n, coalesce(pg_get_constraintdef(k.oid), '<tidak ada>')) AS x
+                   FROM (SELECT 1) d LEFT JOIN pg_constraint k ON k.conname = v.n AND k.conrelid = 'app.corporate_client_correction'::regclass) z
+         WHERE x IS DISTINCT FROM format('%s: %s', v.n, v.def)
+        UNION ALL
+        SELECT format('jumlah FK %s', count(*)) FROM pg_constraint
+         WHERE conrelid = 'app.corporate_client_correction'::regclass AND contype = 'f' HAVING count(*) <> 2
+        UNION ALL
+        SELECT format('trigger %s', coalesce(string_agg(tgname::text, ',' ORDER BY tgname), '<kosong>'))
+          FROM pg_trigger WHERE tgrelid = 'app.corporate_client_correction'::regclass AND NOT tgisinternal
+        HAVING coalesce(string_agg(tgname::text, ',' ORDER BY tgname), '') <>
+               'tg_corporate_client_correction_reject_truncate,tg_corporate_client_correction_reject_ud'));
+
+BEGIN;
+SET LOCAL ROLE rs_migration;
+INSERT INTO app.account (id, account_type, idp_realm, idp_subject, email, status, status_changed_at)
+  VALUES ('00000000-0000-7000-8000-0000000a2101', 'corporate_admin', 'korporat', 'sub-a20-corr', 'a20-corr@contoh.invalid', 'active', now());
+INSERT INTO app.corporate_client (id, legal_name, nib, npwp, office_address, office_phone, status, origin, submission_round)
+  VALUES ('00000000-0000-7000-8000-0000000a2102', 'PT Koreksi Sintetis', '9900000000101', '9900000000000101', 'Jl. Uji Koreksi', '0210000101',
+          'pending_verification', 'self_registered', 2);
+RESET ROLE;
+SELECT pg_temp.uji_boleh('A20 rs_api mencatat koreksi putaran 2 (NIB/NPWP hanya 4 karakter terakhir, CR-040)', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, created_by, corporate_client_id, submission_round, previous_legal_name, previous_nib_last4, previous_npwp_last4) VALUES (''00000000-0000-7000-8000-0000000a2111'', ''00000000-0000-7000-8000-0000000a2101'', ''00000000-0000-7000-8000-0000000a2102'', 2, ''PT Lama Sintetis'', ''0001'', ''0002'')', 1);
+SELECT pg_temp.uji_tolak('A20 NEG koreksi kedua untuk putaran yang sama (CR-040)', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round, previous_office_phone) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000a2102'', 2, ''0210000000'')',
+  '23505', 'uq_corp_client_corr_corporate_client_id_submission_round');
+SELECT pg_temp.uji_tolak('A20 NEG koreksi pada putaran 1 (pengajuan pertama, tanpa putaran sebelumnya)', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round, previous_office_phone) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000a2102'', 1, ''0210000000'')',
+  '23514', 'ck_corp_client_corr_submission_round');
+SELECT pg_temp.uji_tolak('A20 NEG koreksi tanpa field yang berubah', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000a2102'', 3)',
+  '23514', 'ck_corp_client_corr_any_field');
+SELECT pg_temp.uji_tolak('A20 NEG NIB sebelumnya lengkap tidak boleh disimpan (minimasi data, KEPUTUSAN-443)', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round, previous_nib_last4) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000a2102'', 3, ''9900000000101'')',
+  '23514', 'ck_corp_client_corr_prev_nib_last4_length');
+SELECT pg_temp.uji_tolak('A20 NEG NPWP sebelumnya lengkap tidak boleh disimpan (NPWP Terbatas, DD A20)', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round, previous_npwp_last4) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000a2102'', 3, ''9900000000000101'')',
+  '23514', 'ck_corp_client_corr_prev_npwp_last4_length');
+SELECT pg_temp.uji_tolak('A20 NEG koreksi untuk perusahaan yang tidak ada', 'rs_api',
+  'INSERT INTO app.corporate_client_correction (id, corporate_client_id, submission_round, previous_office_phone) VALUES (''00000000-0000-7000-8000-0000000a2112'', ''00000000-0000-7000-8000-0000000affff'', 2, ''0210000000'')',
+  '23503', 'fk_corporate_client_correction_corporate_client_id');
+SELECT pg_temp.uji_tolak('A20 NEG rs_api UPDATE koreksi (Transaksi, ADR-004)', 'rs_api',
+  'UPDATE app.corporate_client_correction SET previous_legal_name = ''x''', '42501', 'permission denied for table corporate_client_correction');
+SELECT pg_temp.uji_tolak('A20 NEG rs_api DELETE koreksi (Transaksi, ADR-004)', 'rs_api',
+  'DELETE FROM app.corporate_client_correction', '42501', 'permission denied for table corporate_client_correction');
+SELECT pg_temp.uji_tolak('A20 NEG pemilik UPDATE koreksi ditolak trigger', 'rs_migration',
+  'UPDATE app.corporate_client_correction SET previous_legal_name = ''x''', '42501', '^immutable_violation: UPDATE on app\.corporate_client_correction rejected$');
+SELECT pg_temp.uji_tolak('A20 NEG pemilik DELETE koreksi ditolak trigger', 'rs_migration',
+  'DELETE FROM app.corporate_client_correction', '42501', '^immutable_violation: DELETE on app\.corporate_client_correction rejected$');
+SELECT pg_temp.uji_tolak('A20 NEG pemilik TRUNCATE koreksi ditolak trigger', 'rs_migration',
+  'TRUNCATE app.corporate_client_correction', '42501', '^immutable_violation: TRUNCATE on app\.corporate_client_correction rejected$');
+SELECT pg_temp.uji_tolak('A20 NEG pekerja privasi membaca koreksi (tanpa FK subjek data pribadi)', 'rs_privacy_worker_login',
+  'SELECT id FROM app.corporate_client_correction', '42501', 'permission denied for table corporate_client_correction');
+SELECT pg_temp.uji_tolak('A20 NEG relay audit membaca koreksi', 'rs_audit_relay_login',
+  'SELECT id FROM app.corporate_client_correction', '42501', 'permission denied for table corporate_client_correction');
+ROLLBACK;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM app.corporate_client_correction) OR EXISTS (SELECT 1 FROM app.corporate_client)
+     OR EXISTS (SELECT 1 FROM app.account) THEN
+    RAISE EXCEPTION 'GAGAL pembersihan tabel-app-a20 CR-040: data uji tersisa';
+  END IF;
+  RAISE NOTICE 'LULUS pembersihan tabel-app-a20 CR-040: tidak ada data uji tersisa (ROLLBACK)';
+END $$;

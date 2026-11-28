@@ -62,6 +62,29 @@ export function sumber(item: Pick<ItemAntreanPerusahaan, "origin" | "submission_
   return item.submission_round > 1 ? "Pengajuan ulang" : LABEL_ORIGIN[item.origin];
 }
 
+/** Field data perusahaan yang dapat dikoreksi HR (CR-036) dan satu penanda koreksi (CR-040). */
+export type FieldKoreksi = S["CorrectableFieldDto"];
+export type FieldDikoreksi = S["CorrectedFieldDto"];
+
+/** Teks penanda CR-040 (keputusan user Q34 = A): pendek, di samping field yang berubah. */
+export const TEKS_DATA_DIKOREKSI = "Data dikoreksi";
+
+export const LABEL_FIELD_KOREKSI: Record<FieldKoreksi, string> = {
+  legal_name: "Nama badan usaha",
+  nib: "NIB",
+  npwp: "NPWP",
+  office_address: "Alamat kantor",
+  office_phone: "Telepon kantor",
+};
+
+/**
+ * Nilai putaran sebelumnya untuk `field` bila field itu dikoreksi HR pada putaran berjalan (CR-040); `undefined`
+ * bila tidak berubah. NIB/NPWP sebelumnya sudah termasking dari server (nilai lengkap tidak disimpan).
+ */
+export function nilaiSebelumnya(detail: Pick<DetailPerusahaan, "corrected_fields">, field: FieldKoreksi): string | undefined {
+  return detail.corrected_fields.find((f) => f.field === field)?.previous_value;
+}
+
 /** NIB di daftar: hanya empat digit terakhir (wireframe C13 `************1234`); lengkap hanya di panel detail. */
 export function nibTermasking(nib: string): string {
   return `************${nib.slice(-4)}`;

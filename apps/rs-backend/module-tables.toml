@@ -42,6 +42,7 @@ tables = [
   "corporate_client_document",
   "corporate_verification_decision",
   "corporate_member",
+  "corporate_client_correction",
 ]
 
 # reason_code (A6.7): data rujukan lintas modul tanpa pemetaan eksplisit di docs/04-arsitektur.md §3;

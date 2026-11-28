@@ -3,8 +3,8 @@
 //! yang tidak dikenal. NPWP (Terbatas, DD A20) hanya di detail, dengan `Debug` manual tanpa NPWP.
 
 use super::api::{
-    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, QueueReadiness,
-    RejectionReasonView,
+    CorporateDecisionView, CorporateDetailView, CorporateQueueItemView, CorrectedFieldView,
+    QueueReadiness, RejectionReasonView,
 };
 use crate::modules::platform::api::DownloadTicket;
 use crate::openapi::MetaSchema;
@@ -225,6 +225,67 @@ pub(super) struct DetailDto {
     /// Penanda "NIB sudah dipakai perusahaan lain" (status apa pun, CR-035). Persetujuan dijawab `4090116` bila
     /// NIB sudah dipakai perusahaan Aktif lain.
     pub(super) nib_used_by_other_company: bool,
+    /// Penanda "Data dikoreksi" (CR-040): field yang dikoreksi HR pada putaran berjalan dibandingkan putaran
+    /// sebelumnya, beserta nilai sebelumnya. Kosong bila putaran ini pengajuan pertama, pengajuan ulang tanpa
+    /// koreksi (dokumen saja), atau koreksi tanpa nilai yang benar-benar berubah.
+    pub(super) corrected_fields: Vec<CorrectedFieldDto>,
+}
+
+/// Field data perusahaan yang dapat dikoreksi HR (CR-036).
+#[derive(Debug, Clone, Copy, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum CorrectableFieldDto {
+    /// Nama badan usaha.
+    LegalName,
+    /// NIB.
+    Nib,
+    /// NPWP.
+    Npwp,
+    /// Alamat kantor.
+    OfficeAddress,
+    /// Telepon kantor.
+    OfficePhone,
+}
+
+impl CorrectableFieldDto {
+    fn parse(code: &str) -> Result<Self, DtoError> {
+        match code {
+            "legal_name" => Ok(Self::LegalName),
+            "nib" => Ok(Self::Nib),
+            "npwp" => Ok(Self::Npwp),
+            "office_address" => Ok(Self::OfficeAddress),
+            "office_phone" => Ok(Self::OfficePhone),
+            _ => Err(DtoError),
+        }
+    }
+}
+
+/// Satu field yang dikoreksi HR beserta nilai putaran sebelumnya (CR-040).
+// `Debug` manual tanpa nilai (KEPUTUSAN-122).
+#[derive(Serialize, ToSchema)]
+pub(super) struct CorrectedFieldDto {
+    pub(super) field: CorrectableFieldDto,
+    /// Nilai putaran sebelumnya. NIB dan NPWP selalu termasking (`************` + 4 karakter terakhir); nilai
+    /// lengkap sebelumnya tidak disimpan.
+    #[schema(example = "PT Sintetis Lama")]
+    pub(super) previous_value: String,
+}
+
+impl fmt::Debug for CorrectedFieldDto {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CorrectedFieldDto")
+            .field("field", &self.field)
+            .finish_non_exhaustive()
+    }
+}
+
+impl CorrectedFieldDto {
+    fn from_view(v: CorrectedFieldView) -> Result<Self, DtoError> {
+        Ok(Self {
+            field: CorrectableFieldDto::parse(v.field)?,
+            previous_value: v.previous_value,
+        })
+    }
 }
 
 impl fmt::Debug for DetailDto {
@@ -262,6 +323,11 @@ impl DetailDto {
             decided_at: v.decided_at.map(ts).transpose()?,
             can_decide: v.can_decide,
             nib_used_by_other_company: v.nib_used_by_other_company,
+            corrected_fields: v
+                .corrected_fields
+                .into_iter()
+                .map(CorrectedFieldDto::from_view)
+                .collect::<Result<_, _>>()?,
         })
     }
 }
@@ -443,6 +509,10 @@ mod tests {
             decided_at: None,
             can_decide: true,
             nib_used_by_other_company: false,
+            corrected_fields: vec![crate::modules::corporate::api::CorrectedFieldView {
+                field: "npwp",
+                previous_value: "************0777".to_string(),
+            }],
         };
         let d = format!("{view:?}");
         assert!(!d.contains(npwp), "NPWP bocor di Debug view: {d}");
@@ -451,6 +521,10 @@ mod tests {
         let d = format!("{dto:?}");
         assert!(!d.contains(npwp), "NPWP bocor di Debug DTO: {d}");
         assert!(d.contains("[REDACTED]"));
+        assert!(
+            !d.contains("0777"),
+            "nilai sebelumnya bocor di Debug DTO: {d}"
+        );
 
         let url = DocumentUrlDto {
             url: "https://s3.example/obj?X-Amz-Signature=tandatangan".to_string(),

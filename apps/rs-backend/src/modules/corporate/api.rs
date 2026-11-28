@@ -256,6 +256,26 @@ pub struct CorporateDetailView {
     /// NIB yang sama dipakai perusahaan lain yang belum terhapus, status apa pun (CR-035, Q10 = B2). Persetujuan
     /// ditolak `4090116` bila salah satunya Aktif.
     pub nib_used_by_other_company: bool,
+    /// Field yang dikoreksi HR pada putaran berjalan dibandingkan putaran sebelumnya, beserta nilai sebelumnya
+    /// (CR-040, Q34 = A). Kosong bila putaran ini bukan pengajuan ulang dengan data yang berubah.
+    pub corrected_fields: Vec<CorrectedFieldView>,
+}
+
+/// Satu field yang dikoreksi HR (CR-040). `Debug` manual tanpa nilai.
+#[derive(Clone)]
+pub struct CorrectedFieldView {
+    /// `legal_name` | `nib` | `npwp` | `office_address` | `office_phone`.
+    pub field: &'static str,
+    /// Nilai putaran sebelumnya; NIB dan NPWP termasking (`************` + 4 karakter terakhir).
+    pub previous_value: String,
+}
+
+impl fmt::Debug for CorrectedFieldView {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CorrectedFieldView")
+            .field("field", &self.field)
+            .finish_non_exhaustive()
+    }
 }
 
 impl fmt::Debug for CorporateDetailView {

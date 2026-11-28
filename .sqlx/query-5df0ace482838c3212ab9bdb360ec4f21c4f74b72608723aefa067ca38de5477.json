@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app.corporate_client_correction SET previous_office_phone = '0' WHERE corporate_client_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5df0ace482838c3212ab9bdb360ec4f21c4f74b72608723aefa067ca38de5477"
+}

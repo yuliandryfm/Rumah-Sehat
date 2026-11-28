@@ -26,11 +26,18 @@
 //! (`last4`; NPWP Terbatas DD A20, NPWP penuh tidak pernah masuk payload). Ditulis di transaksi yang sama dengan
 //! E-10 `corporate_verification_resubmitted`. Koreksi yang ditolak aturan
 //! (bukan Ditolak, dokumen belum lengkap) tercatat E-10 hasil gagal untuk kedua aksi di transaksi tersendiri.
+//!
+//! **Penanda "Data dikoreksi" untuk Verifikator** (CR-040, keputusan user Q34 = A; KEPUTUSAN-442 s.d.
+//! KEPUTUSAN-445): di transaksi yang sama, nilai sebelumnya field yang benar-benar berubah disimpan di tabel
+//! Transaksi `corporate_client_correction` untuk putaran baru ([`ValidatedCorrection::previous`]); NIB dan NPWP
+//! hanya 4 karakter terakhir. Detail Verifikator membaca baris putaran berjalan ([`corrected_fields`]) dan
+//! menampilkan nilai NIB/NPWP sebelumnya termasking ([`masked_last4`]). Audit tetap bukan sumber data bisnis.
 
 use super::admin_create::{ADDRESS_MAX, LEGAL_NAME_MAX, PHONE_MAX, field, text};
+use super::api::CorrectedFieldView;
 use super::domain::{nib_format, npwp_format};
 use super::error::CorporateError;
-use super::repo::{ClientCorrection, ClientProfileRow};
+use super::repo::{ClientCorrection, ClientProfileRow, CorrectionRow};
 use audit::{FieldChange, FieldRule, ObjectPolicy, Value};
 use foundation::Sensitive;
 use std::fmt;
@@ -68,6 +75,44 @@ fn digits_value(v: &str) -> Value {
     } else {
         Value::Null
     }
+}
+
+/// Awalan samaran NIB/NPWP sebelumnya (pola NIB termasking antrean, wireframe C13 `************1234`).
+const MASK_PREFIX: &str = "************";
+
+/// Paling banyak 4 karakter terakhir `v` (karakter Unicode, bukan byte: nilai lama di luar format KEPUTUSAN-325
+/// tetap aman dipotong).
+fn last4(v: &str) -> String {
+    let n = v.chars().count();
+    v.chars().skip(n.saturating_sub(4)).collect()
+}
+
+/// Nilai NIB/NPWP sebelumnya untuk Verifikator: samaran tetap + 4 karakter terakhir (CR-040, KEPUTUSAN-443).
+pub(super) fn masked_last4(tail: &str) -> String {
+    format!("{MASK_PREFIX}{}", last4(tail))
+}
+
+/// Field yang dikoreksi pada putaran berjalan beserta nilai sebelumnya, urut tetap sama dengan
+/// [`ValidatedCorrection::changed_fields`] (CR-040). Tanpa catatan koreksi = daftar kosong (tanpa penanda).
+pub(super) fn corrected_fields(row: Option<CorrectionRow>) -> Vec<CorrectedFieldView> {
+    let Some(r) = row else {
+        return Vec::new();
+    };
+    [
+        ("legal_name", r.previous_legal_name),
+        ("nib", r.previous_nib_last4.as_deref().map(masked_last4)),
+        ("npwp", r.previous_npwp_last4.as_deref().map(masked_last4)),
+        ("office_address", r.previous_office_address),
+        ("office_phone", r.previous_office_phone),
+    ]
+    .into_iter()
+    .filter_map(|(field, previous)| {
+        previous.map(|previous_value| CorrectedFieldView {
+            field,
+            previous_value,
+        })
+    })
+    .collect()
 }
 
 /// Isian koreksi dari HR. `None` = field tidak dikoreksi. NPWP (Terbatas) dibungkus [`Sensitive`]; `Debug`
@@ -156,6 +201,24 @@ impl ValidatedCorrection {
                 FieldChange::new(name, Some(value(old)), Some(value(new)))
             })
             .collect()
+    }
+
+    /// Nilai sebelumnya field yang benar-benar berubah, untuk `corporate_client_correction` (CR-040,
+    /// KEPUTUSAN-442/443): nama, alamat, dan telepon apa adanya; NIB dan NPWP hanya 4 karakter terakhir. `None`
+    /// bila tidak ada field yang berubah (pengajuan ulang tanpa catatan koreksi).
+    pub(super) fn previous(&self, current: &ClientProfileRow) -> Option<CorrectionRow> {
+        let changed = self.changed_fields(current);
+        if changed.is_empty() {
+            return None;
+        }
+        let pick = |name: &str, old: &str| changed.contains(&name).then(|| old.to_string());
+        Some(CorrectionRow {
+            previous_legal_name: pick("legal_name", &current.legal_name),
+            previous_nib_last4: pick("nib", &last4(&current.nib)),
+            previous_npwp_last4: pick("npwp", &last4(&current.npwp)),
+            previous_office_address: pick("office_address", &current.office_address),
+            previous_office_phone: pick("office_phone", &current.office_phone),
+        })
     }
 
     /// Nama field yang nilainya berbeda dari baris tersimpan `current` (urut tetap). Field yang dikirim dengan
@@ -346,6 +409,68 @@ mod tests {
         })
         .unwrap();
         assert_eq!(v.changed_fields(&current()), ["nib", "npwp"]);
+    }
+
+    // trace: CR-040 (Q34 = A: nilai sebelumnya hanya field yang benar-benar berubah; NIB/NPWP hanya 4 karakter
+    // terakhir, KEPUTUSAN-443)
+    #[test]
+    fn previous_values_keep_only_changed_fields_and_nib_npwp_tails() {
+        let v = validate(&CompanyCorrectionInput {
+            legal_name: Some("PT Lama".to_string()),
+            nib: Some("9900000000009".to_string()),
+            npwp: Some(Sensitive::new("9900000000000009".to_string())),
+            office_phone: Some("0219999999".to_string()),
+            ..CompanyCorrectionInput::default()
+        })
+        .unwrap();
+        let p = v.previous(&current()).unwrap();
+        assert_eq!(p.previous_legal_name, None);
+        assert_eq!(p.previous_nib_last4.as_deref(), Some("0001"));
+        assert_eq!(p.previous_npwp_last4.as_deref(), Some("0001"));
+        assert_eq!(p.previous_office_address, None);
+        assert_eq!(p.previous_office_phone.as_deref(), Some("0210000000"));
+
+        // Semua nilai sama dengan tersimpan = tanpa catatan koreksi (tanpa penanda).
+        let same = validate(&CompanyCorrectionInput {
+            legal_name: Some(" PT Lama ".to_string()),
+            nib: Some("9900000000001".to_string()),
+            ..CompanyCorrectionInput::default()
+        })
+        .unwrap();
+        assert!(same.previous(&current()).is_none());
+
+        // Nilai lama di luar format: dipotong per karakter Unicode, bukan byte.
+        assert_eq!(last4("ab"), "ab");
+        assert_eq!(last4("12-345é"), "345é");
+    }
+
+    // trace: CR-040 (penanda per field, urut tetap; NIB/NPWP sebelumnya termasking; tanpa catatan = kosong)
+    #[test]
+    fn corrected_fields_mask_nib_and_npwp_and_are_empty_without_record() {
+        assert!(corrected_fields(None).is_empty());
+        let fields = corrected_fields(Some(CorrectionRow {
+            previous_legal_name: Some("PT Lama".to_string()),
+            previous_nib_last4: Some("0001".to_string()),
+            previous_npwp_last4: Some("0002".to_string()),
+            previous_office_address: None,
+            previous_office_phone: Some("0210000000".to_string()),
+        }));
+        let got: Vec<(&str, &str)> = fields
+            .iter()
+            .map(|f| (f.field, f.previous_value.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("legal_name", "PT Lama"),
+                ("nib", "************0001"),
+                ("npwp", "************0002"),
+                ("office_phone", "0210000000"),
+            ]
+        );
+        assert_eq!(masked_last4("9900000000001"), "************0001");
+        let d = format!("{fields:?}");
+        assert!(!d.contains("PT Lama") && !d.contains("0001"), "{d}");
     }
 
     // trace: ADR-005 (before/after), DD A20 (NPWP Terbatas: hanya 4 digit terakhir), KEPUTUSAN-416

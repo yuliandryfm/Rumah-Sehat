@@ -613,16 +613,17 @@ async fn resubmit_with(
                 return Err(CorporateError::ResubmissionIncomplete);
             }
             // Field yang benar-benar berubah dibandingkan dengan baris yang sudah dikunci (bukan dari klien),
-            // beserta nilai sebelum/sesudah sesuai kebijakan objek (KEPUTUSAN-416).
-            let changes = match &correction {
+            // beserta nilai sebelum/sesudah sesuai kebijakan objek (KEPUTUSAN-416) dan nilai sebelumnya untuk
+            // penanda "Data dikoreksi" Verifikator (CR-040, KEPUTUSAN-442).
+            let (changes, previous) = match &correction {
                 Some(c) => {
                     let current = repo::client_profile(&mut *conn, client_id)
                         .await
                         .map_err(db_error)?
                         .ok_or(CorporateError::NotFound)?;
-                    c.changes(&current)
+                    (c.changes(&current), c.previous(&current))
                 }
-                None => Vec::new(),
+                None => (Vec::new(), None),
             };
             let repo_correction = correction
                 .as_ref()
@@ -645,6 +646,20 @@ async fn resubmit_with(
                 .submission_round
                 .checked_add(1)
                 .ok_or(CorporateError::Internal("submission_round_overflow"))?;
+            if let Some(previous) = &previous {
+                // CR-040: catatan koreksi putaran baru, di transaksi yang sama dengan UPDATE dan E-10 (gagal = semua
+                // dibatalkan). Hanya bila ada field yang benar-benar berubah.
+                repo::insert_correction(
+                    conn,
+                    new_id(),
+                    client_id,
+                    next_round,
+                    account_id,
+                    previous,
+                )
+                .await
+                .map_err(db_error)?;
+            }
             let to = CorporateClientStatus::PendingVerification;
             let action = Code::new(RESUBMITTED_ACTION)
                 .map_err(|_| CorporateError::Internal("audit_action"))?;
