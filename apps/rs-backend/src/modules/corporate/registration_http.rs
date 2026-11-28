@@ -48,7 +48,12 @@ pub(super) fn router() -> PolicyRouter<AppState> {
 #[serde(deny_unknown_fields)]
 pub(super) struct CorporateRegistrationRequest {
     /// Nama badan usaha (maks 200 karakter).
-    #[schema(example = "PT Contoh Sintetis", max_length = 200)]
+    #[schema(
+        example = "PT Contoh Sintetis",
+        min_length = 1,
+        max_length = 200,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     legal_name: String,
     /// NIB: tepat 13 angka (Peraturan BKPM 3/2021). Keaslian diperiksa Verifikator.
     #[schema(
@@ -68,22 +73,50 @@ pub(super) struct CorporateRegistrationRequest {
     )]
     npwp: String,
     /// Alamat kantor (maks 500 karakter).
-    #[schema(example = "Jl. Contoh No. 1, Jakarta", max_length = 500)]
+    #[schema(
+        example = "Jl. Contoh No. 1, Jakarta",
+        min_length = 1,
+        max_length = 500,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_address: String,
     /// Telepon kantor (maks 32 karakter).
-    #[schema(example = "021-0000000", max_length = 32)]
+    #[schema(
+        example = "021-0000000",
+        min_length = 1,
+        max_length = 32,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_phone: String,
     /// Nama HR pendaftar (maks 120 karakter).
-    #[schema(example = "Nama HR Sintetis", max_length = 120)]
+    #[schema(
+        example = "Nama HR Sintetis",
+        min_length = 1,
+        max_length = 120,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     hr_full_name: String,
     /// Jabatan HR pendaftar (maks 100 karakter).
-    #[schema(example = "Manajer SDM", max_length = 100)]
+    #[schema(
+        example = "Manajer SDM",
+        min_length = 1,
+        max_length = 100,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     hr_job_title: String,
     /// Email HR pendaftar: penerima tautan aktivasi (verifikasi email, password, TOTP).
-    #[schema(example = "hr@perusahaan.example", max_length = 254)]
+    #[schema(
+        example = "hr@perusahaan.example",
+        min_length = 5,
+        max_length = 254,
+        pattern = "^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+    )]
     hr_email: String,
     /// Versi teks persetujuan yang ditampilkan (dari `GET .../consent-text`).
-    #[schema(example = "01a2008d-7400-7000-8000-000000000b01")]
+    #[schema(
+        example = "01a2008d-7400-7000-8000-000000000b01",
+        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )]
     consent_text_version_id: String,
     /// Butir persetujuan yang dicentang; butir wajib harus ada.
     #[schema(example = json!(["01a2008d-7400-7000-8000-000000000b02"]), max_items = 20)]
@@ -155,7 +188,10 @@ pub(super) struct RegistrationConsentItemDto {
 /// Versi teks persetujuan HR yang berlaku.
 #[derive(Debug, Serialize, ToSchema)]
 pub(super) struct RegistrationConsentTextDto {
-    #[schema(example = "01a2008d-7400-7000-8000-000000000b01")]
+    #[schema(
+        example = "01a2008d-7400-7000-8000-000000000b01",
+        pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )]
     consent_text_version_id: String,
     #[schema(example = "corporate_hr_registration")]
     consent_type: String,

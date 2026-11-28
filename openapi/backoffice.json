@@ -2646,13 +2646,17 @@
             "type": "string",
             "description": "Email HR pertama: penerima undangan aktivasi (password dan TOTP) di realm `korporat`.",
             "example": "hr@perusahaan.example",
-            "maxLength": 254
+            "maxLength": 254,
+            "minLength": 5,
+            "pattern": "^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
           },
           "legal_name": {
             "type": "string",
             "description": "Nama badan usaha (maks 200 karakter).",
             "example": "PT Contoh Sintetis",
-            "maxLength": 200
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "nib": {
             "type": "string",
@@ -2670,13 +2674,17 @@
             "type": "string",
             "description": "Alamat kantor (maks 500 karakter).",
             "example": "Jl. Contoh No. 1, Jakarta",
-            "maxLength": 500
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "office_phone": {
             "type": "string",
             "description": "Telepon kantor (maks 32 karakter).",
             "example": "021-0000000",
-            "maxLength": 32
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           }
         },
         "additionalProperties": false

@@ -1465,7 +1465,9 @@
             "type": "string",
             "description": "Email HR yang diundang (penerima tautan aktivasi: password dan TOTP, berlaku 24 jam, sekali pakai).",
             "example": "hr.baru@perusahaan.example",
-            "maxLength": 254
+            "maxLength": 254,
+            "minLength": 5,
+            "pattern": "^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
           }
         },
         "additionalProperties": false
