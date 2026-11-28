@@ -719,6 +719,7 @@ Koreksi butir NIST di atas: kewajiban "alternative authenticator types" (§3.1.3
 **Jawaban user P32-2 `[USER]` 2026-11-28:** "use 3rd party" (terminal), diperjelas "P32-2 A" (Telegram) = WhatsApp Business Platform resmi lewat mitra BSP terdaftar Meta; mitra, biaya, dan kontrak `[TIDAK DIKETAHUI]`. User menegaskan "saat demo pakai static" (Telegram).
 **Jawaban user P32-3 `[USER]` 2026-11-28 (terminal):** "P32-3 B. HR can raise the ticket to ruang sehat support team" = kode pemulihan opsional; pemulihan lewat tiket ke tim support Ruang Sehat.
 **Jawaban user P32-7 `[USER]` 2026-11-28 (terminal):** "P32-7 B" = pemulihan HR lewat tiket support (verifikasi identitas lalu reset nomor WhatsApp) dimajukan ke Fase 1; menambah sekitar 1–2 task.
+**Jawaban user P32-4 `[USER]` 2026-11-28 (terminal):** "B" = nomor WhatsApp diisi di formulir `/daftar` dan formulir Undang HR, tetap diverifikasi dengan kode saat login pertama; PRD US-1901 dan kontrak API pendaftaran/undangan ikut berubah.
 **Jawaban user P32-6 `[USER]` 2026-11-28 (terminal):** "P32-6 A" = kode tetap hanya di `local` dan `staging` (data sintetis); production selalu WhatsApp.
 Status: disetujui user; ADR-032 diusulkan 2026-11-28, menunggu review T1 dan persetujuan user.
 
