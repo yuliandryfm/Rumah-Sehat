@@ -128,7 +128,12 @@ impl From<HrDeactivated> for HrDeactivatedDto {
 #[serde(deny_unknown_fields)]
 pub(super) struct HrInvitationRequest {
     /// Email HR yang diundang (penerima tautan aktivasi: password dan TOTP, berlaku 24 jam, sekali pakai).
-    #[schema(example = "hr.baru@perusahaan.example", max_length = 254)]
+    #[schema(
+        example = "hr.baru@perusahaan.example",
+        min_length = 5,
+        max_length = 254,
+        pattern = "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+    )]
     email: String,
 }
 

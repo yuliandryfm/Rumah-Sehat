@@ -447,6 +447,12 @@
   },
   "components": {
     "schemas": {
+      "ConsentItemId": {
+        "type": "string",
+        "description": "ID butir persetujuan (UUID bertanda hubung); skema memuat pola yang sama dengan penguraian server.",
+        "example": "01a2008d-7400-7000-8000-000000000b02",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      },
       "ContentType": {
         "type": "string",
         "description": "Jenis konten (`ck_cms_content_content_type`).",
@@ -520,7 +526,7 @@
           "consent_item_ids": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ConsentItemId"
             },
             "description": "Butir persetujuan yang dicentang; butir wajib harus ada.",
             "example": [
@@ -531,31 +537,40 @@
           "consent_text_version_id": {
             "type": "string",
             "description": "Versi teks persetujuan yang ditampilkan (dari `GET .../consent-text`).",
-            "example": "01a2008d-7400-7000-8000-000000000b01"
+            "example": "01a2008d-7400-7000-8000-000000000b01",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "hr_email": {
             "type": "string",
             "description": "Email HR pendaftar: penerima tautan aktivasi (verifikasi email, password, TOTP).",
             "example": "hr@perusahaan.example",
-            "maxLength": 254
+            "maxLength": 254,
+            "minLength": 5,
+            "pattern": "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
           },
           "hr_full_name": {
             "type": "string",
             "description": "Nama HR pendaftar (maks 120 karakter).",
             "example": "Nama HR Sintetis",
-            "maxLength": 120
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "hr_job_title": {
             "type": "string",
             "description": "Jabatan HR pendaftar (maks 100 karakter).",
             "example": "Manajer SDM",
-            "maxLength": 100
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "legal_name": {
             "type": "string",
             "description": "Nama badan usaha (maks 200 karakter).",
             "example": "PT Contoh Sintetis",
-            "maxLength": 200
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "nib": {
             "type": "string",
@@ -577,13 +592,17 @@
             "type": "string",
             "description": "Alamat kantor (maks 500 karakter).",
             "example": "Jl. Contoh No. 1, Jakarta",
-            "maxLength": 500
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           },
           "office_phone": {
             "type": "string",
             "description": "Telepon kantor (maks 32 karakter).",
             "example": "021-0000000",
-            "maxLength": 32
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
           }
         },
         "additionalProperties": false
@@ -929,7 +948,8 @@
         "properties": {
           "consent_text_version_id": {
             "type": "string",
-            "example": "01a2008d-7400-7000-8000-000000000b01"
+            "example": "01a2008d-7400-7000-8000-000000000b01",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "consent_type": {
             "type": "string",

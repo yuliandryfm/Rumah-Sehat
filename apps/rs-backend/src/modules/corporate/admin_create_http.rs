@@ -38,22 +38,52 @@ pub(super) fn router() -> PolicyRouter<AppState> {
 #[serde(deny_unknown_fields)]
 pub(super) struct CorporateClientCreateRequest {
     /// Nama badan usaha (maks 200 karakter).
-    #[schema(example = "PT Contoh Sintetis", max_length = 200)]
+    #[schema(
+        example = "PT Contoh Sintetis",
+        min_length = 1,
+        max_length = 200,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     legal_name: String,
     /// NIB (maks 64 karakter, tanpa spasi; format resmi belum ditetapkan).
-    #[schema(example = "1234567890123", max_length = 64)]
+    #[schema(
+        example = "1234567890123",
+        min_length = 1,
+        max_length = 64,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
+    )]
     nib: String,
     /// NPWP (Terbatas; maks 64 karakter, tanpa spasi).
-    #[schema(example = "012345678901234", max_length = 64)]
+    #[schema(
+        example = "012345678901234",
+        min_length = 1,
+        max_length = 64,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]+$"
+    )]
     npwp: String,
     /// Alamat kantor (maks 500 karakter).
-    #[schema(example = "Jl. Contoh No. 1, Jakarta", max_length = 500)]
+    #[schema(
+        example = "Jl. Contoh No. 1, Jakarta",
+        min_length = 1,
+        max_length = 500,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_address: String,
     /// Telepon kantor (maks 32 karakter).
-    #[schema(example = "021-0000000", max_length = 32)]
+    #[schema(
+        example = "021-0000000",
+        min_length = 1,
+        max_length = 32,
+        pattern = "^[^\\s\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff][^\\x00-\\x1f\\x7f-\\x9f\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff]*$"
+    )]
     office_phone: String,
     /// Email HR pertama: penerima undangan aktivasi (password dan TOTP) di realm `korporat`.
-    #[schema(example = "hr@perusahaan.example", max_length = 254)]
+    #[schema(
+        example = "hr@perusahaan.example",
+        min_length = 5,
+        max_length = 254,
+        pattern = "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+    )]
     hr_email: String,
 }
 
