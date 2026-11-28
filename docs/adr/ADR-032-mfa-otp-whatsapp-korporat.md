@@ -141,7 +141,7 @@ Tingkat ketelitian: T1 (autentikasi, sesi, dan MFA; konfigurasi realm Keycloak; 
   - lokal di `.env.local` (tidak di-commit; `.env.example` hanya memuat nama variabel tanpa nilai);
   - staging di KV OpenBao yang hanya dapat dibaca identitas `otp-relay` staging;
   - format divalidasi `^[A-Z0-9]{6}$`, sehingga contoh user "A1B2C3" sah.
-- **"Demo" = lingkungan `local` dan `staging`**, yang hanya berisi data sintetis (ADR-019 butir 1, ADR-025 butir 1). Tafsiran ini dikonfirmasi user lewat P32-6.
+- **"Demo" = lingkungan `local` dan `staging`**, yang hanya berisi data sintetis (ADR-019 butir 1, ADR-025 butir 1). Tafsiran ini dikonfirmasi user: P32-6 = A `[USER]` 2026-11-28.
 - Alur di demo sama dengan production: pendaftaran nomor, layar kode, batas percobaan, dan kode pemulihan. Hanya pengirimannya yang tidak ada. Kode tetap tetap sekali pakai per tantangan.
 
 ### 5. Parameter OTP `[KEPUTUSAN-463]`
@@ -391,7 +391,7 @@ Demo dengan kode tetap butuh A32-T1 sampai A32-T9 (±41 jam-task). A32-T10 dan a
 | P32-3 | Kode pemulihan wajib disimpan HR saat login pertama | A: wajib (satu layar tambahan). B: opsional (HR yang kehilangan nomor harus lewat Verifikator, Fase 2) | A |
 | P32-4 | Kapan HR memasukkan nomor WhatsApp | A: saat login pertama setelah membuat password. B: di formulir `/daftar` dan undangan (pengundang mengetik nomor rekan), tetap diverifikasi saat login pertama | A |
 | P32-5 | Nomor yang diterima | A: hanya nomor Indonesia (+62) di Fase 1. B: semua negara | A |
-| P32-6 | "Demo" memakai kode tetap di lingkungan mana | A: lokal dan staging (data sintetis). B: lokal saja | A  Catatan `[USER]` 2026-11-28 (Telegram): "saat demo pakai static" (menegaskan kode tetap di demo; daftar lingkungan persisnya belum dijawab). |
+| P32-6 | "Demo" memakai kode tetap di lingkungan mana | A: lokal dan staging (data sintetis). B: lokal saja | A  Catatan `[USER]` 2026-11-28 (Telegram): "saat demo pakai static" (menegaskan kode tetap di demo). **Dijawab** `[USER]` 2026-11-28 (terminal): "P32-6 A" = kode tetap berlaku di `local` dan `staging` (data sintetis); production selalu WhatsApp. |
 | P32-7 | Jalur pemulihan oleh Verifikator (nomor dan kode pemulihan hilang) | A: tetap Fase 2 seperti rencana. B: dimajukan ke Fase 1 | A |
 
 ## Riwayat revisi
