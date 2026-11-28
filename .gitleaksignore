@@ -1,4 +1,10 @@
 # Pengecualian gitleaks per fingerprint (F1-T06). Diberikan eksplisit oleh scripts/verify.sh lewat
 # --gitleaks-ignore-path. Satu fingerprint per temuan, dengan alasan tertulis dan review keamanan.
 # Komentar "gitleaks:allow" di kode tidak berlaku (verify.sh: --ignore-gitleaks-allow).
-# Saat ini kosong; positif palsu yang ada dikecualikan lewat allowlist sempit di .gitleaks.toml.
+# Positif palsu lain dikecualikan lewat allowlist sempit di .gitleaks.toml.
+
+# 2026-11-28, TD-67: aturan generic-api-key cocok dengan prosa biasa (kata Inggris untuk rahasia diikuti
+# koma lalu "kode/permintaan", entropi 3,5) di baris SRC-992 docs/sources.md, kutipan OWASP ASVS 6.5.1.
+# Bukan rahasia. Commit 392e1eb sudah di-push ke repo public sehingga riwayat tidak ditulis ulang;
+# fingerprint ini hanya berlaku untuk commit, berkas, dan baris tersebut.
+392e1eb734758da06c2706d0830a0c681c4dd4b3:docs/sources.md:generic-api-key:601
