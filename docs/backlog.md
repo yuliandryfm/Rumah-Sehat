@@ -711,8 +711,8 @@ Dampak yang wajib ditangani sebelum diterapkan (dicatat orkestrator, belum diput
 - NIST SP 800-63B-4 §3.1.3.1 mengizinkan out-of-band lewat layanan pesan instan terenkripsi, dengan syarat tersedia jenis autentikator alternatif (§3.1.3.3); email tidak boleh (`[SRC]` akan dicatat di sources saat analisis).
 - Keycloak tidak punya autentikator WhatsApp bawaan: perlu authenticator kustom (modul T1 autentikasi) + penyedia WhatsApp Business API (vendor, biaya per pesan, kontrak = keputusan user) `[TIDAK DIKETAHUI]` penyedia.
 - Nomor WhatsApp HR harus dikumpulkan dan diverifikasi (formulir /daftar, undangan HR, ubah nomor), dan jalur pemulihan bila nomor/HP hilang (KEPUTUSAN-265).
-- Masa transisi sampai pengirim WhatsApp siap `[TIDAK DIKETAHUI]` (ditanyakan ke user).
-Status: disetujui user; analisis dan rancangan belum dimulai.
+- Masa transisi: `[USER]` 2026-11-28 (terminal): "on demo, OTP should be static value, example \"A1B2C3\"". Di demo, langkah OTP sudah memakai alur OTP baru dengan kode tetap (contoh A1B2C3) sebagai pengganti pengiriman WhatsApp; kode tetap wajib mustahil aktif di production (ditegakkan konfigurasi, dirancang di ADR-032).
+Status: disetujui user; rancangan ADR-032 (usulan) dimulai 2026-11-28.
 
 ## Tech Debt
 
