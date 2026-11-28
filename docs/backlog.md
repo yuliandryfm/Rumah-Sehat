@@ -702,6 +702,18 @@ Isi: saat HR mengoreksi data perusahaan setelah Ditolak lalu mengajukan ulang (C
 Pelaksanaan (KEPUTUSAN-442–445): tabel Transaksi baru `corporate_client_correction` (migrasi `20261127440000`, nilai sebelumnya field yang benar-benar berubah, ditulis di transaksi koreksi; NIB/NPWP hanya 4 karakter terakhir), detail Verifikator mendapat `corrected_fields` (`openapi/backoffice.json`, tanpa endpoint dan kode respons baru, otorisasi Verifikator tetap), UI badge "Data dikoreksi" + "Sebelumnya: …" per field dan ringkasan singkat. Koreksi sebelum migrasi tidak bertanda (TD-62).
 Status: disetujui user; diimplementasikan commit `6523db0` (verify HIJAU: 25 langkah lulus; Rust 1017 test lulus, web 902 test lulus, db-migrations 1404 pemeriksaan lulus); review T1: keamanan LULUS, code review LULUS, DBA LULUS DENGAN CATATAN (temuan 1 retensi dan temuan 2 sinkronisasi data dictionary diperbaiki di dokumen; temuan keamanan I-1 dicatat TD-63). KEPUTUSAN-443 (NIB/NPWP sebelumnya hanya 4 karakter terakhir) dikonfirmasi user Q35 = A (Telegram, 2026-11-28).
 
+### CR-041: MFA HR korporat memakai OTP WhatsApp, tanpa aplikasi authenticator
+
+Diajukan dan diputuskan: 2026-11-28, `[USER]` (terminal, menjawab Q36): "i want move to WhatsApp OTP as MFA. just need develop WA Agent later. no need other apps as authenticator. its cheapest and easy to handle".
+Isi: faktor kedua akun HR realm `korporat` berganti dari TOTP aplikasi authenticator (KEPUTUSAN-253) menjadi kode sekali pakai yang dikirim lewat WhatsApp. Agent/layanan pengirim WhatsApp dikembangkan kemudian.
+Dampak yang wajib ditangani sebelum diterapkan (dicatat orkestrator, belum diputuskan):
+- NFR-SEC-02 (PRD v1.3) saat ini menetapkan faktor kedua TOTP dan menyebut SMS, OTP email, WebAuthn tidak dipakai; perlu revisi PRD dan KEPUTUSAN-253, serta ADR-011/ADR-027 butir 3.
+- NIST SP 800-63B-4 §3.1.3.1 mengizinkan out-of-band lewat layanan pesan instan terenkripsi, dengan syarat tersedia jenis autentikator alternatif (§3.1.3.3); email tidak boleh (`[SRC]` akan dicatat di sources saat analisis).
+- Keycloak tidak punya autentikator WhatsApp bawaan: perlu authenticator kustom (modul T1 autentikasi) + penyedia WhatsApp Business API (vendor, biaya per pesan, kontrak = keputusan user) `[TIDAK DIKETAHUI]` penyedia.
+- Nomor WhatsApp HR harus dikumpulkan dan diverifikasi (formulir /daftar, undangan HR, ubah nomor), dan jalur pemulihan bila nomor/HP hilang (KEPUTUSAN-265).
+- Masa transisi sampai pengirim WhatsApp siap `[TIDAK DIKETAHUI]` (ditanyakan ke user).
+Status: disetujui user; analisis dan rancangan belum dimulai.
+
 ## Tech Debt
 
 | ID | Isi | Asal | Target |
