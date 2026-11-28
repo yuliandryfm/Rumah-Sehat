@@ -712,7 +712,11 @@ Dampak yang wajib ditangani sebelum diterapkan (dicatat orkestrator, belum diput
 - Keycloak tidak punya autentikator WhatsApp bawaan: perlu authenticator kustom (modul T1 autentikasi) + penyedia WhatsApp Business API (vendor, biaya per pesan, kontrak = keputusan user) `[TIDAK DIKETAHUI]` penyedia.
 - Nomor WhatsApp HR harus dikumpulkan dan diverifikasi (formulir /daftar, undangan HR, ubah nomor), dan jalur pemulihan bila nomor/HP hilang (KEPUTUSAN-265).
 - Masa transisi: `[USER]` 2026-11-28 (terminal): "on demo, OTP should be static value, example \"A1B2C3\"". Di demo, langkah OTP sudah memakai alur OTP baru dengan kode tetap (contoh A1B2C3) sebagai pengganti pengiriman WhatsApp; kode tetap wajib mustahil aktif di production (ditegakkan konfigurasi, dirancang di ADR-032).
-Status: disetujui user; rancangan ADR-032 (usulan) dimulai 2026-11-28.
+Cakupan: `[USER]` 2026-11-28 (terminal): "only korporat realm, others stay TOTP". Realm pasien, nakes, admin, rme tetap TOTP.
+Rancangan: `docs/adr/ADR-032-mfa-otp-whatsapp-korporat.md` (Diusulkan, 2026-11-28; KEPUTUSAN-460–469; SRC-990–998). Ringkas: autentikator Keycloak kustom tipis + `otp-relay` Rust (port pengirim `static`/`whatsapp`), kode tetap demo dijaga tiga lapis, nomor didaftarkan HR saat login pertama dan disimpan sebagai atribut Keycloak, kode pemulihan wajib, ±48 jam-task T1.
+Koreksi butir NIST di atas: kewajiban "alternative authenticator types" (§3.1.3.3) melekat pada PSTN; pesan instan terenkripsi disebut terpisah di §3.1.3.1 dan tidak berstatus restricted (SRC-990). Kode pemulihan tetap diusulkan atas dasar ASVS 6.4.4 dan NIST §4.2.
+**Butir blokir untuk user (P32-1, ADR-032 butir 10):** WhatsApp Cloud API memproses isi pesan di pusat data Meta, termasuk di luar Indonesia hingga 60 menit walaupun *local storage* Indonesia dipakai (SRC-54, SRC-997), bertentangan dengan T4-Q1 "tanpa kecuali" dan dasar CR-007. Adaptor `whatsapp` tidak boleh aktif di production sebelum diputuskan; pertanyaan P32-1–P32-7 di ADR-032.
+Status: disetujui user; ADR-032 diusulkan 2026-11-28, menunggu review T1 dan persetujuan user.
 
 ## Tech Debt
 
