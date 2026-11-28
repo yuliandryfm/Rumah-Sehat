@@ -40,6 +40,9 @@ async function tunggu(url, server) {
   throw new Error("server standalone tidak siap dalam 10 detik");
 }
 
+// Rujukan yang tidak boleh ada di HTML halaman mana pun (CR-042): CDN, Google Fonts, foto googleusercontent, Material Symbols.
+const RUJUKAN_EKSTERNAL = /googleapis|gstatic|googleusercontent|cdn\.tailwindcss|material-symbols/i;
+
 const WAJIB = {
   "strict-transport-security": /max-age=\d+/,
   "x-content-type-options": /^nosniff$/,
@@ -97,7 +100,7 @@ try {
   }
   periksa(!/\son[a-z]+\s*=/i.test(html), "/: ada atribut event handler inline");
   periksa(!/\sstyle\s*=/i.test(html), "/: ada atribut style inline");
-  periksa(!/googleapis|gstatic|googleusercontent|cdn\.tailwindcss|material-symbols/i.test(html), "/: ada rujukan ke CDN atau font jarak jauh (CR-042)");
+  periksa(!RUJUKAN_EKSTERNAL.test(html), "/: ada rujukan ke CDN atau font jarak jauh (CR-042)");
   periksa(html.includes("[TIDAK DIKETAHUI]"), "/: penanda [TIDAK DIKETAHUI] tidak tampil");
   periksa(/<main[^>]*id="isi"/.test(html), "/: landmark <main id=isi> tidak ada");
 
@@ -126,6 +129,7 @@ try {
     const isi = await res.text();
     periksa(/<main[^>]*id="isi"/.test(isi), `${jalur}: landmark <main id=isi> tidak ada`);
     periksa(!/\son[a-z]+\s*=/i.test(isi) && !/\sstyle\s*=/i.test(isi), `${jalur}: atribut event atau style inline`);
+    periksa(!RUJUKAN_EKSTERNAL.test(isi), `${jalur}: ada rujukan ke CDN atau font jarak jauh (CR-042)`);
   }
   const kebijakan = await (await fetch(`${dasar}/kebijakan`)).text();
   periksa(kebijakan.includes("Draf."), "/kebijakan: penanda draf tidak tampil");

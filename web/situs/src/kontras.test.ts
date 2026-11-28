@@ -113,7 +113,7 @@ describe("kontras situs (token)", () => {
     expect(rasioKontras(warna("text-secondary"), desktop)).toBeLessThan(4.5);
   });
 
-  test("pita judul gelap: putih dan mint di atas latar terburuk (cincin mint 16% lalu daun primary 12% di atas primary-strong)", () => {
+  test("seksi korporat gelap di Beranda: putih dan mint di atas latar terburuk (cincin mint 16% lalu daun primary 12% di atas primary-strong)", () => {
     const terburuk = campur(warna("primary"), 0.12, campur(warna("mint"), 0.16, warna("primary-strong")));
     for (const latar of [terburuk, warna("primary-strong")]) {
       for (const teks of ["on-primary", "mint"]) expect(rasioKontras(warna(teks), latar), `${teks} / ${latar}`).toBeGreaterThanOrEqual(4.5);

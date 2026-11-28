@@ -728,7 +728,7 @@ Status: disetujui user; ADR-032 diusulkan 2026-11-28 dan direvisi sesuai P32-1�
 
 Diajukan dan diputuskan: 2026-11-28, `[USER]` (Telegram): "buat UIUX situs sama seperti tampilan pada file yang saya upload".
 Isi: `web/situs` ditampilkan ulang sesuai paket desain `masukan-desain/situs-stitch-2026-11-28/` (sistem desain "Vitality & Trust", 8 halaman, logo, papan merek). Menggantikan konsep visual CR-033 (brief situs §0). Isi teks tetap dari dokumen proyek dan CMS.
-Pelaksanaan (KEPUTUSAN-475–480): font Instrument Sans/Alata/Spline Sans Mono lokal (SRC-999–1001), logo sebaris, header/hero/kartu/pita unduh/footer bergaya desain, tanpa CDN dan tanpa foto berlisensi tidak jelas; CSP tidak diubah. Kontras: token yang sama, tujuh pasangan baru di `kontras.test.ts`. T1 (area CMS/CSP situs): review security dan code-reviewer oleh orkestrator.
+Pelaksanaan (KEPUTUSAN-475–480): font Instrument Sans/Alata/Spline Sans Mono lokal (SRC-1000–1002), logo sebaris, header/hero/kartu/pita unduh/footer bergaya desain, tanpa CDN dan tanpa foto berlisensi tidak jelas; CSP tidak diubah. Kontras: token yang sama, tujuh pasangan baru di `kontras.test.ts`. T1 (area CMS/CSP situs): review security dan code-reviewer oleh orkestrator.
 Pembaruan: `[USER]` 2026-11-28 (Telegram): "gunakan foto yg ada di file tersebut juga, itu hasil generated. licensed free". Foto dari paket desain boleh dipakai (KEPUTUSAN-481, SRC-1003), tetapi 13 URL foto memerlukan sesi akun Google dan tidak dapat diunduh dari lingkungan pengembangan; pelaksanaan menunggu berkas gambar dari user (TD-69).
 Status: disetujui user; diimplementasikan (commit hash dicatat di laporan agen; verify di laporan agen).
 

@@ -201,9 +201,9 @@ main:focus { outline: none; }
    teks putih 7,53 (K7), teks pendukung mint 6,56. */
 .situs-sec--gelap { padding: var(--s8) 0; }
 .situs-sec--gelap > .situs-wadah { position: relative; overflow: hidden; padding: var(--s12) var(--s12); border-radius: var(--situs-r-kartu); background: var(--c-primary-strong); color: var(--c-on-primary); }
-.situs-sec--gelap .situs-eyebrow, .situs-sec--gelap .situs-lead, .situs-halhero--gelap .situs-eyebrow, .situs-halhero--gelap .situs-lead, .situs-halhero--gelap .situs-lead p { color: var(--c-mint); }
-.situs-sec--gelap a:not(.situs-btn), .situs-halhero--gelap a:not(.situs-btn) { color: var(--c-on-primary); }
-.situs-sec--gelap :focus-visible, .situs-halhero--gelap :focus-visible { box-shadow: 0 0 0 2px var(--c-primary-strong), 0 0 0 4px var(--c-on-primary); }
+.situs-sec--gelap .situs-eyebrow, .situs-sec--gelap .situs-lead { color: var(--c-mint); }
+.situs-sec--gelap a:not(.situs-btn) { color: var(--c-on-primary); }
+.situs-sec--gelap :focus-visible { box-shadow: 0 0 0 2px var(--c-primary-strong), 0 0 0 4px var(--c-on-primary); }
 .situs-orn--gelap { width: 560px; right: -140px; top: -120px; }
 .situs-korporat { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s12); align-items: center; }
 .situs-korporat .situs-cta { margin-top: var(--s2); }
@@ -273,11 +273,6 @@ main:focus { outline: none; }
    berada di belakang teks pada lebar 1024–1279; text-primary dan primary-strong tetap ≥ 4,5:1 di atas campuran
    terburuk (kontras.test.ts). Di bawah 1024 ornamen disembunyikan. */
 .situs-halhero .situs-lead, .situs-halhero .situs-lead p, .situs-halhero .situs-cap { color: var(--c-text-primary); } /* K1 */
-.situs-halhero--gelap { background: var(--c-primary-strong); color: var(--c-on-primary); border-bottom: 0; } /* K7 */
-.situs-halhero.situs-halhero--gelap .situs-lead, .situs-halhero.situs-halhero--gelap .situs-lead p, .situs-halhero.situs-halhero--gelap .situs-cap { color: var(--c-mint); } /* 6,56 */
-.situs-halhero--gelap .situs-eyebrow { background: transparent; padding-inline: 0; }
-.situs-halhero--gelap .situs-eyebrow::before { background: var(--c-mint); }
-.situs-halhero--gelap .situs-orn--gelap { right: -120px; top: -160px; }
 
 /* ---------- Kolom baca dan Markdown CMS ---------- */
 .situs-baca { width: 100%; max-width: calc(var(--situs-baca) + 2 * var(--situs-tepi)); margin: 0 auto; padding: 0 var(--situs-tepi); display: flex; flex-direction: column; gap: var(--s6); }
@@ -373,6 +368,12 @@ main:focus { outline: none; }
 @media (max-width: 767px) {
   /* Header ponsel (CR-038, KEPUTUSAN-421): logo + dua pill toko harus muat satu baris di 320 px. */
   .situs-top__isi { column-gap: var(--s2); }
+  /* Navigasi seluler (CR-042): tautan membungkus menjadi beberapa baris pil, tidak terpotong; header tidak lengket
+     supaya tidak memakan layar (tanpa menu JS). */
+  .situs-top { position: static; }
+  html { scroll-padding-top: var(--s4); }
+  .situs-nav-baris { overflow: visible; -webkit-mask-image: none; mask-image: none; padding: var(--s1) 0 var(--s2); }
+  .situs-nav { flex-wrap: wrap; }
   .situs-logo { font-size: 18px; }
   .situs-logo__tanda { width: 30px; height: 30px; }
   .situs-toko { gap: var(--s1); }

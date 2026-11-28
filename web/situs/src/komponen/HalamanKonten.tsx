@@ -3,7 +3,7 @@ import { gambarDiizinkan } from "../konten/aturan-aman.ts";
 import { pisahPembuka } from "../konten/struktur.ts";
 import type { Konten } from "../konten/tipe.ts";
 import { BlokMarkdown, Markdown } from "./Markdown.tsx";
-import { OrnamenGelap, OrnamenHalaman } from "./Ornamen.tsx";
+import { OrnamenHalaman } from "./Ornamen.tsx";
 import { TidakDiketahui } from "./TidakDiketahui.tsx";
 
 /** Tanggal tayang dalam zona Asia/Jakarta (WIB); `null` bila tidak dapat dibaca. */
@@ -44,13 +44,13 @@ export function IsiKonten({ konten }: { konten: Konten }) {
 }
 
 /**
- * Pita judul halaman (CR-033 C-01): gradien lembut `bg.app → mint` (terang) atau `primaryStrong` (gelap, hanya
- * Untuk Perusahaan, keputusan Q15). Teks terang: `text.primary` 14,14/12,81; gelap: putih 7,53 dan mint 6,56.
+ * Pita judul halaman (CR-042, desain Stitch): lencana pil (label), judul display, kalimat pembuka; latar rata `bg.app`
+ * dengan ornamen lengkung mint di kanan (tanpa varian gelap). Teks `text.primary` 14,14; label `primary.strong` di atas mint.
  */
-export function HeroHalaman({ judul, label, gelap = false, children }: { judul: string; label?: string; gelap?: boolean; children?: ReactNode }) {
+export function HeroHalaman({ judul, label, children }: { judul: string; label?: string; children?: ReactNode }) {
   return (
-    <div className={gelap ? "situs-halhero situs-halhero--gelap" : "situs-halhero"}>
-      {gelap ? <OrnamenGelap /> : <OrnamenHalaman />}
+    <div className="situs-halhero">
+      <OrnamenHalaman />
       <div className="situs-wadah situs-halhero__isi">
         {label === undefined ? null : <p className="situs-eyebrow">{label}</p>}
         <h1>{judul}</h1>
@@ -64,9 +64,9 @@ export function HeroHalaman({ judul, label, gelap = false, children }: { judul: 
  * Halaman tetap dari CMS (Tentang Kami, Layanan, Untuk Perusahaan, Rekanan, Kontak, Unduh aplikasi,
  * Kebijakan). Paragraf pembuka Markdown (bila isi diawali paragraf) menjadi kalimat pembuka di pita judul;
  * sisanya dirender di kolom baca. `draf` menampilkan penanda draf serta tanggal berlaku dan versi
- * (US-1801 AC4). `gelap`: pita judul gelap (hero Untuk Perusahaan, CR-033).
+ * (US-1801 AC4).
  */
-export function HalamanKonten({ konten, draf = false, gelap = false, label }: { konten: Konten; draf?: boolean; gelap?: boolean; label?: string }) {
+export function HalamanKonten({ konten, draf = false, label }: { konten: Konten; draf?: boolean; label?: string }) {
   const berlaku = formatTanggal(konten.published_at);
   // Draf (Kebijakan, US-1801 AC4): paragraf pembuka tidak dipindah ke pita judul, sehingga spanduk "Draf."
   // tampil sebelum teks isi pertama.
@@ -76,7 +76,7 @@ export function HalamanKonten({ konten, draf = false, gelap = false, label }: { 
   const kosongSesudahPembuka = bagian !== null && bagian.sisa.length === 0;
   return (
     <article className="situs-halaman">
-      <HeroHalaman judul={konten.title} gelap={gelap} {...(label === undefined ? {} : { label })}>
+      <HeroHalaman judul={konten.title} {...(label === undefined ? {} : { label })}>
         {pembuka === null ? null : <BlokMarkdown nodes={[pembuka]} kelas="situs-md situs-lead" />}
       </HeroHalaman>
       {draf || adaGambar(konten) || !kosongSesudahPembuka ? (

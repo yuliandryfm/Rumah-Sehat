@@ -177,15 +177,15 @@ describe("halaman Layanan (C-02)", () => {
 describe("halaman isi (C-01)", () => {
   test("pita judul terang; paragraf pembuka di pita, sisa di kolom baca", () => {
     const { container } = render(<HalamanKonten konten={dasar({ title: "Tentang", body: "Pembuka.\n\n## Siapa kami\n\nIsi." })} />);
-    expect(container.querySelector(".situs-halhero--gelap")).toBeNull();
     expect(container.querySelector(".situs-halhero .situs-lead")?.textContent).toBe("Pembuka.");
     expect(container.querySelector(".situs-baca h2")?.textContent).toBe("Siapa kami");
   });
 
-  test("gelap (Untuk Perusahaan): pita judul gelap dengan label", () => {
-    const { container } = render(<HalamanKonten konten={dasar({ title: "Perusahaan", body: "Pembuka." })} gelap label="Untuk HR dan perusahaan" />);
-    const hero = container.querySelector(".situs-halhero--gelap");
+  test("Untuk Perusahaan (CR-042: tanpa varian gelap): pita judul terang dengan label", () => {
+    const { container } = render(<HalamanKonten konten={dasar({ title: "Perusahaan", body: "Pembuka." })} label="Untuk HR dan perusahaan" />);
+    const hero = container.querySelector(".situs-halhero");
     expect(hero).not.toBeNull();
+    expect(container.querySelector("[class*='--gelap']")).toBeNull();
     expect(hero?.querySelector(".situs-eyebrow")?.textContent).toBe("Untuk HR dan perusahaan");
     expect(hero?.querySelector("h1")?.textContent).toBe("Perusahaan");
     // Isi hanya pembuka → tanpa kolom baca kosong.
