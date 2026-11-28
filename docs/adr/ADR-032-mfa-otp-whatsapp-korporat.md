@@ -20,6 +20,7 @@ Tingkat ketelitian: T1 (autentikasi, sesi, dan MFA; konfigurasi realm Keycloak; 
   - P32-5 A: hanya +62, awalan 0 dinormalkan ke E.164;
   - P32-6 A: kode tetap hanya `local` dan `staging`;
   - P32-7 B: pemulihan lewat tiket support dimajukan ke Fase 1.
+  - P32-18 A (Telegram 2026-11-28 15:54): J2 telepon balik ke nomor kantor tidak pernah cukup sendirian, juga di perusahaan banyak-HR; wajib J1 atau J3 syarat 2, kalau tidak permintaan ditolak dan perusahaan menunjuk HR baru.
 
 **Keadaan sekarang.**
 - Realm `korporat` mewajibkan password lalu OTP atau kode pemulihan (`rs-browser-mfa`), memaksa Configure OTP bila belum ada faktor kedua, meminta OTP sebelum password baru di atur ulang (`rs-reset-credentials-mfa`), dan direct grant mati `[DOK: infra/keycloak/realms/korporat.json]`.
@@ -688,7 +689,7 @@ Demo dengan kode tetap butuh A32-T1 sampai A32-T9 dan A32-T12 (±61 jam-task). P
 | P32-15 | Pengingat membuat kode pemulihan (banner di member area) selama HR belum punya? | Ya |
 | P32-16 | Kebijakan koreksi nomor telepon kantor (butuh persetujuan Verifikator?) dan siapa yang boleh membekukan akun HR dalam keadaan darurat (perangkat dicuri)? Keduanya `[TIDAK DIKETAHUI]` di PRD yang ada | Koreksi nomor kantor butuh persetujuan Verifikator; Verifikator dapat menonaktifkan HR (US-207 AC1) |
 | P32-17 | **Dicabut**: format dan panjang nomor seluler Indonesia dan batas E.164 adalah pekerjaan teknis, dikerjakan di A32-T12 (sumber resmi dibuka dan dicatat di `docs/sources.md`) | Bukan pertanyaan ke user |
-| P32-18 | **Blokir.** Di perusahaan dengan lebih dari satu HR aktif, bolehkah J2 (telepon balik ke nomor kantor) saja menyetujui pemulihan tanpa konfirmasi HR rekan dan tanpa pencocokan nama dengan bukti kewenangan (J3 syarat 2)? Telepon dapat dijawab pihak tak berwenang | Tidak boleh (draf ini): J2 selalu butuh J3 syarat 2, atau Verifikator menolak dan mengarahkan ke penunjukan HR baru |
+| P32-18 | **Blokir.** Di perusahaan dengan lebih dari satu HR aktif, bolehkah J2 (telepon balik ke nomor kantor) saja menyetujui pemulihan tanpa konfirmasi HR rekan dan tanpa pencocokan nama dengan bukti kewenangan (J3 syarat 2)? Telepon dapat dijawab pihak tak berwenang | **Dijawab A `[USER]` Telegram 2026-11-28 15:54:** tidak boleh. J2 selalu butuh konfirmasi HR rekan (J1) atau J3 syarat 2; bila tidak terpenuhi, Verifikator menolak dan mengarahkan ke penunjukan HR baru lewat verifikasi ulang |
 | P32-19 | **Blokir.** Akun HR dibuat saat `/daftar` (sebelum Verifikator menyetujui perusahaan), sehingga siapa pun dapat memicu kode WhatsApp ke nomor sembarang sampai batas laju. Pilihan A: dipertahankan dengan batas laju dan anggaran global. C: tautan aktivasi dikirim baru sesudah perusahaan Aktif (HR tidak dapat masuk untuk melihat status sebelum disetujui; mengubah US-1901 AC1, AC5, AC6) | A di draf ini; C bila user menerima HR tidak dapat melihat status sebelum persetujuan |
 | P32-20 | **Blokir.** Siapa menangani HR yang mailbox-nya sudah diambil alih (alur ini tidak mencakupnya)? Belum ada perubahan email HR korporat | Verifikator menonaktifkan akun lama dan menunjuk HR baru dengan bukti kewenangan baru |
 
