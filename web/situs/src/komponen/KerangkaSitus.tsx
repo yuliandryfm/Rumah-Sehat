@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { NAV_KEBIJAKAN } from "../navigasi.ts";
 import { ambilUrlKorporat } from "../konten/tautan-korporat.ts";
+import { BandUnduh } from "./BandUnduh.tsx";
+import { Logo } from "./Logo.tsx";
 import { NavUtama } from "./NavUtama.tsx";
 import { TautanToko } from "./TautanToko.tsx";
 
@@ -20,7 +22,8 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
       <header className="situs-top">
         <div className="situs-wadah situs-top__isi">
           <Link className="situs-logo" href="/">
-            Ruang Sehat
+            <Logo />
+            <span>Ruang Sehat</span>
           </Link>
           <div className="situs-nav-baris">
             <NavUtama label="Utama" />
@@ -28,11 +31,17 @@ export function KerangkaSitus({ children }: { children: ReactNode }) {
           <TautanToko />
         </div>
       </header>
-      <main id="isi">{children}</main>
+      <main id="isi">
+        {children}
+        <BandUnduh />
+      </main>
       <footer className="situs-foot">
         <div className="situs-wadah situs-foot__grid">
           <div className="situs-foot__merek">
-            <p className="situs-foot__nama">Ruang Sehat</p>
+            <p className="situs-foot__nama">
+              <Logo kelas="situs-logo__tanda situs-logo__tanda--kaki" />
+              <span>Ruang Sehat</span>
+            </p>
             <p className="situs-kecil">Ruang Sehat berperan sebagai platform yang menghubungkan pasien dengan rekanan.</p>
             <p className="situs-kecil situs-foot__redup">Dioperasikan oleh PT. Arunika</p>
           </div>

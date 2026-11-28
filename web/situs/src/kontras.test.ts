@@ -37,6 +37,14 @@ const PASANGAN_TEKS: [string, string, string][] = [
   ["butir pita isi Beranda", "text-primary", "bg-app"],
   ["kutipan Markdown", "text-primary", "mint"],
   ["spanduk draf", "text-primary", "warning-bg"],
+  // CR-042 (desain Stitch): pasangan baru atau pemakaian baru.
+  ["lencana pil hero dan pita judul (eyebrow, tanggal artikel unggulan)", "primary-strong", "mint"],
+  ["tanggal dan keterangan di kartu artikel unggulan (mint)", "text-secondary", "mint"],
+  ["judul dan teks pita ajakan unduh (mint)", "text-primary", "mint"],
+  ["tombol sekunder pita ajakan unduh", "primary-strong", "bg-surface"],
+  ["tombol toko di header dan pita (putih di atas primary)", "on-primary", "primary"],
+  ["hover tombol toko (putih di atas primary-strong)", "on-primary", "primary-strong"],
+  ["tanda cek butir nilai hero (putih di atas primary-strong)", "on-primary", "primary-strong"],
 ];
 
 /** Elemen non-teks yang diperlukan untuk memahami isi (ikon kartu, tanda cek, cincin fokus): ≥ 3:1. */
@@ -105,7 +113,7 @@ describe("kontras situs (token)", () => {
     expect(rasioKontras(warna("text-secondary"), desktop)).toBeLessThan(4.5);
   });
 
-  test("pita judul gelap: putih dan mint di atas latar terburuk (cincin mint 16% lalu daun primary 12% di atas primary-strong)", () => {
+  test("seksi korporat gelap di Beranda: putih dan mint di atas latar terburuk (cincin mint 16% lalu daun primary 12% di atas primary-strong)", () => {
     const terburuk = campur(warna("primary"), 0.12, campur(warna("mint"), 0.16, warna("primary-strong")));
     for (const latar of [terburuk, warna("primary-strong")]) {
       for (const teks of ["on-primary", "mint"]) expect(rasioKontras(warna(teks), latar), `${teks} / ${latar}`).toBeGreaterThanOrEqual(4.5);

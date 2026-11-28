@@ -59,7 +59,7 @@ describe("aksesibilitas otomatis (axe-core)", () => {
     ["Halaman isi CMS", <HalamanKonten key="c" konten={KONTEN} />],
     ["Halaman Layanan berkartu (CR-033)", <HalamanLayanan key="k" konten={KARTU} />],
     ["Halaman Layanan fallback Markdown", <HalamanLayanan key="l" konten={KONTEN} />],
-    ["Untuk Perusahaan, pita judul gelap (CR-033)", <HalamanKonten key="m" konten={KARTU} gelap label="Untuk HR dan perusahaan" />],
+    ["Untuk Perusahaan, pita judul terang berlabel (CR-042)", <HalamanKonten key="m" konten={KARTU} label="Untuk HR dan perusahaan" />],
     ["Halaman isi bertanda draf (kebijakan)", <HalamanKonten key="f" konten={KONTEN} draf />],
     ["Daftar artikel, ada kursor", <DaftarArtikel key="g" pengantar={KONTEN} artikel={[{ ...KONTEN, content_type: "article" }]} kursorBerikut={KONTEN.content_id} />],
     ["Daftar artikel kosong", <DaftarArtikel key="h" pengantar={null} artikel={[]} kursorBerikut={null} />],
